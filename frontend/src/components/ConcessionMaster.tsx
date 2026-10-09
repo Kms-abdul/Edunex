@@ -314,11 +314,11 @@ const ConcessionMaster: React.FC = () => {
     };
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="p-6 bg-gray-50 min-h-full">
             <div className="max-w-4xl mx-auto space-y-8">
 
                 {/* FORM SECTION */}
-                <div className="bg-white rounded-lg shadow-md border p-6">
+                <div className="card p-6">
                     <div className="flex items-center space-x-2 mb-6 border-b pb-4">
                         <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         <h2 className="text-xl font-semibold text-gray-800">
@@ -330,14 +330,14 @@ const ConcessionMaster: React.FC = () => {
                     {allBranches.length > 0 && sourceBranchId && (
                         <div className="flex justify-end mb-4 relative" ref={copyDropdownRef}>
                             <button
-                                className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center gap-2 shadow-sm bottom-10"
+                                className="btn-primary bottom-10"
                                 onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
                             >
                                 <span>Copy to Branches</span>
                                 <span className="text-xs">▼</span>
                             </button>
                             {isCopyDropdownOpen && (
-                                <div className="absolute top-12 right-0 w-80 bg-white border shadow-xl rounded z-50 p-2 max-h-96 overflow-y-auto">
+                                <div className="card shadow-pop absolute top-12 right-0 w-80 z-50 p-2 max-h-96 overflow-y-auto">
                                     <div className="mb-2 text-sm font-semibold text-gray-700 pb-2 border-b px-2">
                                         Select Target Branches
                                     </div>
@@ -382,7 +382,7 @@ const ConcessionMaster: React.FC = () => {
                                         <button
                                             onClick={handleCopyConcessions}
                                             disabled={copying || copyTargets.size === 0}
-                                            className={`px-3 py-1 text-xs text-white rounded ${copying || copyTargets.size === 0 ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
+                                            className={`btn btn-sm text-white ${copying || copyTargets.size === 0 ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
                                         >
                                             {copying ? "Copying..." : "Confirm Copy"}
                                         </button>
@@ -394,10 +394,10 @@ const ConcessionMaster: React.FC = () => {
 
                     <div className="space-y-4 mb-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Title*</label>
+                            <label className="label">Title*</label>
                             <input
                                 type="text"
-                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-violet-500 focus:border-violet-500"
+                                className="input"
                                 value={title}
                                 onChange={e => setTitle(e.target.value)}
                                 placeholder="e.g. Sibling Discount"
@@ -405,10 +405,10 @@ const ConcessionMaster: React.FC = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <label className="label">Description</label>
                             <input
                                 type="text"
-                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-violet-500 focus:border-violet-500"
+                                className="input"
                                 value={description}
                                 onChange={e => setDescription(e.target.value)}
                             />
@@ -416,19 +416,19 @@ const ConcessionMaster: React.FC = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                                <label className="label">Academic Year</label>
                                 <input
                                     type="text"
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 cursor-not-allowed"
+                                    className="input"
                                     value={academicYear}
                                     readOnly
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+                                <label className="label">Branch</label>
                                 <input
                                     type="text"
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 cursor-not-allowed"
+                                    className="input"
                                     value={branch}
                                     readOnly
                                 />
@@ -441,14 +441,14 @@ const ConcessionMaster: React.FC = () => {
                             <div className="flex items-center space-x-2">
                                 <input
                                     type="number"
-                                    className="border border-gray-300 rounded-md px-3 py-2 w-40"
+                                    className="input w-40"
                                     placeholder="Enter Amount"
                                     value={globalAmount}
                                     onChange={e => setGlobalAmount(e.target.value)}
                                 />
                                 <button
                                     onClick={handleCopy}
-                                    className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 font-medium"
+                                    className="btn-success"
                                 >
                                     Copy
                                 </button>
@@ -472,9 +472,9 @@ const ConcessionMaster: React.FC = () => {
                     {/* Table */}
                     <div className="border rounded-md overflow-hidden mb-6">
                         <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
+                            <thead className="">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                                    <th className="px-6 py-3 text-left w-10">
                                         <input
                                             type="checkbox"
                                             className="rounded"
@@ -488,10 +488,10 @@ const ConcessionMaster: React.FC = () => {
                                             }}
                                         />
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="px-6 py-3 text-left">
                                         Fee Type
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="px-6 py-3 text-left">
                                         Concession Amount
                                     </th>
                                 </tr>
@@ -518,7 +518,7 @@ const ConcessionMaster: React.FC = () => {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <input
                                                 type="number"
-                                                className="border border-gray-300 rounded-md px-3 py-1 w-full focus:ring-violet-500 focus:border-violet-500"
+                                                className="input"
                                                 value={concessionItems[ft.id] !== undefined ? concessionItems[ft.id] : ''}
                                                 onChange={e => handleItemChange(ft.id, e.target.value)}
                                             />
@@ -538,14 +538,14 @@ const ConcessionMaster: React.FC = () => {
                     <div className="flex justify-end space-x-3 border-t pt-4">
                         <button
                             onClick={handleReset}
-                            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                            className="btn-secondary"
                         >
                             {isEditing ? 'Cancel Edit' : 'Reset'}
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={loading}
-                            className="px-6 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 disabled:opacity-50"
+                            className="btn-primary"
                         >
                             {loading ? 'Saving...' : (isEditing ? 'Update Concession' : 'Save Concession')}
                         </button>
@@ -553,22 +553,22 @@ const ConcessionMaster: React.FC = () => {
                 </div>
 
                 {/* LIST SECTION */}
-                <div className="bg-white rounded-lg shadow-md border p-6">
+                <div className="card p-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Existing Concessions</h3>
 
                     {concessions.length === 0 ? (
                         <p className="text-gray-500 text-center py-4">No concessions found.</p>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto rounded-lg border border-slate-200">
                             <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
+                                <thead className="">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Academic Year</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Show in Payment</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th className="px-6 py-3 text-left">Title</th>
+                                        <th className="px-6 py-3 text-left">Academic Year</th>
+                                        <th className="px-6 py-3 text-left">Branch</th>
+                                        <th className="px-6 py-3 text-left">Show in Payment</th>
+                                        <th className="px-6 py-3 text-left">Description</th>
+                                        <th className="px-6 py-3 text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">

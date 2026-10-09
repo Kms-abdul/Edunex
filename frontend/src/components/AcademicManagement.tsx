@@ -9,6 +9,8 @@ import {
     PencilIcon,
     UserIcon, 
 } from './icons';
+import PageHeader from './ui/PageHeader';
+import ModuleTile from './ui/ModuleTile';
 
 interface AcademicManagementProps {
     navigateTo: (page: Page) => void;
@@ -29,7 +31,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         {
             id: 'academic',
             name: 'Academic',
-            icon: <AcademicIcon className="w-8 h-8" />,
+            icon: <AcademicIcon className="w-6 h-6" />,
             iconBg: 'bg-blue-50',
             iconColor: 'text-blue-600',
             page: 'academics'
@@ -37,7 +39,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         {
             id: 'classwork',
             name: 'Classwork',
-            icon: <ChartBarIcon className="w-8 h-8" />,
+            icon: <ChartBarIcon className="w-6 h-6" />,
             iconBg: 'bg-purple-50',
             iconColor: 'text-purple-600',
             comingSoon: true
@@ -45,7 +47,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         {
             id: 'homework',
             name: 'Homework',
-            icon: <DocumentReportIcon className="w-8 h-8" />,
+            icon: <DocumentReportIcon className="w-6 h-6" />,
             iconBg: 'bg-orange-50',
             iconColor: 'text-orange-600',
             comingSoon: true
@@ -53,7 +55,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         {
             id: 'lesson-plan',
             name: 'Lesson Plan',
-            icon: <PencilIcon className="w-8 h-8" />,
+            icon: <PencilIcon className="w-6 h-6" />,
             iconBg: 'bg-amber-50',
             iconColor: 'text-amber-600',
             comingSoon: true
@@ -61,7 +63,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         {
             id: 'time-table',
             name: 'Time Table',
-            icon: <TimeIcon className="w-8 h-8" />,
+            icon: <TimeIcon className="w-6 h-6" />,
             iconBg: 'bg-teal-50',
             iconColor: 'text-teal-600',
             page: 'timetable'
@@ -69,7 +71,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         {
             id: 'online-exam',
             name: 'Online Exam',
-            icon: <DocumentReportIcon className="w-8 h-8" />,
+            icon: <DocumentReportIcon className="w-6 h-6" />,
             iconBg: 'bg-pink-50',
             iconColor: 'text-pink-600',
             comingSoon: true
@@ -77,7 +79,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         {
             id: 'academic-content',
             name: 'Academic Content',
-            icon: <DashboardIcon className="w-8 h-8" />,
+            icon: <DashboardIcon className="w-6 h-6" />,
             iconBg: 'bg-indigo-50',
             iconColor: 'text-indigo-600',
             comingSoon: true
@@ -85,7 +87,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         {
             id: 'assessment',
             name: 'Assessment',
-            icon: <ChartBarIcon className="w-8 h-8" />,
+            icon: <ChartBarIcon className="w-6 h-6" />,
             iconBg: 'bg-red-50',
             iconColor: 'text-red-600',
             comingSoon: true
@@ -93,15 +95,15 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         {
             id: 'online-class',
             name: 'Online Class',
-            icon: <UserIcon className="w-8 h-8" />,
+            icon: <UserIcon className="w-6 h-6" />,
             iconBg: 'bg-cyan-50',
             iconColor: 'text-cyan-600',
-            comingSoon: true
+            page: 'online-class'
         },
         {
             id: 'activity-planner',
             name: 'Activity Planner',
-            icon: <PencilIcon className="w-8 h-8" />,
+            icon: <PencilIcon className="w-6 h-6" />,
             iconBg: 'bg-emerald-50',
             iconColor: 'text-emerald-600',
             comingSoon: true
@@ -117,55 +119,32 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
     };
 
     return (
-        <div className="min-h-screen bg-slate-50">
-            {/* Professional Header */}
-            <div className="bg-white shadow-sm border-b border-slate-200">
-                <div className="max-w-7xl mx-auto px-6 py-5">
-                    <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-blue-50 rounded-lg">
-                            <AcademicIcon className="w-6 h-6 text-blue-600" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-semibold text-slate-900">Academic Management</h1>
-                            <p className="text-sm text-slate-600 mt-0.5">Manage all academic activities and resources</p>
-                        </div>
-                    </div>
+        <div className="min-h-full bg-surface-muted">
+            <div className="bg-white border-b border-slate-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
+                    <PageHeader
+                        eyebrow="Academics"
+                        title="Academic Management"
+                        subtitle="Manage all academic activities and resources"
+                        icon={<AcademicIcon className="w-6 h-6" />}
+                        className="mb-5"
+                    />
                 </div>
             </div>
 
             {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-6 py-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {academicModules.map((module) => (
-                        <button
+                        <ModuleTile
                             key={module.id}
+                            name={module.name}
+                            icon={module.icon}
+                            iconClassName={`${module.iconBg} ${module.iconColor}`}
+                            comingSoon={module.comingSoon}
+                            active={!!module.page && !module.comingSoon}
                             onClick={() => handleModuleClick(module)}
-                            className="group relative bg-white rounded-xl p-6 border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                        >
-                            {/* Icon */}
-                            <div className={`${module.iconBg} ${module.iconColor} w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform duration-200`}>
-                                {module.icon}
-                            </div>
-
-                            {/* Module Name */}
-                            <h3 className="font-semibold text-slate-900 text-base mb-1 group-hover:text-blue-600 transition-colors">
-                                {module.name}
-                            </h3>
-
-                            {/* Coming Soon Badge */}
-                            {module.comingSoon && (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                                    Coming Soon
-                                </span>
-                            )}
-
-                            {/* Active Badge */}
-                            {module.page && !module.comingSoon && (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                    Active
-                                </span>
-                            )}
-                        </button>
+                        />
                     ))}
                 </div>
             </div>

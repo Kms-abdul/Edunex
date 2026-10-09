@@ -24,7 +24,7 @@ from sqlalchemy import or_
 
 @bp.route('/staff-categories', methods=['GET'])
 @token_required
-@permission_required("hr.hr.staff-master", "read")
+@permission_required(["hr.hr.staff-master", "hr.hr.staff-profile", "hr.hr.staff-update"], "read")
 def get_staff_categories(current_user):
     target_school_id = get_target_school_id(current_user)
     if not target_school_id and current_user.role == 'SuperAdmin':
@@ -84,7 +84,7 @@ def create_staff_category(current_user):
 
 @bp.route('/staff-statuses', methods=['GET'])
 @token_required
-@permission_required("hr.hr.staff-master", "read")
+@permission_required(["hr.hr.staff-master", "hr.hr.staff-profile", "hr.hr.staff-update"], "read")
 def get_staff_statuses(current_user):
     """List all HR employment statuses (Active, Probation, Resigned, etc.)"""
     target_school_id = get_target_school_id(current_user)
@@ -424,7 +424,7 @@ def _generate_staff_ids(branch_id, department_id, school_id):
 
 @bp.route('/staff', methods=['GET'])
 @token_required
-@permission_required("hr.hr.staff-master", "read")
+@permission_required(["hr.hr.staff-master", "hr.hr.staff-profile", "hr.hr.staff-update"], "read")
 def get_staff(current_user):
     try:
         target_school_id = get_target_school_id(current_user)
@@ -559,6 +559,15 @@ def get_staff_profile(current_user):
             "branch_id": s.branch_id,
             "today_attendance": today_attendance_data
         }
+
+        user = User.query.filter_by(staff_id=s.id).first()
+        if user:
+            result["username"] = user.username
+            result["role"] = user.role
+            result["role_id"] = user.role_id
+            result["last_login"] = str(user.last_login) if getattr(user, 'last_login', None) else None
+            result["account_status"] = "Active" if user.is_active else "Inactive"
+
         return jsonify(result), 200
     except Exception as e:
         import traceback
@@ -568,7 +577,7 @@ def get_staff_profile(current_user):
 
 @bp.route('/staff/<int:staff_id>/profile', methods=['GET'])
 @token_required
-@permission_required("hr.hr.staff-master", "read")
+@permission_required(["hr.hr.staff-master", "hr.hr.staff-profile", "hr.hr.staff-update"], "read")
 def get_staff_profile_by_id(current_user, staff_id):
     try:
         s = StaffMaster.query.get(staff_id)
@@ -602,6 +611,15 @@ def get_staff_profile_by_id(current_user, staff_id):
             "uan_no": "-", # fallback
             "branch_id": s.branch_id
         }
+
+        user = User.query.filter_by(staff_id=s.id).first()
+        if user:
+            result["username"] = user.username
+            result["role"] = user.role
+            result["role_id"] = user.role_id
+            result["last_login"] = str(user.last_login) if getattr(user, 'last_login', None) else None
+            result["account_status"] = "Active" if user.is_active else "Inactive"
+
         return jsonify(result), 200
     except Exception as e:
         import traceback
@@ -693,6 +711,9 @@ def create_staff(current_user):
             sequence = None
             if not staff_code or not employee_id:
                 return jsonify({"error": "Staff code and Employee ID are required for manual entry"}), 400
+            staff_code = staff_code.strip()
+            if StaffMaster.query.filter(or_(StaffMaster.employee_id == employee_id, StaffMaster.biometric_id == biometric_id)).first():
+                return jsonify({"error": "Employee ID or Biometric ID already exists."}), 409
         else:
             staff_code, employee_id, sequence = _generate_staff_ids(
                 branch_id, department_id, school_id
@@ -778,7 +799,7 @@ def create_staff(current_user):
             "staff_id": staff.id,
             "staff_code": staff_code,
             "employee_id": employee_id,
-            "biometric_id": employee_id,
+            "biometric_id": biometric_id,
             "username": staff_code,
             "temporary_password_generated": True,
             "note": "Employee must change password on first login"
@@ -797,7 +818,7 @@ def create_staff(current_user):
 
 @bp.route('/staff/<int:staff_id>', methods=['GET'])
 @token_required
-@permission_required("hr.hr.staff-master", "read")
+@permission_required(["hr.hr.staff-master", "hr.hr.staff-profile", "hr.hr.staff-update"], "read")
 def get_staff_detail(current_user, staff_id):
     s = StaffMaster.query.get_or_404(staff_id)
     return jsonify({
@@ -885,7 +906,7 @@ def get_managers(current_user):
 
 @bp.route('/staff/<int:staff_id>', methods=['PUT'])
 @token_required
-@permission_required("hr.hr.staff-master", "write")
+@permission_required(["hr.hr.staff-master", "hr.hr.staff-update"], "write")
 def update_staff(current_user, staff_id):
     s = StaffMaster.query.get_or_404(staff_id)
     data = request.json or {}
@@ -1018,35 +1039,55 @@ def update_staff_status(current_user, stat_id):
 # STAFF ACCOUNT DETAILS
 # ==========================================
 
-@bp.route('/staff/<int:staff_id>/profile/account', methods=['GET', 'PUT'])
+@bp.route('/staff/<int:staff_id>/profile/account', methods=['GET'])
 @token_required
-@permission_required("hr.staff.profile", "write")
-def manage_staff_account_detail(current_user, staff_id):
+@permission_required(["hr.hr.staff-master", "hr.hr.staff-profile", "hr.hr.staff-update"], "read")
+def get_staff_account_detail(current_user, staff_id):
     staff = StaffMaster.query.get_or_404(staff_id)
-    account_detail = staff.account_detail
-    
-    if request.method == 'GET':
-        if not account_detail:
-            return jsonify({}), 200
-        return jsonify({
-            'account_holder_name': account_detail.account_holder_name,
-            'bank_name': account_detail.bank_name,
-            'branch_name': account_detail.branch_name,
-            'account_number': account_detail.account_number,
-            'ifsc_code': account_detail.ifsc_code,
-            'account_type': account_detail.account_type,
-            'upi_id': account_detail.upi_id,
-            'pan_number': account_detail.pan_number,
-            'aadhaar_number': account_detail.aadhaar_number,
-            'pf_applicable': account_detail.pf_applicable,
-            'pf_number': account_detail.pf_number,
-            'esi_applicable': account_detail.esi_applicable,
-            'esi_number': account_detail.esi_number,
-            'pt_applicable': account_detail.pt_applicable,
-            'tds_applicable': account_detail.tds_applicable
-        }), 200
+    allowed_schools = get_user_allowed_schools(current_user)
+    if not allowed_schools['is_unlimited'] and allowed_schools['ids'] and staff.school_id not in allowed_schools['ids']:
+        return jsonify({"error": "Unauthorized to access this staff record"}), 403
 
-    # PUT
+    account_detail = staff.account_detail
+    if not account_detail:
+        return jsonify({}), 200
+        
+    acct_num = account_detail.account_number
+    if acct_num and len(acct_num) > 4:
+        acct_num = '*' * (len(acct_num) - 4) + acct_num[-4:]
+        
+    aadhaar_num = account_detail.aadhaar_number
+    if aadhaar_num and len(aadhaar_num) > 4:
+        aadhaar_num = '*' * (len(aadhaar_num) - 4) + aadhaar_num[-4:]
+
+    return jsonify({
+        'account_holder_name': account_detail.account_holder_name,
+        'bank_name': account_detail.bank_name,
+        'branch_name': account_detail.branch_name,
+        'account_number': acct_num,
+        'ifsc_code': account_detail.ifsc_code,
+        'account_type': account_detail.account_type,
+        'upi_id': account_detail.upi_id,
+        'pan_number': account_detail.pan_number,
+        'aadhaar_number': aadhaar_num,
+        'pf_applicable': account_detail.pf_applicable,
+        'pf_number': account_detail.pf_number,
+        'esi_applicable': account_detail.esi_applicable,
+        'esi_number': account_detail.esi_number,
+        'pt_applicable': account_detail.pt_applicable,
+        'tds_applicable': account_detail.tds_applicable
+    }), 200
+
+@bp.route('/staff/<int:staff_id>/profile/account', methods=['PUT'])
+@token_required
+@permission_required(["hr.hr.staff-update", "hr.hr.staff-master"], "write")
+def update_staff_account_detail(current_user, staff_id):
+    staff = StaffMaster.query.get_or_404(staff_id)
+    allowed_schools = get_user_allowed_schools(current_user)
+    if not allowed_schools['is_unlimited'] and allowed_schools['ids'] and staff.school_id not in allowed_schools['ids']:
+        return jsonify({"error": "Unauthorized to access this staff record"}), 403
+
+    account_detail = staff.account_detail
     data = request.json or {}
     if not account_detail:
         account_detail = StaffAccountDetail(staff_id=staff.id)
@@ -1067,31 +1108,42 @@ def manage_staff_account_detail(current_user, staff_id):
 # STAFF SALARY DETAILS
 # ==========================================
 
-@bp.route('/staff/<int:staff_id>/profile/salary', methods=['GET', 'PUT'])
+@bp.route('/staff/<int:staff_id>/profile/salary', methods=['GET'])
 @token_required
-@permission_required("hr.staff.profile", "write")
-def manage_staff_salary_detail(current_user, staff_id):
+@permission_required(["hr.hr.staff-master", "hr.hr.staff-profile", "hr.hr.staff-update"], "read")
+def get_staff_salary_detail(current_user, staff_id):
     staff = StaffMaster.query.get_or_404(staff_id)
-    salary_detail = staff.salary_detail
-    
-    if request.method == 'GET':
-        if not salary_detail:
-            return jsonify({}), 200
-        return jsonify({
-            'salary_type': salary_detail.salary_type,
-            'basic_salary': float(salary_detail.basic_salary) if salary_detail.basic_salary else None,
-            'gross_salary': float(salary_detail.gross_salary) if salary_detail.gross_salary else None,
-            'payment_mode': salary_detail.payment_mode,
-            'effective_from': salary_detail.effective_from.isoformat() if salary_detail.effective_from else None,
-            'payroll_status': salary_detail.payroll_status,
-            'gratuity_applicable': salary_detail.gratuity_applicable,
-            'bonus_applicable': salary_detail.bonus_applicable,
-            'overtime_applicable': salary_detail.overtime_applicable,
-            'notice_period_days': salary_detail.notice_period_days,
-            'payroll_remarks': salary_detail.payroll_remarks
-        }), 200
+    allowed_schools = get_user_allowed_schools(current_user)
+    if not allowed_schools['is_unlimited'] and allowed_schools['ids'] and staff.school_id not in allowed_schools['ids']:
+        return jsonify({"error": "Unauthorized to access this staff record"}), 403
 
-    # PUT
+    salary_detail = staff.salary_detail
+    if not salary_detail:
+        return jsonify({}), 200
+    return jsonify({
+        'salary_type': salary_detail.salary_type,
+        'basic_salary': float(salary_detail.basic_salary) if salary_detail.basic_salary else None,
+        'gross_salary': float(salary_detail.gross_salary) if salary_detail.gross_salary else None,
+        'payment_mode': salary_detail.payment_mode,
+        'effective_from': salary_detail.effective_from.isoformat() if salary_detail.effective_from else None,
+        'payroll_status': salary_detail.payroll_status,
+        'gratuity_applicable': salary_detail.gratuity_applicable,
+        'bonus_applicable': salary_detail.bonus_applicable,
+        'overtime_applicable': salary_detail.overtime_applicable,
+        'notice_period_days': salary_detail.notice_period_days,
+        'payroll_remarks': salary_detail.payroll_remarks
+    }), 200
+
+@bp.route('/staff/<int:staff_id>/profile/salary', methods=['PUT'])
+@token_required
+@permission_required(["hr.hr.staff-update", "hr.hr.staff-master"], "write")
+def update_staff_salary_detail(current_user, staff_id):
+    staff = StaffMaster.query.get_or_404(staff_id)
+    allowed_schools = get_user_allowed_schools(current_user)
+    if not allowed_schools['is_unlimited'] and allowed_schools['ids'] and staff.school_id not in allowed_schools['ids']:
+        return jsonify({"error": "Unauthorized to access this staff record"}), 403
+
+    salary_detail = staff.salary_detail
     data = request.json or {}
     if not salary_detail:
         salary_detail = StaffSalaryDetail(staff_id=staff.id)
@@ -1112,6 +1164,89 @@ def manage_staff_salary_detail(current_user, staff_id):
     return jsonify({"message": "Staff salary details updated successfully"}), 200
 
 # ==========================================
+# STAFF DOCUMENT TYPES
+# ==========================================
+
+@bp.route('/staff-document-types', methods=['GET'])
+@token_required
+@permission_required(["hr.hr.staff-master", "hr.hr.staff-document-types", "hr.hr.staff-profile", "hr.hr.staff-update"], "read")
+def get_staff_document_types(current_user):
+    target_school_id = get_target_school_id(current_user)
+    if not target_school_id and current_user.role == 'SuperAdmin':
+        types = StaffDocumentType.query.all()
+    else:
+        types = StaffDocumentType.query.filter(
+            or_(StaffDocumentType.school_id == target_school_id, StaffDocumentType.school_id.is_(None))
+        ).all()
+        
+    result = [{
+        "id": t.id,
+        "code": t.code,
+        "name": t.name,
+        "description": t.description,
+        "is_required": t.is_required,
+        "allowed_extensions": t.allowed_extensions,
+        "max_file_size": t.max_file_size,
+        "requires_expiry": t.requires_expiry,
+        "requires_document_number": t.requires_document_number,
+        "is_active": t.is_active
+    } for t in types]
+    return jsonify(result), 200
+
+@bp.route('/staff-document-types', methods=['POST'])
+@token_required
+@permission_required(["hr.hr.staff-document-types"], "write")
+def create_staff_document_type(current_user):
+    data = request.json
+    target_school_id = get_target_school_id(current_user)
+    if not data or not data.get('code') or not data.get('name'):
+        return jsonify({"error": "Code and name are required"}), 400
+
+    if StaffDocumentType.query.filter_by(code=data['code'], school_id=target_school_id).first():
+        return jsonify({"error": "Document type code already exists in your school"}), 400
+
+    new_type = StaffDocumentType(
+        school_id=target_school_id,
+        code=data['code'],
+        name=data['name'],
+        description=data.get('description'),
+        is_required=data.get('is_required', False),
+        allowed_extensions=data.get('allowed_extensions', 'pdf,jpg,jpeg,png'),
+        max_file_size=data.get('max_file_size', 5242880),
+        requires_expiry=data.get('requires_expiry', False),
+        requires_document_number=data.get('requires_document_number', False),
+        is_active=data.get('is_active', True)
+    )
+    db.session.add(new_type)
+    db.session.commit()
+    return jsonify({"message": "Staff document type created", "id": new_type.id}), 201
+
+@bp.route('/staff-document-types/<int:type_id>', methods=['PUT'])
+@token_required
+@permission_required(["hr.hr.staff-document-types"], "write")
+def update_staff_document_type(current_user, type_id):
+    doc_type = StaffDocumentType.query.get_or_404(type_id)
+
+    target_school_id = get_target_school_id(current_user)
+    if doc_type.school_id is None:
+        if current_user.role != 'SuperAdmin':
+            return jsonify({"error": "Only SuperAdmin can update global document types"}), 403
+    elif doc_type.school_id != target_school_id:
+        return jsonify({"error": "Unauthorized to update this document type"}), 403
+
+    data = request.json or {}
+    
+    fields = ['name', 'description', 'is_required', 'allowed_extensions', 
+              'max_file_size', 'requires_expiry', 'requires_document_number', 'is_active']
+              
+    for field in fields:
+        if field in data:
+            setattr(doc_type, field, data[field])
+            
+    db.session.commit()
+    return jsonify({"message": "Staff document type updated"}), 200
+
+# ==========================================
 # STAFF DOCUMENTS
 # ==========================================
 
@@ -1123,9 +1258,10 @@ def allowed_file(filename):
 
 @bp.route('/staff/upload', methods=['POST'])
 @token_required
+@permission_required(["hr.hr.staff-update", "hr.hr.staff-master"], "write")
 def upload_staff_document(current_user):
     try:
-        from helpers import get_user_allowed_schools
+        from helpers import get_user_allowed_schools, get_user_allowed_branches
         if 'file' not in request.files:
             return jsonify({'message': 'No file part in the request'}), 400
 
@@ -1153,6 +1289,24 @@ def upload_staff_document(current_user):
 
         if not staff or not doc_type:
             return jsonify({'message': 'Invalid staff or document type'}), 400
+
+        allowed_schools = get_user_allowed_schools(current_user)
+        if not allowed_schools['is_unlimited'] and allowed_schools['ids'] and staff.school_id not in allowed_schools['ids']:
+            return jsonify({'error': 'Unauthorized to access this staff record'}), 403
+            
+        allowed_branches = get_user_allowed_branches(current_user)
+        if not allowed_branches['is_unlimited'] and allowed_branches['ids'] and staff.branch_id not in allowed_branches['ids']:
+            return jsonify({'error': 'Unauthorized to access this staff record'}), 403
+
+        if not doc_type.is_active:
+            return jsonify({'message': 'Document type is inactive'}), 400
+        if doc_type.school_id is not None and doc_type.school_id != staff.school_id:
+            return jsonify({'message': 'Document type does not belong to the staff\'s school'}), 400
+        original_ext = file.filename.rsplit('.', 1)[1].lower()
+        if doc_type.allowed_extensions and original_ext not in [ext.strip().lower() for ext in doc_type.allowed_extensions.split(',')]:
+            return jsonify({'message': f'File extension not allowed for this document type. Allowed: {doc_type.allowed_extensions}'}), 400
+        if doc_type.max_file_size and content_length and content_length > doc_type.max_file_size:
+            return jsonify({'message': f'File size exceeds the limit for this document type ({doc_type.max_file_size} bytes)'}), 400
 
         # Optional metadata
         document_no  = request.form.get('document_no')
@@ -1245,11 +1399,21 @@ def upload_staff_document(current_user):
 
 @bp.route('/staff/<int:staff_id>/documents', methods=['GET'])
 @token_required
+@permission_required(["hr.hr.staff-master", "hr.hr.staff-profile", "hr.hr.staff-update"], "read")
 def get_staff_documents(current_user, staff_id):
     try:
+        from helpers import get_user_allowed_schools, get_user_allowed_branches
         staff = StaffMaster.query.get(staff_id)
         if not staff:
             return jsonify({'message': 'Staff not found'}), 404
+
+        allowed_schools = get_user_allowed_schools(current_user)
+        if not allowed_schools['is_unlimited'] and allowed_schools['ids'] and staff.school_id not in allowed_schools['ids']:
+            return jsonify({'error': 'Unauthorized to access this staff record'}), 403
+            
+        allowed_branches = get_user_allowed_branches(current_user)
+        if not allowed_branches['is_unlimited'] and allowed_branches['ids'] and staff.branch_id not in allowed_branches['ids']:
+            return jsonify({'error': 'Unauthorized to access this staff record'}), 403
 
         documents = StaffDocument.query.filter_by(staff_id=staff_id).all()
 
@@ -1281,11 +1445,23 @@ def get_staff_documents(current_user, staff_id):
 
 @bp.route('/staff/download/<int:doc_id>', methods=['GET'])
 @token_required
+@permission_required(["hr.hr.staff-master", "hr.hr.staff-profile", "hr.hr.staff-update"], "read")
 def download_staff_document(current_user, doc_id):
     try:
+        from helpers import get_user_allowed_schools, get_user_allowed_branches
         doc = StaffDocument.query.get(doc_id)
         if not doc:
             return jsonify({'message': 'Document not found'}), 404
+
+        staff = doc.staff
+        if staff:
+            allowed_schools = get_user_allowed_schools(current_user)
+            if not allowed_schools['is_unlimited'] and allowed_schools['ids'] and staff.school_id not in allowed_schools['ids']:
+                return jsonify({'error': 'Unauthorized to access this document'}), 403
+                
+            allowed_branches = get_user_allowed_branches(current_user)
+            if not allowed_branches['is_unlimited'] and allowed_branches['ids'] and staff.branch_id not in allowed_branches['ids']:
+                return jsonify({'error': 'Unauthorized to access this document'}), 403
 
         # OCI Storage (local fallback included in service)
         try:

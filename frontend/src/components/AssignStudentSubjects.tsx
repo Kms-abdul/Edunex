@@ -248,14 +248,14 @@ const AssignStudentSubjects: React.FC = () => {
     };
 
     return (
-        <div className="p-6 bg-white min-h-screen">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">Assign Student-Subjects</h2>
+        <div className="p-6 bg-white min-h-full">
+            <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6">Assign Student-Subjects</h2>
 
             {/* Top Bar / Filters */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 p-4 bg-gray-50 rounded-lg shadow-sm border">
                 {/* Academic Year (Read Only) */}
                 <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-600 mb-1">Academic Year</label>
+                    <label className="label">Academic Year</label>
                     <div className="px-3 py-2 bg-gray-200 rounded text-gray-700 font-medium">
                         {academicYear}
                     </div>
@@ -263,7 +263,7 @@ const AssignStudentSubjects: React.FC = () => {
 
                 {/* Branch (Read Only) */}
                 <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-600 mb-1">Branch</label>
+                    <label className="label">Branch</label>
                     <div className="px-3 py-2 bg-gray-200 rounded text-gray-700 font-medium whitespace-nowrap overflow-hidden text-ellipsis">
                         {branch}
                     </div>
@@ -271,9 +271,9 @@ const AssignStudentSubjects: React.FC = () => {
 
                 {/* Class Dropdown */}
                 <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-600 mb-1">Class</label>
+                    <label className="label">Class</label>
                     <select
-                        className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none"
+                        className="input"
                         value={selectedClass}
                         onChange={(e) => setSelectedClass(e.target.value)}
                     >
@@ -286,9 +286,9 @@ const AssignStudentSubjects: React.FC = () => {
 
                 {/* Section Dropdown */}
                 <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-600 mb-1">Section</label>
+                    <label className="label">Section</label>
                     <select
-                        className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none"
+                        className="input"
                         value={selectedSection}
                         onChange={(e) => setSelectedSection(e.target.value)}
                         disabled={!selectedClass}
@@ -302,7 +302,7 @@ const AssignStudentSubjects: React.FC = () => {
 
                 {/* Subject Type */}
                 <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-600 mb-1">Subject Type</label>
+                    <label className="label">Subject Type</label>
                     <div className="flex items-center space-x-4 h-full">
                         <label className="flex items-center cursor-pointer">
                             <input
@@ -341,10 +341,10 @@ const AssignStudentSubjects: React.FC = () => {
                 ) : (
                     <div className="overflow-x-auto shadow-md rounded-lg border border-gray-200">
                         <table className="min-w-full bg-white text-sm">
-                            <thead className="bg-[#1f2937] text-white">
+                            <thead className="">
                                 <tr>
                                     <th className="py-3 px-4 text-left w-16">S.No</th>
-                                    <th className="py-3 px-4 text-left w-48 sticky left-0 z-10 bg-[#1f2937]">Student Name</th>
+                                    <th className="py-3 px-4 text-left w-48 sticky left-0 z-10 bg-slate-50">Student Name</th>
                                     <th className="py-3 px-4 text-left w-24">Roll No</th>
                                     <th className="py-3 px-4 text-left w-32">Adm No</th>
                                     {subjects.map(sub => (
@@ -419,14 +419,14 @@ const AssignStudentSubjects: React.FC = () => {
                     <button
                         onClick={() => fetchData()}
                         disabled={saving}
-                        className={`px-6 py-2 rounded text-gray-700 border transition hover:bg-gray-100 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`btn text-gray-700 border hover:bg-gray-100 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className={`px-8 py-3 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`btn btn-lg bg-indigo-600 text-white hover:bg-indigo-700 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         {saving ? "Saving..." : "Save Assignments"}
                     </button>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { CalendarClock, ChevronDown, Trash2, Plus, Copy, Check, X, Printer } from "lucide-react";
+import { CalendarClock, Trash2, Plus, Copy, Check, X, Printer } from "lucide-react";
 import api from "../api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -56,30 +56,6 @@ interface SlotRow {
    Small shared UI bits
    ------------------------------------------------------------------------- */
 
-const NavDropdown: React.FC<{ title: string; items: { label: string; onClick: () => void }[] }> = ({ title, items }) => {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-      <button className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-white bg-[#337ab7] hover:bg-[#286090] rounded">
-        {title} <ChevronDown size={14} />
-      </button>
-      {open && (
-        <div className="absolute right-0 z-50 w-64 bg-white border shadow rounded-b py-2">
-          {items.map((item, idx) => (
-            <button
-              key={idx}
-              onClick={item.onClick}
-              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#337ab7]"
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
 /** Branch / Class / Section / Academic Year selector shared across sub-views */
 const ContextBar: React.FC<{
   branches: BranchOption[]; classes: Option[]; sections: Option[]; academicYears: Option[];
@@ -87,18 +63,18 @@ const ContextBar: React.FC<{
   onBranch: (v: string) => void; onClass: (v: string) => void; onSection: (v: string) => void; onYear: (v: string) => void;
   showSection?: boolean;
 }> = ({ branches, classes, sections, academicYears, branchId, classId, sectionId, yearId, onBranch, onClass, onSection, onYear, showSection = true }) => {
-  const cls = "border rounded px-3 py-2 text-sm w-full";
+  const cls = "input";
   return (
     <div className={`grid grid-cols-1 sm:grid-cols-2 ${showSection ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-3 mb-4`}>
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Branch</label>
+        <label className="label">Branch</label>
         <select className={cls} value={branchId} onChange={(e) => onBranch(e.target.value)}>
           <option value="">Select Branch</option>
           {branches.map((b) => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
         </select>
       </div>
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Class</label>
+        <label className="label">Class</label>
         <select className={cls} value={classId} onChange={(e) => onClass(e.target.value)}>
           <option value="">Select Class</option>
           {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -106,7 +82,7 @@ const ContextBar: React.FC<{
       </div>
       {showSection && (
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Section</label>
+          <label className="label">Section</label>
           <select className={cls} value={sectionId} onChange={(e) => onSection(e.target.value)} disabled={!classId}>
             <option value="">Select Section</option>
             {sections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -114,7 +90,7 @@ const ContextBar: React.FC<{
         </div>
       )}
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Academic Year</label>
+        <label className="label">Academic Year</label>
         <select className={cls} value={yearId} onChange={(e) => onYear(e.target.value)}>
           <option value="">Select Year</option>
           {academicYears.map((y) => <option key={y.id} value={y.name}>{y.name}</option>)}
@@ -276,7 +252,7 @@ const SubjectTeacherAssignmentView: React.FC<{ canWrite: boolean }> = ({ canWrit
       {ready && (
         <div className="border rounded overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-100">
+            <thead className="">
               <tr>
                 <th className="text-left px-4 py-2">Subject</th>
                 <th className="text-left px-4 py-2">Teacher</th>
@@ -292,7 +268,7 @@ const SubjectTeacherAssignmentView: React.FC<{ canWrite: boolean }> = ({ canWrit
                   <td className="px-4 py-2 font-medium">{r.subject_name}</td>
                   <td className="px-4 py-2">
                     <select
-                      className="border rounded px-2 py-1 text-sm w-full max-w-xs"
+                      className="input max-w-xs"
                       value={r.teacher_id ?? ""}
                       disabled={!canWrite}
                       onChange={(e) => updateTeacher(r.subject_id, e.target.value ? Number(e.target.value) : null)}
@@ -308,7 +284,7 @@ const SubjectTeacherAssignmentView: React.FC<{ canWrite: boolean }> = ({ canWrit
 
           {canWrite && rows.length > 0 && (
             <div className="p-3 bg-gray-50 flex items-center gap-3">
-              <button onClick={save} disabled={saving} className="px-4 py-2 bg-[#337ab7] hover:bg-[#286090] text-white text-sm rounded disabled:opacity-50">
+              <button onClick={save} disabled={saving} className="btn-primary">
                 {saving ? "Saving..." : "Save Assignments"}
               </button>
               {message && <span className="text-sm text-gray-600">{message}</span>}
@@ -512,7 +488,7 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
               <button
                 key={d.code}
                 onClick={() => setDay(d.code)}
-                className={`px-3 py-1.5 text-sm rounded-full border ${day === d.code ? "bg-[#337ab7] text-white border-[#337ab7]" : "text-gray-600 hover:bg-gray-100"}`}
+                className={`btn btn-sm border ${day === d.code ? "bg-brand-600 text-white border-brand-600" : "text-gray-600 hover:bg-gray-100"}`}
               >
                 {d.label}
               </button>
@@ -529,11 +505,11 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
             {canWrite && (
               <div className="flex items-center gap-2">
                 <div className="relative">
-                  <button onClick={openDaysPanel} className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded text-gray-600 hover:bg-gray-100">
+                  <button onClick={openDaysPanel} className="btn-secondary btn-sm">
                     <Copy size={13} /> Copy to Other Days
                   </button>
                   {showDaysPanel && (
-                    <div className="absolute right-0 z-40 bg-white border shadow rounded p-3 w-56">
+                    <div className="card absolute right-0 z-40 p-3 w-56">
                       <div className="text-xs font-semibold text-gray-500 mb-1">Select days ({day} stays as source)</div>
                       {DAYS.filter((d) => d.code !== day).map((d) => (
                         <label key={d.code} className="flex items-center gap-2 text-xs py-1">
@@ -541,17 +517,17 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
                           {d.label}
                         </label>
                       ))}
-                      <button onClick={copyToOtherDays} className="mt-2 w-full text-xs bg-[#337ab7] text-white rounded py-1">Copy</button>
+                      <button onClick={copyToOtherDays} className="btn-primary btn-sm mt-2 w-full">Copy</button>
                     </div>
                   )}
                 </div>
 
                 <div className="relative">
-                  <button onClick={openSectionsPanel} className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded text-gray-600 hover:bg-gray-100">
+                  <button onClick={openSectionsPanel} className="btn-secondary btn-sm">
                     <Copy size={13} /> Copy to Classes/Sections
                   </button>
                   {showSectionsPanel && (
-                    <div className="absolute right-0 z-40 bg-white border shadow rounded p-3 w-64 max-h-96 overflow-y-auto">
+                    <div className="card absolute right-0 z-40 p-3 w-64 max-h-96 overflow-y-auto">
                       <div className="text-xs font-semibold text-gray-500 mb-1">Copies the full week (all days built so far). Times &amp; periods only — subject/teacher not included.</div>
                       {coverage.filter((c) => !c.has_structure).length === 0 && (
                         <div className="text-xs text-gray-400 py-1">All sections already have a timetable.</div>
@@ -570,7 +546,7 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
                           </label>
                         );
                       })}
-                      <button onClick={copyToOtherSections} className="mt-2 w-full text-xs bg-[#337ab7] text-white rounded py-1">Copy</button>
+                      <button onClick={copyToOtherSections} className="btn-primary btn-sm mt-2 w-full">Copy</button>
                     </div>
                   )}
                 </div>
@@ -581,7 +557,7 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
           {isWorkingDay && (
             <div className="border rounded overflow-x-auto">
               <table className="w-full text-sm min-w-[900px]">
-                <thead className="bg-gray-100">
+                <thead className="">
                   <tr>
                     <th className="px-2 py-2 text-left w-12">#</th>
                     <th className="px-2 py-2 text-left w-28">Type</th>
@@ -603,27 +579,27 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
                     <tr key={idx} className="border-t">
                       <td className="px-2 py-1">{s.slot_order}</td>
                       <td className="px-2 py-1">
-                        <select className="border rounded px-1 py-1 text-xs w-full" value={s.slot_type} disabled={!canWrite}
+                        <select className="input py-1 px-2 text-xs" value={s.slot_type} disabled={!canWrite}
                           onChange={(e) => updateSlot(idx, { slot_type: e.target.value as SlotType, subject_id: null, teacher_id: null })}>
                           {SLOT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                         </select>
                       </td>
                       <td className="px-2 py-1">
-                        <input className="border rounded px-1 py-1 text-xs w-full" value={s.label} disabled={!canWrite}
+                        <input className="input py-1 px-2 text-xs" value={s.label} disabled={!canWrite}
                           placeholder={s.slot_type === "PERIOD" ? `Period ${s.slot_order}` : s.slot_type}
                           onChange={(e) => updateSlot(idx, { label: e.target.value })} />
                       </td>
                       <td className="px-2 py-1">
-                        <input type="time" lang="en-GB" className="border rounded px-1 py-1 text-xs w-full" value={s.start_time} disabled={!canWrite}
+                        <input type="time" lang="en-GB" className="input py-1 px-2 text-xs" value={s.start_time} disabled={!canWrite}
                           onChange={(e) => updateSlot(idx, { start_time: e.target.value })} />
                       </td>
                       <td className="px-2 py-1">
-                        <input type="time" lang="en-GB" className="border rounded px-1 py-1 text-xs w-full" value={s.end_time} disabled={!canWrite}
+                        <input type="time" lang="en-GB" className="input py-1 px-2 text-xs" value={s.end_time} disabled={!canWrite}
                           onChange={(e) => updateSlot(idx, { end_time: e.target.value })} />
                       </td>
                       <td className="px-2 py-1">
                         {s.slot_type === "PERIOD" ? (
-                          <select className="border rounded px-1 py-1 text-xs w-full" value={s.subject_id ?? ""} disabled={!canWrite}
+                          <select className="input py-1 px-2 text-xs" value={s.subject_id ?? ""} disabled={!canWrite}
                             onChange={(e) => onSubjectChange(idx, e.target.value ? Number(e.target.value) : null)}>
                             <option value="">-- Subject --</option>
                             {ctx.subjects.map((sub) => <option key={sub.id} value={sub.id}>{sub.subject_name}</option>)}
@@ -640,7 +616,7 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
   ) : <span className="text-gray-300 text-xs">—</span>}
 </td>
                       <td className="px-2 py-1">
-                        <input className="border rounded px-1 py-1 text-xs w-full" value={s.room} disabled={!canWrite}
+                        <input className="input py-1 px-2 text-xs" value={s.room} disabled={!canWrite}
                           onChange={(e) => updateSlot(idx, { room: e.target.value })} />
                       </td>
                       {canWrite && (
@@ -657,10 +633,10 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
 
               {canWrite && (
                 <div className="p-3 bg-gray-50 flex flex-wrap items-center gap-3">
-                  <button onClick={addSlot} className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded text-gray-600 hover:bg-gray-100">
+                  <button onClick={addSlot} className="btn-secondary btn-sm">
                     <Plus size={13} /> Add Slot
                   </button>
-                  <button onClick={() => save(false)} disabled={saving} className="px-4 py-2 bg-[#337ab7] hover:bg-[#286090] text-white text-sm rounded disabled:opacity-50">
+                  <button onClick={() => save(false)} disabled={saving} className="btn-primary">
                     {saving ? "Saving..." : "Save Day"}
                   </button>
                   {message && <span className="text-sm text-gray-600 flex items-center gap-1"><Check size={14} className="text-green-600" />{message}</span>}
@@ -742,7 +718,7 @@ const ViewTimetableView: React.FC = () => {
             <div className="text-sm text-gray-600">
               <span className="font-semibold">{branchName}</span> · Class {className} - {sectionName} · {ctx.yearName}
             </div>
-            <button onClick={() => window.print()} className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded text-gray-600 hover:bg-gray-100 print:hidden">
+            <button onClick={() => window.print()} className="btn-secondary btn-sm print:hidden">
               <Printer size={13} /> Print
             </button>
           </div>
@@ -750,7 +726,7 @@ const ViewTimetableView: React.FC = () => {
           <div className="border rounded overflow-x-auto">
             <table className="w-full text-xs border-collapse min-w-[700px]">
               <thead>
-                <tr className="bg-gray-100">
+                <tr className="">
                   <th className="px-2 py-2 text-left w-10 border">#</th>
                   {DAYS.map((d) => (
                     <th key={d.code} className="px-2 py-2 text-left border">
@@ -831,8 +807,8 @@ const MyTimetableView: React.FC = () => {
   return (
     <div>
       <div className="mb-4 max-w-xs">
-        <label className="block text-xs font-medium text-gray-500 mb-1">Academic Year</label>
-        <select className="border rounded px-3 py-2 text-sm w-full" value={yearName} onChange={(e) => setYearName(e.target.value)}>
+        <label className="label">Academic Year</label>
+        <select className="input" value={yearName} onChange={(e) => setYearName(e.target.value)}>
           {academicYears.map((y) => <option key={y.id} value={y.name}>{y.name}</option>)}
         </select>
       </div>
@@ -895,35 +871,50 @@ const Timetable: React.FC = () => {
   }[v]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-full bg-surface-muted flex flex-col">
       <div className="flex-1 flex flex-col">
-        <div className="bg-white flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col">
           {view === "HOME" && (
-            <div className="p-4 flex flex-wrap justify-between border-b">
-              <h1 className="flex items-center gap-2 text-[#337ab7] font-semibold">
-                <CalendarClock className="text-gray-400" />
-                TIMETABLE
-              </h1>
-              <div className="flex gap-2 flex-wrap">
-                {items.length > 0 && <NavDropdown title="Timetable Actions" items={items} />}
+            <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-5">
+              <div className="page-header mb-5">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-11 h-11 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center flex-shrink-0 ring-1 ring-inset ring-brand-600/10">
+                    <CalendarClock className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="page-eyebrow">Academics</p>
+                    <h1 className="page-title">Timetable</h1>
+                    <p className="page-subtitle">Subject–teacher assignment, builder and timetable views.</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {items.map((item, idx) => (
+                    <button key={idx} onClick={item.onClick} className="btn-primary">
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
-          <div className="flex-1 bg-slate-50 p-6">
+          <div className="flex-1 bg-surface-muted p-4 sm:p-6">
             {view !== "HOME" && (
               <div className="flex items-center justify-between mb-4">
-                <button onClick={() => setView("HOME")} className="text-sm text-gray-600 hover:text-[#337ab7] flex items-center gap-1">
+                <button onClick={() => setView("HOME")} className="btn-secondary btn-sm">
                   ← Back to Menu
                 </button>
-                <h2 className="text-sm font-semibold text-gray-700">{titleFor(view)}</h2>
+                <h2 className="text-base font-semibold text-slate-900">{titleFor(view)}</h2>
               </div>
             )}
 
             {view === "HOME" && (
-              <div className="flex flex-col items-center justify-center text-gray-400 h-full py-20">
-                <CalendarClock size={48} className="mb-2 opacity-20" />
-                <p>Select an action from the menu above to manage timetables.</p>
+              <div className="card flex flex-col items-center justify-center text-center h-full py-20 px-6">
+                <div className="w-16 h-16 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mb-4">
+                  <CalendarClock size={32} />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900">Choose a timetable action</h3>
+                <p className="text-sm text-slate-500 mt-1 max-w-md">Select an action from the menu above to manage timetables.</p>
               </div>
             )}
 

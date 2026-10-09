@@ -372,7 +372,7 @@ const GradeScaleManager: React.FC = () => {
                 <div className="w-full md:w-1/3 flex flex-col gap-6">
 
                     {/* Form */}
-                    <div className="bg-white p-5 rounded shadow border">
+                    <div className="card p-5">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-semibold text-gray-700 flex items-center gap-2">
                                 Grade Scale Master
@@ -381,10 +381,10 @@ const GradeScaleManager: React.FC = () => {
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Scale Name <span className="text-red-500">*</span></label>
+                                <label className="label">Scale Name <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
-                                    className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="input"
                                     placeholder="Enter Scale Name"
                                     value={scaleName}
                                     onChange={e => setScaleName(e.target.value)}
@@ -392,7 +392,7 @@ const GradeScaleManager: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Classes <span className="text-red-500">*</span></label>
+                                <label className="label">Classes <span className="text-red-500">*</span></label>
                                 <div className="border rounded p-2 max-h-32 overflow-y-auto bg-gray-50 flex flex-wrap gap-2">
                                     {availableClasses.map(c => (
                                         <label key={c.id} className="flex items-center space-x-2 bg-white px-2 py-1 rounded border shadow-sm cursor-pointer hover:bg-gray-100">
@@ -416,10 +416,10 @@ const GradeScaleManager: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Total Marks <span className="text-red-500">*</span></label>
+                                <label className="label">Total Marks <span className="text-red-500">*</span></label>
                                 <input
                                     type="number"
-                                    className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="input"
                                     placeholder="e.g. 100"
                                     value={totalMarks}
                                     onChange={e => setTotalMarks(Number(e.target.value))}
@@ -427,9 +427,9 @@ const GradeScaleManager: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Scale Description</label>
+                                <label className="label">Scale Description</label>
                                 <textarea
-                                    className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none h-20 resize-none"
+                                    className="input h-20 resize-none"
                                     placeholder="Enter Description"
                                     value={scaleDescription}
                                     onChange={e => setScaleDescription(e.target.value)}
@@ -451,13 +451,13 @@ const GradeScaleManager: React.FC = () => {
                                 <button
                                     onClick={handleSave}
                                     disabled={loading}
-                                    className="bg-[#337ab7] text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-600 flex items-center gap-2"
+                                    className="btn-primary"
                                 >
                                     <Save size={16} /> {selectedScaleId ? "Update" : "Save"}
                                 </button>
                                 <button
                                     onClick={handleReset}
-                                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded text-sm font-medium hover:bg-gray-200 border flex items-center gap-2"
+                                    className="btn-secondary"
                                 >
                                     <RotateCcw size={16} /> Reset
                                 </button>
@@ -466,12 +466,12 @@ const GradeScaleManager: React.FC = () => {
                     </div>
 
                     {/* List */}
-                    <div className="bg-white p-5 rounded shadow border flex-1">
+                    <div className="card p-5 flex-1">
                         <h3 className="font-semibold text-gray-700 mb-4 pb-2 border-b">Grade Scale List</h3>
 
                         <div className="overflow-auto max-h-[400px]">
                             <table className="w-full text-sm">
-                                <thead className="bg-gray-50 text-gray-600">
+                                <thead className="">
                                     <tr>
                                         <th className="p-2 text-left">Scale Name</th>
                                         <th className="p-2 text-left">Classes</th>
@@ -493,14 +493,14 @@ const GradeScaleManager: React.FC = () => {
                                                 <td className="p-2 flex justify-end gap-2">
                                                     <button
                                                         onClick={() => loadScale(s.id)}
-                                                        className="p-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
+                                                        className="btn bg-blue-100 text-blue-600 hover:bg-blue-200"
                                                         title="Edit"
                                                     >
                                                         <Edit size={14} />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(s.id)}
-                                                        className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200"
+                                                        className="btn bg-red-100 text-red-600 hover:bg-red-200"
                                                         title="Delete"
                                                     >
                                                         <Trash2 size={14} />
@@ -518,7 +518,7 @@ const GradeScaleManager: React.FC = () => {
 
                 {/* Right Panel: Details Table */}
                 <div className="w-full md:w-2/3">
-                    <div className="bg-white p-5 rounded shadow border min-h-[500px]">
+                    <div className="card p-5 min-h-[500px]">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="font-semibold text-gray-700 flex items-center gap-2">
                                 <span className="w-2 h-6 bg-gray-600 rounded-sm"></span>
@@ -528,7 +528,7 @@ const GradeScaleManager: React.FC = () => {
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleAddDetailRow}
-                                    className={`p-1 text-white rounded ${selectedScaleId ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'}`}
+                                    className={`btn text-white ${selectedScaleId ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'}`}
                                     title={selectedScaleId ? "Add Row" : "Select a scale to add rows"}
                                     disabled={!selectedScaleId}
                                 >
@@ -537,9 +537,9 @@ const GradeScaleManager: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto rounded-lg border border-slate-200">
                             <table className="w-full text-sm">
-                                <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
+                                <thead className="">
                                     <tr>
                                         <th className="p-3 text-center w-16">S.No</th>
                                         <th className="p-3 text-center w-24">Grade</th>
@@ -572,7 +572,7 @@ const GradeScaleManager: React.FC = () => {
                                                         {isEditing ? (
                                                             <input
                                                                 type="text"
-                                                                className="border p-1 rounded w-16 text-center uppercase focus:ring-2 focus:ring-blue-500 outline-none"
+                                                                className="input w-16 text-center uppercase"
                                                                 value={currentData.grade}
                                                                 onChange={e => handleTempChange('grade', e.target.value)}
                                                                 placeholder="A1"
@@ -585,7 +585,7 @@ const GradeScaleManager: React.FC = () => {
                                                         {isEditing ? (
                                                             <input
                                                                 type="number"
-                                                                className="border p-1 rounded w-20 text-center focus:ring-2 focus:ring-blue-500 outline-none"
+                                                                className="input w-20 text-center"
                                                                 value={currentData.min_marks}
                                                                 onChange={e => handleTempChange('min_marks', e.target.value)}
                                                             />
@@ -598,7 +598,7 @@ const GradeScaleManager: React.FC = () => {
                                                         {isEditing ? (
                                                             <input
                                                                 type="number"
-                                                                className="border p-1 rounded w-20 text-center focus:ring-2 focus:ring-blue-500 outline-none"
+                                                                className="input w-20 text-center"
                                                                 value={currentData.max_marks}
                                                                 onChange={e => handleTempChange('max_marks', e.target.value)}
                                                             />
@@ -610,7 +610,7 @@ const GradeScaleManager: React.FC = () => {
                                                         {isEditing ? (
                                                             <input
                                                                 type="text"
-                                                                className="border p-1 rounded w-full text-left focus:ring-2 focus:ring-blue-500 outline-none"
+                                                                className="input text-left"
                                                                 value={currentData.description || ''}
                                                                 onChange={e => handleTempChange('description', e.target.value)}
                                                                 placeholder="Grade Description"
@@ -624,14 +624,14 @@ const GradeScaleManager: React.FC = () => {
                                                             <>
                                                                 <button
                                                                     onClick={handleSaveEdit}
-                                                                    className="p-1 bg-green-500 text-white rounded hover:bg-green-600"
+                                                                    className="btn-success"
                                                                     title="Save Changes"
                                                                 >
                                                                     <Check size={16} />
                                                                 </button>
                                                                 <button
                                                                     onClick={handleCancelEdit}
-                                                                    className="p-1 bg-red-500 text-white rounded hover:bg-red-600"
+                                                                    className="btn-danger"
                                                                     title="Cancel Changes"
                                                                 >
                                                                     <X size={16} />
@@ -641,14 +641,14 @@ const GradeScaleManager: React.FC = () => {
                                                             <>
                                                                 <button
                                                                     onClick={() => handleStartEdit(idx)}
-                                                                    className="p-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
+                                                                    className="btn bg-blue-100 text-blue-600 hover:bg-blue-200"
                                                                     title="Edit Row"
                                                                 >
                                                                     <Edit size={14} />
                                                                 </button>
                                                                 <button
                                                                     onClick={() => handleRemoveDetailRow(idx)}
-                                                                    className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200"
+                                                                    className="btn bg-red-100 text-red-600 hover:bg-red-200"
                                                                     title="Remove Row"
                                                                 >
                                                                     <Trash2 size={14} />

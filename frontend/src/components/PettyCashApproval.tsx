@@ -104,14 +104,14 @@ const PettyCashApproval: React.FC = () => {
     const rejectedAllocations = allocations.filter(a => a.approval_status === 'Rejected');
 
     const renderTransactionTable = (title: string, txns: any[], showActions: boolean) => (
-        <div className="bg-white rounded shadow mb-6">
+        <div className="card mb-6">
             <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
                 <h3 className="text-lg font-medium text-gray-800">{title}</h3>
                 <span className="text-sm text-gray-500">{txns.length} entries</span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-100">
+                    <thead className="">
                         <tr>
                             <th className="p-3 border">Date</th>
                             <th className="p-3 border">Voucher</th>
@@ -153,14 +153,14 @@ const PettyCashApproval: React.FC = () => {
                                         <button 
                                             onClick={() => handleApproval(t.id, 'expense', 'Approved')}
                                             disabled={loading}
-                                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs transition"
+                                            className="btn-success btn-sm"
                                         >
                                             Approve
                                         </button>
                                         <button 
                                             onClick={() => handleApproval(t.id, 'expense', 'Rejected')}
                                             disabled={loading}
-                                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs transition"
+                                            className="btn-danger btn-sm"
                                         >
                                             Reject
                                         </button>
@@ -175,14 +175,14 @@ const PettyCashApproval: React.FC = () => {
     );
 
     const renderAllocationTable = (title: string, allcs: any[], showActions: boolean) => (
-        <div className="bg-white rounded shadow mb-6">
+        <div className="card mb-6">
             <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
                 <h3 className="text-lg font-medium text-gray-800">{title}</h3>
                 <span className="text-sm text-gray-500">{allcs.length} entries</span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-100">
+                    <thead className="">
                         <tr>
                             <th className="p-3 border">Date</th>
                             <th className="p-3 border">Branch</th>
@@ -218,14 +218,14 @@ const PettyCashApproval: React.FC = () => {
                                         <button 
                                             onClick={() => handleApproval(a.id, 'fund', 'Approved')}
                                             disabled={loading}
-                                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs transition"
+                                            className="btn-success btn-sm"
                                         >
                                             Approve
                                         </button>
                                         <button 
                                             onClick={() => handleApproval(a.id, 'fund', 'Rejected')}
                                             disabled={loading}
-                                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs transition"
+                                            className="btn-danger btn-sm"
                                         >
                                             Reject
                                         </button>
@@ -240,9 +240,9 @@ const PettyCashApproval: React.FC = () => {
     );
 
     return (
-        <div className="p-4 bg-gray-50 min-h-screen space-y-6">
+        <div className="p-4 bg-gray-50 min-h-full space-y-6">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-gray-800">
+                <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
                     Petty Cash Approval
                 </h2>
             </div>
@@ -256,21 +256,13 @@ const PettyCashApproval: React.FC = () => {
             {/* Tabs */}
             <div className="flex border-b border-gray-200 mb-6">
                 <button
-                    className={`px-6 py-3 font-medium text-sm transition ${
-                        activeTab === 'expenses'
-                            ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50'
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                    }`}
+                    className={`btn btn-lg ${ activeTab === 'expenses' ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50' }`}
                     onClick={() => setActiveTab('expenses')}
                 >
                     Petty Cash Expenses
                 </button>
                 <button
-                    className={`px-6 py-3 font-medium text-sm transition ${
-                        activeTab === 'funds'
-                            ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50'
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                    }`}
+                    className={`btn btn-lg ${ activeTab === 'funds' ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50' }`}
                     onClick={() => setActiveTab('funds')}
                 >
                     Fund Allocations

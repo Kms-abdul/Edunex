@@ -101,11 +101,11 @@ const MonthWiseLedger: React.FC<MonthWiseLedgerProps> = ({ onMonthClick }) => {
     }, [ledgerData]);
 
     return (
-        <div className="p-4 bg-gray-50 min-h-screen space-y-6">
+        <div className="p-4 bg-gray-50 min-h-full space-y-6">
             <h2 className="text-xl font-semibold text-blue-700 mb-4">
                 Month wise cash ledger
             </h2>
-            <div className="bg-white rounded shadow p-4">
+            <div className="card p-4">
                 <div className="flex flex-wrap items-center justify-between mb-6 pb-2 border-b">
                     <div className="flex items-center gap-2">
                         <span className="text-blue-600 font-medium">📅 Month wise cash ledger</span>
@@ -114,7 +114,7 @@ const MonthWiseLedger: React.FC<MonthWiseLedgerProps> = ({ onMonthClick }) => {
                         <div className="flex items-center gap-2">
                             <span className="font-medium text-sm text-gray-700">Branch:</span>
                             <select
-                                className="border rounded px-2 py-1 text-sm"
+                                className="input w-auto"
                                 value={selectedBranch}
                                 onChange={(e) => setSelectedBranch(e.target.value)}
                             >
@@ -124,7 +124,7 @@ const MonthWiseLedger: React.FC<MonthWiseLedgerProps> = ({ onMonthClick }) => {
                         <div className="flex items-center gap-2">
                             <span className="font-medium text-sm text-gray-700">FY:</span>
                             <select
-                                className="border rounded px-2 py-1 text-sm"
+                                className="input w-auto"
                                 value={academicYear}
                                 onChange={(e) => setAcademicYear(e.target.value)}
                             >
@@ -133,20 +133,20 @@ const MonthWiseLedger: React.FC<MonthWiseLedgerProps> = ({ onMonthClick }) => {
                                 <option value="2027-2028">2027-2028</option>
                             </select>
                         </div>
-                        <button className="flex items-center gap-1 text-sm bg-green-50 text-green-700 px-3 py-1.5 rounded hover:bg-green-100 border border-green-200">
+                        <button className="btn btn-sm text-sm bg-green-50 text-green-700 hover:bg-green-100 border border-green-200">
                             <FileSpreadsheet size={16} /> Excel
                         </button>
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-100">
+                        <thead className="">
                             <tr>
-                                <th className="p-3 border font-semibold text-gray-700">Particulars</th>
-                                <th className="p-3 border font-semibold text-gray-700 text-right">Debit (Allocated)</th>
-                                <th className="p-3 border font-semibold text-gray-700 text-right">Credit (Spent)</th>
-                                <th className="p-3 border font-semibold text-gray-700 text-right">Cash in hand</th>
+                                <th className="p-3 border">Particulars</th>
+                                <th className="p-3 border text-right">Debit (Allocated)</th>
+                                <th className="p-3 border text-right">Credit (Spent)</th>
+                                <th className="p-3 border text-right">Cash in hand</th>
                             </tr>
                         </thead>
                         <tbody>

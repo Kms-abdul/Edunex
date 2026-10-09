@@ -367,7 +367,7 @@ const SearchStudent: React.FC = () => {
 
     return (
         <div className="p-6 space-y-6">
-            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div className="card">
                 <div className="border-b border-gray-100 px-6 py-4">
                     <h3 className="text-xl font-semibold text-gray-800">Search Student</h3>
                     <p className="mt-1 text-sm text-gray-500">
@@ -379,7 +379,7 @@ const SearchStudent: React.FC = () => {
                     <select
                         value={selectedClass}
                         onChange={(e) => setSelectedClass(e.target.value)}
-                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        className="input w-auto"
                     >
                         <option value="">All Classes</option>
                         {classes.map((item) => (
@@ -392,7 +392,7 @@ const SearchStudent: React.FC = () => {
                     <select
                         value={selectedSection}
                         onChange={(e) => setSelectedSection(e.target.value)}
-                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        className="input w-auto"
                     >
                         <option value="">All Sections</option>
                         {sections.map((section) => (
@@ -405,7 +405,7 @@ const SearchStudent: React.FC = () => {
                     <select
                         value={selectedStatus}
                         onChange={(e) => setSelectedStatus(e.target.value)}
-                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        className="input w-auto"
                     >
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
@@ -416,7 +416,7 @@ const SearchStudent: React.FC = () => {
                     <select
                         value={searchField}
                         onChange={(e) => setSearchField(e.target.value)}
-                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        className="input w-auto"
                     >
                         {SEARCH_FIELD_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>
@@ -429,14 +429,14 @@ const SearchStudent: React.FC = () => {
                         value={searchValue}
                         onChange={(e) => setSearchValue(e.target.value)}
                         placeholder="Search student"
-                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm md:col-span-2"
+                        className="input w-auto md:col-span-2"
                     />
                 </div>
 
                 <div className="px-6 pb-6">
                     <button
                         onClick={handleSearch}
-                        className="rounded-lg bg-violet-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-violet-700"
+                        className="btn-primary"
                     >
                         Search
                     </button>
@@ -444,7 +444,7 @@ const SearchStudent: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-                <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div className="card">
                     <div className="border-b border-gray-100 px-5 py-4">
                         <h4 className="font-semibold text-gray-800">Students</h4>
                         <p className="mt-1 text-xs text-gray-500">
@@ -461,7 +461,7 @@ const SearchStudent: React.FC = () => {
                             <button
                                 key={student.student_id}
                                 onClick={() => loadStudentDetails(student)}
-                                className={`flex w-full items-start gap-3 border-b border-gray-100 px-5 py-4 text-left transition ${selectedStudent?.student_id === student.student_id ? 'bg-violet-50' : 'hover:bg-gray-50'}`}
+                                className={`btn w-full items-start border-b border-gray-100 text-left ${selectedStudent?.student_id === student.student_id ? 'bg-violet-50' : 'hover:bg-gray-50'}`}
                             >
                                 {student.photo ? (
                                     <img
@@ -502,7 +502,7 @@ const SearchStudent: React.FC = () => {
 
                 <div className="space-y-6">
                     {!selectedStudent && (
-                        <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white text-center shadow-sm">
+                        <div className="card flex min-h-[420px] items-center justify-center border-dashed text-center">
                             <div>
                                 <h4 className="text-2xl font-semibold text-gray-700">Student details will appear here</h4>
                                 <p className="mt-2 text-sm text-gray-500">
@@ -514,7 +514,7 @@ const SearchStudent: React.FC = () => {
 
                     {selectedStudent && (
                         <>
-                            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+                            <div className="card">
                                 <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-[220px_repeat(4,minmax(0,1fr))]">
                                     <div className="border-b border-gray-100 pb-5 text-center lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
                                         {selectedStudent.photo ? (
@@ -571,7 +571,7 @@ const SearchStudent: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+                            <div className="card">
                                 <div className="border-b border-gray-100 px-6 py-4">
                                     <h4 className="font-semibold text-gray-800">Monthly Fee and Attendance Summary</h4>
                                     <p className="mt-1 text-sm text-gray-500">
@@ -584,10 +584,10 @@ const SearchStudent: React.FC = () => {
                                 ) : monthlySummary.length === 0 ? (
                                     <div className="px-6 py-10 text-center text-sm text-gray-500">No fee or attendance records available for this student.</div>
                                 ) : (
-                                    <div className="overflow-x-auto">
+                                    <div className="overflow-x-auto rounded-lg border border-slate-200">
                                         <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                            <thead className="bg-gray-50">
-                                                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            <thead className="">
+                                                <tr className="text-left">
                                                     <th className="px-4 py-3">Month</th>
                                                     <th className="px-4 py-3">Fee Payable</th>
                                                     <th className="px-4 py-3">Fee Paid</th>

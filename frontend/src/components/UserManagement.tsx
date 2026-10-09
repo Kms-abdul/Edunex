@@ -247,18 +247,18 @@ const UserManagement: React.FC = () => {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <div className="min-h-full bg-slate-50 p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+          <h1 className="text-xl font-semibold text-slate-900 tracking-tight">User Management</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {isGlobalManager ? 'Manage all users across all schools' : 'Manage users in your school'}
           </p>
         </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow"
+          className="btn-primary"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -278,10 +278,10 @@ const UserManagement: React.FC = () => {
 
       {/* ── Create / Edit Form Modal ─────────────────────────────────────────── */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="card shadow-pop w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between p-5 border-b">
-              <h2 className="text-lg font-bold text-gray-900">
+              <h2 className="text-base font-semibold text-slate-900">
                 {editingId ? 'Edit User' : 'Create New User'}
               </h2>
               <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">
@@ -296,22 +296,14 @@ const UserManagement: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('basic')}
-                className={`flex-1 py-3 text-center text-xs font-semibold border-b-2 transition-colors ${
-                  activeTab === 'basic'
-                    ? 'border-blue-600 text-blue-600 bg-white'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`btn flex-1 text-center border-b-2 ${ activeTab === 'basic' ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100' }`}
               >
                 Basic Info
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('roles')}
-                className={`flex-1 py-3 text-center text-xs font-semibold border-b-2 transition-colors ${
-                  activeTab === 'roles'
-                    ? 'border-blue-600 text-blue-600 bg-white'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`btn flex-1 text-center border-b-2 ${ activeTab === 'roles' ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100' }`}
               >
                 Roles
               </button>
@@ -319,11 +311,7 @@ const UserManagement: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveTab('schools')}
-                  className={`flex-1 py-3 text-center text-xs font-semibold border-b-2 transition-colors ${
-                    activeTab === 'schools'
-                      ? 'border-blue-600 text-blue-600 bg-white'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`btn flex-1 text-center border-b-2 ${ activeTab === 'schools' ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100' }`}
                 >
                   Schools
                 </button>
@@ -331,11 +319,7 @@ const UserManagement: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('branches')}
-                className={`flex-1 py-3 text-center text-xs font-semibold border-b-2 transition-colors ${
-                  activeTab === 'branches'
-                    ? 'border-blue-600 text-blue-600 bg-white'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`btn flex-1 text-center border-b-2 ${ activeTab === 'branches' ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100' }`}
               >
                 Branches
               </button>
@@ -356,19 +340,19 @@ const UserManagement: React.FC = () => {
                   {/* Username (only when creating) */}
                   {!editingId ? (
                     <div>
-                      <label htmlFor="um-username" className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
+                      <label htmlFor="um-username" className="label">Username *</label>
                       <input
                         type="text"
                         value={form.username}
                         onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="input"
                         placeholder="e.g. vizag_admin"
                         id="um-username"
                       />
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-sm font-medium text-gray-500 mb-1">Username</label>
+                      <label className="label">Username</label>
                       <div className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 font-semibold">
                         {form.username}
                       </div>
@@ -377,12 +361,12 @@ const UserManagement: React.FC = () => {
 
                   {/* Email */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                    <label className="label">Email *</label>
                     <input
                       type="email"
                       value={form.useremail}
                       onChange={e => setForm(f => ({ ...f, useremail: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="input"
                       placeholder="user@school.com"
                       id="um-email"
                     />
@@ -391,12 +375,12 @@ const UserManagement: React.FC = () => {
                   {/* Password (only when creating) */}
                   {!editingId && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                      <label className="label">Password *</label>
                       <input
                         type="password"
                         value={form.password}
                         onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="input"
                         placeholder="Min 8 characters"
                         id="um-password"
                       />
@@ -408,7 +392,7 @@ const UserManagement: React.FC = () => {
               {/* TAB 2: ROLES */}
               {activeTab === 'roles' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 font-semibold">Assigned Role *</label>
+                  <label className="label">Assigned Role *</label>
                   <select
                     value={form.role_id || (roles.find(r => r.name === form.role)?.id ?? form.role)}
                     onChange={e => {
@@ -419,7 +403,7 @@ const UserManagement: React.FC = () => {
                         role: selected ? selected.name : e.target.value,
                       }));
                     }}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="input"
                     id="um-role"
                   >
                     {roles.length > 0 ? (
@@ -447,11 +431,11 @@ const UserManagement: React.FC = () => {
               {activeTab === 'schools' && isGlobalManager && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Primary School</label>
+                    <label className="label">Primary School</label>
                     <select
                       value={form.school_id}
                       onChange={e => setForm(f => ({ ...f, school_id: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      className="input"
                       id="um-school"
                     >
                       <option value="">-- Select School --</option>
@@ -462,7 +446,7 @@ const UserManagement: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 font-semibold">Assigned Schools</label>
+                    <label className="label">Assigned Schools</label>
                     <div className="grid grid-cols-1 gap-2 p-3 bg-slate-50 border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
                       {schools.length === 0 ? (
                         <span className="text-gray-400 text-xs">No schools available</span>
@@ -503,7 +487,7 @@ const UserManagement: React.FC = () => {
               {activeTab === 'branches' && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 font-semibold">Assigned Branches</label>
+                    <label className="label">Assigned Branches</label>
                     <div className="grid grid-cols-1 gap-2 p-3 bg-slate-50 border border-gray-200 rounded-lg max-h-56 overflow-y-auto">
                       {filteredBranches.length === 0 ? (
                         <span className="text-gray-400 text-xs">No branches available for the selected school(s)</span>
@@ -546,14 +530,14 @@ const UserManagement: React.FC = () => {
             <div className="flex gap-3 p-5 border-t bg-slate-50">
               <button
                 onClick={handleSave}
-                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow"
+                className="btn-primary flex-1"
                 id="um-save-btn"
               >
                 {editingId ? 'Update User' : 'Create User'}
               </button>
               <button
                 onClick={resetForm}
-                className="flex-1 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                className="btn-secondary flex-1"
               >
                 Cancel
               </button>
@@ -563,20 +547,20 @@ const UserManagement: React.FC = () => {
       )}
 
       {/* ── Filters ──────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border p-4 mb-4 flex flex-col sm:flex-row gap-3">
+      <div className="card p-4 mb-4 flex flex-col sm:flex-row gap-3">
         <input
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           placeholder="Search by username or email..."
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="input flex-1"
           id="um-search"
         />
         {isGlobalManager && (
           <select
             value={filterSchool}
             onChange={e => setFilterSchool(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="input w-auto"
           >
             <option value="">All Schools</option>
             {schools.map(s => (
@@ -587,7 +571,7 @@ const UserManagement: React.FC = () => {
         <select
           value={filterRole}
           onChange={e => setFilterRole(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="input w-auto"
         >
           <option value="">All Roles</option>
           {roles.length > 0
@@ -598,7 +582,7 @@ const UserManagement: React.FC = () => {
       </div>
 
       {/* ── Users Table ──────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="card overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16 text-gray-400">
             <svg className="animate-spin w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24">
@@ -615,19 +599,19 @@ const UserManagement: React.FC = () => {
             <p className="text-sm">No users found</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
+              <thead className="border-b">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">#</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">User</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Role</th>
+                  <th className="px-4 py-3 text-left">#</th>
+                  <th className="px-4 py-3 text-left">User</th>
+                  <th className="px-4 py-3 text-left">Role</th>
                   {isGlobalManager && (
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">School</th>
+                    <th className="px-4 py-3 text-left">School</th>
                   )}
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Branch</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Status</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                  <th className="px-4 py-3 text-left">Branch</th>
+                  <th className="px-4 py-3 text-center">Status</th>
+                  <th className="px-4 py-3 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -668,9 +652,7 @@ const UserManagement: React.FC = () => {
                         {u.user_id !== currentUser?.user_id && (
                           <button
                             onClick={() => handleToggleActive(u)}
-                            className={`p-1.5 rounded transition-colors ${u.is_active
-                              ? 'text-red-400 hover:text-red-600 hover:bg-red-50'
-                              : 'text-green-500 hover:text-green-700 hover:bg-green-50'}`}
+                            className={`btn ${u.is_active ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-green-500 hover:text-green-700 hover:bg-green-50'}`}
                             title={u.is_active ? 'Deactivate' : 'Reactivate'}
                           >
                             {u.is_active ? (

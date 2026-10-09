@@ -90,25 +90,25 @@ const AttendanceSmsTab: React.FC = () => {
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                    <label className="label">Date</label>
                     <input type="date" value={date} max={new Date().toISOString().split('T')[0]}
                         onChange={e => setDate(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
+                        className="input" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Class (optional)</label>
+                    <label className="label">Class (optional)</label>
                     <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                        className="input">
                         <option value="">All Classes</option>
                         {classOptions.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
                     </select>
                 </div>
                 <button onClick={handleSearch} disabled={loading}
-                    className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-md text-sm disabled:bg-gray-400">
+                    className="btn-primary">
                     {loading ? 'Searching…' : 'Get Absent Students'}
                 </button>
                 <button onClick={handleSend} disabled={selected.size === 0 || sending}
-                    className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md text-sm disabled:bg-gray-300 font-medium">
+                    className="btn-warn">
                     {sending ? 'Sending…' : `📱 Send SMS (${selected.size})`}
                 </button>
             </div>
@@ -131,14 +131,14 @@ const AttendanceSmsTab: React.FC = () => {
                         )}
                     </div>
                     <table className="min-w-full text-sm divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                        <thead className="">
                             <tr>
                                 <th className="px-3 py-2 w-8"></th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">Class</th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">Roll No</th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">Name</th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">Father</th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">Phone</th>
+                                <th className="px-3 py-2 text-left">Class</th>
+                                <th className="px-3 py-2 text-left">Roll No</th>
+                                <th className="px-3 py-2 text-left">Name</th>
+                                <th className="px-3 py-2 text-left">Father</th>
+                                <th className="px-3 py-2 text-left">Phone</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -232,19 +232,19 @@ const FeeDueSmsTab: React.FC = () => {
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Cutoff Date</label>
+                    <label className="label">Cutoff Date</label>
                     <input type="date" value={cutoffDate}
                         max={new Date().toISOString().split('T')[0]}
                         onChange={e => setCutoffDate(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
+                        className="input" />
                     <p className="text-xs text-gray-400 mt-1">Installments due on/before this date</p>
                 </div>
                 <button onClick={handleSearch} disabled={loading}
-                    className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-md text-sm disabled:bg-gray-400">
+                    className="btn-primary">
                     {loading ? 'Searching…' : 'Get Overdue Students'}
                 </button>
                 <button onClick={handleSend} disabled={selected.size === 0 || sending}
-                    className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md text-sm disabled:bg-gray-300 font-medium">
+                    className="btn-warn">
                     {sending ? 'Sending…' : `📱 Send SMS (${selected.size})`}
                 </button>
                 {students.length > 0 && (
@@ -272,15 +272,15 @@ const FeeDueSmsTab: React.FC = () => {
                         )}
                     </div>
                     <table className="min-w-full text-sm divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                        <thead className="">
                             <tr>
                                 <th className="px-3 py-2 w-8"></th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">Name</th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">Adm No</th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">Class</th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">Father</th>
-                                <th className="px-3 py-2 text-left font-medium text-gray-500">Phone</th>
-                                <th className="px-3 py-2 text-right font-medium text-gray-500">Overdue (as of cutoff)</th>
+                                <th className="px-3 py-2 text-left">Name</th>
+                                <th className="px-3 py-2 text-left">Adm No</th>
+                                <th className="px-3 py-2 text-left">Class</th>
+                                <th className="px-3 py-2 text-left">Father</th>
+                                <th className="px-3 py-2 text-left">Phone</th>
+                                <th className="px-3 py-2 text-right">Overdue (as of cutoff)</th>
                                 <th className="px-3 py-2 w-8"></th>
                             </tr>
                         </thead>
@@ -315,7 +315,7 @@ const FeeDueSmsTab: React.FC = () => {
                                         </td>
                                     </tr>
                                     {expandedId === s.student_id && (
-                                        <tr className="bg-gray-50">
+                                        <tr className="">
                                             <td colSpan={8} className="px-6 py-2">
                                                 <div className="text-xs text-gray-500 space-y-1">
                                                     {(s.overdue_installments || []).map((inst: any, i: number) => (
@@ -404,7 +404,7 @@ const AnnouncementSmsTab: React.FC = () => {
     return (
         <div className="space-y-4">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="label">
                     Message <span className="text-gray-400 font-normal">({message.length}/160 chars)</span>
                 </label>
                 <textarea
@@ -413,25 +413,25 @@ const AnnouncementSmsTab: React.FC = () => {
                     maxLength={160}
                     rows={3}
                     placeholder="Type your announcement message here…"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500"
+                    className="input"
                 />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Class (optional)</label>
+                    <label className="label">Class (optional)</label>
                     <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                        className="input">
                         <option value="">All Classes</option>
                         {classOptions.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
                     </select>
                 </div>
                 <button onClick={handleLoadStudents} disabled={loading}
-                    className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-md text-sm disabled:bg-gray-400">
+                    className="btn-primary">
                     {loading ? 'Loading…' : 'Load Students'}
                 </button>
                 <button onClick={handleSend} disabled={selected.size === 0 || sending || !message.trim()}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm disabled:bg-gray-300 font-medium">
+                    className="btn-primary">
                     {sending ? 'Sending…' : `📢 Send to (${selected.size})`}
                 </button>
             </div>
@@ -455,12 +455,12 @@ const AnnouncementSmsTab: React.FC = () => {
                     </div>
                     <div className="max-h-64 overflow-y-auto">
                         <table className="min-w-full text-sm divide-y divide-gray-200">
-                            <thead className="bg-gray-50 sticky top-0">
+                            <thead className="sticky top-0">
                                 <tr>
                                     <th className="px-3 py-2 w-8"></th>
-                                    <th className="px-3 py-2 text-left font-medium text-gray-500">Name</th>
-                                    <th className="px-3 py-2 text-left font-medium text-gray-500">Class</th>
-                                    <th className="px-3 py-2 text-left font-medium text-gray-500">Phone</th>
+                                    <th className="px-3 py-2 text-left">Name</th>
+                                    <th className="px-3 py-2 text-left">Class</th>
+                                    <th className="px-3 py-2 text-left">Phone</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
@@ -523,7 +523,7 @@ const CustomSmsTab: React.FC = () => {
     return (
         <div className="space-y-4 max-w-2xl">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="label">
                     Phone Numbers <span className="text-gray-400 font-normal">(comma or newline separated)</span>
                 </label>
                 <textarea
@@ -531,11 +531,11 @@ const CustomSmsTab: React.FC = () => {
                     onChange={e => setPhone(e.target.value)}
                     rows={3}
                     placeholder="9876543210, 9123456789"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500"
+                    className="input"
                 />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="label">
                     Message <span className="text-gray-400 font-normal">({message.length}/160)</span>
                 </label>
                 <textarea
@@ -544,11 +544,11 @@ const CustomSmsTab: React.FC = () => {
                     maxLength={160}
                     rows={4}
                     placeholder="Type your message…"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500"
+                    className="input"
                 />
             </div>
             <button onClick={handleSend} disabled={sending || !message.trim() || !phone.trim()}
-                className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-2 rounded-md text-sm font-medium disabled:bg-gray-300">
+                className="btn-primary">
                 {sending ? 'Sending…' : '📱 Send SMS'}
             </button>
             <ResultBar result={result} />
@@ -677,21 +677,21 @@ const SmsReportsTab: React.FC = () => {
             {/* ── Filters ── */}
             <div className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
                 <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">From Date</label>
+                    <label className="label">From Date</label>
                     <input type="date" value={fromDate} max={toDate}
                         onChange={e => setFromDate(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
+                        className="input" />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">To Date</label>
+                    <label className="label">To Date</label>
                     <input type="date" value={toDate} max={today} min={fromDate}
                         onChange={e => setToDate(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
+                        className="input" />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Branch</label>
+                    <label className="label">Branch</label>
                     <select value={branchFilter} onChange={e => setBranchFilter(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                        className="input">
                         <option value="">All Branches</option>
                         {branchOptions.map(b => (
                             <option key={b.id} value={b.id}>{b.branch_name}</option>
@@ -699,9 +699,9 @@ const SmsReportsTab: React.FC = () => {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">SMS Type</label>
+                    <label className="label">SMS Type</label>
                     <select value={smsType} onChange={e => setSmsType(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                        className="input">
                         <option value="">All Types</option>
                         <option value="ATTENDANCE">Attendance</option>
                         <option value="FEE_RECEIPT">Fee Receipt</option>
@@ -709,9 +709,9 @@ const SmsReportsTab: React.FC = () => {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
+                    <label className="label">Status</label>
                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                        className="input">
                         <option value="">All Statuses</option>
                         <option value="sent">Sent</option>
                         <option value="failed">Failed</option>
@@ -719,7 +719,7 @@ const SmsReportsTab: React.FC = () => {
                     </select>
                 </div>
                 <button onClick={() => fetchReport(1)} disabled={loading}
-                    className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:bg-gray-400">
+                    className="btn-success">
                     {loading ? 'Loading…' : '🔍 Run Report'}
                 </button>
             </div>
@@ -749,7 +749,7 @@ const SmsReportsTab: React.FC = () => {
                             if (!s) return null;
                             const rate = s.total ? Math.round(s.sent / s.total * 100) : 0;
                             return (
-                                <div key={type} className="border rounded-xl p-4 bg-white shadow-sm">
+                                <div key={type} className="card p-4">
                                     <div className="flex items-center justify-between mb-3">
                                         <span className="text-sm font-semibold text-gray-700">{label}</span>
                                         <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-mono">
@@ -773,7 +773,7 @@ const SmsReportsTab: React.FC = () => {
 
                     {/* ── Daily Activity Bar Chart ── */}
                     {daily.length > 0 && (
-                        <div className="border rounded-xl p-4 bg-white shadow-sm">
+                        <div className="card p-4">
                             <h4 className="text-sm font-semibold text-gray-700 mb-4">Daily SMS Activity</h4>
                             <div className="flex items-end gap-1 h-20 overflow-x-auto">
                                 {daily.map(d => {
@@ -804,7 +804,7 @@ const SmsReportsTab: React.FC = () => {
                     )}
 
                     {/* ── Detail Table ── */}
-                    <div className="border rounded-xl overflow-hidden bg-white shadow-sm">
+                    <div className="card overflow-hidden">
                         <div className="px-4 py-3 bg-gray-50 border-b flex items-center justify-between">
                             <span className="text-sm font-semibold text-gray-700">
                                 SMS Log &nbsp;
@@ -814,7 +814,7 @@ const SmsReportsTab: React.FC = () => {
                             <button
                                 onClick={() => exportToExcel(records, fromDate, toDate)}
                                 disabled={records.length === 0}
-                                className="px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-medium disabled:opacity-40 flex items-center gap-1">
+                                className="btn-success btn-sm">
                                 ⬇ Export Excel
                             </button>
                             <span className="text-xs text-gray-400">Page {page} of {totalPages}</span>
@@ -822,10 +822,10 @@ const SmsReportsTab: React.FC = () => {
                         </div>
                         <div className="overflow-x-auto max-h-96">
                             <table className="min-w-full text-sm divide-y divide-gray-100">
-                                <thead className="bg-gray-50 sticky top-0">
+                                <thead className="sticky top-0">
                                     <tr>
                                         {['Sent At', 'Type', 'Student', 'Phone', 'Branch', 'Status', 'Reason'].map(h => (
-                                            <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                            <th key={h} className="px-3 py-2.5 text-left">
                                                 {h}
                                             </th>
                                         ))}
@@ -868,12 +868,12 @@ const SmsReportsTab: React.FC = () => {
                         {totalPages > 1 && (
                             <div className="px-4 py-3 border-t flex items-center justify-between bg-gray-50">
                                 <button onClick={() => fetchReport(page - 1)} disabled={page <= 1 || loading}
-                                    className="px-3 py-1.5 text-xs border rounded-md hover:bg-white disabled:opacity-40">
+                                    className="btn-secondary btn-sm">
                                     ← Prev
                                 </button>
                                 <span className="text-xs text-gray-500">{page} / {totalPages}</span>
                                 <button onClick={() => fetchReport(page + 1)} disabled={page >= totalPages || loading}
-                                    className="px-3 py-1.5 text-xs border rounded-md hover:bg-white disabled:opacity-40">
+                                    className="btn-secondary btn-sm">
                                     Next →
                                 </button>
                             </div>
@@ -904,7 +904,7 @@ const SmsCenter: React.FC<SmsCenterProps> = ({ navigateTo }) => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-full bg-gray-100">
             {/* Header */}
             <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
                 <div>
@@ -912,7 +912,7 @@ const SmsCenter: React.FC<SmsCenterProps> = ({ navigateTo }) => {
                     <p className="text-sm text-gray-500">Send attendance, fee, announcement and custom SMS</p>
                 </div>
                 <button onClick={() => navigateTo('administration')}
-                    className="text-sm text-gray-500 hover:text-gray-700 border border-gray-300 px-3 py-1.5 rounded-md hover:bg-gray-50">
+                    className="btn-secondary btn-sm">
                     ← Back
                 </button>
             </div>
@@ -924,11 +924,7 @@ const SmsCenter: React.FC<SmsCenterProps> = ({ navigateTo }) => {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                                activeTab === tab.id
-                                    ? 'border-violet-600 text-violet-700'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                            }`}
+                            className={`btn border-b-2 ${ activeTab === tab.id ? 'border-violet-600 text-violet-700' : 'border-transparent text-gray-500 hover:text-gray-700' }`}
                         >
                             {tab.label}
                         </button>
@@ -938,7 +934,7 @@ const SmsCenter: React.FC<SmsCenterProps> = ({ navigateTo }) => {
 
             {/* Content */}
             <div className="p-6">
-                <div className="bg-white rounded-lg border shadow-sm p-6">
+                <div className="card p-6">
                     {renderTab()}
                 </div>
             </div>

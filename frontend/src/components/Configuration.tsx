@@ -98,12 +98,12 @@ const NavDropdown: React.FC<DropdownProps> = ({ title, items, isActive }) => {
             onMouseEnter={() => setIsOpen(true)}
             onMouseLeave={() => setIsOpen(false)}
         >
-            <button className={`flex items-center gap-1 px-3 py-2 text-sm font-medium rounded transition-colors ${isActive ? 'bg-violet-700 text-white' : 'text-white bg-violet-600 hover:bg-violet-700'}`}>
+            <button className={`btn ${isActive ? 'bg-violet-700 text-white' : 'text-white bg-violet-600 hover:bg-violet-700'}`}>
                 {title} <ChevronDown size={14} />
             </button>
 
             {isOpen && (
-                <div className="absolute left-0 z-50 w-48 bg-white border shadow-lg rounded-md py-1 mt-1">
+                <div className="card shadow-pop absolute left-0 z-50 w-48 py-1 mt-1">
                     {items.map((item, idx) => (
                         <button
                             key={idx}
@@ -114,12 +114,7 @@ const NavDropdown: React.FC<DropdownProps> = ({ title, items, isActive }) => {
                                 }
                             }}
                             disabled={item.disabled}
-                            className={`block w-full text-left px-4 py-2 text-sm
-                ${item.disabled
-                                    ? "text-gray-400 cursor-not-allowed"
-                                    : "text-gray-700 hover:bg-violet-50 hover:text-violet-700"
-                                }
-              `}
+                            className={`btn block w-full text-left ${item.disabled ? "text-gray-400 cursor-not-allowed" : "text-gray-700 hover:bg-violet-50 hover:text-violet-700" }`}
                         >
                             {item.label}
                         </button>
@@ -252,11 +247,11 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                     <div className="space-y-4">
                         {/* Branch */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Branch</label>
+                            <label className="label">Branch</label>
                             <select
                                 value={selectedBranch}
                                 onChange={(e) => setSelectedBranch(Number(e.target.value))}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                                className="input"
                             >
                                 <option value={0}>--Select Branch--</option>
                                 {branches.map(b => (
@@ -267,11 +262,11 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
 
                         {/* Class */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Class</label>
+                            <label className="label">Class</label>
                             <select
                                 value={selectedClass}
                                 onChange={(e) => setSelectedClass(e.target.value ? Number(e.target.value) : '')}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                                className="input"
                             >
                                 <option value="">All Classes</option>
                                 {classOptions.map(c => (
@@ -282,11 +277,11 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
 
                         {/* Day */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Day</label>
+                            <label className="label">Day</label>
                             <select
                                 value={selectedDay}
                                 onChange={(e) => setSelectedDay(Number(e.target.value))}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                                className="input"
                             >
                                 {WEEKDAYS.map(d => (
                                     <option key={d.value} value={d.value}>{d.label}</option>
@@ -296,7 +291,7 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
 
                         {/* Week Rule */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-2">Rule</label>
+                            <label className="label">Rule</label>
                             <div className="space-y-2">
                                 {WEEK_OPTIONS.map(opt => (
                                     <label key={String(opt.value)} className="flex items-center gap-2 cursor-pointer">
@@ -327,14 +322,14 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                             <button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="flex-1 flex items-center justify-center gap-2 bg-violet-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-violet-700 disabled:opacity-50 transition-colors"
+                                className="btn-primary flex-1"
                             >
                                 <Plus size={16} />
                                 {saving ? 'Saving...' : 'Save Rule'}
                             </button>
                             <button
                                 onClick={handleReset}
-                                className="flex items-center gap-2 bg-white border border-gray-300 text-gray-600 py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                                className="btn-secondary"
                             >
                                 <RotateCcw size={16} />
                                 Reset
@@ -356,12 +351,12 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                     ) : (
                         <div className="border rounded-lg overflow-hidden">
                             <table className="w-full text-sm">
-                                <thead className="bg-gray-50 border-b">
+                                <thead className="border-b">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">S.No</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Rule Title</th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Branch</th>
-                                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Action</th>
+                                        <th className="px-4 py-3 text-left">S.No</th>
+                                        <th className="px-4 py-3 text-left">Rule Title</th>
+                                        <th className="px-4 py-3 text-left">Branch</th>
+                                        <th className="px-4 py-3 text-center">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
@@ -561,11 +556,11 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                     <div className="space-y-4">
                         {/* Branch */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Branch</label>
+                            <label className="label">Branch</label>
                             <select
                                 value={selectedBranch}
                                 onChange={(e) => setSelectedBranch(Number(e.target.value))}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                                className="input"
                             >
                                 <option value={0}>--Select Branch--</option>
                                 {branches.map(b => (
@@ -576,11 +571,11 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
 
                         {/* Class */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Class</label>
+                            <label className="label">Class</label>
                             <select
                                 value={selectedClass}
                                 onChange={(e) => setSelectedClass(e.target.value ? Number(e.target.value) : '')}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                                className="input"
                             >
                                 <option value="">All Classes</option>
                                 {classOptions.map(c => (
@@ -591,23 +586,23 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
 
                         {/* Title */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Holiday Title *</label>
+                            <label className="label">Holiday Title *</label>
                             <input
                                 type="text"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 placeholder="e.g. Republic Day, Eid-ul-Fitr"
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                                className="input"
                             />
                         </div>
 
                         {/* Holiday For */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Holiday For</label>
+                            <label className="label">Holiday For</label>
                             <select
                                 value={holidayFor}
                                 onChange={(e) => setHolidayFor(e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                                className="input"
                             >
                                 <option value="All">All (Students & Staff)</option>
                                 <option value="StudentOnly">Students Only</option>
@@ -618,7 +613,7 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                         {/* Dates */}
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-sm font-medium text-gray-600 mb-1">Start Date *</label>
+                                <label className="label">Start Date *</label>
                                 <input
                                     type="date"
                                     value={startDate}
@@ -626,42 +621,42 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                                         setStartDate(e.target.value);
                                         if (!endDate) setEndDate(e.target.value);
                                     }}
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                                    className="input"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-600 mb-1">End Date *</label>
+                                <label className="label">End Date *</label>
                                 <input
                                     type="date"
                                     value={endDate}
                                     onChange={(e) => setEndDate(e.target.value)}
                                     min={startDate}
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                                    className="input"
                                 />
                             </div>
                         </div>
 
                         {/* Display Order */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Display Order</label>
+                            <label className="label">Display Order</label>
                             <input
                                 type="number"
                                 value={displayOrder}
                                 onChange={(e) => setDisplayOrder(e.target.value ? Number(e.target.value) : '')}
                                 placeholder="Optional ordering"
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                                className="input"
                             />
                         </div>
 
                         {/* Description */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Description</label>
+                            <label className="label">Description</label>
                             <textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Optional description..."
                                 rows={2}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 resize-none"
+                                className="input resize-none"
                             />
                         </div>
 
@@ -670,14 +665,14 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                             <button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="flex-1 flex items-center justify-center gap-2 bg-violet-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-violet-700 disabled:opacity-50 transition-colors"
+                                className="btn-primary flex-1"
                             >
                                 <Plus size={16} />
                                 {saving ? 'Saving...' : (editingId ? 'Update Holiday' : 'Save Holiday')}
                             </button>
                             <button
                                 onClick={handleReset}
-                                className="flex items-center gap-2 bg-white border border-gray-300 text-gray-600 py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                                className="btn-secondary"
                             >
                                 <RotateCcw size={16} />
                                 Reset
@@ -699,13 +694,13 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                     ) : (
                         <div className="border rounded-lg overflow-hidden">
                             <table className="w-full text-sm">
-                                <thead className="bg-gray-50 border-b">
+                                <thead className="border-b">
                                     <tr>
-                                        <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">S.No</th>
-                                        <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Name</th>
-                                        <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
-                                        <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase">For</th>
-                                        <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                                        <th className="px-3 py-3 text-left">S.No</th>
+                                        <th className="px-3 py-3 text-left">Name</th>
+                                        <th className="px-3 py-3 text-left">Date</th>
+                                        <th className="px-3 py-3 text-left">For</th>
+                                        <th className="px-3 py-3 text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
@@ -787,7 +782,7 @@ const Configuration: React.FC<ConfigurationProps> = ({ navigateTo }) => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
+        <div className="min-h-full bg-slate-50 flex flex-col">
             {/* Header */}
             <div className="bg-white border-b sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -817,19 +812,19 @@ const Configuration: React.FC<ConfigurationProps> = ({ navigateTo }) => {
                             />
                             <button
                                 onClick={() => { setActiveTab('settings'); setActiveMaster(null); }}
-                                className={`px-3 py-2 text-sm font-medium border rounded transition-colors ${activeTab === 'settings' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-violet-600 border-transparent hover:bg-violet-50'}`}
+                                className={`btn border ${activeTab === 'settings' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-violet-600 border-transparent hover:bg-violet-50'}`}
                             >
                                 Setting
                             </button>
                             <button
                                 onClick={() => { setActiveTab('academic-year'); setActiveMaster(null); }}
-                                className={`px-3 py-2 text-sm font-medium border rounded transition-colors ${activeTab === 'academic-year' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-violet-600 border-transparent hover:bg-violet-50'}`}
+                                className={`btn border ${activeTab === 'academic-year' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-violet-600 border-transparent hover:bg-violet-50'}`}
                             >
                                 Academic Year
                             </button>
                             <button
                                 onClick={() => { setActiveTab('export-data'); setActiveMaster(null); }}
-                                className={`px-3 py-2 text-sm font-medium border rounded transition-colors ${activeTab === 'export-data' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-violet-600 border-transparent hover:bg-violet-50'}`}
+                                className={`btn border ${activeTab === 'export-data' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-violet-600 border-transparent hover:bg-violet-50'}`}
                             >
                                 Export Data From Old Academic Year
                             </button>
@@ -840,7 +835,7 @@ const Configuration: React.FC<ConfigurationProps> = ({ navigateTo }) => {
 
             {/* Main Content Area */}
             <div className="flex-1 max-w-7xl mx-auto w-full p-6">
-                <div className="bg-white rounded-lg shadow min-h-[500px] p-6">
+                <div className="card min-h-[500px] p-6">
 
                     {/* Masters Tab */}
                     {activeTab === 'masters' && !activeMaster && (

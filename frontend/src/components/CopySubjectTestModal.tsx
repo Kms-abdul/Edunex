@@ -128,7 +128,7 @@ export default function CopySubjectTestModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
             <div className="bg-white rounded p-6 w-[500px] max-h-[80vh] flex flex-col">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-bold">Copy Assignments</h3>
@@ -139,7 +139,7 @@ export default function CopySubjectTestModal({
                 <div className="mb-4">
                     <label className="block text-sm font-medium mb-1">Copy Mode</label>
                     <select
-                        className="border p-2 rounded w-full"
+                        className="input"
                         value={copyMode}
                         onChange={(e: any) => setCopyMode(e.target.value)}
                     >
@@ -185,14 +185,14 @@ export default function CopySubjectTestModal({
                 <div className="flex justify-end space-x-2">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 border rounded hover:bg-gray-100"
+                        className="btn-secondary"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleCopy}
                         disabled={copying || selectedTargets.length === 0}
-                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
+                        className="btn-primary"
                     >
                         {copying ? "Copying..." : "Copy"}
                     </button>

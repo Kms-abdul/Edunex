@@ -213,7 +213,7 @@ const PettyCashReport: React.FC = () => {
     const [selectedDetailMonth, setSelectedDetailMonth] = useState<string | undefined>();
 
     return (
-        <div className="p-4 bg-gray-50 min-h-screen">
+        <div className="p-4 bg-gray-50 min-h-full">
             {/* Header */}
             <h2 className="text-xl font-semibold text-blue-700 mb-4">
                 Petty-Cash Report
@@ -222,19 +222,19 @@ const PettyCashReport: React.FC = () => {
             {/* Tabs */}
             <div className="flex border-b mb-6 bg-white overflow-x-auto shadow-sm rounded-t">
                 <button
-                    className={`px-4 py-3 font-medium whitespace-nowrap ${activeTab === 'summary' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'}`}
+                    className={`btn ${activeTab === 'summary' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'}`}
                     onClick={() => setActiveTab('summary')}
                 >
                     Expense Summary
                 </button>
                 <button
-                    className={`px-4 py-3 font-medium whitespace-nowrap ${activeTab === 'month-ledger' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'}`}
+                    className={`btn ${activeTab === 'month-ledger' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'}`}
                     onClick={() => setActiveTab('month-ledger')}
                 >
                     Month Wise Cash Ledger
                 </button>
                 <button
-                    className={`px-4 py-3 font-medium whitespace-nowrap ${activeTab === 'details-ledger' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'}`}
+                    className={`btn ${activeTab === 'details-ledger' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'}`}
                     onClick={() => {
                         setSelectedDetailMonth(undefined);
                         setActiveTab('details-ledger');
@@ -261,7 +261,7 @@ const PettyCashReport: React.FC = () => {
                 <>
                     {/* Branch Wise Expenses Section */}
 
-                    <div className="bg-white rounded shadow mb-6">
+                    <div className="card mb-6">
                         <div className="flex flex-wrap items-center justify-between p-3 border-b">
                             <div className="flex items-center gap-2">
                                 <span className="text-blue-600 font-medium cursor-pointer">📊 Branch Wise Expenses</span>
@@ -269,7 +269,7 @@ const PettyCashReport: React.FC = () => {
                             <div className="flex items-center gap-3">
                                 <span className="font-medium">FY:</span>
                                 <select
-                                    className="border rounded px-2 py-1"
+                                    className="input w-auto"
                                     value={academicYear}
                                     onChange={(e) => setAcademicYear(e.target.value)}
                                 >
@@ -284,9 +284,9 @@ const PettyCashReport: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto rounded-lg border border-slate-200">
                             <table className="w-full text-sm">
-                                <thead className="bg-gray-100">
+                                <thead className="">
                                     <tr>
                                         <th className="text-left p-2 border">Branch</th>
                                         {activeMonths.map(m => (
@@ -325,7 +325,7 @@ const PettyCashReport: React.FC = () => {
                     </div>
 
                     {/* Ledger Head Expenses Section */}
-                    <div className="bg-white rounded shadow mb-6">
+                    <div className="card mb-6">
                         <div className="flex flex-wrap items-center justify-between p-3 border-b">
                             <div className="flex items-center gap-2">
                                 <span className="text-blue-600 font-medium">📒 Ledger Head Expenses</span>
@@ -333,14 +333,14 @@ const PettyCashReport: React.FC = () => {
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium">FY:</span>
                                 <select
-                                    className="border rounded px-2 py-1"
+                                    className="input w-auto"
                                     value={academicYear}
                                     onChange={(e) => setAcademicYear(e.target.value)}
                                 >
                                     {academicYears.map(y => <option key={y} value={y}>{y}</option>)}
                                 </select>
                                 <select
-                                    className="border rounded px-2 py-1"
+                                    className="input w-auto"
                                     value={selectedBranch}
                                     onChange={(e) => setSelectedBranch(e.target.value)}
                                 >
@@ -358,9 +358,9 @@ const PettyCashReport: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto rounded-lg border border-slate-200">
                             <table className="w-full text-sm">
-                                <thead className="bg-gray-100">
+                                <thead className="">
                                     <tr>
                                         <th className="text-left p-2 border">Ledger Head</th>
                                         {activeMonths.map(m => (
@@ -400,27 +400,27 @@ const PettyCashReport: React.FC = () => {
 
                     {/* Branch Expense Details Modal/Section */}
                     {showDetails && (
-                        <div className="bg-white rounded shadow mb-6">
+                        <div className="card mb-6">
                             <div className="flex items-center justify-between p-3 border-b">
                                 <h3 className="text-lg font-semibold text-blue-700">Branch Expenses Details</h3>
                                 <div className="flex gap-2">
                                     <button
-                                        className="flex items-center gap-1 bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                                        className="btn-success"
                                         onClick={handleExportExcel}
                                     >
                                         <FileSpreadsheet size={16} /> Excel
                                     </button>
                                     <button
-                                        className="px-3 py-1 border rounded hover:bg-gray-100"
+                                        className="btn-secondary"
                                         onClick={() => setShowDetails(false)}
                                     >
                                         Close
                                     </button>
                                 </div>
                             </div>
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto rounded-lg border border-slate-200">
                                 <table className="w-full text-xs">
-                                    <thead className="bg-gray-100">
+                                    <thead className="">
                                         <tr>
                                             <th className="p-2 border">S.No</th>
                                             <th className="p-2 border">Date</th>
@@ -461,7 +461,7 @@ const PettyCashReport: React.FC = () => {
                                             </tr>
                                         ))}
                                         {branchDetails.length > 0 && (
-                                            <tr className="bg-gray-50 font-bold">
+                                            <tr className="">
                                                 <td colSpan={13} className="p-2 border text-right">Total</td>
                                                 <td className="p-2 border text-right">
                                                     {formatAmount(branchDetails.reduce((s, d) => s + d.amount, 0))}

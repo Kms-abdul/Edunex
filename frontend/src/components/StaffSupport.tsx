@@ -191,7 +191,7 @@ const StaffSupport: React.FC = () => {
     );
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50 to-emerald-50 p-6">
+        <div className="min-h-full bg-gradient-to-br from-gray-50 via-green-50 to-emerald-50 p-6">
             <div className="max-w-6xl mx-auto">
 
                 {/* ── Header ── */}
@@ -200,7 +200,7 @@ const StaffSupport: React.FC = () => {
                         <WaIcon cls="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-800">StaffSupport</h1>
+                        <h1 className="text-xl font-semibold text-slate-900 tracking-tight">StaffSupport</h1>
                         <p className="text-gray-500 text-sm">
                             Get help from our support team via WhatsApp
                         </p>
@@ -213,7 +213,7 @@ const StaffSupport: React.FC = () => {
                         LEFT — Form
                     ══════════════════════════════════════════ */}
                     <div className="lg:col-span-2">
-                        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div className="card shadow-pop overflow-hidden">
 
                             {/* Card header */}
                             <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-5 flex items-center gap-3">
@@ -221,7 +221,7 @@ const StaffSupport: React.FC = () => {
                                     <WaIcon cls="w-5 h-5 text-white" />
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-bold text-white">Submit Your Query</h2>
+                                    <h2 className="text-base font-semibold text-slate-900 text-white">Submit Your Query</h2>
                                     <p className="text-green-100 text-xs mt-0.5">
                                         Message is copied to clipboard — just paste it in WhatsApp
                                     </p>
@@ -237,7 +237,7 @@ const StaffSupport: React.FC = () => {
                                         </svg>
                                     </div>
 
-                                    <h3 className="text-2xl font-bold text-gray-800 mb-1">
+                                    <h3 className="text-xl font-semibold text-slate-900 tracking-tight mb-1">
                                         ✅ WhatsApp Group Opened!
                                     </h3>
 
@@ -301,11 +301,7 @@ const StaffSupport: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={handleManualCopy}
-                                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
-                                                isCopied
-                                                    ? 'bg-green-50 text-green-700 border-green-300'
-                                                    : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                                            }`}
+                                            className={`btn flex-1 border ${ isCopied ? 'bg-green-50 text-green-700 border-green-300' : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200' }`}
                                         >
                                             {isCopied ? (
                                                 <>
@@ -327,7 +323,7 @@ const StaffSupport: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={() => window.open(WHATSAPP_GROUP_LINK, '_blank', 'noopener,noreferrer')}
-                                            className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-xl text-sm font-semibold transition-all shadow-md"
+                                            className="btn-success flex-1"
                                         >
                                             <WaIcon cls="w-4 h-4 text-white" />
                                             Open WhatsApp Again
@@ -365,7 +361,7 @@ const StaffSupport: React.FC = () => {
 
                                     {/* Category chips */}
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        <label className="label">
                                             Query Category <span className="text-red-500">*</span>
                                         </label>
                                         <div className="flex flex-wrap gap-2">
@@ -374,11 +370,7 @@ const StaffSupport: React.FC = () => {
                                                     type="button"
                                                     key={cat.label}
                                                     onClick={() => setCategory(cat.label)}
-                                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 flex items-center gap-1.5 ${
-                                                        category === cat.label
-                                                            ? 'bg-green-500 text-white border-green-500 shadow-md scale-105'
-                                                            : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-green-400 hover:text-green-600'
-                                                    }`}
+                                                    className={`btn btn-sm border ${ category === cat.label ? 'bg-green-500 text-white border-green-500 shadow-md scale-105' : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-green-400 hover:text-green-600' }`}
                                                 >
                                                     <span>{cat.icon}</span>
                                                     {cat.label}
@@ -389,7 +381,7 @@ const StaffSupport: React.FC = () => {
 
                                     {/* Subject */}
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                        <label className="label">
                                             Subject <span className="text-red-500">*</span>
                                         </label>
                                         <div className="relative">
@@ -406,7 +398,7 @@ const StaffSupport: React.FC = () => {
                                                     if (errors.subject) setErrors(p => ({ ...p, subject: undefined }));
                                                 }}
                                                 placeholder="Brief subject of your query"
-                                                className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all bg-gray-50 focus:bg-white ${
+                                                className={`input pl-10 ${
                                                     errors.subject
                                                         ? 'border-red-400 focus:ring-red-300'
                                                         : 'border-gray-200 focus:ring-green-300 focus:border-green-400'
@@ -425,7 +417,7 @@ const StaffSupport: React.FC = () => {
 
                                     {/* Message */}
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                        <label className="label">
                                             Your Message <span className="text-red-500">*</span>
                                         </label>
                                         <textarea
@@ -436,7 +428,7 @@ const StaffSupport: React.FC = () => {
                                             }}
                                             rows={5}
                                             placeholder="Describe your issue in detail so we can help you better..."
-                                            className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all resize-none bg-gray-50 focus:bg-white ${
+                                            className={`input resize-none ${
                                                 errors.message
                                                     ? 'border-red-400 focus:ring-red-300'
                                                     : 'border-gray-200 focus:ring-green-300 focus:border-green-400'
@@ -556,7 +548,7 @@ const StaffSupport: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => window.open(WHATSAPP_GROUP_LINK, '_blank', 'noopener,noreferrer')}
-                                className="w-full bg-white text-green-600 font-bold py-2 rounded-xl text-sm hover:bg-green-50 transition-all shadow-md flex items-center justify-center gap-2"
+                                className="btn-secondary w-full text-green-600"
                             >
                                 <WaIcon cls="w-4 h-4 text-green-600" />
                                 Join Support Group
@@ -564,7 +556,7 @@ const StaffSupport: React.FC = () => {
                         </div>
 
                         {/* Support hours */}
-                        <div className="bg-white rounded-2xl shadow-md p-5">
+                        <div className="card p-5">
                             <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
                                 <span className="text-lg">🕐</span> Support Hours
                             </h3>
@@ -591,7 +583,7 @@ const StaffSupport: React.FC = () => {
                         </div>
 
                         {/* Response times */}
-                        <div className="bg-white rounded-2xl shadow-md p-5">
+                        <div className="card p-5">
                             <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
                                 <span className="text-lg">⚡</span> Response Times
                             </h3>
@@ -613,7 +605,7 @@ const StaffSupport: React.FC = () => {
                         </div>
 
                         {/* FAQ accordion */}
-                        <div className="bg-white rounded-2xl shadow-md p-5">
+                        <div className="card p-5">
                             <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
                                 <span className="text-lg">❓</span> Quick FAQs
                             </h3>

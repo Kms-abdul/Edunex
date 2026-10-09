@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { GraduationCap, ChevronDown } from "lucide-react";
+import { GraduationCap, ChevronDown, ArrowLeft, MousePointerClick } from "lucide-react";
+import PageHeader from "./ui/PageHeader";
 import { useAuth } from "../contexts/AuthContext";
 import SubjectMaster from "./SubjectMaster";
 import ClassSubjectAssignment from "./ClassSubjectAssignment";
@@ -56,23 +57,19 @@ const NavDropdown: React.FC<DropdownProps> = ({ title, items }) => {
             onMouseEnter={() => setIsOpen(true)}
             onMouseLeave={() => setIsOpen(false)}
         >
-            <button className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-white bg-[#337ab7] hover:bg-[#286090] rounded">
-                {title} <ChevronDown size={14} />
+            <button className={`btn-secondary ${isOpen ? "border-brand-300 bg-brand-50/60 text-slate-900" : ""}`}>
+                {title} <ChevronDown size={14} className={`text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 z-50 w-64 bg-white border shadow rounded-b py-2">
+                <div className="absolute right-0 z-50 w-64 pt-1.5">
+                <div className="card shadow-pop py-1.5 animate-scale-in origin-top">
                     {items.map((item, idx) => (
                         <button
                             key={idx}
                             onClick={item.disabled ? undefined : item.onClick}
                             disabled={item.disabled}
-                            className={`block w-full text-left px-4 py-2 text-sm
-                ${item.disabled
-                                    ? "text-gray-400 cursor-not-allowed"
-                                    : "text-gray-700 hover:bg-gray-100 hover:text-[#337ab7]"
-                                }
-              `}
+                            className={`menu-item ${item.disabled ? "text-slate-400 cursor-not-allowed hover:bg-transparent hover:text-slate-400" : ""}`}
                         >
                             {item.label}
                             {item.disabled && (
@@ -80,6 +77,7 @@ const NavDropdown: React.FC<DropdownProps> = ({ title, items }) => {
                             )}
                         </button>
                     ))}
+                </div>
                 </div>
             )}
         </div>
@@ -133,18 +131,20 @@ const Academics: React.FC = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
+        <div className="min-h-full bg-surface-muted flex flex-col">
             <div className="flex-1 flex flex-col">
-                <div className="bg-white flex-1 flex flex-col">
+                <div className="flex-1 flex flex-col">
 
                     {/* Header - Only show if NO sub-view is selected (HOME) */}
                     {view === "HOME" && (
-                        <div className="p-4 flex flex-wrap justify-between border-b">
-                            <h1 className="flex items-center gap-2 text-[#337ab7] font-semibold">
-                                <GraduationCap className="text-gray-400" />
-                                ACADEMICS MANAGEMENT
-                            </h1>
-
+                        <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-5">
+                            <PageHeader
+                                eyebrow="Academics"
+                                title="Academics Management"
+                                subtitle="Marks entry, academic actions, masters and reports."
+                                icon={<GraduationCap className="w-6 h-6" />}
+                                className="mb-5"
+                                actions={(
                             <div className="flex gap-2 flex-wrap">
                                 {enterMarksItems.length > 0 && (
                                     <NavDropdown title="Enter Marks" items={enterMarksItems} />
@@ -159,25 +159,30 @@ const Academics: React.FC = () => {
                                     <NavDropdown title="Reports" items={reportsItems} />
                                 )}
                             </div>
+                                )}
+                            />
                         </div>
                     )}
 
                     {/* Content Area */}
-                    <div className={`flex-1 bg-slate-50 ${view === 'ADD_EXAM' ? 'p-2' : 'p-6'}`}>
+                    <div className={`flex-1 bg-surface-muted ${view === 'ADD_EXAM' ? 'p-2' : 'p-4 sm:p-6'}`}>
 
                         {view !== "HOME" && (
                             <button
                                 onClick={() => setView("HOME")}
-                                className="no-print mb-4 text-sm text-gray-600 hover:text-[#337ab7] flex items-center gap-1"
+                                className="no-print mb-4 btn-secondary btn-sm"
                             >
-                                ← Back to Menu
+                                <ArrowLeft className="w-3.5 h-3.5" /> Back to Menu
                             </button>
                         )}
 
                         {view === "HOME" && (
-                            <div className="flex flex-col items-center justify-center text-gray-400 h-full py-20">
-                                <GraduationCap size={48} className="mb-2 opacity-20" />
-                                <p>Select an action from the menu above to manage academic data.</p>
+                            <div className="card flex flex-col items-center justify-center text-center h-full py-20 px-6">
+                                <div className="w-16 h-16 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mb-4">
+                                    <MousePointerClick className="w-8 h-8" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-slate-900">Choose an academic action</h3>
+                                <p className="text-sm text-slate-500 mt-1 max-w-md">Select an action from the menu above to manage academic data.</p>
                             </div>
                         )}
 

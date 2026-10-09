@@ -372,7 +372,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
     // List View - First screen
     if (viewMode === 'list') {
         return (
-            <div className="min-h-screen bg-gray-50 p-6">
+            <div className="min-h-full bg-gray-50 p-6">
                 <div className="w-full">
                     {/* Header Section */}
                     <div className="flex items-center justify-between mb-6">
@@ -382,13 +382,13 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                 </svg>
                             </div>
-                            <h1 className="text-3xl font-bold text-gray-800">Classes</h1>
+                            <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Classes</h1>
                             <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
                                 Get Help
                             </button>
                         </div>
                         <div className="flex gap-3">
-                            <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium shadow-md">
+                            <button className="btn-primary">
                                 Assign Class Teachers
                             </button>
                             <button
@@ -396,13 +396,13 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                     setOrderBranchId(selectedBranch || (branches.length > 0 ? branches[0].id.toString() : ''));
                                     setIsOrderModalOpen(true);
                                 }}
-                                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium shadow-md"
+                                className="btn-primary"
                             >
                                 Assign Display Order
                             </button>
                             <button
                                 onClick={() => setViewMode('create')}
-                                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium shadow-md flex items-center gap-2"
+                                className="btn-primary"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -413,36 +413,36 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                     </div>
 
                     {/* Filters Section */}
-                    <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                    <div className="card p-4 mb-6">
                         <div className="flex items-center gap-4">
                             <div className="flex-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="label">
                                     Class Selection
                                 </label>
                                 <select
                                     value={selectedClass}
                                     onChange={(e) => setSelectedClass(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    className="input"
                                 >
                                     <option value="all">All classes</option>
 
                                 </select>
                             </div>
                             <div className="flex-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="label">
                                     Section Selection
                                 </label>
                                 <select
                                     value={selectedSection}
                                     onChange={(e) => setSelectedSection(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    className="input"
                                 >
                                     <option value="all">Class Group</option>
 
                                 </select>
                             </div>
                             <div className="flex items-end">
-                                <button className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                                <button className="btn-success">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                     </svg>
@@ -452,16 +452,16 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                     </div>
 
                     {/* Table Section */}
-                    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                        <div className="overflow-x-auto">
+                    <div className="card overflow-hidden">
+                        <div className="overflow-x-auto rounded-lg border border-slate-200">
                             <table className="w-full">
-                                <thead className="bg-purple-600 text-white">
+                                <thead className="">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-sm font-semibold">Class Name</th>
-                                        <th className="px-6 py-3 text-left text-sm font-semibold">Class Teacher</th>
-                                        <th className="px-6 py-3 text-left text-sm font-semibold">Class Monitor</th>
-                                        <th className="px-6 py-3 text-left text-sm font-semibold">Total Students</th>
-                                        <th className="px-6 py-3 text-left text-sm font-semibold">Action</th>
+                                        <th className="px-6 py-3 text-left">Class Name</th>
+                                        <th className="px-6 py-3 text-left">Class Teacher</th>
+                                        <th className="px-6 py-3 text-left">Class Monitor</th>
+                                        <th className="px-6 py-3 text-left">Total Students</th>
+                                        <th className="px-6 py-3 text-left">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
@@ -480,13 +480,13 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                             <td className="px-6 py-4 text-sm text-gray-900 font-medium">{cls.total_students}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex gap-2">
-                                                    <button className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition-colors">
+                                                    <button className="btn-primary btn-sm">
                                                         Assign Roll No
                                                     </button>
-                                                    <button className="px-3 py-1 bg-orange-500 text-white text-sm rounded hover:bg-orange-600 transition-colors">
+                                                    <button className="btn-warn btn-sm">
                                                         Assign Subject Teacher
                                                     </button>
-                                                    <button className="px-3 py-1 bg-orange-500 text-white text-sm rounded hover:bg-orange-600 transition-colors">
+                                                    <button className="btn-warn btn-sm">
                                                         Assign Class Monitor
                                                     </button>
                                                 </div>
@@ -511,8 +511,8 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
                 {/* Display Order Modal */}
                 {isOrderModalOpen && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+                    <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
+                        <div className="card shadow-pop w-full max-w-md">
                             <div className="flex justify-between items-center p-4 border-b">
                                 <h2 className="text-xl font-bold text-gray-800">Assign Display Order</h2>
                                 <button onClick={() => setIsOrderModalOpen(false)} className="text-gray-500 hover:text-gray-700">
@@ -521,11 +521,11 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                             </div>
                             <div className="p-4 space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Branch</label>
+                                    <label className="label">Select Branch</label>
                                     <select
                                         value={orderBranchId}
                                         onChange={(e) => setOrderBranchId(e.target.value)}
-                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        className="input"
                                     >
                                         <option value="">- Select Branch -</option>
                                         {branches.map(b => (
@@ -554,7 +554,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                                                         setSpecificOrder(idx, e.currentTarget.value);
                                                                     }
                                                                 }}
-                                                                className="w-16 px-2 py-1 border rounded text-center text-sm"
+                                                                className="input w-16 text-center"
                                                                 title="Type a number and press Enter or click outside to move"
                                                             />
                                                             <span className="font-medium text-gray-700">{cls.class_name}</span>
@@ -563,14 +563,14 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                                             <button
                                                                 onClick={() => moveOrder(idx, 'up')}
                                                                 disabled={idx === 0}
-                                                                className={`p-1 rounded ${idx === 0 ? 'text-gray-300' : 'text-blue-600 hover:bg-blue-50'}`}
+                                                                className={`btn ${idx === 0 ? 'text-gray-300' : 'text-blue-600 hover:bg-blue-50'}`}
                                                             >
                                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
                                                             </button>
                                                             <button
                                                                 onClick={() => moveOrder(idx, 'down')}
                                                                 disabled={idx === orderClasses.length - 1}
-                                                                className={`p-1 rounded ${idx === orderClasses.length - 1 ? 'text-gray-300' : 'text-blue-600 hover:bg-blue-50'}`}
+                                                                className={`btn ${idx === orderClasses.length - 1 ? 'text-gray-300' : 'text-blue-600 hover:bg-blue-50'}`}
                                                             >
                                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                                                             </button>
@@ -583,11 +583,11 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                 )}
                             </div>
                             <div className="p-4 border-t flex justify-end gap-3 bg-gray-50 rounded-b-lg">
-                                <button onClick={() => setIsOrderModalOpen(false)} className="px-4 py-2 border text-gray-700 rounded-lg hover:bg-gray-100">Cancel</button>
+                                <button onClick={() => setIsOrderModalOpen(false)} className="btn-secondary">Cancel</button>
                                 <button
                                     onClick={handleSaveOrder}
                                     disabled={savingOrder || orderClasses.length === 0}
-                                    className={`px-4 py-2 text-white rounded-lg ${savingOrder || orderClasses.length === 0 ? 'bg-purple-400' : 'bg-purple-600 hover:bg-purple-700'}`}
+                                    className={`btn text-white ${savingOrder || orderClasses.length === 0 ? 'bg-purple-400' : 'bg-purple-600 hover:bg-purple-700'}`}
                                 >
                                     {savingOrder ? 'Saving...' : 'Save Order'}
                                 </button>
@@ -602,7 +602,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
     // Create/Edit View - Second screen
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-full bg-gray-50">
             {/* Header */}
             <div className="bg-white border-b px-6 py-4">
                 <div className="flex items-center gap-2">
@@ -623,7 +623,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
             <div className="p-6">
                 <div className="grid grid-cols-2 gap-6">
                     {/* Left Column - Class Summary */}
-                    <div className="bg-white rounded-lg shadow-md">
+                    <div className="card">
                         <div className="p-4 border-b flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -637,7 +637,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                 <div className="relative" ref={copyDropdownRef}>
                                     <button
                                         onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
-                                        className="px-4 py-1.5 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition-colors flex items-center gap-1"
+                                        className="btn-primary btn-sm"
                                         title="Copy all classes to other branches"
                                     >
                                         <span>Copy Structure</span>
@@ -647,7 +647,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                     </button>
 
                                     {isCopyDropdownOpen && (
-                                        <div className="absolute right-0 top-full mt-2 w-72 bg-white border shadow-xl rounded z-50 max-h-80 overflow-y-auto">
+                                        <div className="card shadow-pop absolute right-0 top-full mt-2 w-72 z-50 max-h-80 overflow-y-auto">
                                             <div className="sticky top-0 bg-gray-50 px-3 py-2 border-b text-xs font-semibold text-gray-700 uppercase">
                                                 Target Branches
                                             </div>
@@ -684,7 +684,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                                 <button
                                                     onClick={handleCopyBranchStructure}
                                                     disabled={copying || copyTargets.size === 0}
-                                                    className={`px-3 py-1 text-xs text-white rounded ${copying || copyTargets.size === 0 ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
+                                                    className={`btn btn-sm text-white ${copying || copyTargets.size === 0 ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
                                                 >
                                                     {copying ? "Copying..." : "Confirm Copy"}
                                                 </button>
@@ -695,13 +695,13 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto rounded-lg border border-slate-200">
                             <table className="w-full">
-                                <thead className="bg-gray-100 border-b">
+                                <thead className="border-b">
                                     <tr>
-                                        <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">Class</th>
-                                        <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">Section</th>
-                                        <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700">Actions</th>
+                                        <th className="px-4 py-2 text-left">Class</th>
+                                        <th className="px-4 py-2 text-left">Section</th>
+                                        <th className="px-4 py-2 text-left">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
@@ -731,7 +731,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                                     <div className="flex gap-2">
                                                         <button
                                                             onClick={() => handleEditClass(cls)}
-                                                            className="p-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                                                            className="btn-primary"
                                                         >
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -748,7 +748,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                     </div>
 
                     {/* Right Column - Create Class Form */}
-                    <div className="bg-white rounded-lg shadow-md">
+                    <div className="card">
                         <div className="p-4 border-b flex items-center gap-2">
                             <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" />
@@ -759,7 +759,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                         <div className="p-6 space-y-6">
                             {/* Class Input */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="label">
                                     Class<span className="text-red-500">*</span>
                                 </label>
                                 <input
@@ -768,7 +768,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                     value={newClassName}
                                     onChange={(e) => setNewClassName(e.target.value)}
                                     placeholder="5"
-                                    className="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    className="input"
                                 />
                                 <datalist id="master-classes-list">
                                     {masterClasses.map((c) => (
@@ -781,10 +781,10 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                             {/* Section Management */}
                             <div>
                                 <div className="flex items-center gap-2 mb-3">
-                                    <label className="text-sm font-medium text-gray-700">Section</label>
+                                    <label className="label">Section</label>
                                     <button
                                         onClick={addSection}
-                                        className="bg-blue-500 text-white w-6 h-6 rounded flex items-center justify-center hover:bg-blue-600 transition-colors"
+                                        className="btn-primary w-6 h-6"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
@@ -795,11 +795,11 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
                                 <div className="border rounded overflow-hidden">
                                     <table className="w-full">
-                                        <thead className="bg-gray-50 border-b">
+                                        <thead className="border-b">
                                             <tr>
-                                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Section Name</th>
-                                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Student Strength</th>
-                                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">Action</th>
+                                                <th className="px-3 py-2 text-left">Section Name</th>
+                                                <th className="px-3 py-2 text-left">Student Strength</th>
+                                                <th className="px-3 py-2 text-left">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200">
@@ -811,7 +811,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                                             value={section.name}
                                                             onChange={(e) => updateSection(section.id, 'name', e.target.value)}
                                                             placeholder="Section Name"
-                                                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                            className="input"
                                                         />
                                                     </td>
                                                     <td className="px-3 py-2">
@@ -820,7 +820,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                                             value={section.studentStrength}
                                                             onChange={(e) => updateSection(section.id, 'studentStrength', e.target.value)}
                                                             placeholder="Student Strength"
-                                                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                            className="input"
                                                         />
                                                     </td>
                                                     <td className="px-3 py-2">
@@ -842,13 +842,13 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                             </div>
                             {/* Branch Selection */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="label">
                                     Assign to the Branch<span className="text-red-500">*</span>
                                 </label>
                                 <select
                                     disabled // This makes it read-only
                                     value={selectedBranch}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded bg-gray-100 cursor-not-allowed appearance-none"
+                                    className="input appearance-none"
                                 >
                                     <option value="">- Select-Branch -</option>
                                     {branches.map(b => (
@@ -861,13 +861,13 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                             <div className="flex justify-end gap-3 pt-4">
                                 <button
                                     onClick={handleReset}
-                                    className="px-5 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors font-medium"
+                                    className="btn-secondary"
                                 >
                                     Reset
                                 </button>
                                 <button
                                     onClick={handleSaveClass}
-                                    className="px-5 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors font-medium"
+                                    className="btn-primary"
                                 >
                                     Save
                                 </button>

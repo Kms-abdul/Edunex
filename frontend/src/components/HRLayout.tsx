@@ -9,6 +9,7 @@ import {
     ChartBarIcon
 } from './icons';
 import { useAuth } from '../contexts/AuthContext';
+import PageHeader from './ui/PageHeader';
 
 interface HRLayoutProps {
     children: React.ReactNode;
@@ -95,44 +96,45 @@ const HRLayout: React.FC<HRLayoutProps> = ({ children, currentPage, navigateTo }
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
+        <div className="flex flex-col h-full bg-surface-muted overflow-hidden">
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col h-full overflow-hidden">
                 {/* HR Header */}
-                <div className="bg-white border-b border-slate-200 shadow-sm z-20 relative flex flex-col">
-                    <div className="px-6 py-4 flex justify-between items-center">
-                        <h2 className="text-2xl font-semibold text-slate-900 flex items-center">
-                            <span className="text-emerald-600 mr-2"><UserIcon className="w-8 h-8" /></span> HR & Staff Management
-                        </h2>
+                <div className="bg-white border-b border-slate-200 z-20 relative flex flex-col">
+                    <div className="px-4 sm:px-6 pt-5">
+                        <PageHeader
+                            eyebrow="Human Resources"
+                            title="HR & Staff Management"
+                            subtitle="Masters, staff directory, profiles and attendance."
+                            icon={<UserIcon className="w-6 h-6" />}
+                            className="mb-4"
+                        />
                     </div>
-
 
                 </div>
 
                 {/* Sub-navigation Menu for Active Tab */}
                 {activeMenu.subItems && activeMenu.subItems.length > 0 && (
-                    <div className="bg-white border-b border-slate-200 px-6 py-2 flex space-x-4 shadow-sm z-10">
-                        {activeMenu.subItems.map(sub => (
-                            canAccess(sub.permission) && (
-                                <button
-                                    key={sub.name}
-                                    onClick={() => navigateTo(sub.page)}
-                                    className={`flex items-center space-x-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors
-                                        ${currentPage === sub.page
-                                            ? 'bg-emerald-50 text-emerald-700'
-                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                                        }`}
-                                >
-                                    {sub.icon}
-                                    <span>{sub.name}</span>
-                                </button>
-                            )
-                        ))}
+                    <div className="bg-white/80 backdrop-blur border-b border-slate-200 px-4 sm:px-6 py-2 flex gap-1 overflow-x-auto z-10">
+                        <div className="segmented">
+                            {activeMenu.subItems.map(sub => (
+                                canAccess(sub.permission) && (
+                                    <button
+                                        key={sub.name}
+                                        onClick={() => navigateTo(sub.page)}
+                                        className={`segmented-item flex items-center gap-1.5 whitespace-nowrap ${currentPage === sub.page ? 'segmented-item-active' : ''}`}
+                                    >
+                                        <span className={currentPage === sub.page ? 'text-brand-600' : 'text-slate-400'}>{sub.icon}</span>
+                                        <span>{sub.name}</span>
+                                    </button>
+                                )
+                            ))}
+                        </div>
                     </div>
                 )}
-                
+
                 <div className="flex-1 overflow-hidden relative">
-                    <div className="absolute inset-0 overflow-y-auto bg-slate-50 p-6">
+                    <div className="absolute inset-0 overflow-y-auto bg-surface-muted p-4 sm:p-6">
                         {children}
                     </div>
                 </div>

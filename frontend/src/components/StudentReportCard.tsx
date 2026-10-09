@@ -423,9 +423,9 @@ const StudentReportCard: React.FC = () => {
 
   // ============== RENDER FILTER SECTION ==============
   const renderFilterSection = () => (
-    <div className="bg-white p-4 rounded shadow-sm mb-6">
+    <div className="card p-4 mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-gray-700 flex items-center">
+        <h2 className="text-base font-semibold text-slate-900 flex items-center">
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
           </svg>
@@ -445,14 +445,14 @@ const StudentReportCard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
         {/* Branch */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="label">
             Branch <span className="text-red-500">*</span>
           </label>
           <select
             value={selectedBranch}
             onChange={handleBranchChange}
             disabled={branches.length <= 1}
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 disabled:bg-gray-100"
+            className="input"
           >
             {branches.map(b => (
               <option key={b.branch_code} value={b.branch_code}>{b.branch_name}</option>
@@ -462,7 +462,7 @@ const StudentReportCard: React.FC = () => {
 
         {/* Class */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="label">
             Class <span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -470,7 +470,7 @@ const StudentReportCard: React.FC = () => {
               value={selectedClass}
               onChange={handleClassChange}
               disabled={loadingClasses}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 disabled:bg-gray-100"
+              className="input"
             >
               <option value="">
                 {loadingClasses ? 'Loading...' : 'Select Class'}
@@ -492,7 +492,7 @@ const StudentReportCard: React.FC = () => {
 
         {/* Section */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="label">
             Section <span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -500,7 +500,7 @@ const StudentReportCard: React.FC = () => {
               value={selectedSection}
               onChange={handleSectionChange}
               disabled={!selectedClass || loadingSections}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 disabled:bg-gray-100"
+              className="input"
             >
               <option value="">
                 {!selectedClass ? 'Select Class First' : loadingSections ? 'Loading...' : 'Select Section'}
@@ -522,7 +522,7 @@ const StudentReportCard: React.FC = () => {
 
         {/* Test */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="label">
             Test/Exam <span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -530,7 +530,7 @@ const StudentReportCard: React.FC = () => {
               value={selectedTestId}
               onChange={handleTestChange}
               disabled={!selectedClass || loadingTests}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 disabled:bg-gray-100"
+              className="input"
             >
               <option value="">
                 {!selectedClass ? 'Select Class First' : loadingTests ? 'Loading...' : 'Select Test'}
@@ -552,7 +552,7 @@ const StudentReportCard: React.FC = () => {
 
         {/* Student */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="label">
             Student <span className="text-red-500">*</span>
           </label>
           <div className="space-y-2">
@@ -561,7 +561,7 @@ const StudentReportCard: React.FC = () => {
                 value={selectAllStudents ? "all" : selectedStudentId}
                 onChange={handleStudentChange}
                 disabled={!selectedSection || loadingStudents || selectAllStudents}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 disabled:bg-gray-100"
+                className="input"
               >
                 <option value="">
                   {!selectedSection
@@ -613,7 +613,7 @@ const StudentReportCard: React.FC = () => {
             type="button"
             onClick={handleGetReport}
             disabled={loadingReport || !selectedTestId || !selectedStudentId}
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+            className="btn-primary"
           >
             {loadingReport ? (
               <>
@@ -637,7 +637,7 @@ const StudentReportCard: React.FC = () => {
             type="button"
             onClick={handleGetAllStudentsReports}
             disabled={loadingAllReports || !selectedTestId || students.length === 0}
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+            className="btn-primary"
           >
             {loadingAllReports ? (
               <>
@@ -663,7 +663,7 @@ const StudentReportCard: React.FC = () => {
           <button
             type="button"
             onClick={handlePrint}
-            className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 flex items-center gap-2"
+            className="btn-success"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -730,7 +730,7 @@ const StudentReportCard: React.FC = () => {
 
   // ============== RENDER LOADING STATE ==============
   const renderLoadingState = () => (
-    <div className="flex items-center justify-center py-16 bg-white rounded shadow">
+    <div className="card flex items-center justify-center py-16">
       <div className="text-center">
         <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
         <p className="text-gray-600 font-medium text-lg">Loading Report Data...</p>

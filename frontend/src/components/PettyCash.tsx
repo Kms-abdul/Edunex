@@ -172,7 +172,7 @@ const PettyCash: React.FC = () => {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Cash In Hand Summary Section */}
-      <div className="bg-white rounded-lg shadow print:hidden border-l-4 border-blue-600">
+      <div className="card print:hidden border-l-4 border-blue-600">
         <div className="p-4 flex flex-col md:flex-row items-center justify-between">
           <div className="flex items-center space-x-4 mb-4 md:mb-0">
             <div className="bg-blue-50 p-3 rounded-full">
@@ -180,7 +180,7 @@ const PettyCash: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Cash In Hand</p>
-              <h3 className={`text-3xl font-bold ${summary.net_amount < 0 ? 'text-red-600' : 'text-blue-700'}`}>
+              <h3 className={`text-xl font-semibold text-slate-900 tracking-tight ${summary.net_amount < 0 ? 'text-red-600' : 'text-blue-700'}`}>
                 ₹ {summary.net_amount?.toFixed(2) ?? '0.00'}
               </h3>
             </div>
@@ -198,38 +198,38 @@ const PettyCash: React.FC = () => {
         </div>
       </div>
       {/* Form Section */}
-      <div className="bg-white rounded-lg shadow p-6 print:hidden">
+      <div className="card p-6 print:hidden">
         <h2 className="text-xl font-semibold mb-4 text-gray-800">New Petty Cash Entry</h2>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
           <div className="flex flex-col">
-            <label className="text-sm text-gray-600 mb-1">Date</label>
-            <input type="date" name="transaction_date" value={formData.transaction_date} onChange={handleInputChange} max={new Date().toISOString().split('T')[0]} className="border p-2 rounded" required />
+            <label className="label">Date</label>
+            <input type="date" name="transaction_date" value={formData.transaction_date} onChange={handleInputChange} max={new Date().toISOString().split('T')[0]} className="input w-auto" required />
           </div>
 
           <div className="flex flex-col">
-            <label className="text-sm text-gray-600 mb-1">Voucher Name</label>
-            <input type="text" name="voucher_name" value={formData.voucher_name} onChange={handleInputChange} className="border p-2 rounded" placeholder="e.g. Purchase of stationery" required />
+            <label className="label">Voucher Name</label>
+            <input type="text" name="voucher_name" value={formData.voucher_name} onChange={handleInputChange} className="input w-auto" placeholder="e.g. Purchase of stationery" required />
           </div>
 
           <div className="flex flex-col">
-            <label className="text-sm text-gray-600 mb-1">Voucher Type</label>
-            <select name="voucher_type" value={formData.voucher_type} onChange={handleInputChange} className="border p-2 rounded" required>
+            <label className="label">Voucher Type</label>
+            <select name="voucher_type" value={formData.voucher_type} onChange={handleInputChange} className="input w-auto" required>
               <option value="Payment">Payment</option>
               <option value="Received">Received</option>
             </select>
           </div>
 
           <div className="flex flex-col">
-            <label className="text-sm text-gray-600 mb-1">Ledger Type</label>
+            <label className="label">Ledger Type</label>
             <select
               value={selectedLedgerType}
               onChange={(e) => {
                 setSelectedLedgerType(e.target.value);
                 setFormData({ ...formData, ledger_id: '' }); // Reset ledger selection
               }}
-              className="border p-2 rounded"
+              className="input w-auto"
             >
               <option value="Direct">Direct</option>
               <option value="Indirect">Indirect</option>
@@ -243,7 +243,7 @@ const PettyCash: React.FC = () => {
                 <button type="button" onClick={() => setShowLedgerModal(true)} className="text-blue-600 text-xs hover:underline">+ Add Ledger</button>
               )}
             </label>
-            <select name="ledger_id" value={formData.ledger_id} onChange={handleInputChange} className="border p-2 rounded" required>
+            <select name="ledger_id" value={formData.ledger_id} onChange={handleInputChange} className="input w-auto" required>
               <option value="">Select Ledger</option>
               {filteredLedgers.map(l => (
                 <option key={l.id} value={l.id}>{l.ledger_name}</option>
@@ -252,8 +252,8 @@ const PettyCash: React.FC = () => {
           </div>
 
           <div className="flex flex-col">
-            <label className="text-sm text-gray-600 mb-1">Paid To / Received From</label>
-            <input type="text" name="paid_to" value={formData.paid_to} onChange={handleInputChange} className="border p-2 rounded" placeholder="Name" />
+            <label className="label">Paid To / Received From</label>
+            <input type="text" name="paid_to" value={formData.paid_to} onChange={handleInputChange} className="input w-auto" placeholder="Name" />
           </div>
 
           <div className="lg:col-span-4 mt-4 border border-gray-200 rounded-lg p-4 bg-gray-50">
@@ -280,7 +280,7 @@ const PettyCash: React.FC = () => {
                       setFormData({ ...formData, items: newItems });
                     }}
                     placeholder={`Item ${index + 1}`}
-                    className="border p-2 rounded flex-1"
+                    className="input flex-1"
                     required
                   />
                   <input
@@ -294,7 +294,7 @@ const PettyCash: React.FC = () => {
                       setFormData({ ...formData, items: newItems });
                     }}
                     placeholder="Amount"
-                    className="border p-2 rounded w-32 text-right"
+                    className="input w-32 text-right"
                     required
                   />
                   {formData.items.length > 1 && (
@@ -318,17 +318,17 @@ const PettyCash: React.FC = () => {
           </div>
 
           <div className="flex flex-col">
-            <label className="text-sm text-gray-600 mb-1">Description</label>
-            <textarea name="description" value={formData.description} onChange={handleInputChange} className="border p-2 rounded h-10" placeholder="Details"></textarea>
+            <label className="label">Description</label>
+            <textarea name="description" value={formData.description} onChange={handleInputChange} className="input w-auto h-10" placeholder="Details"></textarea>
           </div>
 
           <div className="flex flex-col">
-            <label className="text-sm text-gray-600 mb-1">Created By</label>
-            <input type="text" value={user.username || 'Current User'} readOnly className="border p-2 rounded bg-gray-100 text-gray-500 cursor-not-allowed" />
+            <label className="label">Created By</label>
+            <input type="text" value={user.username || 'Current User'} readOnly className="input w-auto" />
           </div>
 
           <div className="flex flex-col">
-            <label className="text-sm text-gray-600 mb-1">Approved By</label>
+            <label className="label">Approved By</label>
             <div className="flex items-center space-x-4 h-10 border p-2 rounded">
               <label className="flex items-center text-sm">
                 <input
@@ -364,22 +364,22 @@ const PettyCash: React.FC = () => {
           </div>
 
           <div className="flex flex-col">
-            <label className="text-sm text-gray-600 mb-1">Payment Mode</label>
-            <select name="payment_mode" value={formData.payment_mode} onChange={handleInputChange} className="border p-2 rounded" required>
+            <label className="label">Payment Mode</label>
+            <select name="payment_mode" value={formData.payment_mode} onChange={handleInputChange} className="input w-auto" required>
               <option value="Cash">Cash</option>
               <option value="UPI">UPI</option>
             </select>
           </div>
 
           <div className="lg:col-span-4 flex justify-end mt-2">
-            <button type="submit" className="bg-green-600 text-white px-6 py-2 rounded shadow hover:bg-green-700 transition">Save Transaction</button>
+            <button type="submit" className="btn-success">Save Transaction</button>
           </div>
 
         </form>
       </div>
 
       {/* Accordion List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden print:hidden">
+      <div className="card overflow-hidden print:hidden">
         <div className="p-4 bg-gray-50 border-b">
           <h2 className="text-xl font-semibold text-gray-800">Petty Cash Transactions History</h2>
         </div>
@@ -396,7 +396,7 @@ const PettyCash: React.FC = () => {
               <div key={monthYear} className="w-full">
                 <button
                   onClick={() => toggleMonth(monthYear)}
-                  className="w-full flex justify-between items-center p-4 bg-gray-100 hover:bg-gray-200 transition text-left"
+                  className="btn-secondary w-full justify-between text-left"
                 >
                   <span className="font-semibold text-gray-700">{monthYear}</span>
                   <span className="flex items-center space-x-4">
@@ -408,7 +408,7 @@ const PettyCash: React.FC = () => {
                 {expandedMonths[monthYear] && (
                   <div className="overflow-x-auto p-4">
                     <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-50 text-gray-600">
+                      <thead className="">
                         <tr>
                           <th className="px-4 py-2">Date</th>
                           <th className="px-4 py-2">Voucher Name</th>
@@ -445,7 +445,7 @@ const PettyCash: React.FC = () => {
                               </span>
                             </td>
                             <td className="px-4 py-2 text-center">
-                              <button onClick={() => setSelectedReceipt(t)} className="text-blue-600 hover:text-blue-800 font-medium px-2 py-1 text-xs border border-blue-600 rounded" title="View Details">
+                              <button onClick={() => setSelectedReceipt(t)} className="btn-secondary btn-sm text-blue-600 hover:text-blue-800 border-blue-600" title="View Details">
                                 View Details
                               </button>
                             </td>
@@ -463,34 +463,34 @@ const PettyCash: React.FC = () => {
 
       {/* Ledger Modal */}
       {showLedgerModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
+          <div className="card shadow-pop p-6 w-full max-w-md">
             <h3 className="text-xl font-semibold mb-4">Add New Ledger</h3>
             <form onSubmit={handleCreateLedger} className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Ledger Name</label>
+                <label className="label">Ledger Name</label>
                 <input
                   type="text"
                   value={newLedger.ledger_name}
                   onChange={(e) => setNewLedger({ ...newLedger, ledger_name: e.target.value })}
-                  className="w-full border p-2 rounded"
+                  className="input"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Ledger Type</label>
+                <label className="label">Ledger Type</label>
                 <select
                   value={newLedger.ledger_type}
                   onChange={(e) => setNewLedger({ ...newLedger, ledger_type: e.target.value })}
-                  className="w-full border p-2 rounded"
+                  className="input"
                 >
                   <option value="Direct">Direct</option>
                   <option value="Indirect">Indirect</option>
                 </select>
               </div>
               <div className="flex justify-end space-x-2 mt-4">
-                <button type="button" onClick={() => setShowLedgerModal(false)} className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-100">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save Ledger</button>
+                <button type="button" onClick={() => setShowLedgerModal(false)} className="btn-secondary">Cancel</button>
+                <button type="submit" className="btn-primary">Save Ledger</button>
               </div>
             </form>
           </div>
@@ -499,12 +499,12 @@ const PettyCash: React.FC = () => {
 
       {/* View Details Modal */}
       {selectedReceipt && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300 print:absolute print:inset-0 print:bg-white print:p-0 print:z-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col transform transition-all print:shadow-none print:max-h-none print:rounded-none">
+        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300 print:absolute print:inset-0 print:bg-white print:p-0 print:z-auto">
+          <div className="card shadow-pop w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col transform transition-all print:shadow-none print:max-h-none print:rounded-none">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4 flex justify-between items-center text-white print:bg-none print:bg-white print:text-black print:border-b-2 print:border-gray-800">
-              <h3 className="text-xl font-bold tracking-wide">Transaction Overview</h3>
-              <button onClick={() => setSelectedReceipt(null)} className="text-white hover:text-red-200 transition-colors text-2xl leading-none print:hidden">&times;</button>
+            <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center text-slate-900 print:bg-none print:bg-white print:text-black print:border-b-2 print:border-gray-800">
+              <h3 className="text-base font-semibold">Transaction Overview</h3>
+              <button onClick={() => setSelectedReceipt(null)} className="text-slate-400 hover:text-slate-700 transition-colors text-2xl leading-none print:hidden">&times;</button>
             </div>
 
             {/* Content Body */}
@@ -555,12 +555,12 @@ const PettyCash: React.FC = () => {
                 <div className="bg-gray-50 p-4 rounded-xl border shadow-sm hover:shadow-md transition-shadow md:col-span-2">
                   <span className="text-gray-500 font-semibold block text-xs uppercase tracking-wider mb-2">Items</span>
                   {selectedReceipt.items && selectedReceipt.items.length > 0 ? (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto rounded-lg border border-slate-200">
                       <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-100 text-gray-600 border-b border-gray-200">
+                        <thead className="border-b border-gray-200">
                           <tr>
-                            <th className="px-4 py-2 font-medium">Item Name</th>
-                            <th className="px-4 py-2 font-medium text-right">Amount</th>
+                            <th className="px-4 py-2">Item Name</th>
+                            <th className="px-4 py-2 text-right">Amount</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -620,10 +620,10 @@ const PettyCash: React.FC = () => {
 
             {/* Footer */}
             <div className="bg-gray-50 px-6 py-4 border-t flex justify-end space-x-3 print:hidden">
-              <button onClick={() => window.print()} className="px-6 py-2 bg-blue-600 text-white font-semibold border border-transparent rounded-lg shadow-sm hover:bg-blue-700 transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <button onClick={() => window.print()} className="btn-primary border-transparent">
                 Print Receipt
               </button>
-              <button onClick={() => setSelectedReceipt(null)} className="px-6 py-2 bg-white text-gray-700 font-semibold border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 hover:text-gray-900 transition-colors focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              <button onClick={() => setSelectedReceipt(null)} className="btn-secondary">
                 Close Details
               </button>
             </div>

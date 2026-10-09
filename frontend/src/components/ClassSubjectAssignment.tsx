@@ -420,14 +420,14 @@ const ClassSubjectAssignment: React.FC = () => {
 
     return (
         <div>
-            <div className="bg-white p-6 rounded shadow border mb-4">
+            <div className="card p-6 mb-4">
                 <h2 className="text-xl font-semibold mb-4">Class-Subject Assignment</h2>
                 {/* Filters */}
                 <div className="flex flex-wrap gap-4 mb-6 items-end">
                     <div className="w-48">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                        <label className="label">Academic Year</label>
                         <select
-                            className="w-full border p-2 rounded bg-gray-50"
+                            className="input"
                             value={selectedYear}
                             disabled={true}
                             onChange={e => setSelectedYear(e.target.value)}
@@ -438,9 +438,9 @@ const ClassSubjectAssignment: React.FC = () => {
                     </div>
 
                     <div className="w-48">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+                        <label className="label">Branch</label>
                         <select
-                            className="w-full border p-2 rounded bg-gray-50"
+                            className="input"
                             value={selectedBranch}
                             disabled={true}
                             onChange={e => setSelectedBranch(e.target.value)}
@@ -451,9 +451,9 @@ const ClassSubjectAssignment: React.FC = () => {
                     </div>
 
                     <div className="w-48">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Subject Group</label>
+                        <label className="label">Subject Group</label>
                         <select
-                            className="w-full border p-2 rounded"
+                            className="input"
                             value={selectedSubjectType}
                             onChange={e => setSelectedSubjectType(e.target.value)}
                         >
@@ -467,7 +467,7 @@ const ClassSubjectAssignment: React.FC = () => {
                 {/* Matrix Table */}
                 <div className="overflow-x-auto border rounded">
                     <table className="w-full border-collapse text-sm">
-                        <thead className="bg-gray-100">
+                        <thead className="">
                             <tr>
                                 <th className="border p-2 min-w-[150px] text-left">Subjects \ Classes</th>
                                 {classes.map(c => (
@@ -476,7 +476,7 @@ const ClassSubjectAssignment: React.FC = () => {
                                             <span>{c.name}</span>
                                             <button
                                                 onClick={() => handleCheckAllColumn(c.id)}
-                                                className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-0.5 rounded"
+                                                className="btn text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700"
                                                 title="Check/Uncheck all subjects for this class"
                                             >
                                                 ✓ All
@@ -506,7 +506,7 @@ const ClassSubjectAssignment: React.FC = () => {
                                                         type="checkbox"
                                                         checked={isAssigned}
                                                         onChange={() => handleToggle(c.id, s.id)}
-                                                        className="w-5 h-5 cursor-pointer accent-[#337ab7]"
+                                                        className="w-5 h-5 cursor-pointer accent-brand-600"
                                                     />
                                                 </div>
                                             </td>
@@ -516,7 +516,7 @@ const ClassSubjectAssignment: React.FC = () => {
                                     <td className="border p-1 text-center">
                                         <button
                                             onClick={() => handleCheckAllRow(s.id)}
-                                            className="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded"
+                                            className="btn-secondary btn-sm"
                                             title="Toggle All Classes for this Subject"
                                         >
                                             Check/Uncheck All
@@ -537,7 +537,7 @@ const ClassSubjectAssignment: React.FC = () => {
                         {selectedBranch && selectedBranch !== "All" && (
                             <div className="relative" ref={copyDropdownRef}>
                                 <button
-                                    className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center gap-2"
+                                    className="btn-primary"
                                     onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
                                 >
                                     <span>Copy to Branches</span>
@@ -545,7 +545,7 @@ const ClassSubjectAssignment: React.FC = () => {
                                 </button>
                                 {/* Grouped Dropdown */}
                                 {isCopyDropdownOpen && (
-                                    <div className="absolute left-full top-0 ml-2 w-72 bg-white border shadow-xl rounded z-20 max-h-80 overflow-y-auto">
+                                    <div className="card shadow-pop absolute left-full top-0 ml-2 w-72 z-20 max-h-80 overflow-y-auto">
                                         <div className="mb-2 text-sm font-semibold text-gray-700 pb-2 border-b">
                                             Select Target Branches
                                         </div>
@@ -580,7 +580,7 @@ const ClassSubjectAssignment: React.FC = () => {
                                             <button
                                                 onClick={handleCopy}
                                                 disabled={copying || copyTargets.size === 0}
-                                                className={`px-3 py-1 text-xs text-white rounded ${copying || copyTargets.size === 0 ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
+                                                className={`btn btn-sm text-white ${copying || copyTargets.size === 0 ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
                                             >
                                                 {copying ? "Copying..." : "Confirm Copy"}
                                             </button>
@@ -598,7 +598,7 @@ const ClassSubjectAssignment: React.FC = () => {
                                 setAssignments(new Set(initialAssignments));
                             }}
                             disabled={saving}
-                            className={`px-6 py-2 rounded text-white-700 border transition hover:bg-gray-100 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`btn text-white-700 border hover:bg-gray-100 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             Cancel
                         </button>
@@ -606,7 +606,7 @@ const ClassSubjectAssignment: React.FC = () => {
                         <button
                             onClick={handleSave}
                             disabled={saving}
-                            className={`px-6 py-2 rounded text-white font-medium ${saving ? 'bg-gray-400' : 'bg-[#337ab7] hover:bg-blue-600'}`}
+                            className={`btn text-white ${saving ? 'bg-gray-400' : 'bg-brand-600 hover:bg-blue-600'}`}
                         >
                             {saving ? "Saving..." : "Save Assignments"}
                         </button>

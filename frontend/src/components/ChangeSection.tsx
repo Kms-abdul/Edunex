@@ -142,11 +142,11 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-2">
                     {onBack && (
-                        <button onClick={onBack} className="p-2 hover:bg-gray-200 rounded-full" aria-label="Go back">
+                        <button onClick={onBack} className="btn-icon" aria-label="Go back">
                             <ArrowBackIcon className="w-5 h-5 text-gray-600" />
                         </button>
                     )}
-                    <h2 className="text-2xl font-bold text-gray-800">Change in Section</h2>
+                    <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Change in Section</h2>
                 </div>
                 <div className="bg-orange-100 text-orange-700 px-4 py-2 rounded-md font-semibold border border-orange-200">
                     Academic Year: {academicYear}
@@ -155,14 +155,14 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
 
             <div className="flex gap-6 h-[75vh]">
                 {/* ----------------- LEFT PANEL: SOURCE STUDENTS ----------------- */}
-                <div className="flex-[1.5] bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+                <div className="card flex-[1.5] flex flex-col overflow-hidden">
                     <div className="p-4 bg-violet-50 border-b border-gray-200">
                         <h3 className="font-bold text-violet-800 mb-3 uppercase tracking-wider text-sm">Students</h3>
                         <div className="grid grid-cols-2 gap-3 mb-3">
                             <select
                                 value={sourceClass}
                                 onChange={e => { setSourceClass(e.target.value); setSourceSection(''); }}
-                                className="border border-gray-300 p-2 rounded-md text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                                className="input w-auto"
                             >
                                 <option value="">Select Class</option>
                                 {classes.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
@@ -170,7 +170,7 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
                             <select
                                 value={sourceSection}
                                 onChange={e => setSourceSection(e.target.value)}
-                                className="border border-gray-300 p-2 rounded-md text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                                className="input w-auto"
                                 disabled={!sourceClass}
                             >
                                 <option value="">Select Section</option>
@@ -180,7 +180,7 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
                         <div className="relative">
                             <input
                                 placeholder="Search students by name or admission no..."
-                                className="w-full border border-gray-300 p-2 rounded-md text-sm pl-10 focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                                className="input pl-10"
                                 value={sourceSearch}
                                 onChange={e => setSourceSearch(e.target.value)}
                             />
@@ -190,8 +190,8 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
 
                     <div className="flex-1 overflow-auto">
                         <table className="min-w-full text-sm border-collapse">
-                            <thead className="sticky top-0 bg-gray-50 z-10 shadow-sm">
-                                <tr className="text-left text-gray-600 font-bold border-b">
+                            <thead className="sticky top-0 z-10 shadow-sm">
+                                <tr className="text-left border-b">
                                     <th className="p-3 w-12"><input type="checkbox" onChange={handleSelectAll} checked={sourceStudents.filter(s => s.student_id !== undefined).length > 0 && selectedStudentIds.length === sourceStudents.filter(s => s.student_id !== undefined).length} className="w-4 h-4 rounded text-violet-600" /></th>
                                     <th className="p-3">Admission No</th>
                                     <th className="p-3">Student Name</th>
@@ -230,14 +230,14 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
                 </div>
 
                 {/* ----------------- RIGHT PANEL: SELECTED STUDENTS & ACTION ----------------- */}
-                <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+                <div className="card flex-1 flex flex-col overflow-hidden">
                     <div className="p-4 bg-emerald-50 border-b border-gray-200">
                         <h3 className="font-bold text-emerald-800 mb-3 uppercase tracking-wider text-sm">Selected Students</h3>
                         <div className="flex gap-3">
                             <select
                                 value={targetSection}
                                 onChange={e => setTargetSection(e.target.value)}
-                                className="flex-1 border border-gray-300 p-2 rounded-md text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                                className="input flex-1"
                             >
                                 <option value="">Select Target Section</option>
                                 {sections.filter(s => s !== sourceSection).map(section => <option key={section} value={section}>{section}</option>)}
@@ -245,11 +245,7 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
                             <button
                                 onClick={handleChangeSection}
                                 disabled={selectedStudentIds.length === 0 || !targetSection || processing}
-                                className={`px-4 py-2 rounded-md font-bold shadow-md transition-all whitespace-nowrap
-                                    ${selectedStudentIds.length > 0 && targetSection && !processing
-                                        ? 'bg-violet-600 text-white hover:bg-violet-700 active:transform active:scale-95'
-                                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'}
-                                `}
+                                className={`btn ${selectedStudentIds.length > 0 && targetSection && !processing ? 'bg-violet-600 text-white hover:bg-violet-700 active:transform active:scale-95' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                             >
                                 {processing ? 'Processing...' : 'Click here for change section'}
                             </button>
@@ -258,8 +254,8 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
 
                     <div className="flex-1 overflow-auto bg-gray-50/30">
                         <table className="min-w-full text-sm border-collapse">
-                            <thead className="sticky top-0 bg-gray-100 z-10 shadow-sm border-b">
-                                <tr className="text-left text-gray-600 font-bold">
+                            <thead className="sticky top-0 z-10 shadow-sm border-b">
+                                <tr className="text-left">
                                     <th className="p-3">Student Name</th>
                                     <th className="p-3">Adm No</th>
                                     <th className="p-3">Father Name</th>

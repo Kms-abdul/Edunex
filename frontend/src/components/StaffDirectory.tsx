@@ -337,12 +337,12 @@ export default function StaffDirectory() {
     // ── Render helpers ────────────────────────────────────────────────────────
     const renderInput = ({ label, field, type = 'text', required = false, placeholder, disabled = false }: { label: string; field: string; type?: string; required?: boolean; placeholder?: string; disabled?: boolean }) => (
         <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+            <label className="label">
                 {label}{required && <span className="text-red-500 ml-0.5">*</span>}
             </label>
             <input
                 type={type}
-                className={`w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5 outline-none transition ${disabled ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'}`}
+                className={`input ${disabled ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'}`}
                 value={(form as any)[field] ?? ''}
                 onChange={(e) => set(field, e.target.value)}
                 required={required}
@@ -358,11 +358,11 @@ export default function StaffDirectory() {
         label: string; field: string; options: SelectOption[]; required?: boolean; placeholder?: string
     }) => (
         <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+            <label className="label">
                 {label}{required && <span className="text-red-500 ml-0.5">*</span>}
             </label>
             <select
-                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+                className="input"
                 value={(form as any)[field] ?? ''}
                 onChange={(e) => set(field, e.target.value)}
                 required={required}
@@ -381,11 +381,11 @@ export default function StaffDirectory() {
         label: string; field: string; options: { value: string; label: string }[]; required?: boolean
     }) => (
         <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+            <label className="label">
                 {label}{required && <span className="text-red-500 ml-0.5">*</span>}
             </label>
             <select
-                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+                className="input"
                 value={(form as any)[field] ?? ''}
                 onChange={(e) => set(field, e.target.value)}
                 required={required}
@@ -454,13 +454,13 @@ export default function StaffDirectory() {
 
             {/* ── Add Staff Form ────────────────────────────────────────────── */}
             {/* ── Filters and List (Hidden when editing/adding) ──────────────── */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-end gap-3 mb-4">
+            <div className="card p-4 flex flex-wrap items-end gap-3 mb-4">
                 {/* Branch Dropdown */}
                 {!isSingleBranch && (
                     <div className="w-48">
-                        <label className="block text-xs font-semibold text-slate-600 mb-1">Branch</label>
+                        <label className="label">Branch</label>
                         <select
-                            className="w-full text-sm border border-slate-300 rounded-lg bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            className="input"
                             value={searchBranchId}
                             onChange={(e) => setSearchBranchId(e.target.value)}
                         >
@@ -476,9 +476,9 @@ export default function StaffDirectory() {
 
                 {/* Department Dropdown */}
                 <div className="w-48">
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Department</label>
+                    <label className="label">Department</label>
                     <select
-                        className="w-full text-sm border border-slate-300 rounded-lg bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        className="input"
                         value={searchDeptId}
                         onChange={(e) => setSearchDeptId(e.target.value)}
                     >
@@ -491,9 +491,9 @@ export default function StaffDirectory() {
 
                 {/* Status Dropdown */}
                 <div className="w-40">
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
+                    <label className="label">Status</label>
                     <select
-                        className="w-full text-sm border border-slate-300 rounded-lg bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        className="input"
                         value={searchStatus}
                         onChange={(e) => setSearchStatus(e.target.value)}
                     >
@@ -505,9 +505,9 @@ export default function StaffDirectory() {
 
                 {/* Search By Dropdown */}
                 <div className="w-40">
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Search By</label>
+                    <label className="label">Search By</label>
                     <select
-                        className="w-full text-sm border border-slate-300 rounded-lg bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        className="input"
                         value={searchBy}
                         onChange={(e) => setSearchBy(e.target.value)}
                     >
@@ -522,11 +522,11 @@ export default function StaffDirectory() {
 
                 {/* Search Input */}
                 <div className="flex-1 min-w-[200px]">
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Search Query</label>
+                    <label className="label">Search Query</label>
                     <input
                         type="text"
                         placeholder="Search..."
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                        className="input"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && fetchData()}
@@ -537,7 +537,7 @@ export default function StaffDirectory() {
                 <div>
                     <button
                         onClick={fetchData}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors"
+                        className="btn-primary"
                     >
                         Search
                     </button>
@@ -550,19 +550,19 @@ export default function StaffDirectory() {
             </div>
 
             {/* ── Staff Table ───────────────────────────────────────────────── */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="card overflow-hidden">
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 border-b border-slate-200">
+                        <thead className="border-b border-slate-200">
                             <tr>
-                                <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Employee</th>
-                                <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Category</th>
-                                <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Department / Designation</th>
-                                <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
-                                <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">School & Branch</th>
-                                <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact</th>
-                                {canWrite && <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>}
+                                <th className="px-4 py-3">Employee</th>
+                                <th className="px-4 py-3">Category</th>
+                                <th className="px-4 py-3">Department / Designation</th>
+                                <th className="px-4 py-3">Type</th>
+                                <th className="px-4 py-3">School & Branch</th>
+                                <th className="px-4 py-3">Status</th>
+                                <th className="px-4 py-3">Contact</th>
+                                {canWrite && <th className="px-4 py-3 text-right">Actions</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">

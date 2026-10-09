@@ -15,7 +15,16 @@ interface FeeReceiptProps {
     paymentDate: string;
     paymentMode: string;
     paymentNote: string;
-    items: { title: string; payable: number }[];
+    items: {
+      title: string;
+      payable?: number;
+      amount?: number;
+      amount_paid?: number;
+      paid?: number;
+      due_amount?: number;
+      due?: number;
+      concession?: number;
+    }[];
     amount: number;
     concession: number;
     payable: number;
@@ -39,7 +48,7 @@ const ReceiptTemplate = ({ data, copyType, logo, schoolName }: { data: any, copy
       <div className="flex items-center justify-start mb-4">
         <img src={logo} alt="School Logo" className="h-16 mr-4" />
         <div>
-          <h1 className="text-2xl font-bold text-black">{schoolName}</h1>
+          <h1 className="text-xl font-semibold text-slate-900 tracking-tight text-black">{schoolName}</h1>
           <p className="text-md text-gray-600">Fee Receipt <span className="text-sm font-semibold ml-2">({copyType})</span></p>
         </div>
       </div>
@@ -64,21 +73,36 @@ const ReceiptTemplate = ({ data, copyType, logo, schoolName }: { data: any, copy
 
       {/* Fee Details Table */}
       <table className="w-full text-sm text-left mb-8">
-        <thead className="bg-gray-100 text-gray-700">
+        <thead className="">
           <tr>
-            <th className="px-4 py-2 font-semibold tracking-wider">SR. NO</th>
-            <th className="px-4 py-2 font-semibold tracking-wider">FEE DETAILS</th>
-            <th className="px-4 py-2 font-semibold tracking-wider text-right">AMOUNT</th>
+            <th className="px-4 py-2">SR. NO</th>
+            <th className="px-4 py-2">FEE DETAILS</th>
+            <th className="px-4 py-2 text-right">AMOUNT</th>
+            <th className="px-4 py-2 text-right">PAID</th>
+            <th className="px-4 py-2 text-right">DUE</th>
           </tr>
         </thead>
         <tbody>
-          {items.map((item: any, index: number) => (
-            <tr key={index} className="border-b">
-              <td className="px-4 py-3">{index + 1}</td>
-              <td className="px-4 py-3 font-medium">{item.title}</td>
-              <td className="px-4 py-3 text-right font-mono">₹{item.payable.toLocaleString('en-IN')}</td>
-            </tr>
-          ))}
+          {items.map((item: any, index: number) => {
+            const rowPaid = Number(item.amount_paid ?? item.paid ?? item.paidAmount ?? 0);
+            const rowDue = Number(item.due_amount ?? item.due ?? item.dueAmount ?? 0);
+            const rowAmount = Number(
+              item.amount !== undefined
+                ? item.amount
+                : item.payable !== undefined
+                ? item.payable
+                : rowPaid + rowDue
+            );
+            return (
+              <tr key={index} className="border-b">
+                <td className="px-4 py-3">{index + 1}</td>
+                <td className="px-4 py-3 font-medium">{item.title}</td>
+                <td className="px-4 py-3 text-right font-mono">₹{rowAmount.toLocaleString('en-IN')}</td>
+                <td className="px-4 py-3 text-right font-mono font-medium text-green-700">₹{rowPaid.toLocaleString('en-IN')}</td>
+                <td className="px-4 py-3 text-right font-mono font-medium text-red-600">₹{rowDue.toLocaleString('en-IN')}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
@@ -275,8 +299,8 @@ const FeeReceipt: React.FC<FeeReceiptProps> = ({ onClose, receiptData }) => {
   const schoolName = matchingBranch?.school_name || "MS LearnSpace";
   const resolvedLogo = schoolLogo;
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
+      <div className="card shadow-pop w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="printable-receipt">
           {/* We use the Template Component for the main display (Single Copy) */}
           <ReceiptTemplate data={receiptData} copyType="Student Copy" logo={resolvedLogo} schoolName={schoolName} />
@@ -284,8 +308,8 @@ const FeeReceipt: React.FC<FeeReceiptProps> = ({ onClose, receiptData }) => {
         </div>
 
         <div className="p-6 pt-0 flex justify-end space-x-4 no-print">
-          <button onClick={onClose} className="px-6 py-2 text-sm font-semibold text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200">Close</button>
-          <button onClick={handlePrint} className="px-6 py-2 text-sm font-semibold text-white bg-violet-700 rounded-md hover:bg-violet-800">Print</button>
+          <button onClick={onClose} className="btn-secondary">Close</button>
+          <button onClick={handlePrint} className="btn-primary">Print</button>
         </div>
       </div>
     </div>

@@ -108,16 +108,16 @@ export const BiometricDevices: React.FC = () => {
 
     if (!currentSchoolId || currentSchoolId === 'all') {
         return (
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center">
-                <h2 className="text-lg font-bold text-slate-800 mb-2">Biometric Devices</h2>
+            <div className="card p-6 text-center">
+                <h2 className="text-base font-semibold text-slate-900 mb-2">Biometric Devices</h2>
                 <p className="text-slate-500 text-sm">Please select a specific school from the top navigation to view and manage devices.</p>
             </div>
         );
     }
 
     return (
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-4">Biometric Devices</h2>
+        <div className="card p-6">
+            <h2 className="text-base font-semibold text-slate-900 mb-4">Biometric Devices</h2>
             
             {msg && (
                 <div className={`mb-4 p-3 rounded text-sm ${msg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
@@ -127,20 +127,20 @@ export const BiometricDevices: React.FC = () => {
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Device Code *</label>
-                    <input type="text" value={form.device_code} onChange={e => setForm({...form, device_code: e.target.value})} required className="w-full border border-slate-300 rounded px-3 py-2 text-sm" disabled={!!editingId} />
+                    <label className="label">Device Code *</label>
+                    <input type="text" value={form.device_code} onChange={e => setForm({...form, device_code: e.target.value})} required className="input" disabled={!!editingId} />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Device Name *</label>
-                    <input type="text" value={form.device_name} onChange={e => setForm({...form, device_name: e.target.value})} required className="w-full border border-slate-300 rounded px-3 py-2 text-sm" />
+                    <label className="label">Device Name *</label>
+                    <input type="text" value={form.device_name} onChange={e => setForm({...form, device_name: e.target.value})} required className="input" />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Serial Number</label>
-                    <input type="text" value={form.serial_number} onChange={e => setForm({...form, serial_number: e.target.value})} className="w-full border border-slate-300 rounded px-3 py-2 text-sm" />
+                    <label className="label">Serial Number</label>
+                    <input type="text" value={form.serial_number} onChange={e => setForm({...form, serial_number: e.target.value})} className="input" />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Comm Type</label>
-                    <select value={form.communication_type} onChange={e => setForm({...form, communication_type: e.target.value})} className="w-full border border-slate-300 rounded px-3 py-2 text-sm">
+                    <label className="label">Comm Type</label>
+                    <select value={form.communication_type} onChange={e => setForm({...form, communication_type: e.target.value})} className="input">
                         <option value="TCP">TCP/IP (Listener)</option>
                         <option value="HTTP">HTTP/API (Push)</option>
                         <option value="ADMS">ADMS</option>
@@ -148,31 +148,31 @@ export const BiometricDevices: React.FC = () => {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">IP Address</label>
-                    <input type="text" value={form.ip_address} onChange={e => setForm({...form, ip_address: e.target.value})} className="w-full border border-slate-300 rounded px-3 py-2 text-sm" />
+                    <label className="label">IP Address</label>
+                    <input type="text" value={form.ip_address} onChange={e => setForm({...form, ip_address: e.target.value})} className="input" />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Port</label>
-                    <input type="number" value={form.port} onChange={e => setForm({...form, port: parseInt(e.target.value)})} className="w-full border border-slate-300 rounded px-3 py-2 text-sm" />
+                    <label className="label">Port</label>
+                    <input type="number" value={form.port} onChange={e => setForm({...form, port: parseInt(e.target.value)})} className="input" />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Comm Password</label>
-                    <input type="text" value={form.communication_password} onChange={e => setForm({...form, communication_password: e.target.value})} className="w-full border border-slate-300 rounded px-3 py-2 text-sm" />
+                    <label className="label">Comm Password</label>
+                    <input type="text" value={form.communication_password} onChange={e => setForm({...form, communication_password: e.target.value})} className="input" />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Sync Mode</label>
-                    <select value={form.sync_mode} onChange={e => setForm({...form, sync_mode: e.target.value})} className="w-full border border-slate-300 rounded px-3 py-2 text-sm">
+                    <label className="label">Sync Mode</label>
+                    <select value={form.sync_mode} onChange={e => setForm({...form, sync_mode: e.target.value})} className="input">
                         <option value="AUTO">Auto</option>
                         <option value="MANUAL">Manual</option>
                     </select>
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Sync Interval (Mins)</label>
-                    <input type="number" value={form.sync_interval_minutes} onChange={e => setForm({...form, sync_interval_minutes: parseInt(e.target.value)})} className="w-full border border-slate-300 rounded px-3 py-2 text-sm" />
+                    <label className="label">Sync Interval (Mins)</label>
+                    <input type="number" value={form.sync_interval_minutes} onChange={e => setForm({...form, sync_interval_minutes: parseInt(e.target.value)})} className="input" />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Status</label>
-                    <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="w-full border border-slate-300 rounded px-3 py-2 text-sm">
+                    <label className="label">Status</label>
+                    <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="input">
                         <option value="ACTIVE">Active</option>
                         <option value="INACTIVE">Inactive</option>
                         <option value="MAINTENANCE">Maintenance</option>
@@ -187,11 +187,11 @@ export const BiometricDevices: React.FC = () => {
                                 ip_address: '', port: 5005, communication_type: 'TCP', communication_password: '',
                                 sync_mode: 'AUTO', sync_interval_minutes: 5, timezone: 'Asia/Kolkata', status: 'ACTIVE'
                             });
-                        }} className="px-4 py-2 text-sm bg-slate-100 text-slate-700 rounded hover:bg-slate-200 transition-colors">
+                        }} className="btn-secondary">
                             Cancel
                         </button>
                     )}
-                    <button type="submit" className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                    <button type="submit" className="btn-primary">
                         {editingId ? 'Update Device' : 'Add Device'}
                     </button>
                 </div>
@@ -200,16 +200,16 @@ export const BiometricDevices: React.FC = () => {
             {loading ? (
                 <div className="text-center py-4 text-slate-500">Loading devices...</div>
             ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-slate-50 border-y border-slate-200">
-                                <th className="py-3 px-4 text-xs font-semibold text-slate-600">Code / Name</th>
-                                <th className="py-3 px-4 text-xs font-semibold text-slate-600">Network Info</th>
-                                <th className="py-3 px-4 text-xs font-semibold text-slate-600">Sync Info</th>
-                                <th className="py-3 px-4 text-xs font-semibold text-slate-600">Health</th>
-                                <th className="py-3 px-4 text-xs font-semibold text-slate-600">Status</th>
-                                <th className="py-3 px-4 text-xs font-semibold text-slate-600 text-right">Actions</th>
+                            <tr className="border-y border-slate-200">
+                                <th className="py-3 px-4">Code / Name</th>
+                                <th className="py-3 px-4">Network Info</th>
+                                <th className="py-3 px-4">Sync Info</th>
+                                <th className="py-3 px-4">Health</th>
+                                <th className="py-3 px-4">Status</th>
+                                <th className="py-3 px-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody>

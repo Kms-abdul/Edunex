@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Page } from '../App';
-import { ChevronDownIcon, DashboardIcon, FinancialIcon, DocumentIcon, UserIcon, ReceiptIcon, CurrencyRupeeIcon, TimeIcon, SchoolIcon, ChartBarIcon, DiscountIcon, TrashIcon, RefreshIcon, DocumentReportIcon } from './icons';
+import { DashboardIcon, FinancialIcon, DocumentIcon, UserIcon, ReceiptIcon, TimeIcon, SchoolIcon, ChartBarIcon, DiscountIcon, TrashIcon, RefreshIcon, DocumentReportIcon, CurrencyRupeeIcon } from './icons';
+import PageHeader from './ui/PageHeader';
+import ModuleTile from './ui/ModuleTile';
 import { useAuth } from '../contexts/AuthContext';
 
 interface FinancialLayoutProps {
@@ -11,7 +13,7 @@ interface FinancialLayoutProps {
 
 const FinancialLayout: React.FC<FinancialLayoutProps> = ({ children, currentPage, navigateTo }) => {
     const [activeTab, setActiveTab] = useState<string>('Dashboard');
-    const { user, hasPermission } = useAuth();
+    const { hasPermission } = useAuth();
     const canAccess = (permission?: string) => {
         if (!permission) return true;
         return hasPermission(permission, 'read');
@@ -48,14 +50,17 @@ const FinancialLayout: React.FC<FinancialLayoutProps> = ({ children, currentPage
             ]
         },
         {
-            name: 'Petty Cash',
-            id: 'pettycash',
+            name: 'Cash Management',
+            id: 'cash-management',
             icon: <FinancialIcon className="w-5 h-5" />,
             subItems: [
                 { name: 'Petty Cash Entry', page: 'petty-cash' as Page, icon: <ReceiptIcon className="w-4 h-4" />, permission: 'fees.fee.petty-cash' },
+                { name: 'Cash Remittance Deposit', page: 'remittance-deposit' as Page, icon: <ReceiptIcon className="w-4 h-4" />, permission: 'fees.fee.remittance-deposit' },
+                { name: 'Remittance Approvals', page: 'remittance-approvals' as Page, icon: <DocumentReportIcon className="w-4 h-4" />, permission: 'fees.fee.remittance-approvals' },
                 { name: 'Fund Allocation', page: 'fund-allocation' as Page, icon: <DocumentIcon className="w-4 h-4" />, permission: 'fees.fee.petty-cash-fund-allocation' },
                 { name: 'Month Wise Ledger', page: 'month-wise-ledger' as Page, icon: <ChartBarIcon className="w-4 h-4" />, permission: 'fees.fee.petty-cash-monthly-expenses' },
                 { name: 'Petty Cash Approval', page: 'petty-cash-approval' as Page, icon: <DocumentReportIcon className="w-4 h-4" />, permission: 'fees.fee.petty-cash-approval' },
+                { name: 'Reconciliation Dashboard', page: 'reconciliation-dashboard' as Page, icon: <ChartBarIcon className="w-4 h-4" />, permission: 'fees.fee.reconciliation-dashboard' },
             ]
         },
         {
@@ -75,8 +80,8 @@ const FinancialLayout: React.FC<FinancialLayoutProps> = ({ children, currentPage
     // When inside an actual component page, hide the Financial Header completely
     if (currentPage !== 'fee') {
         return (
-            <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
-                <div className="flex-1 overflow-y-auto p-6 relative">
+            <div className="flex flex-col h-full bg-surface-muted overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative">
                     {children}
                 </div>
             </div>
@@ -84,25 +89,29 @@ const FinancialLayout: React.FC<FinancialLayoutProps> = ({ children, currentPage
     }
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
+        <div className="flex flex-col h-full bg-surface-muted overflow-hidden">
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col h-full overflow-hidden">
                 {/* Financial Header */}
-                <div className="bg-white border-b border-slate-200 shadow-sm z-20 relative flex flex-col">
-                    <div className="px-6 py-4 flex justify-between items-center">
-                        <h2 className="text-2xl font-semibold text-slate-900 flex items-center">
-                            <span className="text-blue-600 mr-2">₹</span> Financial Administration
-                        </h2>
-                        <button
-                            className="px-6 py-2.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-md font-medium"
-                            onClick={() => navigateTo('take-fee')}
-                        >
-                            Collect Fee
-                        </button>
+                <div className="bg-white border-b border-slate-200 z-20 relative flex flex-col">
+                    <div className="px-4 sm:px-6 pt-5">
+                        <PageHeader
+                            eyebrow="Financial"
+                            title="Financial Administration"
+                            subtitle="Fee collection, masters, reports, concessions and petty cash."
+                            icon={<CurrencyRupeeIcon className="w-6 h-6" />}
+                            className="mb-4"
+                            actions={
+                                <button className="btn-primary" onClick={() => navigateTo('take-fee')}>
+                                    <ReceiptIcon className="w-4 h-4" />
+                                    Collect Fee
+                                </button>
+                            }
+                        />
                     </div>
 
                     {/* Main Navigation Tabs */}
-                    <div className="px-6 flex space-x-8 border-t border-slate-100 bg-white overflow-visible">
+                    <div className="px-4 sm:px-6 flex gap-1 overflow-x-auto">
                         {menuItems.map((item, idx) => {
                             if (!canAccess(item.permission)) {
                                 return null;
@@ -126,14 +135,14 @@ const FinancialLayout: React.FC<FinancialLayoutProps> = ({ children, currentPage
                                             navigateTo(item.page as Page);
                                         }
                                     }}
-                                    className={`flex items-center py-4 border-b-2 text-sm font-medium transition-colors whitespace-nowrap ${isActive
-                                        ? 'border-blue-600 text-blue-700'
+                                    className={`relative flex items-center gap-2 px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${isActive
+                                        ? 'border-brand-600 text-brand-700'
                                         : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
                                         }`}
                                 >
-                                    <div className={`mr-2 ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>
+                                    <span className={isActive ? 'text-brand-600' : 'text-slate-400'}>
                                         {item.icon}
-                                    </div>
+                                    </span>
                                     {item.name}
                                 </button>
                             );
@@ -142,29 +151,24 @@ const FinancialLayout: React.FC<FinancialLayoutProps> = ({ children, currentPage
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto bg-slate-50 p-6 relative">
+                <div className="flex-1 overflow-y-auto bg-surface-muted p-4 sm:p-6 relative">
                     {activeTab === 'Dashboard' ? (
                         children
                     ) : (
-                        <div className="max-w-7xl mx-auto">
-                            <h3 className="text-xl font-semibold text-slate-800 mb-6 flex items-center">
-                                <span className="text-blue-600 mr-3">{activeMenu?.icon}</span>
-                                {activeTab} Modules
-                            </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                        <div className="max-w-7xl mx-auto animate-fade-in">
+                            <div className="flex items-center gap-2 mb-4">
+                                <span className="text-brand-600">{activeMenu?.icon}</span>
+                                <h3 className="text-base font-semibold text-slate-900">{activeTab} Modules</h3>
+                                <span className="badge-neutral ml-1">{activeMenu?.subItems?.filter(sub => canAccess(sub.permission)).length || 0}</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                 {activeMenu?.subItems?.filter(sub => canAccess(sub.permission)).map((sub, idx) => (
-                                    <button
+                                    <ModuleTile
                                         key={idx}
+                                        name={sub.name}
+                                        icon={sub.icon}
                                         onClick={() => navigateTo(sub.page)}
-                                        className="group relative bg-white rounded-xl p-6 border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                    >
-                                        <div className={`bg-blue-50 text-blue-600 w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform duration-200`}>
-                                            {sub.icon}
-                                        </div>
-                                        <h4 className="font-semibold text-slate-900 text-base mb-1 group-hover:text-blue-600 transition-colors">
-                                            {sub.name}
-                                        </h4>
-                                    </button>
+                                    />
                                 ))}
                             </div>
                         </div>

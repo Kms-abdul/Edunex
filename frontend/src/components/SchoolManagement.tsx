@@ -124,11 +124,11 @@ const SchoolManagement: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <div className="min-h-full bg-slate-50 p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">School Management</h1>
+          <h1 className="text-xl font-semibold text-slate-900 tracking-tight">School Management</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {isGlobalManager ? 'Full administration of all schools and branches' : 'Manage your assigned schools and branches'}
           </p>
@@ -141,7 +141,7 @@ const SchoolManagement: React.FC = () => {
               setShowSchoolForm(true);
               setMsg(null);
             }}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow"
+            className="btn-primary"
           >
             Create School
           </button>
@@ -169,7 +169,7 @@ const SchoolManagement: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {schools.map(school => (
-            <div key={school.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div key={school.id} className="card overflow-hidden flex flex-col">
               {/* School Info Block */}
               <div className="p-6 border-b border-slate-100 flex items-start justify-between">
                 <div className="flex items-center space-x-4">
@@ -247,7 +247,7 @@ const SchoolManagement: React.FC = () => {
                     </div>
                   ) : (
                     school.branches.map(branch => (
-                      <div key={branch.id} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl hover:border-slate-300 transition-colors">
+                      <div key={branch.id} className="card flex items-center justify-between p-3 hover:border-slate-300 transition-colors">
                         <div className="flex items-center space-x-3">
                           <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-sm">
                             {branch.branch_name.charAt(0)}
@@ -270,43 +270,43 @@ const SchoolManagement: React.FC = () => {
       {/* School Form Dialog */}
       {showSchoolForm && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-100">
+          <div className="card shadow-pop w-full max-w-lg overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">{editingSchoolId ? 'Edit School Details' : 'Create New School'}</h2>
+              <h2 className="text-base font-semibold text-slate-900">{editingSchoolId ? 'Edit School Details' : 'Create New School'}</h2>
               <button onClick={() => setShowSchoolForm(false)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
             <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">School Name</label>
+                <label className="label">School Name</label>
                 <input
                   type="text"
                   value={schoolForm.school_name}
                   onChange={e => setSchoolForm(f => ({ ...f, school_name: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="input"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">School Code</label>
+                  <label className="label">School Code</label>
                   <input
                     type="text"
                     value={schoolForm.school_code}
                     onChange={e => setSchoolForm(f => ({ ...f, school_code: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Subscription Plan</label>
+                  <label className="label">Subscription Plan</label>
                   <input
                     type="text"
                     value={schoolForm.subscription_plan}
                     onChange={e => setSchoolForm(f => ({ ...f, subscription_plan: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="input"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Theme Color</label>
+                <label className="label">Theme Color</label>
                 <input
                   type="color"
                   value={schoolForm.theme_color}
@@ -315,37 +315,37 @@ const SchoolManagement: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Email</label>
+                <label className="label">Email</label>
                 <input
                   type="email"
                   value={schoolForm.email}
                   onChange={e => setSchoolForm(f => ({ ...f, email: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="input"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Phone</label>
+                <label className="label">Phone</label>
                 <input
                   type="text"
                   value={schoolForm.phone}
                   onChange={e => setSchoolForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="input"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Address</label>
+                <label className="label">Address</label>
                 <textarea
                   value={schoolForm.address}
                   onChange={e => setSchoolForm(f => ({ ...f, address: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 h-20"
+                  className="input h-20"
                 />
               </div>
             </div>
             <div className="px-6 py-4 border-t border-slate-100 flex gap-3">
-              <button onClick={handleSaveSchool} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-xl text-sm transition-colors">
+              <button onClick={handleSaveSchool} className="btn-primary flex-1">
                 Save School
               </button>
-              <button onClick={() => setShowSchoolForm(false)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 rounded-xl text-sm transition-colors">
+              <button onClick={() => setShowSchoolForm(false)} className="btn-secondary flex-1">
                 Cancel
               </button>
             </div>
@@ -356,38 +356,38 @@ const SchoolManagement: React.FC = () => {
       {/* Branch Form Dialog */}
       {activeBranchSchoolId !== null && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100">
+          <div className="card shadow-pop w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Add New Branch</h2>
+              <h2 className="text-base font-semibold text-slate-900">Add New Branch</h2>
               <button onClick={() => setActiveBranchSchoolId(null)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Branch Name</label>
+                <label className="label">Branch Name</label>
                 <input
                   type="text"
                   placeholder="e.g. Hyderabad Branch"
                   value={branchForm.branch_name}
                   onChange={e => setBranchForm(f => ({ ...f, branch_name: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="input"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Branch Code</label>
+                <label className="label">Branch Code</label>
                 <input
                   type="text"
                   placeholder="e.g. HYD"
                   value={branchForm.branch_code}
                   onChange={e => setBranchForm(f => ({ ...f, branch_code: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="input"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Location Code</label>
+                <label className="label">Location Code</label>
                 <select
                   value={branchForm.location_code}
                   onChange={e => setBranchForm(f => ({ ...f, location_code: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="input"
                 >
                   <option value="">-- Select Location --</option>
                   {locations.map(loc => (
@@ -397,10 +397,10 @@ const SchoolManagement: React.FC = () => {
               </div>
             </div>
             <div className="px-6 py-4 border-t border-slate-100 flex gap-3">
-              <button onClick={handleSaveBranch} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-xl text-sm transition-colors">
+              <button onClick={handleSaveBranch} className="btn-primary flex-1">
                 Save Branch
               </button>
-              <button onClick={() => setActiveBranchSchoolId(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 rounded-xl text-sm transition-colors">
+              <button onClick={() => setActiveBranchSchoolId(null)} className="btn-secondary flex-1">
                 Cancel
               </button>
             </div>

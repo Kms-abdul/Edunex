@@ -192,24 +192,24 @@ const FranchiseManagement: React.FC = () => {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <div className="min-h-full bg-slate-50 p-4 md:p-6">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Franchise Management</h1>
+          <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Franchise Management</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage schools, locations, and branches</p>
         </div>
 
         <div className="flex gap-2">
           <button
             onClick={() => setActiveTab('schools')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'schools' ? 'bg-purple-600 text-white shadow' : 'bg-white text-gray-600 border'}`}
+            className={`btn ${activeTab === 'schools' ? 'bg-purple-600 text-white shadow' : 'bg-white text-gray-600 border'}`}
           >
             Schools
           </button>
           <button
             onClick={() => setActiveTab('locations')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'locations' ? 'bg-purple-600 text-white shadow' : 'bg-white text-gray-600 border'}`}
+            className={`btn ${activeTab === 'locations' ? 'bg-purple-600 text-white shadow' : 'bg-white text-gray-600 border'}`}
           >
             Locations (Cities)
           </button>
@@ -217,7 +217,7 @@ const FranchiseManagement: React.FC = () => {
 
         {isSuperAdmin && activeTab === 'schools' && (
           <button onClick={openCreateSchool}
-            className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors shadow">
+            className="btn-primary">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
@@ -227,7 +227,7 @@ const FranchiseManagement: React.FC = () => {
 
         {isSuperAdmin && activeTab === 'locations' && (
           <button onClick={() => { setShowLocForm(true); setMsg(null); }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow">
+            className="btn-primary">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
@@ -244,10 +244,10 @@ const FranchiseManagement: React.FC = () => {
 
       {/* ── School Form Modal ──────────────────────────────────────────────── */}
       {showSchoolForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="card shadow-pop w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b sticky top-0 bg-white z-10">
-              <h2 className="text-lg font-bold text-gray-900">{editingSchoolId ? 'Edit School' : 'New School'}</h2>
+              <h2 className="text-base font-semibold text-slate-900">{editingSchoolId ? 'Edit School' : 'New School'}</h2>
               <button onClick={() => setShowSchoolForm(false)} className="text-gray-400 hover:text-gray-600">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -277,7 +277,7 @@ const FranchiseManagement: React.FC = () => {
                   <p className="text-sm font-medium text-gray-700">School Logo</p>
                   <p className="text-xs text-gray-400 mb-2">PNG, JPG, WebP (click to upload)</p>
                   <button type="button" onClick={() => fileRef.current?.click()}
-                    className="text-xs bg-purple-50 text-purple-600 border border-purple-200 px-3 py-1 rounded-lg hover:bg-purple-100 transition-colors">
+                    className="btn btn-sm text-xs bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100">
                     Choose File
                   </button>
                   <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
@@ -293,16 +293,16 @@ const FranchiseManagement: React.FC = () => {
                 { label: 'Subscription Plan', key: 'subscription_plan', type: 'text', placeholder: 'e.g. Enterprise, Basic' },
               ].map(({ label, key, type, placeholder }) => (
                 <div key={key}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                  <label className="label">{label}</label>
                   <input type={type} value={(schoolForm as any)[key]}
                     onChange={e => setSchoolForm(f => ({ ...f, [key]: e.target.value }))}
                     placeholder={placeholder}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500" />
+                    className="input" />
                 </div>
               ))}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Theme Color</label>
+                <label className="label">Theme Color</label>
                 <div className="flex items-center gap-3">
                   <input type="color" value={schoolForm.theme_color}
                     onChange={e => setSchoolForm(f => ({ ...f, theme_color: e.target.value }))}
@@ -314,11 +314,11 @@ const FranchiseManagement: React.FC = () => {
 
             <div className="flex gap-3 p-5 border-t">
               <button onClick={handleSaveSchool}
-                className="flex-1 bg-purple-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors">
+                className="btn-primary flex-1">
                 {editingSchoolId ? 'Update School' : 'Create School'}
               </button>
               <button onClick={() => setShowSchoolForm(false)}
-                className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
+                className="btn-secondary flex-1">
                 Cancel
               </button>
             </div>
@@ -328,10 +328,10 @@ const FranchiseManagement: React.FC = () => {
 
       {/* ── Location Form Modal ──────────────────────────────────────────────── */}
       {showLocForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="card shadow-pop w-full max-w-sm">
             <div className="flex items-center justify-between p-5 border-b">
-              <h2 className="text-lg font-bold text-gray-900">New Location</h2>
+              <h2 className="text-base font-semibold text-slate-900">New Location</h2>
               <button onClick={() => setShowLocForm(false)} className="text-gray-400 hover:text-gray-600">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -345,19 +345,19 @@ const FranchiseManagement: React.FC = () => {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">City/Location Name</label>
+                <label className="label">City/Location Name</label>
                 <input type="text" value={locForm.name} onChange={e => setLocForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Hyderabad" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+                  placeholder="e.g. Hyderabad" className="input" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Short Code (3 letters)</label>
+                <label className="label">Short Code (3 letters)</label>
                 <input type="text" value={locForm.code} onChange={e => setLocForm(f => ({ ...f, code: e.target.value.toUpperCase().slice(0, 3) }))}
-                  placeholder="e.g. HYD" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+                  placeholder="e.g. HYD" className="input" />
               </div>
             </div>
             <div className="flex gap-3 p-5 border-t">
-              <button onClick={handleSaveLocation} className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium">Create Location</button>
-              <button onClick={() => setShowLocForm(false)} className="flex-1 bg-gray-100 py-2 rounded-lg text-sm font-medium">Cancel</button>
+              <button onClick={handleSaveLocation} className="btn-primary flex-1">Create Location</button>
+              <button onClick={() => setShowLocForm(false)} className="btn-secondary flex-1">Cancel</button>
             </div>
           </div>
         </div>
@@ -365,7 +365,7 @@ const FranchiseManagement: React.FC = () => {
 
       {/* ── Tabs Content ───────────────────────────────────────────────────── */}
       {activeTab === 'locations' ? (
-        <div className="bg-white rounded-2xl border shadow-sm p-6">
+        <div className="card p-6">
           <h2 className="font-bold text-gray-900 mb-4">Existing Locations</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {locations.map(loc => (
@@ -386,7 +386,7 @@ const FranchiseManagement: React.FC = () => {
           {loading ? (
             <div className="text-center py-16 text-gray-400">Loading schools...</div>
           ) : schools.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300">
+            <div className="card text-center py-16 text-gray-400 border-dashed">
               <svg className="mx-auto w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
@@ -395,11 +395,11 @@ const FranchiseManagement: React.FC = () => {
           ) : (
             <div className="space-y-6">
               {schools.map(school => (
-                <div key={school.id} className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                <div key={school.id} className="card overflow-hidden">
                   {/* School Header */}
                   <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-purple-50 to-white">
                     <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-xl border-2 border-purple-100 overflow-hidden bg-white flex items-center justify-center shadow-sm flex-shrink-0">
+                      <div className="card w-14 h-14 border-2 border-purple-100 overflow-hidden flex items-center justify-center flex-shrink-0">
                         {school.logo_url
                           ? <img src={school.logo_url.startsWith('/') ? `${API_BASE}${school.logo_url}` : school.logo_url} alt={school.school_name}
                             className="w-full h-full object-contain"
@@ -408,7 +408,7 @@ const FranchiseManagement: React.FC = () => {
                         }
                       </div>
                       <div>
-                        <h2 className="font-bold text-gray-900 text-lg">{school.school_name}</h2>
+                        <h2 className="text-base font-semibold text-slate-900">{school.school_name}</h2>
                         <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                           {school.school_code && (
                             <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">{school.school_code}</span>
@@ -457,14 +457,14 @@ const FranchiseManagement: React.FC = () => {
                         <p className="text-xs font-semibold text-purple-700 mb-3">New Branch</p>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <input value={branchForm.branch_name} onChange={e => setBranchForm(f => ({ ...f, branch_name: e.target.value }))}
-                            placeholder="Branch Name *" className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500" />
+                            placeholder="Branch Name *" className="input w-auto" />
                           <input value={branchForm.branch_code} onChange={e => setBranchForm(f => ({ ...f, branch_code: e.target.value }))}
-                            placeholder="Code * (e.g. VZG01)" className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500" />
+                            placeholder="Code * (e.g. VZG01)" className="input w-auto" />
 
                           <select
                             value={branchForm.location_code}
                             onChange={e => setBranchForm(f => ({ ...f, location_code: e.target.value }))}
-                            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
+                            className="input w-auto"
                           >
                             <option value="">-- Select Location --</option>
                             {locations.map(loc => (
@@ -474,11 +474,11 @@ const FranchiseManagement: React.FC = () => {
                         </div>
                         <div className="flex gap-2 mt-3">
                           <button onClick={() => handleSaveBranch(school.id)} disabled={savingBranch}
-                            className="flex-1 bg-purple-600 text-white py-2 rounded-lg text-xs font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
+                            className="btn-primary flex-1">
                             {savingBranch ? 'Saving...' : 'Save Branch'}
                           </button>
                           <button onClick={() => setActiveBranchSchoolId(null)}
-                            className="px-4 bg-white border border-gray-300 text-gray-600 py-2 rounded-lg text-xs hover:bg-gray-50 transition-colors">
+                            className="btn-secondary">
                             Cancel
                           </button>
                         </div>

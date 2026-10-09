@@ -109,7 +109,7 @@ const UpdateRebateDate: React.FC = () => {
 
     return (
         <div className="p-6 max-w-6xl mx-auto">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+            <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 flex items-center">
                 <span className="text-violet-600 mr-2">📅</span> Update Rebate Date
             </h2>
 
@@ -125,24 +125,24 @@ const UpdateRebateDate: React.FC = () => {
                 </div>
             )}
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="card overflow-hidden">
                 <div className="p-4 bg-gray-50 border-b border-gray-200">
                     <p className="text-sm text-gray-600">
                         Update the due date (rebate date) for student fees corresponding to each installment in the current branch <strong>({branch})</strong> and academic year <strong>({academicYear})</strong>.
                         Note: This will not change the installment definition's Last Pay Date, but it will update the actual due dates for all students assigned this fee.
                     </p>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
                     <table className="min-w-full bg-white">
-                        <thead className="bg-gray-100">
+                        <thead className="">
                             <tr>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Title</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Fee Type</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Start Date</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">End Date</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Original Cutoff Date</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">New Rebate Date</th>
-                                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 border-b">Action</th>
+                                <th className="px-4 py-3 text-left border-b">Title</th>
+                                <th className="px-4 py-3 text-left border-b">Fee Type</th>
+                                <th className="px-4 py-3 text-left border-b">Start Date</th>
+                                <th className="px-4 py-3 text-left border-b">End Date</th>
+                                <th className="px-4 py-3 text-left border-b">Original Cutoff Date</th>
+                                <th className="px-4 py-3 text-left border-b">New Rebate Date</th>
+                                <th className="px-4 py-3 text-center border-b">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -174,19 +174,14 @@ const UpdateRebateDate: React.FC = () => {
                                                 type="date"
                                                 value={newDates[inst.id] || ''}
                                                 onChange={(e) => handleDateChange(inst.id, e.target.value)}
-                                                className="w-full px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-violet-500"
+                                                className="input"
                                             />
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             <button
                                                 onClick={() => handleSave(inst)}
                                                 disabled={!newDates[inst.id] || savingId === inst.id}
-                                                className={`px-4 py-1.5 rounded text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-violet-500 transition-colors ${!newDates[inst.id]
-                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                    : savingId === inst.id
-                                                        ? 'bg-violet-400 text-white cursor-wait'
-                                                        : 'bg-violet-600 text-white hover:bg-violet-700'
-                                                    }`}
+                                                className={`btn btn-sm ${!newDates[inst.id] ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : savingId === inst.id ? 'bg-violet-400 text-white cursor-wait' : 'bg-violet-600 text-white hover:bg-violet-700' }`}
                                             >
                                                 {savingId === inst.id ? 'Saving...' : 'Update'}
                                             </button>

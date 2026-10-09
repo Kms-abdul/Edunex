@@ -278,7 +278,7 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
             <div className="p-6 text-red-600">
                 <h2 className="text-xl font-bold mb-4">Error</h2>
                 <p>{error}</p>
-                <button onClick={() => window.location.reload()} className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
+                <button onClick={() => window.location.reload()} className="btn-primary mt-4">
                     Retry
                 </button>
             </div>
@@ -286,14 +286,14 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
     }
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
-            <h2 className="text-2xl font-bold mb-6 text-[#4318FF]">Assign Special Fee Type</h2>
+        <div className="p-6 bg-gray-50 min-h-full">
+            <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 text-brand-600">Assign Special Fee Type</h2>
 
-            <div className="bg-white p-4 rounded-xl shadow-sm mb-6 flex flex-wrap gap-4 items-end">
+            <div className="card p-4 mb-6 flex flex-wrap gap-4 items-end">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                    <label className="label">Class</label>
                     <select
-                        className="border rounded-lg px-3 py-2 w-40"
+                        className="input w-40"
                         value={selectedClass}
                         onChange={(e) => setSelectedClass(e.target.value)}
                     >
@@ -302,9 +302,9 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
+                    <label className="label">Section</label>
                     <select
-                        className="border rounded-lg px-3 py-2 w-40"
+                        className="input w-40"
                         value={selectedSection}
                         onChange={(e) => setSelectedSection(e.target.value)}
                     >
@@ -315,12 +315,12 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
             </div>
 
             <div className="flex gap-6">
-                <div className="w-1/3 bg-white p-4 rounded-xl shadow-sm h-fit">
+                <div className="card w-1/3 p-4 h-fit">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-bold text-lg">Special Fee Type</h3>
+                        <h3 className="text-base font-semibold text-slate-900">Special Fee Type</h3>
                         <button
                             onClick={() => navigateTo && navigateTo('fee-type')}
-                            className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-sm"
+                            className="btn-success btn-sm"
                         >
                             + Add Special Fee Type
                         </button>
@@ -346,14 +346,14 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
                                                 type="checkbox"
                                                 checked={isSelected}
                                                 onChange={(e) => handleFeeSelection(ft.id, e.target.checked)}
-                                                className="w-4 h-4 text-[#4318FF]"
+                                                className="w-4 h-4 text-brand-600"
                                             />
                                             <span>{ft.display_name || ft.fee_type}</span>
                                         </div>
                                         {isSelected && (
                                             <input
                                                 type="number"
-                                                className="border rounded px-2 py-1 w-24 text-right"
+                                                className="input w-24 text-right"
                                                 placeholder="0"
                                                 value={selectedFee?.amount || ''}
                                                 onChange={(e) => handleFeeAmountChange(ft.id, e.target.value)}
@@ -367,10 +367,7 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
 
                     <div className="mt-6 flex justify-end">
                         <button
-                            className={`px-6 py-2 rounded-lg text-white font-medium ${selectedStudentIds.length > 0 && selectedFees.length > 0
-                                ? 'bg-green-500 hover:bg-green-600'
-                                : 'bg-gray-300 cursor-not-allowed'
-                                }`}
+                            className={`btn text-white ${selectedStudentIds.length > 0 && selectedFees.length > 0 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-300 cursor-not-allowed' }`}
                             onClick={handleAssignFees}
                             disabled={selectedStudentIds.length === 0 || selectedFees.length === 0 || assigning}
                         >
@@ -379,22 +376,22 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
                     </div>
                 </div>
 
-                <div className="w-2/3 bg-white p-4 rounded-xl shadow-sm">
+                <div className="card w-2/3 p-4">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-bold text-lg">Student List</h3>
+                        <h3 className="text-base font-semibold text-slate-900">Student List</h3>
                         <input
                             type="text"
                             placeholder="Search"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="border rounded-lg px-3 py-1 text-sm"
+                            className="input w-auto"
                         />
                     </div>
 
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto rounded-lg border border-slate-200">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="border-b text-gray-500 text-sm">
+                                <tr className="border-b">
                                     <th className="p-2 w-10">
                                         <input
                                             type="checkbox"

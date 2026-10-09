@@ -174,7 +174,7 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
     const previousYears = getPreviousYears();
 
     return (
-        <div className="p-4 min-h-screen bg-gray-50">
+        <div className="p-4 min-h-full bg-gray-50">
             {/* ── Header ── */}
             <div className="flex items-center justify-between mb-4">
                 <div>
@@ -184,7 +184,7 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
                     </p>
                 </div>
                 {onBack && (
-                    <button onClick={onBack} className="text-sm bg-white border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-100">
+                    <button onClick={onBack} className="btn-secondary btn-sm">
                         ← Back
                     </button>
                 )}
@@ -201,7 +201,7 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
             </div>
 
             {/* ── Year Selectors ── */}
-            <div className="bg-white rounded-lg shadow p-4 mb-4">
+            <div className="card p-4 mb-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* STEP 1: The LATER year (where students were wrongly promoted TO) */}
                     <div>
@@ -211,7 +211,7 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
                         <select
                             value={sourceYear}
                             onChange={e => { setSourceYear(e.target.value); setRestoreYear(''); }}
-                            className="w-full border border-red-300 p-2 rounded bg-red-50 text-sm"
+                            className="input border-red-300 bg-red-50"
                         >
                             <option value="">— Select Year —</option>
                             {sortedYears.map(y => <option key={y} value={y}>{y}</option>)}
@@ -229,7 +229,7 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
                         <select
                             value={restoreYear}
                             onChange={e => setRestoreYear(e.target.value)}
-                            className="w-full border border-green-300 p-2 rounded bg-green-50 text-sm"
+                            className="input border-green-300 bg-green-50"
                             disabled={!sourceYear}
                         >
                             <option value="">— Select Year —</option>
@@ -269,7 +269,7 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
 
             {/* ── Student Table ── */}
             {sourceYear && (
-                <div className="bg-white rounded-lg shadow">
+                <div className="card">
                     <div className="p-3 border-b flex items-center justify-between gap-3 bg-red-50 rounded-t-lg">
                         <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-red-700">
@@ -283,7 +283,7 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
                             placeholder="Search by name or adm no..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="border p-1.5 rounded text-sm w-56"
+                            className="input w-56"
                         />
                     </div>
 
@@ -299,7 +299,7 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
                             </div>
                         ) : (
                             <table className="w-full text-sm border-collapse">
-                                <thead className="bg-gray-100 sticky top-0">
+                                <thead className="sticky top-0">
                                     <tr>
                                         <th className="p-2 border text-center w-10">
                                             <input
@@ -359,11 +359,7 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
                         <button
                             onClick={handleDemote}
                             disabled={selectedIds.length === 0 || !restoreYear || processing}
-                            className={`px-6 py-2 rounded font-semibold text-sm transition-all
-                                ${selectedIds.length > 0 && restoreYear && !processing
-                                    ? 'bg-red-600 text-white hover:bg-red-700 shadow'
-                                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                }`}
+                            className={`btn ${selectedIds.length > 0 && restoreYear && !processing ? 'bg-red-600 text-white hover:bg-red-700 shadow' : 'bg-gray-200 text-gray-400 cursor-not-allowed' }`}
                         >
                             {processing
                                 ? '⏳ Processing...'

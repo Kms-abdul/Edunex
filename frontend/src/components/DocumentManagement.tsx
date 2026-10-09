@@ -144,7 +144,7 @@ const StudentDocumentView: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 p-6">
+        <div className="min-h-full bg-slate-50 p-6">
             <div className="max-w-7xl mx-auto space-y-5">
 
                 {/* Header */}
@@ -159,36 +159,36 @@ const StudentDocumentView: React.FC = () => {
                 </div>
 
                 {/* Filter */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                <div className="card p-5">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Class</label>
+                            <label className="label">Class</label>
                             <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)}
-                                className="w-full border border-slate-300 rounded-md py-2 px-3 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                className="input">
                                 <option value="">▼ All Classes</option>
                                 {classOptions.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Section</label>
+                            <label className="label">Section</label>
                             <select value={selectedSection} onChange={e => setSelectedSection(e.target.value)}
                                 disabled={!selectedClass}
-                                className="w-full border border-slate-300 rounded-md py-2 px-3 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-100">
+                                className="input">
                                 <option value="">▼ All Sections</option>
                                 {sectionOptions.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Search</label>
+                            <label className="label">Search</label>
                             <input type="text" value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
                                 placeholder="Admission No or Name..."
-                                className="w-full border border-slate-300 rounded-md py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                                className="input" />
                         </div>
                         <div className="flex items-end">
                             <button onClick={handleSearch}
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-md flex items-center justify-center gap-2">
+                                className="btn-primary w-full">
                                 <SearchIcon className="w-4 h-4" /> Search
                             </button>
                         </div>
@@ -197,7 +197,7 @@ const StudentDocumentView: React.FC = () => {
 
                 {/* Loading */}
                 {loading && (
-                    <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
+                    <div className="card p-10 text-center">
                         <RefreshIcon className="w-7 h-7 mx-auto text-blue-500 animate-spin" />
                         <p className="mt-2 text-sm text-slate-500">Loading students...</p>
                     </div>
@@ -205,7 +205,7 @@ const StudentDocumentView: React.FC = () => {
 
                 {/* No results */}
                 {!loading && hasSearched && students.length === 0 && (
-                    <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
+                    <div className="card p-10 text-center">
                         <UserIcon className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                         <p className="text-sm text-slate-500">No students found. Try adjusting your filters.</p>
                     </div>
@@ -213,7 +213,7 @@ const StudentDocumentView: React.FC = () => {
 
                 {/* Student Rows with expandable document list */}
                 {!loading && students.length > 0 && (
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="card overflow-hidden">
                         <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                             <h3 className="text-sm font-semibold text-slate-700">Students</h3>
                             <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2.5 py-0.5 rounded-full">{students.length} found</span>
@@ -270,14 +270,14 @@ const StudentDocumentView: React.FC = () => {
                                                     </div>
                                                 ) : (
                                                     <table className="min-w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
-                                                        <thead className="bg-slate-100">
+                                                        <thead className="">
                                                             <tr>
-                                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Type</th>
-                                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Doc No</th>
-                                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Issued By</th>
-                                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Issue Date</th>
-                                                                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Uploaded At</th>
-                                                                <th className="px-4 py-2 text-center text-xs font-semibold text-slate-500 uppercase">Action</th>
+                                                                <th className="px-4 py-2 text-left">Type</th>
+                                                                <th className="px-4 py-2 text-left">Doc No</th>
+                                                                <th className="px-4 py-2 text-left">Issued By</th>
+                                                                <th className="px-4 py-2 text-left">Issue Date</th>
+                                                                <th className="px-4 py-2 text-left">Uploaded At</th>
+                                                                <th className="px-4 py-2 text-center">Action</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody className="bg-white divide-y divide-slate-100">
@@ -299,11 +299,11 @@ const StudentDocumentView: React.FC = () => {
                                                                     <td className="px-4 py-2.5 text-center">
                                                                         <div className="flex justify-center gap-1">
                                                                             <button onClick={() => handleDownload(doc.id, doc.file_name)}
-                                                                                className="text-blue-600 bg-blue-50 p-1.5 rounded hover:bg-blue-100 transition-colors" title="Download">
+                                                                                className="btn text-blue-600 bg-blue-50 hover:bg-blue-100" title="Download">
                                                                                 <DownloadIcon className="w-3.5 h-3.5" />
                                                                             </button>
                                                                             <button onClick={() => handleDelete(doc.id, sid)}
-                                                                                className="text-red-500 bg-red-50 p-1.5 rounded hover:bg-red-100 transition-colors" title="Delete">
+                                                                                className="btn text-red-500 bg-red-50 hover:bg-red-100" title="Delete">
                                                                                 <TrashIcon className="w-3.5 h-3.5" />
                                                                             </button>
                                                                         </div>
@@ -340,16 +340,14 @@ const DocumentManagement: React.FC = () => {
     const navBtn = (tab: DocTab, label: string) => (
         <button
             onClick={() => { setActiveTab(tab); closeDropdowns(); }}
-            className={`px-3 py-1.5 text-xs font-medium rounded border transition-colors ${activeTab === tab
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
+            className={`btn btn-sm border ${activeTab === tab ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
         >
             {label}
         </button>
     );
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-full bg-slate-50">
 
             {/* ─── Top Nav Bar ─── */}
             <div className="bg-white border-b border-slate-200 shadow-sm">
@@ -369,12 +367,12 @@ const DocumentManagement: React.FC = () => {
                             <div className="relative">
                                 <button
                                     onClick={() => { setMasterOpen(v => !v); setStudentDocOpen(false); }}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded border transition-colors flex items-center gap-1 ${activeTab === 'add-category' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
+                                    className={`btn btn-sm border ${activeTab === 'add-category' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
                                 >
                                     Master ▾
                                 </button>
                                 {masterOpen && (
-                                    <div className="absolute left-0 mt-1 w-40 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                                    <div className="card shadow-pop absolute left-0 mt-1 w-40 z-50">
                                         <button
                                             onClick={() => { setActiveTab('add-category'); closeDropdowns(); }}
                                             className="block w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors rounded-lg"
@@ -392,12 +390,12 @@ const DocumentManagement: React.FC = () => {
                             <div className="relative">
                                 <button
                                     onClick={() => { setStudentDocOpen(v => !v); setMasterOpen(false); }}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded border transition-colors flex items-center gap-1 ${activeTab === 'student-doc-view' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
+                                    className={`btn btn-sm border ${activeTab === 'student-doc-view' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
                                 >
                                     Student Documents ▾
                                 </button>
                                 {studentDocOpen && (
-                                    <div className="absolute right-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                                    <div className="card shadow-pop absolute right-0 mt-1 w-52 z-50">
                                         <button
                                             onClick={() => { setActiveTab('student-doc-view'); closeDropdowns(); }}
                                             className="block w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors rounded-lg"
@@ -475,7 +473,7 @@ const DocumentDashboard: React.FC<{ onNavigate: DashboardNavFn }> = ({ onNavigat
             />
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="card overflow-hidden">
             <div className="px-5 py-3 bg-slate-50 border-b border-slate-200">
                 <h3 className="text-sm font-semibold text-slate-700">📊 Student Documents Count</h3>
             </div>
@@ -492,7 +490,7 @@ const DashCard: React.FC<{
 }> = ({ icon, iconBg, title, desc, badge, badgeColor, onClick }) => (
     <div
         onClick={onClick}
-        className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all group"
+        className="card p-5 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all group"
     >
         <div className={`p-3 ${iconBg} rounded-xl group-hover:opacity-80 transition-opacity flex-shrink-0`}>{icon}</div>
         <div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ChevronDownIcon } from './icons';
+import { ChevronDownIcon, ReceiptIcon } from './icons';
+import { Wallet, FileBarChart2, BadgePercent } from 'lucide-react';
 import { Page } from '../App';
 
 interface FeeProps {
@@ -103,25 +104,39 @@ const Fee: React.FC<FeeProps> = ({ navigateTo }) => {
 
     return (
         <div className="w-full h-full flex flex-col">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-16 text-center w-full flex-1 flex flex-col justify-center items-center">
-                <div className="text-blue-100 mb-6 flex justify-center">
-                    <div className="bg-blue-50 p-6 rounded-full">
-                        <svg className="w-20 h-20 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
+            <div className="card p-8 sm:p-14 text-center w-full flex-1 flex flex-col justify-center items-center relative overflow-hidden">
+                <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand-50/70 to-transparent pointer-events-none" />
+                <div className="relative">
+                    <div className="mx-auto w-20 h-20 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center ring-1 ring-inset ring-brand-600/10 mb-6">
+                        <Wallet className="w-9 h-9" />
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mb-3">Financial Dashboard</h3>
+                    <p className="text-slate-500 mb-8 text-base max-w-xl mx-auto">
+                        Manage fees, view reports, and handle petty cash all in one place.
+                    </p>
+                    <button
+                        onClick={() => navigateTo('take-fee')}
+                        className="btn-primary btn-lg shadow-md shadow-brand-600/20"
+                    >
+                        <ReceiptIcon className="w-5 h-5" />
+                        Collect Fees Now
+                    </button>
+
+                    <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3 text-left max-w-2xl mx-auto">
+                        <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+                            <ReceiptIcon className="w-5 h-5 text-brand-600 flex-shrink-0" />
+                            <span className="text-sm text-slate-700">Fee masters & receipts</span>
+                        </div>
+                        <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+                            <FileBarChart2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                            <span className="text-sm text-slate-700">Standard & custom reports</span>
+                        </div>
+                        <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+                            <BadgePercent className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                            <span className="text-sm text-slate-700">Concessions & petty cash</span>
+                        </div>
                     </div>
                 </div>
-                <h3 className="text-3xl font-bold text-slate-800 mb-4">Financial Dashboard</h3>
-                <p className="text-slate-500 mb-8 text-lg max-w-xl text-center">
-                    Manage fees, view reports, and handle petty cash all in one place.
-                </p>
-                <button
-                    onClick={() => navigateTo('take-fee')}
-                    className="bg-blue-600 text-white px-8 py-3.5 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all shadow-md font-semibold text-lg inline-flex items-center"
-                >
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                    Collect Fees Now
-                </button>
             </div>
         </div>
     );

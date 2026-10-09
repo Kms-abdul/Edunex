@@ -325,12 +325,12 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                 <div className="flex items-center gap-4">
                     <button
                         onClick={onBack}
-                        className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                        className="btn-icon"
                         title="Back"
                     >
                         <ArrowBackIcon className="w-5 h-5 text-gray-600" />
                     </button>
-                    <h2 className="text-lg font-bold text-gray-800 uppercase tracking-wider">
+                    <h2 className="text-base font-semibold text-slate-900 uppercase tracking-wider">
                         Update Student Details
                     </h2>
                 </div>
@@ -342,7 +342,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                             setSelectedClass(e.target.value);
                             setSelectedSection('');
                         }}
-                        className="border border-gray-300 px-3 py-2 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 shadow-sm"
+                        className="input w-auto"
                     >
                         <option value="">-- Select Class --</option>
                         {classOptions.map(c => (
@@ -353,7 +353,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                     <select
                         value={selectedSection}
                         onChange={(e) => setSelectedSection(e.target.value)}
-                        className="border border-gray-300 px-3 py-2 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 shadow-sm"
+                        className="input w-auto"
                     >
                         <option value="">-- Select Section --</option>
                         {sectionOptions.map(s => (
@@ -367,7 +367,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                             placeholder="Search students..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="border border-gray-300 px-3 py-2 pl-9 rounded-md text-sm focus:ring-violet-500 focus:border-violet-500 shadow-sm w-64"
+                            className="input pl-9 w-64"
                         />
                         <SearchIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     </div>
@@ -386,10 +386,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                 <button
                                     key={cat.id}
                                     onClick={() => setSelectedCategory(cat.id)}
-                                    className={`w-full text-left px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${selectedCategory === cat.id
-                                        ? 'bg-violet-600 text-white shadow-md'
-                                        : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
-                                        }`}
+                                    className={`btn w-full text-left ${selectedCategory === cat.id ? 'bg-violet-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900' }`}
                                 >
                                     {cat.label}
                                 </button>
@@ -403,26 +400,26 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                     {/* Table */}
                     <div className="flex-1 overflow-auto">
                         <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
+                            <thead className="sticky top-0 z-10 shadow-sm">
                                 <tr>
-                                    <th className="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-tight whitespace-nowrap">
+                                    <th className="px-4 py-3 text-left tracking-tight whitespace-nowrap">
                                         S.No
                                     </th>
-                                    <th className="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-tight whitespace-nowrap">
+                                    <th className="px-4 py-3 text-left tracking-tight whitespace-nowrap">
                                         Student Name
                                     </th>
-                                    <th className="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-tight whitespace-nowrap">
+                                    <th className="px-4 py-3 text-left tracking-tight whitespace-nowrap">
                                         Adm No.
                                     </th>
                                     {activeCat.columns.map(col => (
                                         <th
                                             key={col.key}
-                                            className="px-4 py-3 text-left font-bold text-gray-600 uppercase tracking-tight whitespace-nowrap"
+                                            className="px-4 py-3 text-left tracking-tight whitespace-nowrap"
                                         >
                                             {col.label}
                                         </th>
                                     ))}
-                                    <th className="px-4 py-3 text-left font-bold text-violet-700 uppercase tracking-tight bg-violet-50 w-28 whitespace-nowrap">
+                                    <th className="px-4 py-3 text-left text-violet-700 tracking-tight bg-violet-50 w-28 whitespace-nowrap">
                                         Action
                                     </th>
                                 </tr>
@@ -522,7 +519,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                                                         handleFieldChange(sid, col.key, e.target.value)
                                                                     }
                                                                     disabled={isSaving}
-                                                                    className={`w-full min-w-[100px] px-2 py-1.5 border rounded text-sm outline-none transition-all ${isSaving
+                                                                    className={`input min-w-[100px] ${isSaving
                                                                         ? 'opacity-50 cursor-not-allowed bg-gray-100 border-gray-200'
                                                                         : modifiedStudents[sid]?.[col.key] !== undefined
                                                                             ? 'border-violet-400 bg-violet-50 focus:border-violet-600 focus:bg-white'
@@ -553,7 +550,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                                         {isModified && !isSaving && (
                                                             <button
                                                                 onClick={() => saveStudentChanges(sid)}
-                                                                className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded shadow-sm hover:bg-green-700 active:bg-green-800 transition-colors whitespace-nowrap w-full"
+                                                                className="btn-success btn-sm w-full"
                                                             >
                                                                 SAVE
                                                             </button>
@@ -590,10 +587,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                     <button
                                         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                                         disabled={currentPage === 1}
-                                        className={`px-3 py-1.5 text-sm rounded border transition-colors ${currentPage === 1
-                                            ? 'text-gray-300 border-gray-200 cursor-not-allowed bg-white'
-                                            : 'text-gray-600 border-gray-300 hover:bg-gray-100 bg-white cursor-pointer'
-                                            }`}
+                                        className={`btn btn-sm border ${currentPage === 1 ? 'text-gray-300 border-gray-200 cursor-not-allowed bg-white' : 'text-gray-600 border-gray-300 hover:bg-gray-100 bg-white cursor-pointer' }`}
                                     >
                                         Previous
                                     </button>
@@ -606,10 +600,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                             ) : (
                                                 <button
                                                     onClick={() => setCurrentPage(page as number)}
-                                                    className={`min-w-[34px] px-2 py-1.5 text-sm rounded border transition-colors ${currentPage === page
-                                                        ? 'bg-violet-600 text-white border-violet-600 font-semibold'
-                                                        : 'text-gray-600 border-gray-300 hover:bg-gray-100 bg-white'
-                                                        }`}
+                                                    className={`btn btn-sm min-w-[34px] border ${currentPage === page ? 'bg-violet-600 text-white border-violet-600 font-semibold' : 'text-gray-600 border-gray-300 hover:bg-gray-100 bg-white' }`}
                                                 >
                                                     {page}
                                                 </button>
@@ -621,10 +612,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                     <button
                                         onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                                         disabled={currentPage === totalPages}
-                                        className={`px-3 py-1.5 text-sm rounded border transition-colors ${currentPage === totalPages
-                                            ? 'text-gray-300 border-gray-200 cursor-not-allowed bg-white'
-                                            : 'text-gray-600 border-gray-300 hover:bg-gray-100 bg-white cursor-pointer'
-                                            }`}
+                                        className={`btn btn-sm border ${currentPage === totalPages ? 'text-gray-300 border-gray-200 cursor-not-allowed bg-white' : 'text-gray-600 border-gray-300 hover:bg-gray-100 bg-white cursor-pointer' }`}
                                     >
                                         Next
                                     </button>

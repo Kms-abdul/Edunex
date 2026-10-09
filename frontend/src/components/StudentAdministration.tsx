@@ -37,7 +37,7 @@ const Dropdown: React.FC<{ title: string; isOpen: boolean; onToggle: () => void;
     ({ title, isOpen, onToggle, children }) => (
         <div className="relative inline-block text-left">
             <button
-                className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="btn-secondary w-full"
                 onClick={onToggle}
             >
                 {title}
@@ -45,7 +45,7 @@ const Dropdown: React.FC<{ title: string; isOpen: boolean; onToggle: () => void;
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
+                <div className="card shadow-pop absolute right-0 mt-2 w-56 z-20">
                     <div className="py-1">{children}</div>
                 </div>
             )}
@@ -57,7 +57,7 @@ const DropdownItem: React.FC<{ children: any; onClick?: () => void }> =
         <a
             href="#"
             onClick={(e) => { e.preventDefault(); onClick?.(); }}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            className="menu-item"
         >
             {children}
         </a>
@@ -117,15 +117,15 @@ const Pagination: React.FC<PaginationProps> = ({
     const { pages, showLastPage } = getPages();
 
     return (
-        <div className="p-4 border-t bg-gray-50 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <span className="text-sm text-gray-500 italic">
+        <div className="px-4 py-3 border-t border-slate-200 bg-slate-50/60 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <span className="text-xs text-slate-500">
                 Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} records
             </span>
             <div className="flex items-center gap-1 flex-wrap">
                 <button
                     disabled={currentPage === 1}
                     onClick={() => onPageChange(currentPage - 1)}
-                    className="px-2 py-1 text-sm font-medium text-gray-600 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-gray-600 mr-2"
+                    className="btn-secondary btn-sm mr-2 disabled:opacity-40"
                 >
                     Previous
                 </button>
@@ -134,10 +134,7 @@ const Pagination: React.FC<PaginationProps> = ({
                     <button
                         key={p}
                         onClick={() => onPageChange(p)}
-                        className={`min-w-[28px] px-1.5 py-0.5 text-sm font-semibold transition-colors ${currentPage === p
-                            ? 'text-indigo-700 underline underline-offset-4'
-                            : 'text-gray-500 hover:text-gray-800'
-                            }`}
+                        className={`btn btn-sm min-w-[32px] px-2 ${currentPage === p ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800' }`}
                     >
                         {p}
                     </button>
@@ -148,10 +145,7 @@ const Pagination: React.FC<PaginationProps> = ({
                         <span className="px-1 text-sm text-gray-400">...</span>
                         <button
                             onClick={() => onPageChange(totalPages)}
-                            className={`min-w-[28px] px-1.5 py-0.5 text-sm font-semibold transition-colors ${currentPage === totalPages
-                                ? 'text-indigo-700 underline underline-offset-4'
-                                : 'text-gray-500 hover:text-gray-800'
-                                }`}
+                            className={`btn btn-sm min-w-[32px] px-2 ${currentPage === totalPages ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800' }`}
                         >
                             {totalPages}
                         </button>
@@ -161,7 +155,7 @@ const Pagination: React.FC<PaginationProps> = ({
                 <button
                     disabled={currentPage === totalPages}
                     onClick={() => onPageChange(currentPage + 1)}
-                    className="px-2 py-1 text-sm font-medium text-gray-600 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-gray-600 ml-2"
+                    className="btn-secondary btn-sm ml-2 disabled:opacity-40"
                 >
                     Next
                 </button>
@@ -181,15 +175,18 @@ const StudentAdminHeader: React.FC<{ activeView: StudentAdminView; setActiveView
         const toggle = (name: string) => setOpen(open === name ? null : name);
 
         const btn = (view: StudentAdminView) =>
-            `px-3 py-2 text-sm rounded-md ${activeView === view
-                ? 'bg-violet-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            `btn btn-sm ${activeView === view
+                ? 'bg-brand-600 text-brand-contrast shadow-sm hover:bg-brand-700'
+                : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
             }`;
 
         return (
-            <div className="bg-gray-50 p-3 border-b border-gray-300">
-                <div className="flex justify-between items-center flex-wrap gap-2">
-                    <h2 className="text-xl font-semibold text-gray-800">STUDENTS</h2>
+            <div className="bg-white px-4 sm:px-6 py-4 border-b border-slate-200">
+                <div className="flex justify-between items-center flex-wrap gap-3">
+                    <div>
+                        <p className="page-eyebrow">Administration</p>
+                        <h2 className="page-title">Students</h2>
+                    </div>
 
                     <div className="flex items-center flex-wrap gap-2">
                         {hasPermission('administration.student.student-administration', 'read') && (
@@ -543,17 +540,17 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
             if (!students.length) return <div className="p-6 text-gray-600 text-center">No students found</div>;
 
             return (
-                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                <div className="card overflow-hidden">
                     <div className="overflow-auto">
                         <table className="min-w-full text-sm divide-y divide-gray-200">
-                            <thead className="bg-violet-600 text-white">
+                            <thead>
                                 <tr>
-                                    <th className="px-4 py-3 text-left cursor-pointer hover:bg-violet-700 select-none" onClick={() => handleSort('name')}>
+                                    <th className="px-4 py-3 text-left cursor-pointer hover:bg-slate-100 select-none" onClick={() => handleSort('name')}>
                                         Student Name <span className="ml-1 opacity-75">{sortConfig?.key === 'name' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}</span>
                                     </th>
                                     <th className="px-4 py-3 text-left">Adm No.</th>
                                     <th className="px-4 py-3 text-left">Roll No.</th>
-                                    <th className="px-4 py-3 text-left cursor-pointer hover:bg-violet-700 select-none" onClick={() => handleSort('class')}>
+                                    <th className="px-4 py-3 text-left cursor-pointer hover:bg-slate-100 select-none" onClick={() => handleSort('class')}>
                                         Class <span className="ml-1 opacity-75">{sortConfig?.key === 'class' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}</span>
                                     </th>
                                     <th className="px-4 py-3 text-left">Branch</th>
@@ -585,7 +582,7 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
 
                                         <td className="px-4 py-2">
                                             <div className="flex items-center gap-1">
-                                                <button onClick={() => onView(s)} className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 flex items-center gap-1" title="Details">
+                                                <button onClick={() => onView(s)} className="btn btn-sm text-xs bg-indigo-100 text-indigo-700 hover:bg-indigo-200" title="Details">
                                                     <span>ℹ️</span> Details
                                                 </button>
                                                 {hasPermission('administration.student.update-student-details', 'write') && (
@@ -597,13 +594,13 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                                                                 onEdit(s);
                                                             }
                                                         }}
-                                                        className={`px-2 py-1 text-xs flex items-center gap-1 rounded ${s.is_locked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                                                        className={`btn btn-sm ${s.is_locked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
                                                         title={s.is_locked ? "Record locked (Promoted)" : "Edit"}
                                                     >
                                                         <span>{s.is_locked ? '🔒' : '✏️'}</span> Edit
                                                     </button>
                                                 )}
-                                                <button onClick={() => handlePrint(s)} className="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200 flex items-center gap-1" title="Print">
+                                                <button onClick={() => handlePrint(s)} className="btn btn-sm text-xs bg-orange-100 text-orange-700 hover:bg-orange-200" title="Print">
                                                     <span>🖨️</span> Print
                                                 </button>
                                                 {hasPermission('administration.student.make-student-inactive', 'write') && (
@@ -616,13 +613,13 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                                                                     handleDeleteClick(s);
                                                                 }
                                                             }}
-                                                            className={`px-2 py-1 text-xs flex items-center gap-1 rounded ${s.is_locked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                                                            className={`btn btn-sm ${s.is_locked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
                                                             title={s.is_locked ? "Record locked (Promoted)" : "Deactivate"}
                                                         >
                                                             <span>{s.is_locked ? '🔒' : '🚫'}</span> Inactivate
                                                         </button>
                                                         {s.status === 'Inactive' && (
-                                                            <button onClick={() => handleActivate(s)} className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 flex items-center gap-1" title="Activate">
+                                                            <button onClick={() => handleActivate(s)} className="btn btn-sm text-xs bg-green-100 text-green-700 hover:bg-green-200" title="Activate">
                                                                 <span>✅</span> Activate
                                                             </button>
                                                         )}
@@ -657,7 +654,7 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                     <select
                         value={selectedClass}
                         onChange={(e) => setSelectedClass(e.target.value)}
-                        className="border px-3 py-2 rounded-md"
+                        className="input w-auto"
                     >
                         <option value="">-- All Classes --</option>
                         {Array.isArray(classOptions) && classOptions.map(c => (
@@ -671,7 +668,7 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                     <select
                         value={selectedSection}
                         onChange={(e) => setSelectedSection(e.target.value)}
-                        className="border px-3 py-2 rounded-md"
+                        className="input w-auto"
                     >
                         <option value="">-- All Sections --</option>
                         {sectionOptions.map(section => (
@@ -681,7 +678,7 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
 
                     <div className="md:col-span-2 relative">
                         <input
-                            className="border px-3 py-2 w-full rounded-md pl-10"
+                            className="input pl-10"
                             placeholder="Search by Name, Adm No..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -691,7 +688,7 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
 
                     <button
                         onClick={loadStudents}
-                        className="bg-violet-600 text-white px-4 py-2 rounded-md"
+                        className="btn-primary"
                     >
                         Search
                     </button>
@@ -713,11 +710,11 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                 {/* Items per page selector */}
                 {students.length > 0 && (
                     <div className="flex items-center justify-end mb-3 gap-2">
-                        <label className="text-sm text-gray-600">Show:</label>
+                        <label className="label">Show:</label>
                         <select
                             value={itemsPerPage}
                             onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                            className="border border-gray-300 rounded px-2 py-1 text-sm"
+                            className="input w-auto"
                         >
                             <option value={10}>10</option>
                             <option value={15}>15</option>
@@ -733,13 +730,13 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
 
                 {/* Password Modal */}
                 {passwordModalOpen && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-                            <h3 className="text-lg font-bold mb-4">Confirm Deactivation</h3>
+                    <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
+                        <div className="card shadow-pop p-6 w-96">
+                            <h3 className="text-base font-semibold text-slate-900 mb-4">Confirm Deactivation</h3>
                             <p className="mb-4 text-gray-600">Enter your password to mark <b>{studentToDelete?.name}</b> as Inactive.</p>
                             <input
                                 type="password"
-                                className="w-full border p-2 rounded mb-4"
+                                className="input mb-4"
                                 placeholder="Password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -747,13 +744,13 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                             <div className="flex justify-end gap-2">
                                 <button
                                     onClick={() => setPasswordModalOpen(false)}
-                                    className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                                    className="btn-secondary"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={confirmDelete}
-                                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                                    className="btn-danger"
                                 >
                                     Deactivate
                                 </button>

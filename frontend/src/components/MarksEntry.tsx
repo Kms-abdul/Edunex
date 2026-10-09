@@ -315,14 +315,14 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
             <h2 className="text-xl font-bold text-gray-700 mb-4 border-b pb-2">Enter Subject Marks</h2>
 
             {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 bg-white p-4 rounded shadow-sm">
+            <div className="card grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 p-4">
                 {/* Branch */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Branch</label>
+                    <label className="label">Branch</label>
                     <select
                         value={selectedBranch}
                         onChange={e => setSelectedBranch(e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                        className="input mt-1"
                         disabled={branches.length <= 1}
                     >
                         {branches.map(b => <option key={b.branch_code} value={b.branch_code}>{b.branch_name}</option>)}
@@ -331,11 +331,11 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
 
                 {/* Class */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Class</label>
+                    <label className="label">Class</label>
                     <select
                         value={selectedClass}
                         onChange={e => setSelectedClass(e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                        className="input mt-1"
                     >
                         <option value="">Select Class</option>
                         {classes.map(c => <option key={c.id} value={c.id}>{c.class_name}</option>)}
@@ -344,11 +344,11 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
 
                 {/* Section */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Section</label>
+                    <label className="label">Section</label>
                     <select
                         value={selectedSection}
                         onChange={e => setSelectedSection(e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                        className="input mt-1"
                     >
                         <option value="">Select Section</option>
                         {sections.map(s => <option key={s} value={s}>{s}</option>)}
@@ -357,11 +357,11 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
 
                 {/* Test */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Test</label>
+                    <label className="label">Test</label>
                     <select
                         value={selectedTestId}
                         onChange={e => setSelectedTestId(e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                        className="input mt-1"
                     >
                         <option value="">Select Test</option>
                         {tests.map(t => <option key={t.test_id} value={t.test_id}>{t.test_name}</option>)}
@@ -371,11 +371,11 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
 
                 {/* Subject */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Subject</label>
+                    <label className="label">Subject</label>
                     <select
                         value={selectedSubjectId}
                         onChange={e => setSelectedSubjectId(e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                        className="input mt-1"
                     >
                         <option value="">Select Subject</option>
                         {subjects.map(s => <option key={s.id} value={s.id}>{s.subject_name}</option>)}
@@ -388,7 +388,7 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
                     type="button"
                     onClick={handleGetMarks}
                     disabled={loading || !selectedTestId || !selectedSubjectId}
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
+                    className="btn-primary"
                 >
                     {loading ? "Loading..." : "Get Marks"}
                 </button>
@@ -403,7 +403,7 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
 
             {/* Grid */}
             {students.length > 0 && (
-                <div className="bg-white shadow rounded overflow-hidden">
+                <div className="card overflow-hidden">
                     <div className="p-3 bg-gray-50 border-b flex justify-between items-center">
                         <span className="font-semibold text-gray-700">
                             Max Marks: {subjectTotalMarks}
@@ -414,15 +414,15 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
                     </div>
 
                     <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                        <thead className="">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll No</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admission No</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marks</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-3 text-left">S.No</th>
+                                <th className="px-6 py-3 text-left">Roll No</th>
+                                <th className="px-6 py-3 text-left">Admission No</th>
+                                <th className="px-6 py-3 text-left">Student Name</th>
+                                <th className="px-6 py-3 text-left">Marks</th>
+                                <th className="px-6 py-3 text-left">Grade</th>
+                                <th className="px-6 py-3 text-left">Status</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -438,8 +438,39 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
                                             value={student.is_absent ? 'AB' : (student.marks_obtained !== null && student.marks_obtained !== undefined ? String(student.marks_obtained).split('.')[0] : '')}
                                             onChange={(e) => handleInputChange(student.student_id, e.target.value)}
                                             onBlur={() => handleInputBlur(student.student_id)}
-                                            className={`border rounded px-2 py-1 w-24 focus:outline-none focus:ring-2 
+                                            className={`input w-24 
                                                 ${student.is_absent ? 'bg-red-50 border-red-300 text-red-700 font-bold' : 'border-gray-300'}
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
+                                            
                                             `}
                                             placeholder="-"
                                         />
@@ -470,7 +501,7 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
                             type="button"
                             onClick={handleCancel}
                             disabled={saving}
-                            className={`bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 flex items-center gap-2 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`btn bg-gray-500 text-white hover:bg-gray-600 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             Cancel
                         </button>
@@ -480,7 +511,7 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
                             type="button"
                             onClick={handleDownloadExcel}
                             disabled={saving || students.length === 0}
-                            className={`bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 flex items-center gap-2 ${saving || students.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`btn bg-blue-500 text-white hover:bg-blue-600 ${saving || students.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             <FileDown size={18} />
                             Download Excel
@@ -490,7 +521,7 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
                             type="button"
                             onClick={handleSave}
                             disabled={saving}
-                            className={`bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 flex items-center gap-2 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`btn bg-green-600 text-white hover:bg-green-700 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             <Save size={18} />
                             {saving ? "Saving..." : "Save Marks"}

@@ -181,15 +181,15 @@ export default function AssignStudentTests() {
 
     /* ---------------- RENDER ---------------- */
     return (
-        <div className="p-4 bg-white rounded shadow min-h-screen flex flex-col">
+        <div className="card p-4 min-h-full flex flex-col">
             <h2 className="text-xl font-bold mb-4 text-gray-800">Assign Test to Students</h2>
 
             {/* FILTERS */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded border">
                 <div>
-                    <label className="block text-xs font-bold text-gray-600 uppercase">Academic Year</label>
+                    <label className="label">Academic Year</label>
                     <select
-                        className="w-full border p-2 rounded"
+                        className="input"
                         value={filters.academic_year_id}
                         disabled
                         onChange={e => setFilters({ ...filters, academic_year_id: e.target.value })}
@@ -199,9 +199,9 @@ export default function AssignStudentTests() {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-gray-600 uppercase">Branch</label>
+                    <label className="label">Branch</label>
                     <select
-                        className="w-full border p-2 rounded"
+                        className="input"
                         value={filters.branch_id}
                         disabled
                         onChange={e => setFilters({ ...filters, branch_id: e.target.value })}
@@ -212,9 +212,9 @@ export default function AssignStudentTests() {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-gray-600 uppercase">Class</label>
+                    <label className="label">Class</label>
                     <select
-                        className="w-full border p-2 rounded"
+                        className="input"
                         value={filters.class_id}
                         onChange={e => setFilters({ ...filters, class_id: e.target.value })}
                     >
@@ -232,7 +232,7 @@ export default function AssignStudentTests() {
                 <>
                     <div className="overflow-x-auto border rounded shadow-sm flex-1">
                         <table className="w-full text-sm text-left border-collapse">
-                            <thead className="bg-gray-100 text-gray-700 uppercase sticky top-0">
+                            <thead className="sticky top-0">
                                 <tr>
                                     <th className="px-3 py-2 border w-12 text-center">S.No</th>
                                     <th className="px-3 py-2 border">Student Name</th>
@@ -281,18 +281,14 @@ export default function AssignStudentTests() {
                         <button
                             onClick={() => fetchMatrix()}
                             disabled={saving || changes.length === 0}
-                            className={`px-6 py-2 rounded text-gray-700 border transition hover:bg-gray-100
-                                ${saving || changes.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}
-                            `}
+                            className={`btn text-gray-700 border hover:bg-gray-100 ${saving || changes.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={saving || changes.length === 0}
-                            className={`flex items-center space-x-2 px-6 py-2 rounded text-white transition
-                                ${saving || changes.length === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow'}
-                            `}
+                            className={`btn text-white ${saving || changes.length === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow'}`}
                         >
                             <Save size={18} />
                             <span>{saving ? "Saving..." : "Save Assignments"}</span>

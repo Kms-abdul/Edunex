@@ -45,11 +45,19 @@ const groupInstallments = (items: any[]) => {
     });
 
     otherFees.forEach(f => {
+        const paid = parseFloat(f.amount_paid || f.paid || 0);
+        const due = parseFloat(f.due_amount || f.due || 0);
+        const concession = parseFloat(f.concession_amount || f.concession || 0);
+        const gross = parseFloat(f.gross_amount || f.amount || 0) || (paid + due + concession);
         groups.push({
             title: f.fee_type === "General" ? "One-Time Fee" : f.fee_type,
-            amount: parseFloat(f.amount_paid),
-            concession: parseFloat(f.concession_amount),
-            payable: parseFloat(f.gross_amount || f.amount_paid),
+            amount: gross,
+            amount_paid: paid,
+            paid: paid,
+            concession: concession,
+            payable: gross,
+            due_amount: due,
+            due: due,
             originalItems: [f]
         });
     });
@@ -58,23 +66,28 @@ const groupInstallments = (items: any[]) => {
 };
 
 const createGroupedItem = (type: string, items: any[]) => {
-    const start = items[0].installment.replace(" Fee", "");
-    const end = items[items.length - 1].installment.replace(" Fee", "");
+    const start = (items[0].installment || items[0].title || "").replace(" Fee", "");
+    const end = (items[items.length - 1].installment || items[items.length - 1].title || "").replace(" Fee", "");
 
     let title = `${type} - ${start} Fee`;
     if (items.length > 1) {
         title = `Payment for ${start} Fee to ${end} Fee`;
     }
 
-    const totalPaid = items.reduce((sum: number, i: any) => sum + parseFloat(i.amount_paid), 0);
-    const totalConcession = items.reduce((sum: number, i: any) => sum + parseFloat(i.concession_amount), 0);
-    const totalGross = items.reduce((sum: number, i: any) => sum + parseFloat(i.gross_amount || i.amount_paid), 0);
+    const totalPaid = items.reduce((sum: number, i: any) => sum + parseFloat(i.amount_paid || i.paid || 0), 0);
+    const totalConcession = items.reduce((sum: number, i: any) => sum + parseFloat(i.concession_amount || i.concession || 0), 0);
+    const totalDue = items.reduce((sum: number, i: any) => sum + parseFloat(i.due_amount || i.due || 0), 0);
+    const totalGross = items.reduce((sum: number, i: any) => sum + parseFloat(i.gross_amount || i.amount || 0), 0) || (totalPaid + totalDue + totalConcession);
 
     return {
         title,
-        amount: totalPaid,
+        amount: totalGross,
+        amount_paid: totalPaid,
+        paid: totalPaid,
         concession: totalConcession,
         payable: totalGross,
+        due_amount: totalDue,
+        due: totalDue,
         originalItems: items
     };
 };
@@ -232,11 +245,12 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
     const [selectedConcession, setSelectedConcession] = useState('0');
     const [appliedConcession, setAppliedConcession] = useState(0);
     const [itemConcessions, setItemConcessions] = useState<Record<number, number>>({});
+    const [itemPayingAmounts, setItemPayingAmounts] = useState<Record<number, number | string>>({});
     const [paidInput, setPaidInput] = useState('0');
 
     const [concessions, setConcessions] = useState<Concession[]>([]);
     const [feeTypes, setFeeTypes] = useState<{ id: number; fee_type: string }[]>([]);
-    const [selectedFeeType, setSelectedFeeType] = useState('');
+    const [selectedFeeType, setSelectedFeeType] = useState('all');
 
     const [showHistory, setShowHistory] = useState(false);
     const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
@@ -267,19 +281,44 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
         const payments = paymentHistory.filter(p => p.receipt_no === receiptNo);
         if (payments.length === 0) return;
 
-        const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
-        const totalConcession = payments.reduce((sum, p) => sum + parseFloat(p.concession_amount), 0);
-        const totalGross =
-            payments.reduce((sum, p) => sum + parseFloat(p.gross_amount || 0), 0) ||
-            totalPaid + totalConcession;
+        const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount_paid || 0), 0);
+        const totalConcession = payments.reduce((sum, p) => sum + parseFloat(p.concession_amount || 0), 0);
         const totalDue = payments.reduce((sum, p) => sum + parseFloat(p.due_amount || 0), 0);
+        const totalGross = payments.reduce(
+            (sum, p) =>
+                sum +
+                (parseFloat(p.previous_due || 0) ||
+                    parseFloat(p.amount_paid || 0) +
+                        parseFloat(p.due_amount || 0) +
+                        parseFloat(p.concession_amount || 0) ||
+                    parseFloat(p.gross_amount || 0)),
+            0
+        );
         const netPayable = totalGross - totalConcession;
 
         const enrichedPayments = payments.map(p => {
             const match = installments.find(
                 i => i.title === p.installment || i.title === `${p.installment} Fee`
             );
-            return { ...p, sr: match ? match.sr : 0 };
+            const paid = parseFloat(p.amount_paid || 0);
+            const due = parseFloat(p.due_amount || 0);
+            const concession = parseFloat(p.concession_amount || 0);
+            const amount =
+                parseFloat(p.previous_due || 0) ||
+                paid + due + concession ||
+                parseFloat(p.gross_amount || 0);
+            return {
+                ...p,
+                sr: match ? match.sr : 0,
+                amount,
+                gross_amount: amount,
+                amount_paid: paid,
+                paid: paid,
+                due_amount: due,
+                due: due,
+                concession_amount: concession,
+                concession: concession
+            };
         });
 
         const groupedItems = groupInstallments(enrichedPayments);
@@ -287,11 +326,13 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
         const items = groupedItems.map((g, index) => ({
             sr: index + 1,
             title: g.title,
-            payable: g.payable,
-            dueAmount: 0,
-            paidAmount: g.amount,
-            concession: g.concession,
-            paid: true
+            amount: g.amount,
+            payable: g.amount,
+            amount_paid: g.amount_paid !== undefined ? g.amount_paid : g.paid || 0,
+            paid: g.amount_paid !== undefined ? g.amount_paid : g.paid || 0,
+            due_amount: g.due_amount !== undefined ? g.due_amount : g.due || 0,
+            due: g.due_amount !== undefined ? g.due_amount : g.due || 0,
+            concession: g.concession || 0
         }));
 
         const data = {
@@ -318,7 +359,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
     };
 
     const filteredInstallments = useMemo(() => {
-        if (!selectedFeeType) return [];
+        if (!selectedFeeType || selectedFeeType === 'all') return installments;
         return installments.filter(i => i.fee_type_id === Number(selectedFeeType));
     }, [installments, selectedFeeType]);
 
@@ -339,7 +380,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
         const feeTypeIdStr = e.target.value;
         setSelectedFeeType(feeTypeIdStr);
 
-        if (!feeTypeIdStr || !selectedStudent) return;
+        if (!feeTypeIdStr || feeTypeIdStr === 'all' || !selectedStudent) return;
 
         const feeTypeId = Number(feeTypeIdStr);
         const exists = installments.some(i => i.fee_type_id === feeTypeId);
@@ -462,20 +503,39 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
             setSummary({ totalPaids: 0, totalDue: 0, currentDue: 0 });
             return;
         }
-        const paids = installments
-            .filter(i => i.paid)
-            .reduce((sum, i) => sum + (i.paidAmount || i.payable), 0);
-        const dues = installments.filter(i => !i.paid);
-        const totalDue = dues.reduce((sum, i) => sum + i.payable, 0);
-        const currentDue = dues.length > 0 ? dues[0].payable : 0;
+        const paids = installments.reduce(
+            (sum, i) => sum + (i.paidAmount || (i.paid ? i.payable : 0)),
+            0
+        );
+        const dues = installments.filter(
+            i => !i.paid && (i.dueAmount === undefined || i.dueAmount > 0)
+        );
+        const totalDue = dues.reduce((sum, i) => {
+            const dueAmt =
+                i.dueAmount !== undefined ? i.dueAmount : i.payable - (i.paidAmount || 0);
+            return sum + dueAmt;
+        }, 0);
+        const currentDue =
+            dues.length > 0
+                ? dues[0].dueAmount !== undefined
+                    ? dues[0].dueAmount
+                    : dues[0].payable - (dues[0].paidAmount || 0)
+                : 0;
         setSummary({ totalPaids: paids, totalDue, currentDue });
     }, [installments]);
 
     const handleSelect = (sr: number) => {
+        const item = installments.find(i => i.sr === sr);
+        if (!item) return;
+
         setSelectedIds(prev => {
             const isCurrentlySelected = prev.includes(sr);
             if (isCurrentlySelected) {
-                return prev.filter(id => id < sr);
+                // Deselect this item and any subsequent items OF THE SAME fee_type_id
+                const sameTypeLaterSrs = installments
+                    .filter(i => i.fee_type_id === item.fee_type_id && i.sr >= sr)
+                    .map(i => i.sr);
+                return prev.filter(id => !sameTypeLaterSrs.includes(id));
             } else {
                 return [...prev, sr].sort((a, b) => a - b);
             }
@@ -533,27 +593,113 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
         }
     };
 
-    const selectedItems = installments.filter(i => selectedIds.includes(i.sr));
+    const selectedItems = useMemo(
+        () => installments.filter(i => selectedIds.includes(i.sr)),
+        [installments, selectedIds]
+    );
 
     const amount = selectedItems.reduce((sum, item) => {
-        const amountToPay =
-            item.dueAmount !== undefined && item.dueAmount > 0 ? item.dueAmount : item.payable;
-        return sum + amountToPay;
+        const grossNeeded =
+            item.dueAmount !== undefined && item.dueAmount > 0
+                ? item.dueAmount
+                : item.payable - (item.paidAmount || 0);
+        return sum + grossNeeded;
     }, 0);
 
-    const payable = amount - appliedConcession;
-    const due = payable - Number(paidInput);
+    const payable = Math.max(0, amount - appliedConcession);
+
+    // Initialize or update paying amounts for selected items
+    useEffect(() => {
+        setItemPayingAmounts(prev => {
+            const next: Record<number, number | string> = {};
+            for (const item of selectedItems) {
+                const itemConcession = itemConcessions[item.sr] || 0;
+                const grossNeeded =
+                    item.dueAmount !== undefined && item.dueAmount > 0
+                        ? item.dueAmount
+                        : item.payable - (item.paidAmount || 0);
+                const netNeeded = Math.max(0, grossNeeded - itemConcession);
+
+                if (prev[item.sr] !== undefined && prev[item.sr] !== '') {
+                    next[item.sr] = Math.min(Number(prev[item.sr]), netNeeded);
+                } else if (prev[item.sr] === '') {
+                    next[item.sr] = '';
+                } else {
+                    next[item.sr] = netNeeded;
+                }
+            }
+            return next;
+        });
+    }, [selectedIds, itemConcessions]);
+
+    const handleItemPayingChange = (sr: number, valStr: string) => {
+        if (valStr === '') {
+            setItemPayingAmounts(prev => ({ ...prev, [sr]: '' }));
+            return;
+        }
+        const num = parseFloat(valStr);
+        if (isNaN(num)) return;
+
+        const item = installments.find(i => i.sr === sr);
+        if (!item) return;
+        const itemConcession = itemConcessions[item.sr] || 0;
+        const grossNeeded =
+            item.dueAmount !== undefined && item.dueAmount > 0
+                ? item.dueAmount
+                : item.payable - (item.paidAmount || 0);
+        const netNeeded = Math.max(0, grossNeeded - itemConcession);
+
+        const capped = Math.max(0, Math.min(num, netNeeded));
+        setItemPayingAmounts(prev => ({ ...prev, [sr]: capped }));
+    };
+
+    const handleItemPayingBlur = (sr: number) => {
+        setItemPayingAmounts(prev => {
+            const current = prev[sr];
+            if (current === '' || current === undefined || isNaN(Number(current))) {
+                return { ...prev, [sr]: 0 };
+            }
+            return prev;
+        });
+    };
+
+    const totalPaying = useMemo(() => {
+        return selectedItems.reduce((sum, item) => {
+            const val = itemPayingAmounts[item.sr];
+            const num = val === '' || val === undefined ? 0 : Number(val);
+            return sum + (isNaN(num) ? 0 : num);
+        }, 0);
+    }, [selectedItems, itemPayingAmounts]);
+
+    const due = Math.max(0, payable - totalPaying);
 
     useEffect(() => {
-        setPaidInput(String(payable > 0 ? payable : 0));
-    }, [payable, selectedIds]);
+        setPaidInput(String(totalPaying));
+    }, [totalPaying]);
+
+    const handleEqualClick = () => {
+        setItemPayingAmounts(() => {
+            const next: Record<number, number | string> = {};
+            for (const item of selectedItems) {
+                const itemConcession = itemConcessions[item.sr] || 0;
+                const grossNeeded =
+                    item.dueAmount !== undefined && item.dueAmount > 0
+                        ? item.dueAmount
+                        : item.payable - (item.paidAmount || 0);
+                next[item.sr] = Math.max(0, grossNeeded - itemConcession);
+            }
+            return next;
+        });
+    };
 
     const handleReset = () => {
         setSelectedIds([]);
         setSelectedConcession('0');
         setAppliedConcession(0);
         setItemConcessions({});
+        setItemPayingAmounts({});
         setPaidInput('0');
+        setSelectedFeeType('all');
         setSchoolReceiptNo('');
         setPaymentNote('');
         setPaymentMode('Cash');
@@ -571,29 +717,39 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
             return;
         }
 
-        try {
-            let remainingAmount = Number(paidInput);
+        const totalToPay = totalPaying;
+        if (totalToPay <= 0 && appliedConcession <= 0) {
+            alert('Please enter a paying amount greater than 0.');
+            return;
+        }
 
+        try {
             const feeAllocations = selectedItems.map((item: FeeInstallment) => {
                 const currentConcession = itemConcessions[item.sr] || 0;
-                let grossAmountNeeded =
-                    item.dueAmount !== undefined && item.dueAmount > 0 ? item.dueAmount : item.payable;
-                const amountNeeded = Math.max(0, grossAmountNeeded - currentConcession);
-                const allocatedAmount = Math.min(amountNeeded, remainingAmount);
-                remainingAmount -= allocatedAmount;
+                const val = itemPayingAmounts[item.sr];
+                const payingAmount = val === '' || val === undefined ? 0 : Number(val) || 0;
                 return {
                     student_fee_id: item.student_fee_id,
-                    amount: allocatedAmount,
+                    amount: payingAmount,
                     concession_amount: currentConcession
                 };
             });
+
+            const activeAllocations = feeAllocations.filter(
+                a => a.amount > 0 || a.concession_amount > 0
+            );
+
+            if (activeAllocations.length === 0) {
+                alert('Please enter a paying amount greater than 0.');
+                return;
+            }
 
             const globalBranch = localStorage.getItem('currentBranch') || 'All';
             const branchParam =
                 globalBranch === "All Branches" || globalBranch === "All" ? "All" : globalBranch;
             const response = await api.post(`/fees/payment?branch=${branchParam}`, {
                 student_id: selectedStudent.student_id,
-                amount_paid: Number(paidInput),
+                amount_paid: totalToPay,
                 payment_mode: paymentMode,
                 payment_date: paymentDate,
                 note: paymentNote,
@@ -603,7 +759,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                 cheque_no: chequeNo,
                 bank_name: bankName,
                 cheque_date: chequeDate,
-                fee_allocations: feeAllocations
+                fee_allocations: activeAllocations
             });
 
             const realReceiptNo = response.data.receipt_no;
@@ -613,33 +769,47 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                 const phone = selectedStudent.fatherPhone;
                 if (phone) {
                     await api.post('/sms/send-fee-receipt', {
-                phone: String(phone).replace('+91', '').trim(),
-                paid_amount: Number(paidInput),
-                total_amount: selectedStudent.total_fee,
-                admission_no: selectedStudent.admNo,
-                balance: selectedStudent.due_amount - Number(paidInput),
-                branch_name: selectedStudent.branch || 'School',
-                student_id: selectedStudent.student_id
-            });
+                        phone: String(phone).replace('+91', '').trim(),
+                        paid_amount: totalToPay,
+                        total_amount: selectedStudent.total_fee,
+                        admission_no: selectedStudent.admNo,
+                        balance: selectedStudent.due_amount - totalToPay,
+                        branch_name: selectedStudent.branch || 'School',
+                        student_id: selectedStudent.student_id
+                    });
                 }
             } catch (smsErr) {
-                // SMS failure should not block the receipt
                 console.warn('Fee SMS failed (non-blocking):', smsErr);
             }
 
-            const receiptLineItemsRaw = selectedItems.map((item: FeeInstallment, index: number) => {
-                const alloc = feeAllocations[index];
-                const feeTypeMatch = feeTypes.find(ft => ft.id === item.fee_type_id);
-                return {
-                    installment: item.title,
-                    fee_type: feeTypeMatch?.fee_type || "Tuition Fee",
-                    sr: item.sr,
-                    amount_paid: alloc.amount,
-                    concession_amount: alloc.concession_amount,
-                    gross_amount:
-                        item.dueAmount !== undefined && item.dueAmount > 0 ? item.dueAmount : item.payable
-                };
-            });
+            const receiptLineItemsRaw = selectedItems
+                .filter(item => {
+                    const alloc = activeAllocations.find(a => a.student_fee_id === item.student_fee_id);
+                    return alloc && (alloc.amount > 0 || alloc.concession_amount > 0);
+                })
+                .map((item: FeeInstallment) => {
+                    const alloc = activeAllocations.find(a => a.student_fee_id === item.student_fee_id);
+                    const feeTypeMatch = feeTypes.find(ft => ft.id === item.fee_type_id);
+                    const grossNeeded =
+                        item.dueAmount !== undefined && item.dueAmount > 0 ? item.dueAmount : item.payable;
+                    const paidNow = alloc ? alloc.amount : 0;
+                    const concessionNow = alloc ? alloc.concession_amount : 0;
+                    const dueRemaining = Math.max(0, grossNeeded - paidNow - concessionNow);
+                    return {
+                        installment: item.title,
+                        fee_type: feeTypeMatch?.fee_type || "Tuition Fee",
+                        sr: item.sr,
+                        amount_paid: paidNow,
+                        paid: paidNow,
+                        concession_amount: concessionNow,
+                        concession: concessionNow,
+                        gross_amount: grossNeeded,
+                        amount: grossNeeded,
+                        due_amount: dueRemaining,
+                        due: dueRemaining
+                    };
+                });
+
             const groupedReceiptItems = groupInstallments(receiptLineItemsRaw);
 
             const data = {
@@ -660,7 +830,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                 amount,
                 concession: appliedConcession,
                 payable,
-                paid: Number(paidInput),
+                paid: totalToPay,
                 due
             };
             setReceiptData(data);
@@ -696,7 +866,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
     return (
         <div className="container-fluid mx-auto bg-gray-50">
             <div className="p-4">
-                <div className="bg-white rounded-lg shadow-lg p-4">
+                <div className="card shadow-pop p-4">
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                         {/* Left Column */}
                         <div className="lg:col-span-3 space-y-4">
@@ -711,7 +881,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                         placeholder="Search Adm No, Enrollment No or Name..."
                                         value={searchTerm}
                                         onChange={e => setSearchTerm(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 text-sm"
+                                        className="input"
                                     />
                                     <select
                                         value={selectedClass}
@@ -719,7 +889,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                             setSelectedClass(e.target.value);
                                             setSelectedSection('');
                                         }}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 text-sm"
+                                        className="input"
                                     >
                                         <option value="">-- Select Class --</option>
                                         {classes.map(c => <option key={c} value={c}>{c}</option>)}
@@ -727,7 +897,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                     <select
                                         value={selectedSection}
                                         onChange={e => setSelectedSection(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 text-sm"
+                                        className="input"
                                     >
                                         <option value="">-- Select Section --</option>
                                         {sectionOptions.map(section => (
@@ -738,11 +908,11 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                         value={selectedFeeType}
                                         onChange={handleFeeTypeChange}
                                         disabled={!selectedStudent}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 text-sm"
+                                        className="input"
                                     >
-                                        <option value="">-- Select Fee Type --</option>
+                                        <option value="all">-- All Fee Types --</option>
                                         {feeTypes.map(ft => (
-                                            <option key={ft.id} value={ft.id}>{ft.fee_type}</option>
+                                            <option key={ft.id} value={String(ft.id)}>{ft.fee_type}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -750,7 +920,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                     <select
                                         value={selectedStudentId || ''}
                                         onChange={e => setSelectedStudentId(Number(e.target.value) || null)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 text-sm"
+                                        className="input"
                                     >
                                         <option value="">-- Select Student --</option>
                                         {students.map(s => (
@@ -761,10 +931,10 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                     </select>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <button className="text-sm px-3 py-1.5 border rounded-md hover:bg-gray-100">
+                                    <button className="btn-secondary btn-sm">
                                         Download QR
                                     </button>
-                                    <button className="text-sm px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                    <button className="btn-primary btn-sm">
                                         Student
                                     </button>
                                 </div>
@@ -808,26 +978,26 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                             </div>
 
                             <div className="border rounded-lg overflow-hidden shadow-sm">
-                                <div className="bg-blue-500 text-white px-4 py-2 flex justify-between items-center">
+                                <div className="bg-slate-50 text-slate-800 text-sm border-b border-slate-200 rounded-t-xl px-4 py-2 flex justify-between items-center">
                                     <h4 className="font-semibold relative">
                                         Installment
-                                        {installments.length > 0 && (
+                                        {filteredInstallments.length > 0 && (
                                             <span className="absolute -top-2 -right-5 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                                                {installments.length}
+                                                {filteredInstallments.length}
                                             </span>
                                         )}
                                     </h4>
                                     <button
                                         onClick={fetchPaymentHistory}
-                                        className="bg-orange-400 text-white px-3 py-1 text-sm rounded-md hover:bg-orange-500"
+                                        className="btn-warn btn-sm"
                                     >
                                         Print / Cancel
                                     </button>
                                 </div>
                                 <div className="overflow-x-auto max-h-96">
                                     <table className="w-full text-sm">
-                                        <thead className="bg-gray-100 sticky top-0">
-                                            <tr className="bg-gray-100 sticky top-0">
+                                        <thead className="sticky top-0">
+                                            <tr className="sticky top-0">
                                                 <th className="px-2 py-2 border w-12"></th>
                                                 <th className="px-2 py-2 border w-12">Sr.</th>
                                                 <th className="px-2 py-2 border text-left">Title</th>
@@ -841,8 +1011,10 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                                         const isPaid = inst.paid;
                                                         let isDisabled = false;
                                                         if (!isPaid) {
-                                                            const allPreviousCleared = filteredInstallments
+                                                            const previousInSameFeeType = filteredInstallments
                                                                 .slice(0, index)
+                                                                .filter(p => p.fee_type_id === inst.fee_type_id);
+                                                            const allPreviousCleared = previousInSameFeeType
                                                                 .every(p => p.paid || selectedIds.includes(p.sr));
                                                             if (!allPreviousCleared) isDisabled = true;
                                                         }
@@ -890,7 +1062,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                         <select
                                             value={selectedConcession}
                                             onChange={e => setSelectedConcession(e.target.value)}
-                                            className="text-sm border rounded-l-md p-1.5 focus:ring-violet-500 focus:border-violet-500"
+                                            className="input w-auto rounded-l-md"
                                             disabled={!selectedStudent}
                                         >
                                             <option value="0">Select Concession</option>
@@ -902,52 +1074,75 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                         </select>
                                         <button
                                             onClick={handleApplyConcession}
-                                            className="bg-green-500 text-white px-3 py-1.5 text-sm rounded-r-md hover:bg-green-600"
+                                            className="btn-success btn-sm rounded-r-md"
                                             disabled={!selectedStudent}
                                         >
                                             Apply
                                         </button>
                                     </div>
                                 </div>
-                                <div className="overflow-x-auto">
+                                <div className="overflow-x-auto rounded-lg border border-slate-200">
                                     <table className="w-full text-sm bg-white">
                                         <thead>
-                                            <tr className="bg-gray-100">
+                                            <tr className="">
                                                 <th className="border p-2 w-10">
-                                                    <button className="w-6 h-6 bg-green-500 text-white rounded hover:bg-green-600 flex items-center justify-center text-sm">
+                                                    <button className="btn-success w-6 h-6">
                                                         +
                                                     </button>
                                                 </th>
-                                                <th className="border p-2 text-left font-medium text-gray-600">Title</th>
-                                                <th className="border p-2 text-right font-medium text-gray-600">Payable</th>
-                                                <th className="border p-2 text-right font-medium text-gray-600">Paid</th>
-                                                <th className="border p-2 text-right font-medium text-gray-600">Due</th>
-                                                <th className="border p-2 w-32 font-medium text-gray-600">+ Extra Charge</th>
+                                                <th className="border p-2 text-left">Title</th>
+                                                <th className="border p-2 text-right">Payable</th>
+                                                <th className="border p-2 text-right">Paid</th>
+                                                <th className="border p-2 text-right w-28">Paying</th>
+                                                <th className="border p-2 text-right">Due</th>
+                                                <th className="border p-2 w-28">+ Extra Charge</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {selectedItems.length > 0 ? (
                                                 selectedItems.map(item => {
-                                                    const displayAmount =
+                                                    const grossPayable = item.payable;
+                                                    const paidAlready = item.paidAmount || 0;
+                                                    const itemConcession = itemConcessions[item.sr] || 0;
+                                                    const grossNeeded =
                                                         item.dueAmount !== undefined && item.dueAmount > 0
                                                             ? item.dueAmount
-                                                            : item.payable;
-                                                    const paidAlready = item.paidAmount || 0;
-                                                    const dueRemaining = item.dueAmount || 0;
+                                                            : grossPayable - paidAlready;
+                                                    const netNeeded = Math.max(0, grossNeeded - itemConcession);
+                                                    const payingVal = itemPayingAmounts[item.sr];
+                                                    const payingNum =
+                                                        payingVal === '' || payingVal === undefined
+                                                            ? 0
+                                                            : Number(payingVal) || 0;
+                                                    const rowDue = Math.max(0, netNeeded - payingNum);
+
                                                     return (
-                                                        <tr key={item.sr}>
+                                                        <tr key={item.sr} className="hover:bg-slate-50">
                                                             <td className="border p-2"></td>
-                                                            <td className="border p-2">{item.title}</td>
-                                                            <td className="border p-2 text-right">{displayAmount.toFixed(0)}</td>
-                                                            <td className="border p-2 text-right">{paidAlready.toFixed(0)}</td>
-                                                            <td className="border p-2 text-right">{dueRemaining.toFixed(0)}</td>
+                                                            <td className="border p-2 font-medium text-slate-800">{item.title}</td>
+                                                            <td className="border p-2 text-right">{grossPayable.toFixed(0)}</td>
+                                                            <td className="border p-2 text-right text-slate-600">{paidAlready.toFixed(0)}</td>
+                                                            <td className="border p-2 text-right">
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    max={netNeeded}
+                                                                    value={payingVal ?? ''}
+                                                                    onChange={e => handleItemPayingChange(item.sr, e.target.value)}
+                                                                    onBlur={() => handleItemPayingBlur(item.sr)}
+                                                                    className="input w-24 text-right font-semibold"
+                                                                />
+                                                            </td>
+                                                            <td className="border p-2 text-right font-semibold text-red-600">
+                                                                {rowDue.toFixed(0)}
+                                                            </td>
                                                             <td className="border p-2"></td>
                                                         </tr>
                                                     );
                                                 })
                                             ) : (
                                                 <tr>
-                                                    <td className="border p-2 h-8 text-center text-gray-400" colSpan={6}>
+                                                    <td className="border p-2 h-8 text-center text-gray-400" colSpan={7}>
                                                         Select installments to pay
                                                     </td>
                                                 </tr>
@@ -972,17 +1167,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                     </div>
                                     <div className="flex justify-between items-center text-sm border-t pt-2">
                                         <span className="text-gray-600">Paid</span>
-                                        <div className="flex items-center">
-                                            <input
-                                                type="text"
-                                                value={paidInput}
-                                                onChange={e => setPaidInput(e.target.value)}
-                                                className="w-24 px-2 py-1 border border-gray-300 rounded-md shadow-sm text-right focus:outline-none focus:ring-violet-500 focus:border-violet-500"
-                                            />
-                                            <button className="ml-2 px-3 py-1 bg-green-500 text-white rounded-md text-lg font-bold hover:bg-green-600">
-                                                =
-                                            </button>
-                                        </div>
+                                        <span className="font-semibold text-gray-800">{totalPaying.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm font-semibold text-red-600 border-t pt-2">
                                         <span>Due (Payable - Paid)</span>
@@ -992,16 +1177,13 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                             </div>
 
                             <div className="border rounded-lg p-4 space-y-4 bg-gray-50/50 shadow-sm">
-                                <div className="text-center text-sm text-orange-600 bg-orange-100 p-2 rounded-md">
-                                    Hit "ENTER" or Equal(=) button after entering "Paid" amount
-                                </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Payment Mode*</label>
+                                        <label className="label">Payment Mode*</label>
                                         <select
                                             value={paymentMode}
                                             onChange={e => setPaymentMode(e.target.value)}
-                                            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500"
+                                            className="input mt-1"
                                         >
                                             <option>Cash</option>
                                             <option>CardSwap</option>
@@ -1011,17 +1193,17 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Payment Date*</label>
+                                        <label className="label">Payment Date*</label>
                                         <input
                                             type="date"
                                             value={paymentDate}
-                                            disabled={true}
+                                            //disabled={true}
                                             onChange={e => setPaymentDate(e.target.value)}
-                                            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500"
+                                            className="input mt-1"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">
+                                        <label className="label">
                                             School Receipt No
                                         </label>
                                         <input
@@ -1029,35 +1211,35 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                             value={schoolReceiptNo}
                                             onChange={e => setSchoolReceiptNo(e.target.value)}
                                             disabled={true}
-                                            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500"
+                                            className="input mt-1"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700">Payment Note</label>
+                                        <label className="label">Payment Note</label>
                                         <input
                                             type="text"
                                             value={paymentNote}
                                             maxLength={25}
                                             onChange={e => setPaymentNote(e.target.value)}
-                                            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500"
+                                            className="input mt-1"
                                         />
                                     </div>
                                     {(paymentMode === 'CardSwap' || paymentMode === 'UPI') && (
                                         <>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700">
+                                                <label className="label">
                                                     UPI/Card Transaction ID*
                                                 </label>
                                                 <input
                                                     type="text"
                                                     value={transactionId}
                                                     onChange={e => setTransactionId(e.target.value)}
-                                                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500"
+                                                    className="input mt-1"
                                                     placeholder="Enter UPI/Card transaction ID"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700">
+                                                <label className="label">
                                                     UPI/Card Description*
                                                 </label>
                                                 <input
@@ -1065,7 +1247,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                                     value={transactionIdDescription}
                                                     required
                                                     onChange={e => setTransactionIdDescription(e.target.value)}
-                                                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500"
+                                                    className="input mt-1"
                                                     placeholder="Enter UPI/Card description"
                                                 />
                                             </div>
@@ -1074,16 +1256,16 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                     {(paymentMode === 'Cheque') && (
                                         <>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700">Cheque No*</label>
-                                                <input type="text" value={chequeNo} onChange={e => setChequeNo(e.target.value)} required className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500" placeholder="Enter Cheque No" />
+                                                <label className="label">Cheque No*</label>
+                                                <input type="text" value={chequeNo} onChange={e => setChequeNo(e.target.value)} required className="input mt-1" placeholder="Enter Cheque No" />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700">Bank Name*</label>
-                                                <input type="text" value={bankName} onChange={e => setBankName(e.target.value)} required className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500" placeholder="Enter Bank Name" />
+                                                <label className="label">Bank Name*</label>
+                                                <input type="text" value={bankName} onChange={e => setBankName(e.target.value)} required className="input mt-1" placeholder="Enter Bank Name" />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700">Cheque Date*</label>
-                                                <input type="date" value={chequeDate} onChange={e => setChequeDate(e.target.value)} required className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500" />
+                                                <label className="label">Cheque Date*</label>
+                                                <input type="date" value={chequeDate} onChange={e => setChequeDate(e.target.value)} required className="input mt-1" />
                                             </div>
                                         </>
                                     )}
@@ -1094,21 +1276,21 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                         type="checkbox"
                                         className="h-4 w-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
                                     />
-                                    <label htmlFor="keep-details" className="ml-2 block text-sm text-gray-900">
+                                    <label htmlFor="keep-details" className="label ml-2">
                                         Keep same payment detail for the next fee payment
                                     </label>
                                 </div>
                                 <div className="flex justify-end space-x-2 pt-2">
                                     <button
                                         onClick={handleTakeFee}
-                                        className="px-4 py-2 text-sm font-medium text-white bg-violet-600 rounded-md hover:bg-violet-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+                                        className="btn-primary"
                                         disabled={!selectedStudent}
                                     >
                                         Collect Fee
                                     </button>
                                     <button
                                         onClick={handleReset}
-                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
+                                        className="btn-secondary"
                                     >
                                         Reset
                                     </button>
@@ -1124,8 +1306,8 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
             )}
 
             {showHistory && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+                <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
+                    <div className="card shadow-pop w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold">
                                 Payment History - {selectedStudent?.name} ({localStorage.getItem('academicYear')})
@@ -1151,7 +1333,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                         {/* ────────────────────────────────────────────────────────── */}
 
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-100">
+                            <thead className="">
                                 <tr>
                                     <th className="p-2">Receipt No</th>
                                     <th className="p-2">Academic Year</th>
@@ -1254,7 +1436,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                         <div className="mt-4 flex justify-end">
                             <button
                                 onClick={() => setShowHistory(false)}
-                                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                                className="btn-secondary"
                             >
                                 Close
                             </button>

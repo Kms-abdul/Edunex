@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Page } from '../App';
 import { useAuth } from '../contexts/AuthContext';
-import { UserIcon, HomeIcon, TimeIcon, DocumentIcon, DashboardIcon, ChartBarIcon } from './icons';
+import { UserIcon, HomeIcon, TimeIcon, DocumentIcon, ChartBarIcon } from './icons';
+import ModuleTile from './ui/ModuleTile';
+import { ArrowLeft } from 'lucide-react';
 
 interface HRManagementProps {
     navigateTo?: (page: Page) => void;
@@ -10,7 +12,7 @@ interface HRManagementProps {
 type MainCategory = 'hr_master' | 'employee_details' | 'attendance' | null;
 
 const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
-    const { hasPermission } = useAuth();
+    const { user, hasPermission } = useAuth();
     const [activeCategory, setActiveCategory] = useState<MainCategory>(null);
 
     const canAccess = (permission?: string) => {
@@ -22,21 +24,21 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         {
             id: 'hr_master' as MainCategory,
             name: 'HR Master',
-            icon: <DocumentIcon className="w-8 h-8" />,
+            icon: <DocumentIcon className="w-6 h-6" />,
             iconBg: 'bg-blue-50',
             iconColor: 'text-blue-600',
         },
         {
             id: 'employee_details' as MainCategory,
             name: 'Employee Details',
-            icon: <UserIcon className="w-8 h-8" />,
+            icon: <UserIcon className="w-6 h-6" />,
             iconBg: 'bg-emerald-50',
             iconColor: 'text-emerald-600',
         },
         {
             id: 'attendance' as MainCategory,
             name: 'Attendance',
-            icon: <ChartBarIcon className="w-8 h-8" />,
+            icon: <ChartBarIcon className="w-6 h-6" />,
             iconBg: 'bg-orange-50',
             iconColor: 'text-orange-600',
         }
@@ -46,7 +48,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         {
             id: 'departments',
             name: 'Departments',
-            icon: <HomeIcon className="w-8 h-8" />,
+            icon: <HomeIcon className="w-6 h-6" />,
             iconBg: 'bg-blue-50',
             iconColor: 'text-blue-600',
             page: 'hr-departments' as Page,
@@ -56,7 +58,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         {
             id: 'staff-categories',
             name: 'Staff Categories',
-            icon: <DocumentIcon className="w-8 h-8" />,
+            icon: <DocumentIcon className="w-6 h-6" />,
             iconBg: 'bg-pink-50',
             iconColor: 'text-pink-600',
             page: 'hr-staff-categories' as Page,
@@ -64,9 +66,19 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
             category: 'hr_master'
         },
         {
+            id: 'staff-document-types',
+            name: 'Document Types',
+            icon: <DocumentIcon className="w-8 h-8" />,
+            iconBg: 'bg-indigo-50',
+            iconColor: 'text-indigo-600',
+            page: 'hr-staff-document-types' as Page,
+            permission: 'hr.hr.staff-document-types',
+            category: 'hr_master'
+        },
+        {
             id: 'staff-statuses',
             name: 'Staff Statuses',
-            icon: <DocumentIcon className="w-8 h-8" />,
+            icon: <DocumentIcon className="w-6 h-6" />,
             iconBg: 'bg-purple-50',
             iconColor: 'text-purple-600',
             page: 'hr-staff-statuses' as Page,
@@ -76,7 +88,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         {
             id: 'designations',
             name: 'Designations',
-            icon: <UserIcon className="w-8 h-8" />,
+            icon: <UserIcon className="w-6 h-6" />,
             iconBg: 'bg-indigo-50',
             iconColor: 'text-indigo-600',
             page: 'hr-designations' as Page,
@@ -86,7 +98,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         {
             id: 'shifts',
             name: 'Shifts',
-            icon: <TimeIcon className="w-8 h-8" />,
+            icon: <TimeIcon className="w-6 h-6" />,
             iconBg: 'bg-orange-50',
             iconColor: 'text-orange-600',
             page: 'hr-shifts' as Page,
@@ -96,7 +108,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         {
             id: 'staff-master',
             name: 'Staff Master',
-            icon: <UserIcon className="w-8 h-8" />,
+            icon: <UserIcon className="w-6 h-6" />,
             iconBg: 'bg-emerald-50',
             iconColor: 'text-emerald-600',
             page: 'hr-staff-master' as Page,
@@ -104,19 +116,29 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
             category: 'employee_details'
         },
         {
-            id: 'staff-profile',
+            id: 'staff-profile-list',
             name: 'Staff Profile',
-            icon: <UserIcon className="w-8 h-8" />,
+            icon: <UserIcon className="w-6 h-6" />,
             iconBg: 'bg-teal-50',
             iconColor: 'text-teal-600',
-            page: 'staff-profile' as Page,
+            page: hasPermission('hr.hr.staff-master', 'read') ? 'hr-staff-profile-list' as Page : 'staff-profile' as Page,
             permission: 'hr.hr.staff-profile',
+            category: 'employee_details'
+        },
+        {
+            id: 'staff-update-list',
+            name: 'Staff Update',
+            icon: <UserIcon className="w-6 h-6" />,
+            iconBg: 'bg-amber-50',
+            iconColor: 'text-amber-600',
+            page: 'hr-staff-update-list' as Page,
+            permission: 'hr.hr.staff-update',
             category: 'employee_details'
         },
         {
             id: 'attendance-summary',
             name: 'Attendance Summary',
-            icon: <ChartBarIcon className="w-8 h-8" />,
+            icon: <ChartBarIcon className="w-6 h-6" />,
             iconBg: 'bg-slate-50',
             iconColor: 'text-slate-600',
             page: 'hr-attendance-summary' as Page,
@@ -126,7 +148,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         {
             id: 'punch-log',
             name: 'Punch Log',
-            icon: <TimeIcon className="w-8 h-8" />,
+            icon: <TimeIcon className="w-6 h-6" />,
             iconBg: 'bg-slate-50',
             iconColor: 'text-slate-600',
             page: 'hr-punch-log' as Page,
@@ -140,73 +162,55 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         module.category === activeCategory && canAccess(module.permission)
     );
 
+    const activeCategoryMeta = categories.find(c => c.id === activeCategory);
+
     return (
-        <div className="max-w-7xl mx-auto px-6 py-8">
-            {activeCategory && (
-                <div className="mb-6">
-                    <button 
+        <div className="max-w-7xl mx-auto">
+            {activeCategory ? (
+                <div className="mb-5 flex items-center gap-3">
+                    <button
                         onClick={() => setActiveCategory(null)}
-                        className="text-sm text-slate-500 hover:text-slate-700 flex items-center transition-colors"
+                        className="btn-secondary btn-sm"
                     >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
+                        <ArrowLeft className="w-3.5 h-3.5" />
                         Back to Categories
                     </button>
+                    <div className="h-5 w-px bg-slate-200" />
+                    <h3 className="text-base font-semibold text-slate-900">{activeCategoryMeta?.name}</h3>
+                    <span className="badge-neutral">{visibleModules.length}</span>
+                </div>
+            ) : (
+                <div className="mb-5">
+                    <h3 className="text-base font-semibold text-slate-900">Categories</h3>
+                    <p className="text-xs text-slate-500">Choose a category to see its modules.</p>
                 </div>
             )}
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade-in" key={activeCategory || 'root'}>
                 {!activeCategory ? (
                     categories.map((category) => (
-                        <button
+                        <ModuleTile
                             key={category.id}
+                            name={category.name}
+                            icon={category.icon}
+                            iconClassName={`${category.iconBg} ${category.iconColor}`}
                             onClick={() => setActiveCategory(category.id)}
-                            className="group relative bg-white rounded-xl p-6 border border-slate-200 text-left focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 hover:border-emerald-300 hover:shadow-lg cursor-pointer"
-                        >
-                            {/* Icon */}
-                            <div className={`${category.iconBg} ${category.iconColor} w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform duration-200`}>
-                                {category.icon}
-                            </div>
-    
-                            {/* Category Name */}
-                            <h3 className="font-semibold text-slate-900 text-base mb-1 group-hover:text-emerald-600 transition-colors">
-                                {category.name}
-                            </h3>
-                        </button>
+                        />
                     ))
                 ) : (
                     visibleModules.map((module) => (
-                        <button
+                        <ModuleTile
                             key={module.id}
+                            name={module.name}
+                            icon={module.icon}
+                            iconClassName={`${module.iconBg} ${module.iconColor}`}
+                            comingSoon={module.comingSoon}
                             onClick={() => {
                                 if (!module.comingSoon && navigateTo && module.page) {
                                     navigateTo(module.page);
                                 }
                             }}
-                            disabled={module.comingSoon}
-                            className={`group relative bg-white rounded-xl p-6 border border-slate-200 text-left focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 ${module.comingSoon
-                                ? 'opacity-60 cursor-not-allowed'
-                                : 'hover:border-emerald-300 hover:shadow-lg cursor-pointer'
-                                }`}
-                        >
-                            {/* Icon */}
-                            <div className={`${module.iconBg} ${module.iconColor} w-14 h-14 rounded-xl flex items-center justify-center mb-4 ${!module.comingSoon && 'group-hover:scale-105'} transition-transform duration-200`}>
-                                {module.icon}
-                            </div>
-    
-                            {/* Module Name */}
-                            <h3 className={`font-semibold text-slate-900 text-base mb-1 ${!module.comingSoon && 'group-hover:text-emerald-600'} transition-colors`}>
-                                {module.name}
-                            </h3>
-    
-                            {/* Coming Soon Badge */}
-                            {module.comingSoon && (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                                    Coming Soon
-                                </span>
-                            )}
-                        </button>
+                        />
                     ))
                 )}
             </div>

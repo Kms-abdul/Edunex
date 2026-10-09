@@ -31,8 +31,8 @@ interface AttendanceHeaderProps {
 
 const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({ activeTab, onTabChange, onAction, navigateTo }) => {
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-    const buttonStyle = "px-3 py-1.5 text-sm border border-gray-300 bg-white text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500";
-    const activeButtonStyle = "px-3 py-1.5 text-sm border border-transparent bg-sky-600 text-white rounded-md";
+    const buttonStyle = "btn-secondary btn-sm";
+    const activeButtonStyle = "btn-primary btn-sm";
 
     const Dropdown: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
         const isOpen = openDropdown === title;
@@ -48,7 +48,7 @@ const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({ activeTab, onTabCha
                     <ChevronDownIcon className="w-4 h-4 ml-1" />
                 </button>
                 {isOpen && (
-                    <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                    <div className="card shadow-pop origin-top-right absolute right-0 mt-2 w-56 z-10">
                         <div className="py-1" role="menu" aria-orientation="vertical">
                             {children}
                         </div>
@@ -61,7 +61,7 @@ const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({ activeTab, onTabCha
     const DropdownItem: React.FC<{ children: React.ReactNode, action?: string }> = ({ children, action }) => (
         <a
             href="#"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            className="menu-item"
             role="menuitem"
             onClick={(e) => {
                 e.preventDefault();
@@ -73,13 +73,13 @@ const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({ activeTab, onTabCha
     );
 
     return (
-        <div className="bg-white p-3 border-b">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="bg-white px-4 sm:px-6 py-4 border-b border-slate-200">
+            <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h2 className="text-lg font-semibold text-gray-700">
-                        STUDENT ATTENDANCE
-                        <span className="text-gray-400 mx-2">/</span>
-                        <span className="text-sm bg-gray-200 text-gray-600 font-medium px-2 py-1 rounded">Non Biometric</span>
+                    <p className="page-eyebrow">Administration</p>
+                    <h2 className="page-title flex items-center gap-2">
+                        Student Attendance
+                        <span className="badge-neutral">Non Biometric</span>
                     </h2>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -287,28 +287,28 @@ const TakeAttendanceForm: React.FC = () => {
 
     return (
         <div className="p-4">
-            <div className="bg-white rounded-lg shadow-md border">
-                <div className="bg-sky-600 text-white font-semibold p-3 rounded-t-lg">
-                    TAKE ATTENDANCE
+            <div className="card">
+                <div className="bg-slate-50 text-slate-800 text-sm border-b border-slate-200 rounded-t-xl font-semibold p-3">
+                    Take Attendance
                 </div>
                 <div className="p-4 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Attendance Date</label>
+                            <label className="label">Attendance Date</label>
                             <input
                                 type="date"
                                 value={attendanceDate}
                                 onChange={(e) => setAttendanceDate(e.target.value)}
                                 max={new Date().toISOString().split('T')[0]}
-                                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 text-sm"
+                                className="input mt-1"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Class</label>
+                            <label className="label">Class</label>
                             <select
                                 value={selectedClass}
                                 onChange={e => setSelectedClass(e.target.value)}
-                                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 text-sm"
+                                className="input mt-1"
                             >
                                 <option value="">--Select Class--</option>
                                 {classOptions.map(c => (
@@ -317,17 +317,17 @@ const TakeAttendanceForm: React.FC = () => {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Section</label>
+                            <label className="label">Section</label>
                             <select
                                 value={selectedSection}
                                 onChange={e => setSelectedSection(e.target.value)}
-                                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 text-sm"
+                                className="input mt-1"
                             >
                                 <option value="">--All Sections--</option>
                                 {sectionOptions.map(section => <option key={section} value={section}>{section}</option>)}
                             </select>
                         </div>
-                        <button onClick={handleGetStudents} disabled={loading} className="bg-violet-600 text-white px-4 py-2 rounded-md hover:bg-violet-700 text-sm disabled:bg-gray-400">
+                        <button onClick={handleGetStudents} disabled={loading} className="btn-primary">
                             {loading ? 'Loading...' : 'Get Students'}
                         </button>
                     </div>
@@ -345,8 +345,8 @@ const TakeAttendanceForm: React.FC = () => {
                     {students.length > 0 && (
                         <div className="overflow-x-auto border rounded-lg">
                             <div className="p-2 bg-gray-50 border-b flex gap-2">
-                                <button onClick={() => markAll('Present')} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded border border-green-200 hover:bg-green-200">Mark All Present</button>
-                                <button onClick={() => markAll('Absent')} className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded border border-red-200 hover:bg-red-200">Mark All Absent</button>
+                                <button onClick={() => markAll('Present')} className="btn btn-sm text-xs bg-green-100 text-green-700 border border-green-200 hover:bg-green-200">Mark All Present</button>
+                                <button onClick={() => markAll('Absent')} className="btn btn-sm text-xs bg-red-100 text-red-700 border border-red-200 hover:bg-red-200">Mark All Absent</button>
                                 {/* <div className="h-4 w-px bg-gray-300" />
                                 <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-600 select-none">
                                     <input
@@ -366,7 +366,7 @@ const TakeAttendanceForm: React.FC = () => {
                                 <button
                                     onClick={handleSendSms}
                                     disabled={smsSelected.size === 0 || sendingSms}
-                                    className="ml-auto text-xs bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white px-3 py-1 rounded font-medium flex items-center gap-1"
+                                    className="btn-warn btn-sm ml-auto"
                                 >
                                     {sendingSms ? 'Sending…' : `📱 Send SMS (${smsSelected.size})`}
                                 </button>
@@ -378,15 +378,15 @@ const TakeAttendanceForm: React.FC = () => {
                                 )} */}
                             </div>
                             <table className="min-w-full divide-y divide-gray-200 text-m">
-                                <thead className="bg-gray-50">
+                                <thead className="">
                                     <tr>
                                         {/* <th className="px-4 py-2 w-8"></th> */}
-                                        <th className="px-4 py-2 text-left font-medium text-gray-500">Roll No.</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-500">Adm No.</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-500">Student Name</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-500">Father Name</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-500">Phone</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-500">Status</th>
+                                        <th className="px-4 py-2 text-left">Roll No.</th>
+                                        <th className="px-4 py-2 text-left">Adm No.</th>
+                                        <th className="px-4 py-2 text-left">Student Name</th>
+                                        <th className="px-4 py-2 text-left">Father Name</th>
+                                        <th className="px-4 py-2 text-left">Phone</th>
+                                        <th className="px-4 py-2 text-left">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -434,7 +434,7 @@ const TakeAttendanceForm: React.FC = () => {
                                                                         }
                                                                     }}
                                                                     disabled={(student as any).is_locked}
-                                                                    className={`h-5 w-5 ${classes.text} border-gray-300 ${classes.ring} ${(student as any).is_locked ? 'cursor-not-allowed opacity-50' : ''}`}
+                                                                    className={`h-5 w-5 ${classes.text} border-gray-300 ${classes.ring}                                ${(student as any).is_locked ? 'cursor-not-allowed opacity-50' : ''}`}
                                                                     title={(student as any).is_locked ? 'Record locked (Promoted)' : ''}
                                                                 />
                                                                 <span className={`ml-1 ${classes.label} font-medium`}>{opt.label}</span>
@@ -452,7 +452,7 @@ const TakeAttendanceForm: React.FC = () => {
                                     <button
                                         onClick={handleSave}
                                         disabled={loading}
-                                        className={`${isUpdateMode ? "bg-blue-600 hover:bg-blue-700" : "bg-green-600 hover:bg-green-700"} text-white px-6 py-2 rounded-md text-sm font-semibold disabled:bg-gray-400`}
+                                        className={`btn ${isUpdateMode ? "bg-blue-600 hover:bg-blue-700" : "bg-green-600 hover:bg-green-700"} text-white disabled:bg-gray-400`}
                                     >
                                         {loading
                                             ? (isUpdateMode ? "Updating..." : "Saving...")
@@ -669,29 +669,29 @@ const RegisterViewTab: React.FC = () => {
 
     return (
         <div className="p-4">
-            <div className="bg-white rounded-lg shadow-md border">
-                <div className="bg-sky-600 text-white font-semibold p-3 rounded-t-lg">
-                    ATTENDANCE REGISTER
+            <div className="card">
+                <div className="bg-slate-50 text-slate-800 text-sm border-b border-slate-200 rounded-t-xl font-semibold p-3">
+                    Attendance Register
                 </div>
                 <div className="p-4 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Class</label>
-                            <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                            <label className="label">Class</label>
+                            <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="input mt-1">
                                 <option value="">--Select Class--</option>
                                 {classOptions.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Section</label>
-                            <select value={selectedSection} onChange={e => setSelectedSection(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                            <label className="label">Section</label>
+                            <select value={selectedSection} onChange={e => setSelectedSection(e.target.value)} className="input mt-1">
                                 <option value="">--All Sections--</option>
                                 {sectionOptions.map(section => <option key={section} value={section}>{section}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Month</label>
-                            <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                            <label className="label">Month</label>
+                            <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))} className="input mt-1">
                                 {Array.from({ length: 12 }, (_, i) => i + 1)
                                     .filter(m => {
                                         const now = new Date();
@@ -705,16 +705,16 @@ const RegisterViewTab: React.FC = () => {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Year</label>
+                            <label className="label">Year</label>
                             <input
                                 type="number"
                                 value={selectedYear}
                                 max={new Date().getFullYear()}
                                 onChange={e => setSelectedYear(parseInt(e.target.value))}
-                                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                className="input mt-1"
                             />
                         </div>
-                        <button onClick={handleGetReport} disabled={loading} className="bg-violet-600 text-white px-4 py-2 rounded-md hover:bg-violet-700 text-sm disabled:bg-gray-400">
+                        <button onClick={handleGetReport} disabled={loading} className="btn-primary">
                             {loading ? 'Loading...' : 'Get Register'}
                         </button>
 
@@ -723,17 +723,17 @@ const RegisterViewTab: React.FC = () => {
                     {reportData && (
                         <div className="overflow-x-auto border rounded-lg mt-4">
                             <table className="min-w-full divide-y divide-gray-200 text-xs">
-                                <thead className="bg-gray-50">
+                                <thead className="">
                                     <tr>
-                                        <th className="px-2 py-2 text-left font-medium text-gray-500 sticky left-0 bg-gray-50 z-10 w-48">Student</th>
-                                        <th className="px-2 py-2 text-center font-medium text-gray-500 bg-gray-50 border-1 border-gray-100">Roll No</th>
+                                        <th className="px-2 py-2 text-left sticky left-0 z-10 w-48">Student</th>
+                                        <th className="px-2 py-2 text-center border-1 border-gray-100">Roll No</th>
                                         {daysArray.map(d => {
                                             const date = new Date(selectedYear, selectedMonth - 1, d);
                                             const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
                                             const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                                             const isBlocked = !!blockedDates[dateStr];
                                             return (
-                                                <th key={d} className={`px-1 py-2 text-center font-medium w-8 border-l border-gray-100 ${isBlocked ? 'bg-gray-300 text-gray-600' : 'text-gray-500'}`}
+                                                <th key={d} className={`px-1 py-2 text-center w-8 border-l border-gray-100 ${isBlocked ? 'bg-gray-300 text-gray-600' : 'text-gray-500'}`}
                                                     title={isBlocked ? blockedDates[dateStr] : undefined}
                                                 >
                                                     <div className="flex flex-col items-center justify-center leading-tight">
@@ -745,10 +745,10 @@ const RegisterViewTab: React.FC = () => {
 
                                             );
                                         })}
-                                        <th className="px-2 py-2 text-center font-medium text-gray-700 bg-blue-50 border-l border-blue-100">Present</th>
-                                        <th className="px-2 py-2 text-center font-medium text-gray-700 bg-blue-50">Absent</th>
-                                        <th className="px-2 py-2 text-center font-medium text-gray-700 bg-blue-50">Total Working Days</th>
-                                        <th className="px-2 py-2 text-center font-medium text-gray-700 bg-blue-50">Attendance %</th>
+                                        <th className="px-2 py-2 text-center bg-blue-50 border-l border-blue-100">Present</th>
+                                        <th className="px-2 py-2 text-center bg-blue-50">Absent</th>
+                                        <th className="px-2 py-2 text-center bg-blue-50">Total Working Days</th>
+                                        <th className="px-2 py-2 text-center bg-blue-50">Attendance %</th>
                                     </tr>
 
                                 </thead>
@@ -822,7 +822,7 @@ const RegisterViewTab: React.FC = () => {
                                 </tbody>
                             </table>
                             <div className="right p-2 mt-2">
-                                <button onClick={handleExportExcel} disabled={!reportData} className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm disabled:bg-gray-400">
+                                <button onClick={handleExportExcel} disabled={!reportData} className="btn-success">
                                     Export Excel</button> </div>
                         </div>
                     )}
@@ -1111,29 +1111,29 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
 
     return (
         <div className="p-4">
-            <div className="bg-white rounded-lg shadow-md border">
-                <div className="bg-sky-600 text-white font-semibold p-3 rounded-t-lg">
-                    MONTHLY ATTENDANCE ENTRY
+            <div className="card">
+                <div className="bg-slate-50 text-slate-800 text-sm border-b border-slate-200 rounded-t-xl font-semibold p-3">
+                    Monthly Attendance Entry
                 </div>
                 <div className="p-4 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Class</label>
-                            <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                            <label className="label">Class</label>
+                            <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="input mt-1">
                                 <option value="">--Select Class--</option>
                                 {classOptions.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Section</label>
-                            <select value={selectedSection} onChange={e => setSelectedSection(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                            <label className="label">Section</label>
+                            <select value={selectedSection} onChange={e => setSelectedSection(e.target.value)} className="input mt-1">
                                 <option value="">--All Sections--</option>
                                 {sectionOptions.map(section => <option key={section} value={section}>{section}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Month</label>
-                            <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))} className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                            <label className="label">Month</label>
+                            <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))} className="input mt-1">
                                 {Array.from({ length: 12 }, (_, i) => i + 1)
                                     .filter(m => {
                                         const now = new Date();
@@ -1147,16 +1147,16 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Year</label>
+                            <label className="label">Year</label>
                             <input
                                 type="number"
                                 value={selectedYear}
                                 max={new Date().getFullYear()}
                                 onChange={e => setSelectedYear(parseInt(e.target.value))}
-                                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                className="input mt-1"
                             />
                         </div>
-                        <button onClick={handleGetStudents} disabled={loading} className="bg-violet-600 text-white px-4 py-2 rounded-md hover:bg-violet-700 text-sm disabled:bg-gray-400">
+                        <button onClick={handleGetStudents} disabled={loading} className="btn-primary">
                             {loading ? 'Loading...' : 'Get Register'}
                         </button>
                     </div>
@@ -1165,7 +1165,7 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                         <button
                             onClick={handleDownloadTemplate}
                             disabled={loading || students.length === 0}
-                            className="bg-gray-100 text-gray-700 border border-gray-300 px-3 py-1.5 rounded-md hover:bg-gray-200 text-sm flex items-center gap-2"
+                            className="btn-secondary btn-sm"
                         >
                             <span>Download Template</span>
                         </button>
@@ -1203,7 +1203,7 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                                         <button
                                             onClick={handleSave}
                                             disabled={loading || students.every((s: any) => s.is_locked)}
-                                            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md text-sm font-semibold disabled:bg-gray-400 disabled:opacity-50"
+                                            className="btn-success"
                                         >
                                             {saving ? "Saving..." : "Save All Changes"}
                                         </button>
@@ -1212,17 +1212,17 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                             </div>
                             <div className="overflow-x-auto border rounded-lg max-h-[70vh]">
                                 <table className="min-w-full divide-y divide-gray-200 text-xs relative">
-                                    <thead className="bg-gray-50 sticky top-0 z-20">
+                                    <thead className="sticky top-0 z-20">
                                         <tr>
-                                            <th className="px-2 py-2 text-center font-medium text-gray-500 sticky left-0 bg-gray-50 z-30 w-16 shadow-[1px_0_0_0_rgba(0,0,0,0.1)]">Roll No</th>
-                                            <th className="px-2 py-2 text-center font-medium text-gray-500 sticky left-16 bg-gray-50 z-30 w-24 shadow-[1px_0_0_0_rgba(0,0,0,0.1)]">Adm No</th>
-                                            <th className="px-2 py-2 text-left font-medium text-gray-500 sticky left-40 bg-gray-50 z-30 w-48 shadow-[1px_0_0_0_rgba(0,0,0,0.1)]">Student Name</th>
+                                            <th className="px-2 py-2 text-center sticky left-0 z-30 w-16 shadow-[1px_0_0_0_rgba(0,0,0,0.1)]">Roll No</th>
+                                            <th className="px-2 py-2 text-center sticky left-16 z-30 w-24 shadow-[1px_0_0_0_rgba(0,0,0,0.1)]">Adm No</th>
+                                            <th className="px-2 py-2 text-left sticky left-40 z-30 w-48 shadow-[1px_0_0_0_rgba(0,0,0,0.1)]">Student Name</th>
                                             {daysArray.map(d => {
                                                 const date = new Date(selectedYear, selectedMonth - 1, d);
                                                 const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
                                                 const isSunday = date.getDay() === 0;
                                                 return (
-                                                    <th key={d} className={`px-1 py-1 text-center font-medium w-8 border-l border-gray-100 ${isSunday ? 'bg-red-50 text-red-600' : 'text-gray-500'}`}>
+                                                    <th key={d} className={`px-1 py-1 text-center w-8 border-l border-gray-100 ${isSunday ? 'bg-red-50 text-red-600' : 'text-gray-500'}`}>
                                                         <div className="flex flex-col items-center justify-center leading-tight">
                                                             <span>{d}</span>
                                                             <span className="text-[10px] font-normal">{dayName}</span>
@@ -1291,16 +1291,16 @@ const RegisterView: React.FC = () => {
         <div className="space-y-4">
             {/* Sub Tabs */}
             <div className="flex justify-center bg-gray-100 p-2 rounded-lg mx-4 mt-2">
-                <div className="bg-white p-1 rounded-md shadow-sm flex space-x-1">
+                <div className="card p-1 flex space-x-1">
                     <button
                         onClick={() => setSubTab('view')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${subTab === 'view' ? 'bg-sky-100 text-sky-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                        className={`btn ${subTab === 'view' ? 'bg-sky-100 text-sky-700' : 'text-gray-600 hover:bg-gray-50'}`}
                     >
                         Attendance Register Query
                     </button>
                     <button
                         onClick={() => setSubTab('entry')}
-                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${subTab === 'entry' ? 'bg-sky-100 text-sky-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                        className={`btn ${subTab === 'entry' ? 'bg-sky-100 text-sky-700' : 'text-gray-600 hover:bg-gray-50'}`}
                     >
                         Monthly Attendance Entry
                     </button>
@@ -1476,19 +1476,19 @@ const AbsentReport: React.FC = () => {
 
     return (
         <div className="p-4">
-            <div className="bg-white rounded-lg shadow-md border">
-                <div className="bg-sky-600 text-white font-semibold p-3 rounded-t-lg flex justify-between items-center">
-                    <span>ABSENT REPORT</span>
-                    <div className="flex space-x-2">
+            <div className="card">
+                <div className="bg-slate-50 text-slate-800 text-sm border-b border-slate-200 rounded-t-xl font-semibold p-3 flex justify-between items-center">
+                    <span>Absent Report</span>
+                    <div className="segmented">
                         <button
                             onClick={() => { setReportType('today'); setResults([]); setSelectedStudent(null); }}
-                            className={`px-3 py-1 text-xs rounded ${reportType === 'today' ? 'bg-white text-sky-600' : 'bg-sky-700 text-white'}`}
+                            className={`segmented-item text-xs py-1 ${reportType === 'today' ? 'segmented-item-active' : ''}`}
                         >
                             Today's Absentees
                         </button>
                         <button
                             onClick={() => { setReportType('student'); setResults([]); }}
-                            className={`px-3 py-1 text-xs rounded ${reportType === 'student' ? 'bg-white text-sky-600' : 'bg-sky-700 text-white'}`}
+                            className={`segmented-item text-xs py-1 ${reportType === 'student' ? 'segmented-item-active' : ''}`}
                         >
                             Student Report
                         </button>
@@ -1499,17 +1499,17 @@ const AbsentReport: React.FC = () => {
                         {reportType === 'today' ? (
                             <>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Date</label>
-                                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm" />
+                                    <label className="label">Date</label>
+                                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="input w-auto mt-1" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Class (Optional)</label>
-                                    <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm w-40">
+                                    <label className="label">Class (Optional)</label>
+                                    <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="input mt-1 w-40">
                                         <option value="">All Classes</option>
                                         {classOptions.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
                                     </select>
                                 </div>
-                                <button onClick={handleGetTodayReport} disabled={loading} className="bg-violet-600 text-white px-4 py-2 rounded-md hover:bg-violet-700 text-sm disabled:bg-gray-400">
+                                <button onClick={handleGetTodayReport} disabled={loading} className="btn-primary">
                                     {loading ? 'Searching...' : 'Search'}
                                 </button>
                             </>
@@ -1519,7 +1519,7 @@ const AbsentReport: React.FC = () => {
                                     <h4 className="text-sm font-medium text-gray-700 mb-2">Find Student by Class & Section</h4>
                                     <div className="flex flex-wrap gap-4 items-end">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">Class</label>
+                                            <label className="label">Class</label>
                                             <select
                                                 value={selectedClass}
                                                 onChange={e => {
@@ -1527,18 +1527,18 @@ const AbsentReport: React.FC = () => {
                                                     // Trigger search if section is already selected or just fetch all class students
                                                     // For now, let's wait for explicit "Get Students" or just use the existing search logic adapted
                                                 }}
-                                                className="mt-1 w-40 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                                className="input mt-1 w-40"
                                             >
                                                 <option value="">--Select--</option>
                                                 {classOptions.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">Section</label>
+                                            <label className="label">Section</label>
                                             <select
                                                 value={selectedSection}
                                                 onChange={e => setSelectedSection(e.target.value)}
-                                                className="mt-1 w-40 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                                className="input mt-1 w-40"
                                             >
                                                 <option value="">--Select--</option>
                                                 {sectionOptions.map(section => <option key={section} value={section}>{section}</option>)}
@@ -1567,7 +1567,7 @@ const AbsentReport: React.FC = () => {
                                                 }
                                             }}
                                             disabled={loading}
-                                            className="bg-violet-600 text-white px-4 py-2 rounded-md hover:bg-violet-700 text-sm disabled:bg-gray-400"
+                                            className="btn-primary"
                                         >
                                             Get Students
                                         </button>
@@ -1582,17 +1582,17 @@ const AbsentReport: React.FC = () => {
 
                                 <div className="flex gap-2 items-end">
                                     <div className="flex-grow">
-                                        <label className="block text-sm font-medium text-gray-700">Search Student (Name, Adm No, Phone)</label>
+                                        <label className="label">Search Student (Name, Adm No, Phone)</label>
                                         <input
                                             type="text"
                                             value={searchQuery}
                                             onChange={e => setSearchQuery(e.target.value)}
                                             placeholder="Enter Name, Admission No, or Phone"
-                                            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                            className="input mt-1"
                                             onKeyDown={(e) => e.key === 'Enter' && handleSearchStudent()}
                                         />
                                     </div>
-                                    <button onClick={handleSearchStudent} disabled={loading} className="bg-violet-600 text-white px-4 py-2 rounded-md hover:bg-violet-700 text-sm disabled:bg-gray-400">
+                                    <button onClick={handleSearchStudent} disabled={loading} className="btn-primary">
                                         Find
                                     </button>
                                 </div>
@@ -1613,7 +1613,7 @@ const AbsentReport: React.FC = () => {
                                 )}
 
                                 {selectedStudent && (
-                                    <div className="mt-6 bg-white border rounded-lg shadow-sm overflow-hidden">
+                                    <div className="card mt-6 overflow-hidden">
                                         <div className="bg-violet-50 px-4 py-3 border-b border-violet-100 flex justify-between items-center">
                                             <h3 className="text-lg font-semibold text-violet-800">Student Profile</h3>
                                             <button onClick={() => setSelectedStudent(null)} className="text-sm text-violet-600 hover:text-violet-800 hover:underline">
@@ -1687,23 +1687,23 @@ const AbsentReport: React.FC = () => {
                                         {/* Attendance Stats */}
                                         {results.length > 0 && (
                                             <div className="bg-gray-50 border-t px-4 py-3 grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
-                                                <div className="bg-white p-2 rounded border shadow-sm">
+                                                <div className="card p-2">
                                                     <div className="text-xs text-gray-500 uppercase font-semibold">Total Days</div>
                                                     <div className="text-xl font-bold text-gray-800">{results.length}</div>
                                                 </div>
-                                                <div className="bg-white p-2 rounded border shadow-sm">
+                                                <div className="card p-2">
                                                     <div className="text-xs text-green-600 uppercase font-semibold">Present</div>
                                                     <div className="text-xl font-bold text-green-700">{results.filter(r => r.status === 'Present').length}</div>
                                                 </div>
-                                                <div className="bg-white p-2 rounded border shadow-sm">
+                                                <div className="card p-2">
                                                     <div className="text-xs text-red-600 uppercase font-semibold">Absent</div>
                                                     <div className="text-xl font-bold text-red-700">{results.filter(r => r.status === 'Absent').length}</div>
                                                 </div>
-                                                <div className="bg-white p-2 rounded border shadow-sm">
+                                                <div className="card p-2">
                                                     <div className="text-xs text-yellow-600 uppercase font-semibold">Leave</div>
                                                     <div className="text-xl font-bold text-yellow-700">{results.filter(r => r.status === 'Leave').length}</div>
                                                 </div>
-                                                <div className="bg-white p-2 rounded border shadow-sm">
+                                                <div className="card p-2">
                                                     <div className="text-xs text-blue-600 uppercase font-semibold">Percentage</div>
                                                     <div className="text-xl font-bold text-blue-700">
                                                         {results.length > 0
@@ -1741,7 +1741,7 @@ const AbsentReport: React.FC = () => {
                                     <button
                                         onClick={handleSendSms}
                                         disabled={smsSelected.size === 0 || sendingSms}
-                                        className="ml-auto text-xs bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 text-white px-3 py-1 rounded font-medium flex items-center gap-1"
+                                        className="btn-warn btn-sm ml-auto"
                                     >
                                         {sendingSms ? 'Sending…' : `📱 Send SMS (${smsSelected.size})`}
                                     </button>
@@ -1754,23 +1754,23 @@ const AbsentReport: React.FC = () => {
                                 </div>
                             )} */}
                             <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                <thead className="bg-gray-50">
+                                <thead className="">
                                     <tr>
                                         {reportType === 'today' ? (
                                             <>
                                                 {/* <th className="px-4 py-2 w-8"></th> */}
-                                                <th className="px-4 py-2 text-left font-medium text-gray-500">Class</th>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-500">Roll No</th>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-500">Adm No</th>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-500">Name</th>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-500">Father Name</th>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-500">Phone</th>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-500">Status</th>
+                                                <th className="px-4 py-2 text-left">Class</th>
+                                                <th className="px-4 py-2 text-left">Roll No</th>
+                                                <th className="px-4 py-2 text-left">Adm No</th>
+                                                <th className="px-4 py-2 text-left">Name</th>
+                                                <th className="px-4 py-2 text-left">Father Name</th>
+                                                <th className="px-4 py-2 text-left">Phone</th>
+                                                <th className="px-4 py-2 text-left">Status</th>
                                             </>
                                         ) : (
                                             <>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-500">Date</th>
-                                                <th className="px-4 py-2 text-left font-medium text-gray-500">Status</th>
+                                                <th className="px-4 py-2 text-left">Date</th>
+                                                <th className="px-4 py-2 text-left">Status</th>
                                             </>
                                         )}
                                     </tr>
@@ -1857,7 +1857,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ navigateTo, defau
 
     // Enhanced DropdownItem to handle clicks
     const ActionDropdownItem: React.FC<{ children: React.ReactNode, onClick: () => void }> = ({ children, onClick }) => (
-        <a href="#" onClick={(e) => { e.preventDefault(); onClick(); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+        <a href="#" onClick={(e) => { e.preventDefault(); onClick(); }} className="menu-item" role="menuitem">
             {children}
         </a>
     );

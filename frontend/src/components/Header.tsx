@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDownIcon, UserIcon, LogoutIcon, MenuIcon, ArrowBackIcon, ArrowForwardIcon, HomeIcon } from './icons';
-import { canWrite, canRead } from '../utils/permissions';
+import { ChevronDownIcon, UserIcon, LogoutIcon, MenuIcon } from './icons';
+import { ChevronLeft, ChevronRight, MapPin, Building2, GitBranch, CalendarDays, Check } from 'lucide-react';
+import { applyBrandTheme, DEFAULT_BRAND_COLOR } from '../theme';
+import { canWrite } from '../utils/permissions';
 import { Page } from '../App';
 import api from '../api';
 import Learnspacelogo1 from '../images/Learnspacelogo1.png';
@@ -67,7 +69,10 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
 
   const schoolLogo = (isAllSchools || !rawLogo) ? Learnspacelogo1 : (rawLogo.startsWith('/static') ? rawLogo : (rawLogo.startsWith('/') ? `${API_BASE}${rawLogo}` : rawLogo));
   const schoolName = isAllSchools ? 'LearnSpace' : (selectedSchool !== 'All' ? selectedSchool : (user.school_name || 'LearnSpace'));
-  const themeColor = isAllSchools ? '#2b8144' : (user.school_theme || '#009746');
+  const themeColor = isAllSchools ? DEFAULT_BRAND_COLOR : (user.school_theme || DEFAULT_BRAND_COLOR);
+
+  // Publish the active school's colour to the design system (presentation only)
+  useEffect(() => { applyBrandTheme(themeColor); }, [themeColor]);
 
   // Initialize selected location on mount
   const canManageGlobal = canWrite(user, 'system.franchise.franchise-management');
@@ -360,196 +365,238 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
     }
   }, [allBranchesData, user.role]);
 
+  const displayName: string = JSON.parse(localStorage.getItem('user') || '{}').username || 'User';
+  const initials = displayName
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s: string) => s[0]?.toUpperCase())
+    .join('') || 'U';
+
+  /* ── Presentational helpers ───────────────────────────────────────────── */
+  const Chip: React.FC<{
+    icon: React.ReactNode;
+    label: string;
+    value: string;
+    open: boolean;
+    onToggle: () => void;
+    onBlur: () => void;
+    children: React.ReactNode;
+    className?: string;
+  }> = ({ icon, label, value, open, onToggle, onBlur, children, className }) => (
+    <div className={`relative ${className || ''}`}>
+      <button
+        onClick={onToggle}
+        onBlur={onBlur}
+        className={`group flex items-center gap-2 h-9 pl-2.5 pr-2 rounded-lg border text-sm transition-colors text-brand-contrast
+          ${open ? 'border-white/40 bg-white/25' : 'border-white/15 bg-white/10 hover:bg-white/20 hover:border-white/30'}`}
+      >
+        <span className="text-brand-contrast/70 group-hover:text-brand-contrast">{icon}</span>
+        <span className="hidden lg:block text-2xs uppercase tracking-wider text-brand-contrast/60 font-semibold">{label}</span>
+        <span className="font-medium max-w-[9rem] truncate">{value}</span>
+        <ChevronDownIcon className={`w-3.5 h-3.5 text-brand-contrast/70 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && children}
+    </div>
+  );
+
+  const MenuList: React.FC<{ width?: string; children: React.ReactNode }> = ({ width = 'w-52', children }) => (
+    <ul className={`menu right-0 ${width} max-h-72 overflow-auto`}>{children}</ul>
+  );
+
+  const MenuItem: React.FC<{ active?: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
+    <li>
+      <a
+        href="#"
+        onClick={(e) => { e.preventDefault(); onClick(); }}
+        className={`menu-item justify-between ${active ? 'menu-item-active' : ''}`}
+      >
+        <span className="truncate">{children}</span>
+        {active && <Check className="w-3.5 h-3.5 text-brand-600 flex-shrink-0" />}
+      </a>
+    </li>
+  );
+
   return (
-    <header
-      className="text-white shadow-lg z-50 relative transition-colors duration-500"
-      style={{
-        backgroundColor: themeColor,
-        '--hover-bg': `color-mix(in srgb, ${themeColor} 80%, black)`
-      } as React.CSSProperties}
-    >
-      <nav className="container-fluid mx-auto px-4">
-        {/* ... (existing nav structure) ... */}
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <button onClick={toggleSidebar} className="text-white hover:bg-green-600 p-2 rounded-md focus:outline-none md:hidden mr-2">
-              <MenuIcon className="w-6 h-6" />
+    <header className="sticky top-0 z-40 h-[60px] flex-shrink-0 bg-gradient-to-r from-brand-700 via-brand-600 to-brand-600 text-brand-contrast shadow-md shadow-brand-900/10">
+      {/* Decorative highlight */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-16 right-1/3 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute -bottom-20 right-10 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
+      </div>
+      <div className="absolute inset-x-0 bottom-0 h-px bg-white/15" />
+
+      <nav className="h-full px-3 sm:px-5">
+        <div className="flex items-center justify-between h-full gap-3">
+          {/* Left: menu, history, school identity */}
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={toggleSidebar}
+              className="btn-icon md:hidden text-brand-contrast/80 hover:bg-white/15 hover:text-brand-contrast"
+              aria-label="Toggle navigation"
+            >
+              <MenuIcon className="w-5 h-5" />
             </button>
-            <a href="#" onClick={() => navigateTo('dashboard')} className="flex items-center space-x-2">
+
+            <div className="hidden sm:flex items-center gap-0.5 mr-1">
+              <button onClick={goBack} disabled={!canGoBack} className="btn-icon h-8 w-8 disabled:opacity-40 text-brand-contrast/80 hover:bg-white/15 hover:text-brand-contrast" title="Back" aria-label="Back">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button onClick={goForward} disabled={!canGoForward} className="btn-icon h-8 w-8 disabled:opacity-40 text-brand-contrast/80 hover:bg-white/15 hover:text-brand-contrast" title="Forward" aria-label="Forward">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            <a
+              href="#"
+              onClick={() => navigateTo('dashboard')}
+              className="flex items-center gap-2.5 min-w-0 rounded-lg px-1.5 py-1 hover:bg-white/10"
+            >
               <img
                 src={schoolLogo}
                 alt={schoolName}
-                className="h-14 w-auto max-w-[140px] object-contain rounded-sm"
+                className="h-9 w-auto max-w-[110px] object-contain rounded-md bg-white/95 px-1.5 py-0.5 shadow-sm"
                 onError={(e) => { (e.target as HTMLImageElement).src = Learnspacelogo1; }}
               />
-              <div className="hidden md:block leading-tight">
-                <p className="font-bold text-sm tracking-wide">{schoolName}</p>
+              <div className="hidden md:block leading-tight min-w-0">
+                <p className="font-semibold text-sm text-brand-contrast truncate">{schoolName}</p>
                 {branchLabel && (
-                  <p className="text-xs text-green-100 font-medium">{branchLabel}</p>
+                  <p className="text-xs text-brand-contrast/70 truncate">{branchLabel}</p>
                 )}
               </div>
             </a>
-            <div className="hidden md:flex items-center ml-4">
-
-            </div>
           </div>
 
-          <div className="flex items-center space-x-2 md:space-x-4">
+          {/* Right: context selectors + profile */}
+          <div className="flex items-center gap-2">
 
             {/* Location Dropdown (Admin / SuperAdmin Only) */}
             {canManageSchool && locationList.length > 1 && (
-              <div className="relative mr-2">
-                <button
-                  onClick={() => setLocationDropdownOpen(!locationDropdownOpen)}
-                  onBlur={() => setTimeout(() => setLocationDropdownOpen(false), 200)}
-                  className="flex items-center space-x-1 hover:bg-green-600 p-2 rounded-md focus:outline-none"
-                >
-                  <span className="font-semibold">{selectedLocation === 'All' ? 'All Locations' : selectedLocation}</span>
-                  <ChevronDownIcon className="w-4 h-4" />
-                </button>
-                {locationDropdownOpen && (
-                  <ul className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-30 text-gray-700">
-                    {locationList.map(loc => (
-                      <li key={loc}>
-                        <a
-                          href="#"
-                          onClick={(e) => { e.preventDefault(); handleLocationChange(loc); }}
-                          className={`block px-4 py-2 text-sm hover:bg-gray-100 ${selectedLocation === loc ? 'font-bold text-green-700 bg-green-100' : ''}`}
-                        >
-                          {loc === 'All' ? 'All Locations' : loc}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <Chip
+                icon={<MapPin className="w-4 h-4" />}
+                label="Location"
+                value={selectedLocation === 'All' ? 'All Locations' : selectedLocation}
+                open={locationDropdownOpen}
+                onToggle={() => setLocationDropdownOpen(!locationDropdownOpen)}
+                onBlur={() => setTimeout(() => setLocationDropdownOpen(false), 200)}
+                className="hidden sm:block"
+              >
+                <MenuList>
+                  {locationList.map(loc => (
+                    <MenuItem key={loc} active={selectedLocation === loc} onClick={() => handleLocationChange(loc)}>
+                      {loc === 'All' ? 'All Locations' : loc}
+                    </MenuItem>
+                  ))}
+                </MenuList>
+              </Chip>
             )}
 
             {/* School Dropdown */}
             {(isSuperAdmin || schoolOptions.length > 1) && (
-              <div className="relative mr-2">
-                <button
-                  onClick={() => setSchoolDropdownOpen(!schoolDropdownOpen)}
-                  onBlur={() => setTimeout(() => setSchoolDropdownOpen(false), 200)}
-                  className="flex items-center space-x-1 hover:bg-green-600 p-2 rounded-md focus:outline-none"
-                >
-                  <span className="font-semibold">{selectedSchool === 'All' ? 'All Schools' : selectedSchool}</span>
-                  <ChevronDownIcon className="w-4 h-4" />
-                </button>
-                {schoolDropdownOpen && (
-                  <ul className="absolute right-0 mt-2 w-52 bg-white rounded-md shadow-lg py-1 z-30 text-gray-700 max-h-60 overflow-auto">
-                    {(isSuperAdmin || schoolOptions.length > 1) && (
-                      <li>
-                        <a
-                          href="#"
-                          onClick={(e) => { e.preventDefault(); handleSchoolChange('All', 'All'); }}
-                          className={`block px-4 py-2 text-sm hover:bg-gray-100 ${selectedSchoolId === 'All' ? 'font-bold text-green-700 bg-green-100' : ''}`}
-                        >
-                          All Schools
-                        </a>
-                      </li>
-                    )}
-                    {schoolOptions.map(s => (
-                      <li key={s.id}>
-                        <a
-                          href="#"
-                          onClick={(e) => { e.preventDefault(); handleSchoolChange(s.id, s.name); }}
-                          className={`block px-4 py-2 text-sm hover:bg-gray-100 ${selectedSchoolId === s.id ? 'font-bold text-green-700 bg-green-100' : ''}`}
-                        >
-                          {s.name}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <Chip
+                icon={<Building2 className="w-4 h-4" />}
+                label="School"
+                value={selectedSchool === 'All' ? 'All Schools' : selectedSchool}
+                open={schoolDropdownOpen}
+                onToggle={() => setSchoolDropdownOpen(!schoolDropdownOpen)}
+                onBlur={() => setTimeout(() => setSchoolDropdownOpen(false), 200)}
+                className="hidden sm:block"
+              >
+                <MenuList width="w-60">
+                  {(isSuperAdmin || schoolOptions.length > 1) && (
+                    <MenuItem active={selectedSchoolId === 'All'} onClick={() => handleSchoolChange('All', 'All')}>
+                      All Schools
+                    </MenuItem>
+                  )}
+                  {schoolOptions.map(s => (
+                    <MenuItem key={s.id} active={selectedSchoolId === s.id} onClick={() => handleSchoolChange(s.id, s.name)}>
+                      {s.name}
+                    </MenuItem>
+                  ))}
+                </MenuList>
+              </Chip>
             )}
 
             {/* Branch Dropdown */}
             {showDropdown ? (
-              <div className="relative">
-                <button
-                  onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
-                  onBlur={() => setTimeout(() => setBranchDropdownOpen(false), 200)}
-                  className="flex items-center space-x-1 hover:bg-green-600 p-2 rounded-md focus:outline-none"
-                >
-                  <span className="font-semibold">{currentBranch === 'All' ? 'All Branches' : currentBranch}</span>
-                  <ChevronDownIcon className="w-4 h-4" />
-                </button>
-                {branchDropdownOpen && (
-                  <ul className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-30 text-gray-700 max-h-60 overflow-auto">
-                    {branchOptions.map((branch: string) => (
-                      <li key={branch}>
-                        <a
-                          href="#"
-                          onClick={(e) => { e.preventDefault(); handleBranchChange(branch === 'All Branches' ? 'All' : branch); }}
-                          className={`block px-4 py-2 text-sm hover:bg-gray-100 ${currentBranch === (branch === 'All Branches' ? 'All' : branch) ? 'font-bold text-green-700' : ''}`}
-                        >
-                          {branch}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <Chip
+                icon={<GitBranch className="w-4 h-4" />}
+                label="Branch"
+                value={currentBranch === 'All' ? 'All Branches' : currentBranch}
+                open={branchDropdownOpen}
+                onToggle={() => setBranchDropdownOpen(!branchDropdownOpen)}
+                onBlur={() => setTimeout(() => setBranchDropdownOpen(false), 200)}
+              >
+                <MenuList>
+                  {branchOptions.map((branch: string) => (
+                    <MenuItem
+                      key={branch}
+                      active={currentBranch === (branch === 'All Branches' ? 'All' : branch)}
+                      onClick={() => handleBranchChange(branch === 'All Branches' ? 'All' : branch)}
+                    >
+                      {branch}
+                    </MenuItem>
+                  ))}
+                </MenuList>
+              </Chip>
             ) : (
               // Single Branch Display
-              <div className="flex items-center space-x-1 p-2 rounded-md">
-                <span className="font-semibold">{currentBranch === 'All' ? 'All Branches' : currentBranch}</span>
+              <div className="hidden sm:flex items-center gap-2 h-9 px-3 rounded-lg border border-white/15 bg-white/10 text-sm text-brand-contrast">
+                <GitBranch className="w-4 h-4 text-brand-contrast/70" />
+                <span className="font-medium">{currentBranch === 'All' ? 'All Branches' : currentBranch}</span>
               </div>
             )}
 
             {/* Year Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setYearDropdownOpen(!yearDropdownOpen)}
-                onBlur={() => setTimeout(() => setYearDropdownOpen(false), 150)}
-                className="flex items-center space-x-1 hover:bg-green-600 p-2 rounded-md focus:outline-none"
-              >
-                <span>{selectedYear}</span>
-                <ChevronDownIcon className="w-4 h-4" />
-              </button>
-              {yearDropdownOpen && (
-                <ul className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg py-1 z-30 text-gray-700">
-                  {years.map(year => (
-                    <li key={year}>
-                      <a
-                        href="#"
-                        onClick={(e) => { e.preventDefault(); handleYearChange(year); }}
-                        className="block px-4 py-2 text-sm hover:bg-gray-100"
-                      >
-                        {year}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            <Chip
+              icon={<CalendarDays className="w-4 h-4" />}
+              label="Session"
+              value={selectedYear}
+              open={yearDropdownOpen}
+              onToggle={() => setYearDropdownOpen(!yearDropdownOpen)}
+              onBlur={() => setTimeout(() => setYearDropdownOpen(false), 150)}
+            >
+              <MenuList width="w-44">
+                {years.map(year => (
+                  <MenuItem key={year} active={selectedYear === year} onClick={() => handleYearChange(year)}>
+                    {year}
+                  </MenuItem>
+                ))}
+              </MenuList>
+            </Chip>
 
-
-
+            <div className="hidden sm:block h-6 w-px bg-white/20 mx-1" />
 
             {/* Profile Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 onBlur={() => setTimeout(() => setProfileDropdownOpen(false), 150)}
-                className="flex items-center space-x-2 focus:outline-none hover:bg-green-600 p-1 rounded-md"
+                className="flex items-center gap-2 h-9 pl-1 pr-2 rounded-lg hover:bg-white/10 focus:outline-none"
               >
-                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpve8QCCPBiCCxagjx5ei3qUSB_7UyDEepfg&s" alt="Profile" className="w-8 h-8 rounded-full object-cover" />
-                <span className="hidden md:inline">{JSON.parse(localStorage.getItem('user') || '{}').username || 'User'}</span>
-                <ChevronDownIcon className="w-4 h-4" />
+                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-white text-brand-700 text-xs font-bold ring-2 ring-white/40 shadow-sm">
+                  {initials}
+                </span>
+                <span className="hidden md:block text-left leading-tight">
+                  <span className="block text-sm font-medium text-brand-contrast max-w-[8rem] truncate">{displayName}</span>
+                  {user?.role && <span className="block text-2xs text-brand-contrast/70">{user.role}</span>}
+                </span>
+                <ChevronDownIcon className={`w-3.5 h-3.5 text-brand-contrast/70 transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
               {profileDropdownOpen && (
-                <ul className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-30 text-gray-700">
+                <ul className="menu right-0 w-52">
+                  <li className="px-3 py-2 border-b border-slate-100 mb-1">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{displayName}</p>
+                    <p className="text-xs text-slate-400 truncate">{user?.role || 'User'}</p>
+                  </li>
                   <li>
-                    <a href="#" onClick={(e) => { e.preventDefault(); navigateTo('profile'); setProfileDropdownOpen(false); }} className="flex items-center px-4 py-2 text-sm hover:bg-gray-100">
-                      <UserIcon className="w-4 h-4 mr-2" /> Profile
+                    <a href="#" onClick={(e) => { e.preventDefault(); navigateTo('profile'); setProfileDropdownOpen(false); }} className="menu-item">
+                      <UserIcon className="w-4 h-4 text-slate-400" /> Profile
                     </a>
                   </li>
                   <li>
-                    <button onClick={onLogout} className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none">
-                      <LogoutIcon className="w-4 h-4 mr-2" /> Logout
+                    <button onClick={onLogout} className="menu-item text-red-600 hover:text-red-700 hover:bg-red-50 focus:outline-none">
+                      <LogoutIcon className="w-4 h-4" /> Logout
                     </button>
                   </li>
                 </ul>

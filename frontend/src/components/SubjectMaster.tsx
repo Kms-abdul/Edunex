@@ -199,9 +199,9 @@ const SubjectMaster: React.FC = () => {
     });
 
     return (
-        <div className="bg-white border rounded-md p-6">
+        <div className="card p-6">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-[#337ab7] flex items-center gap-3">
+                <h2 className="text-lg font-semibold text-brand-600 flex items-center gap-3">
                     <span>Subject Master</span>
                     <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded">
                         Scope: {academicYear}
@@ -211,14 +211,14 @@ const SubjectMaster: React.FC = () => {
                 {isSpecificBranch && (
                     <div className="relative" ref={copyDropdownRef}>
                         <button
-                            className="px-3 py-1.5 bg-green-50 text-green-700 font-medium rounded border border-green-200 hover:bg-green-100 transition-colors flex items-center gap-2"
+                            className="btn bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
                             onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
                         >
                             <span>Copy to Branches</span>
                             <span className="text-xs">▼</span>
                         </button>
                         {isCopyDropdownOpen && (
-                            <div className="absolute top-10 right-0 w-80 bg-white border shadow-xl rounded z-50 p-2 max-h-96 overflow-y-auto">
+                            <div className="card shadow-pop absolute top-10 right-0 w-80 z-50 p-2 max-h-96 overflow-y-auto">
                                 <div className="mb-2 text-sm font-semibold text-gray-700 pb-2 border-b">
                                     Select Target Branches
                                 </div>
@@ -254,7 +254,7 @@ const SubjectMaster: React.FC = () => {
                                         Cancel
                                     </button>
                                     <button
-                                        className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 font-medium"
+                                        className="btn-primary btn-sm"
                                         onClick={handleCopySubjects}
                                         disabled={copyTargets.size === 0 || copying}
                                     >
@@ -275,21 +275,21 @@ const SubjectMaster: React.FC = () => {
             ) : (
                 <div className="flex gap-3 mb-6 items-end">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Subject Name</label>
+                        <label className="label">Subject Name</label>
                         <input
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="border px-3 py-2 rounded w-64"
+                            className="input w-64"
                             placeholder="Enter subject name"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Group</label>
+                        <label className="label">Group</label>
                         <select
                             value={group}
                             onChange={(e) => setGroup(e.target.value as "Academic" | "Deeniyath")}
-                            className="border px-3 py-2 rounded w-40"
+                            className="input w-40"
                         >
                             <option value="Academic">Academic</option>
                             <option value="Deeniyath">Deeniyath</option>
@@ -298,7 +298,7 @@ const SubjectMaster: React.FC = () => {
 
                     <button
                         onClick={addSubject}
-                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+                        className="btn-primary"
                     >
                         Add Subject
                     </button>
@@ -307,7 +307,7 @@ const SubjectMaster: React.FC = () => {
 
             {/* Subject Table */}
             <table className="w-full text-sm border">
-                <thead className="bg-gray-100">
+                <thead className="">
                     <tr>
                         <th className="border px-3 py-2 text-left">Subject Name</th>
                         <th className="border px-3 py-2 text-left">Group</th>
@@ -323,7 +323,7 @@ const SubjectMaster: React.FC = () => {
                                     <input
                                         value={editName}
                                         onChange={(e) => setEditName(e.target.value)}
-                                        className="border px-2 py-1 rounded w-full"
+                                        className="input"
                                     />
                                 ) : (
                                     <span className={!s.is_active ? 'text-gray-400' : ''}>{s.subject_name}</span>
@@ -335,7 +335,7 @@ const SubjectMaster: React.FC = () => {
                                     <select
                                         value={editGroup}
                                         onChange={(e) => setEditGroup(e.target.value as "Academic" | "Deeniyath")}
-                                        className="border px-2 py-1 rounded w-full"
+                                        className="input"
                                     >
                                         <option value="Academic">Academic</option>
                                         <option value="Deeniyath">Deeniyath</option>
@@ -352,8 +352,7 @@ const SubjectMaster: React.FC = () => {
                             <td className="border px-3 py-2 text-center">
                                 <button
                                     onClick={() => toggleStatus(s.id, s.is_active)}
-                                    className={`w-10 h-5 flex items-center rounded-full p-1 transition-colors ${s.is_active ? 'bg-green-500' : 'bg-gray-300'
-                                        }`}
+                                    className={`btn w-10 h-5 ${s.is_active ? 'bg-green-500' : 'bg-gray-300' }`}
                                     title={s.is_active ? "Click to Deactivate" : "Click to Activate"}
                                 >
                                     <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform ${s.is_active ? 'translate-x-5' : 'translate-x-0'

@@ -70,14 +70,14 @@ const BulkPreview: React.FC<{ bulkConfig: BulkConfig; MONTHS: string[] }> = ({ b
     }
 
     return (
-        <div className="mt-4 bg-white rounded-md border border-violet-200 overflow-hidden">
+        <div className="card mt-4 border-violet-200 overflow-hidden">
             <div className="px-4 py-2 bg-violet-100 text-sm font-medium text-violet-800">
                 Preview — first {Math.min(count, 6)} of {count} installments
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
                 <table className="w-full text-sm">
                     <thead>
-                        <tr className="bg-gray-50 text-gray-600 text-xs uppercase">
+                        <tr className="">
                             <th className="px-4 py-2 text-left">Title</th>
                             <th className="px-4 py-2 text-left">Start</th>
                             <th className="px-4 py-2 text-left">End</th>
@@ -499,18 +499,18 @@ const FeeInstallments: React.FC = () => {
 
     // ── Render ──────────────────────────────────────────────────────────────────
     return (
-        <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
-            <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="container mx-auto p-6 bg-gray-50 min-h-full">
+            <div className="card p-6">
 
                 {/* ── Header ── */}
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800">Fee Installments</h2>
+                    <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Fee Installments</h2>
 
                     {/* Copy to Branches Button */}
                     {isSpecificBranch && (
                         <div className="relative" ref={copyDropdownRef}>
                             <button
-                                className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center gap-2 shadow-sm"
+                                className="btn-primary"
                                 onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
                             >
                                 <span>Copy to Branches</span>
@@ -518,13 +518,13 @@ const FeeInstallments: React.FC = () => {
                             </button>
 
                             {isCopyDropdownOpen && (
-                                <div className="absolute top-12 right-0 w-80 bg-white border shadow-xl rounded z-50 p-2 max-h-96 overflow-y-auto">
+                                <div className="card shadow-pop absolute top-12 right-0 w-80 z-50 p-2 max-h-96 overflow-y-auto">
                                     <div className="mb-2 p-2 border-b bg-gray-50">
-                                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                                        <label className="label">
                                             Select Fee Type to Copy:
                                         </label>
                                         <select
-                                            className="w-full text-sm border border-gray-300 rounded px-2 py-1"
+                                            className="input"
                                             value={selectedCopyFeeTypeId}
                                             onChange={e => setSelectedCopyFeeTypeId(e.target.value)}
                                         >
@@ -567,7 +567,7 @@ const FeeInstallments: React.FC = () => {
                                         <button
                                             onClick={handleCopy}
                                             disabled={copying || copyTargets.size === 0 || !selectedCopyFeeTypeId}
-                                            className={`px-3 py-1 text-xs text-white rounded ${copying || copyTargets.size === 0 || !selectedCopyFeeTypeId ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
+                                            className={`btn btn-sm text-white ${copying || copyTargets.size === 0 || !selectedCopyFeeTypeId ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
                                         >
                                             {copying ? 'Copying...' : 'Confirm Copy'}
                                         </button>
@@ -588,12 +588,12 @@ const FeeInstallments: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Fee Type</label>
+                                <label className="label">Fee Type</label>
                                 <select
                                     name="fee_type_id"
                                     value={formData.fee_type_id || ''}
                                     onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    className="input"
                                 >
                                     <option value="">Select FeeType</option>
                                     {feeTypes
@@ -608,72 +608,72 @@ const FeeInstallments: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Installment No *</label>
+                                <label className="label">Installment No *</label>
                                 <input
                                     type="number"
                                     name="installment_no"
                                     value={formData.installment_no}
                                     onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    className="input"
                                     required
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                                <label className="label">Title *</label>
                                 <input
                                     type="text"
                                     name="title"
                                     value={formData.title}
                                     onChange={handleInputChange}
                                     placeholder="e.g., April Fee"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    className="input"
                                     required
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+                                <label className="label">Start Date *</label>
                                 <input
                                     type="date"
                                     name="start_date"
                                     value={formData.start_date}
                                     onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    className="input"
                                     required
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">End Date *</label>
+                                <label className="label">End Date *</label>
                                 <input
                                     type="date"
                                     name="end_date"
                                     value={formData.end_date}
                                     onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    className="input"
                                     required
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Cut Off Date *</label>
+                                <label className="label">Cut Off Date *</label>
                                 <input
                                     type="date"
                                     name="last_pay_date"
                                     value={formData.last_pay_date}
                                     onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    className="input"
                                     required
                                 />
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                 <div className="md:col-span-3">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                                    <label className="label">Academic Year</label>
                                     <select
                                         name="academic_year"
-                                        className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                        className="input"
                                         value={formData.academic_year}
                                         onChange={handleInputChange}
                                     >
@@ -687,13 +687,13 @@ const FeeInstallments: React.FC = () => {
                         </div>
 
                         <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <label className="label">Description</label>
                             <textarea
                                 name="description"
                                 value={formData.description}
                                 onChange={handleInputChange}
                                 rows={2}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                className="input"
                                 placeholder="Optional description"
                             />
                         </div>
@@ -701,14 +701,14 @@ const FeeInstallments: React.FC = () => {
                         <div className="flex gap-3">
                             <button
                                 type="submit"
-                                className="px-6 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                className="btn-primary"
                             >
                                 {editingId ? 'Update' : 'Save'}
                             </button>
                             <button
                                 type="button"
                                 onClick={handleReset}
-                                className="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none"
+                                className="btn-secondary"
                             >
                                 Reset
                             </button>
@@ -726,7 +726,7 @@ const FeeInstallments: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => setBulkMode(!bulkMode)}
-                            className="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 text-sm font-medium"
+                            className="btn-primary"
                         >
                             {bulkMode ? '✕ Cancel' : '+ Bulk Generate'}
                         </button>
@@ -738,12 +738,12 @@ const FeeInstallments: React.FC = () => {
 
                                 {/* Fee Type */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Fee Type *</label>
+                                    <label className="label">Fee Type *</label>
                                     <select
                                         name="fee_type_id"
                                         value={bulkConfig.fee_type_id}
                                         onChange={handleBulkChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                        className="input"
                                     >
                                         <option value="">Select Fee Type</option>
                                         {feeTypes
@@ -759,12 +759,12 @@ const FeeInstallments: React.FC = () => {
 
                                 {/* Starting Month */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Starting Month *</label>
+                                    <label className="label">Starting Month *</label>
                                     <select
                                         name="start_month_idx"
                                         value={bulkConfig.start_month_idx}
                                         onChange={handleBulkChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                        className="input"
                                     >
                                         {MONTHS.map((m, i) => (
                                             <option key={m} value={i}>{m}</option>
@@ -774,7 +774,7 @@ const FeeInstallments: React.FC = () => {
 
                                 {/* Starting Year */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Starting Year *</label>
+                                    <label className="label">Starting Year *</label>
                                     <input
                                         type="number"
                                         name="year"
@@ -782,13 +782,13 @@ const FeeInstallments: React.FC = () => {
                                         onChange={handleBulkChange}
                                         min={2020}
                                         max={2100}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                        className="input"
                                     />
                                 </div>
 
                                 {/* Number of Installments */}
                                 <div className="lg:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    <label className="label">
                                         Number of Installments *
                                         <span className="ml-1 text-xs text-gray-400">(max 12)</span>
                                     </label>
@@ -798,10 +798,7 @@ const FeeInstallments: React.FC = () => {
                                                 key={n}
                                                 type="button"
                                                 onClick={() => setBulkConfig(prev => ({ ...prev, count: n }))}
-                                                className={`flex-1 py-2 rounded-md border text-sm font-medium transition-colors ${bulkConfig.count === n
-                                                    ? 'bg-violet-600 text-white border-violet-600'
-                                                    : 'bg-white text-gray-700 border-gray-300 hover:border-violet-400'
-                                                    }`}
+                                                className={`btn flex-1 border ${bulkConfig.count === n ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-gray-700 border-gray-300 hover:border-violet-400' }`}
                                             >
                                                 {n}
                                             </button>
@@ -827,7 +824,7 @@ const FeeInstallments: React.FC = () => {
                                             min={1}
                                             max={12}
                                             placeholder="Custom"
-                                            className={`w-24 px-2 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 ${bulkConfig.count > 12
+                                            className={`input w-24 ${bulkConfig.count > 12
                                                 ? 'border-red-400 bg-red-50'
                                                 : 'border-gray-300'
                                                 }`}
@@ -840,7 +837,7 @@ const FeeInstallments: React.FC = () => {
 
                                 {/* Cut-off Day */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    <label className="label">
                                         Cut-off Day of Month *
                                         <span className="ml-1 text-xs text-gray-400">(1–28, e.g. 5 = every 5th)</span>
                                     </label>
@@ -851,18 +848,18 @@ const FeeInstallments: React.FC = () => {
                                         onChange={handleBulkChange}
                                         min={1}
                                         max={28}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                        className="input"
                                     />
                                 </div>
 
                                 {/* Academic Year */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                                    <label className="label">Academic Year</label>
                                     <select
                                         name="academic_year"
                                         value={bulkConfig.academic_year}
                                         onChange={handleBulkChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                        className="input"
                                     >
                                         <option value="">Select Year</option>
                                         {academicYearOptions.map(year => (
@@ -880,17 +877,14 @@ const FeeInstallments: React.FC = () => {
                                     type="button"
                                     onClick={generateBulkInstallments}
                                     disabled={bulkConfig.count > 12 || bulkConfig.count < 1}
-                                    className={`px-6 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500 font-medium text-white ${bulkConfig.count > 12 || bulkConfig.count < 1
-                                        ? 'bg-gray-400 cursor-not-allowed'
-                                        : 'bg-violet-600 hover:bg-violet-700'
-                                        }`}
+                                    className={`btn text-white ${bulkConfig.count > 12 || bulkConfig.count < 1 ? 'bg-gray-400 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-700' }`}
                                 >
                                     Generate {bulkConfig.count} Installments
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setBulkMode(false)}
-                                    className="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none"
+                                    className="btn-secondary"
                                 >
                                     Cancel
                                 </button>
@@ -904,16 +898,16 @@ const FeeInstallments: React.FC = () => {
                 <div className="overflow-x-auto">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Fee Installments</h3>
                     <table className="min-w-full bg-white border border-gray-200">
-                        <thead className="bg-gray-100">
+                        <thead className="">
                             <tr>
-                                {/*<th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">No.</th>*/}
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Fee Type</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Title</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Start Date</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">End Date</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Last Pay Date</th>
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Branch</th>
-                                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 border-b">Action</th>
+                                {/*<th className="px-4 py-3 text-left border-b">No.</th>*/}
+                                <th className="px-4 py-3 text-left border-b">Fee Type</th>
+                                <th className="px-4 py-3 text-left border-b">Title</th>
+                                <th className="px-4 py-3 text-left border-b">Start Date</th>
+                                <th className="px-4 py-3 text-left border-b">End Date</th>
+                                <th className="px-4 py-3 text-left border-b">Last Pay Date</th>
+                                <th className="px-4 py-3 text-left border-b">Branch</th>
+                                <th className="px-4 py-3 text-center border-b">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -948,13 +942,13 @@ const FeeInstallments: React.FC = () => {
                                             <div className="flex justify-center gap-2">
                                                 <button
                                                     onClick={() => handleEdit(installment)}
-                                                    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                                                    className="btn-primary btn-sm"
                                                 >
                                                     ✏️ Edit
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(installment.id!)}
-                                                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                                                    className="btn-danger btn-sm"
                                                 >
                                                     🗑️ Delete
                                                 </button>

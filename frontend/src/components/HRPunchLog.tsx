@@ -170,7 +170,7 @@ const HRPunchLog: React.FC = () => {
     <div className="p-4 md:p-6 h-full flex flex-col bg-gray-50">
       <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Punch Log</h1>
+          <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Punch Log</h1>
         </div>
         <div className="flex gap-2 mt-4 sm:mt-0">
           <button
@@ -186,7 +186,7 @@ const HRPunchLog: React.FC = () => {
               }
             }}
             disabled={isSyncing || loading}
-            className="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="btn-primary border-transparent"
           >
             {isSyncing ? 'Processing...' : 'Process & Refresh'}
           </button>
@@ -194,10 +194,10 @@ const HRPunchLog: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-4 flex flex-wrap gap-4 items-end">
+      <div className="card p-4 mb-4 flex flex-wrap gap-4 items-end">
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">-Select- Month</label>
-          <select value={selectedMonth} onChange={handleMonthChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm py-2 px-3">
+          <label className="label">-Select- Month</label>
+          <select value={selectedMonth} onChange={handleMonthChange} className="input mt-1">
             <option value="">-Select-</option>
             {monthOptions.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -205,12 +205,12 @@ const HRPunchLog: React.FC = () => {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Employee Search</label>
-          <input type="text" name="employee" placeholder="Name or ID..." value={filters.employee} onChange={handleFilterChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+          <label className="label">Employee Search</label>
+          <input type="text" name="employee" placeholder="Name or ID..." value={filters.employee} onChange={handleFilterChange} className="input mt-1" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Status</label>
-          <select name="status" value={filters.status} onChange={handleFilterChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+          <label className="label">Status</label>
+          <select name="status" value={filters.status} onChange={handleFilterChange} className="input mt-1 pl-3">
             <option value="ALL">All Statuses</option>
             <option value="PRESENT">Present</option>
             <option value="ABSENT">Absent</option>
@@ -228,9 +228,9 @@ const HRPunchLog: React.FC = () => {
         ) : records.length === 0 ? (
           <div className="p-8 text-center text-gray-500">No attendance records found for the selected period.</div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="w-full text-sm text-left whitespace-nowrap table-fixed border-collapse" style={{ minWidth: '1800px' }}>
-              <thead className="bg-[#f8f9fa] text-gray-800 font-bold border-b border-gray-300 text-xs">
+              <thead className="border-b border-gray-300">
                 <tr>
                   <th className="px-1 py-1 border border-gray-300 w-12 text-center">
                     <div className="rotate-0" style={{ writingMode: 'horizontal-tb' }}>S.No</div>
