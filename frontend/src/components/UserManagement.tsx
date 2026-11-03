@@ -3,6 +3,7 @@ import api from '../api';
 import { canWrite } from '../utils/permissions';
 import { useAuth } from '../contexts/AuthContext';
 import { confirmDialog } from './ui/feedback';
+import { PageHeader, Alert, LoadingState, EmptyState, Badge } from './ui';
 
 interface SchoolOption { id: number; school_name: string; }
 interface BranchOption { id: number; branch_name: string; branch_code: string; school_id: number | null; }
@@ -25,9 +26,9 @@ interface RoleOption { id: number; name: string; is_active: boolean; }
 const ROLES = ['SuperAdmin', 'Admin', 'User'];
 
 const ROLE_COLORS: Record<string, string> = {
-  SuperAdmin: 'bg-purple-100 text-purple-700',
-  Admin: 'bg-blue-100 text-blue-700',
-  User: 'bg-green-100 text-green-700',
+  SuperAdmin: 'badge-brand',
+  Admin: 'badge-brand',
+  User: 'badge-success',
 };
 
 const UserManagement: React.FC = () => {
@@ -250,42 +251,39 @@ const UserManagement: React.FC = () => {
   return (
     <div className="min-h-full bg-slate-50 p-4 md:p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900 tracking-tight">User Management</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {isGlobalManager ? 'Manage all users across all schools' : 'Manage users in your school'}
-          </p>
-        </div>
-        <button
-          onClick={openCreate}
-          className="btn-primary"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add User
-        </button>
-      </div>
+      <PageHeader
+        eyebrow="Control Panel"
+        title="User Management"
+        subtitle={isGlobalManager ? 'Manage all users across all schools' : 'Manage users in your school'}
+        actions={
+          <button
+            onClick={openCreate}
+            className="btn-primary"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add User
+          </button>
+        }
+      />
 
       {/* Global Message */}
       {message && !showForm && (
-        <div className={`mb-4 p-3 rounded-lg text-sm ${message.type === 'success'
-          ? 'bg-green-50 text-green-700 border border-green-200'
-          : 'bg-red-50 text-red-700 border border-red-200'}`}>
+        <Alert tone={message.type} className="mb-4" onClose={() => setMessage(null)}>
           {message.text}
-        </div>
+        </Alert>
       )}
 
       {/* ── Create / Edit Form Modal ─────────────────────────────────────────── */}
       {showForm && (
         <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="card shadow-pop w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between p-5 border-b">
+            <div className="card-header">
               <h2 className="text-base font-semibold text-slate-900">
                 {editingId ? 'Edit User' : 'Create New User'}
               </h2>
-              <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">
+              <button onClick={resetForm} className="btn-icon" aria-label="Close">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -297,14 +295,14 @@ const UserManagement: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('basic')}
-                className={`btn flex-1 text-center border-b-2 ${ activeTab === 'basic' ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100' }`}
+                className={`btn flex-1 text-center border-b-2 ${ activeTab === 'basic' ? 'border-brand-600 text-brand-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100' }`}
               >
                 Basic Info
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('roles')}
-                className={`btn flex-1 text-center border-b-2 ${ activeTab === 'roles' ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100' }`}
+                className={`btn flex-1 text-center border-b-2 ${ activeTab === 'roles' ? 'border-brand-600 text-brand-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100' }`}
               >
                 Roles
               </button>
@@ -312,7 +310,7 @@ const UserManagement: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveTab('schools')}
-                  className={`btn flex-1 text-center border-b-2 ${ activeTab === 'schools' ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100' }`}
+                  className={`btn flex-1 text-center border-b-2 ${ activeTab === 'schools' ? 'border-brand-600 text-brand-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100' }`}
                 >
                   Schools
                 </button>
@@ -320,7 +318,7 @@ const UserManagement: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('branches')}
-                className={`btn flex-1 text-center border-b-2 ${ activeTab === 'branches' ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100' }`}
+                className={`btn flex-1 text-center border-b-2 ${ activeTab === 'branches' ? 'border-brand-600 text-brand-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100' }`}
               >
                 Branches
               </button>
@@ -328,11 +326,9 @@ const UserManagement: React.FC = () => {
 
             <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
               {message && (
-                <div className={`p-3 rounded-lg text-sm ${message.type === 'success'
-                  ? 'bg-green-50 text-green-700 border border-green-200'
-                  : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                <Alert tone={message.type}>
                   {message.text}
-                </div>
+                </Alert>
               )}
 
               {/* TAB 1: BASIC INFO */}
@@ -472,7 +468,7 @@ const UserManagement: React.FC = () => {
                                     };
                                   });
                                 }}
-                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
                               />
                               <span className="font-medium text-gray-900">{s.school_name}</span>
                             </label>
@@ -512,7 +508,7 @@ const UserManagement: React.FC = () => {
                                     };
                                   });
                                 }}
-                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
                               />
                               <div className="flex flex-col">
                                 <span className="font-medium text-gray-900">{b.branch_name}</span>
@@ -528,7 +524,7 @@ const UserManagement: React.FC = () => {
               )}
             </div>
 
-            <div className="flex gap-3 p-5 border-t bg-slate-50">
+            <div className="flex gap-3 p-5 border-t border-slate-200 bg-slate-50">
               <button
                 onClick={handleSave}
                 className="btn-primary flex-1"
@@ -585,24 +581,20 @@ const UserManagement: React.FC = () => {
       {/* ── Users Table ──────────────────────────────────────────────────────── */}
       <div className="card overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-16 text-gray-400">
-            <svg className="animate-spin w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-            </svg>
-            Loading users...
-          </div>
+          <LoadingState label="Loading users..." />
         ) : displayedUsers.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <svg className="mx-auto mb-3 w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <p className="text-sm">No users found</p>
-          </div>
+          <EmptyState
+            title="No users found"
+            icon={
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            }
+          />
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b">
+              <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-4 py-3 text-left">#</th>
                   <th className="px-4 py-3 text-left">User</th>
@@ -615,7 +607,7 @@ const UserManagement: React.FC = () => {
                   <th className="px-4 py-3 text-center">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-slate-100">
                 {displayedUsers.map((u, idx) => (
                   <tr key={u.user_id} className={`hover:bg-gray-50 transition-colors ${!u.is_active ? 'opacity-50' : ''}`}>
                     <td className="px-4 py-3 text-gray-400">{idx + 1}</td>
@@ -624,7 +616,7 @@ const UserManagement: React.FC = () => {
                       <div className="text-xs text-gray-400">{u.useremail}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex text-xs font-semibold px-2.5 py-0.5 rounded-full ${ROLE_COLORS[u.role] || 'bg-gray-100 text-gray-700'}`}>
+                      <span className={ROLE_COLORS[u.role] || 'badge-neutral'}>
                         {u.role}
                       </span>
                     </td>
@@ -633,17 +625,15 @@ const UserManagement: React.FC = () => {
                     )}
                     <td className="px-4 py-3 text-gray-600 text-xs">{u.branch_name || '—'}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full ${u.is_active
-                        ? 'bg-green-50 text-green-700'
-                        : 'bg-red-50 text-red-700'}`}>
+                      <Badge tone={u.is_active ? 'success' : 'danger'}>
                         {u.is_active ? 'Active' : 'Inactive'}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => openEdit(u)}
-                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded transition-colors"
+                          className="btn-icon h-8 w-8 text-brand-600 hover:bg-brand-50 hover:text-brand-700"
                           title="Edit"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -653,7 +643,7 @@ const UserManagement: React.FC = () => {
                         {u.user_id !== currentUser?.user_id && (
                           <button
                             onClick={() => handleToggleActive(u)}
-                            className={`btn ${u.is_active ? 'text-red-400 hover:text-red-600 hover:bg-red-50' : 'text-green-500 hover:text-green-700 hover:bg-green-50'}`}
+                            className={`btn-icon h-8 w-8 ${u.is_active ? 'text-red-500 hover:text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'}`}
                             title={u.is_active ? 'Deactivate' : 'Reactivate'}
                           >
                             {u.is_active ? (
@@ -676,7 +666,7 @@ const UserManagement: React.FC = () => {
           </div>
         )}
         {/* Footer */}
-        <div className="px-4 py-3 border-t bg-gray-50 text-xs text-gray-500">
+        <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 text-xs text-slate-500">
           Showing {displayedUsers.length} of {users.length} users
         </div>
       </div>

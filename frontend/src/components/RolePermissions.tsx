@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../api';
+import { PageHeader, Alert, LoadingState } from './ui';
 interface Permission {
   id: number;
   dashboard: string;
@@ -203,19 +204,18 @@ const RolePermissions: React.FC = () => {
   };
   return (
     <div className="min-h-full bg-slate-50 p-4 md:p-6">
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Role Permissions</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Select a role and allow access by modules.</p>
-      </div>
+      <PageHeader
+        eyebrow="Control Panel"
+        title="Role Permissions"
+        subtitle="Select a role and allow access by modules."
+      />
       {message && (
-        <div className={`mb-4 p-3 rounded-md text-sm ${message.type === 'success'
-          ? 'bg-green-50 text-green-700 border border-green-200'
-          : 'bg-red-50 text-red-700 border border-red-200'}`}>
+        <Alert tone={message.type} className="mb-4" onClose={() => setMessage(null)}>
           {message.text}
-        </div>
+        </Alert>
       )}
       <div className="card">
-        <div className="p-6 border-b bg-white">
+        <div className="p-5 border-b border-slate-100">
           <div className="flex flex-wrap items-center gap-4 md:gap-6">
             <div className="flex items-center gap-2">
               <label className="label whitespace-nowrap">User Type :</label>
@@ -249,24 +249,24 @@ const RolePermissions: React.FC = () => {
                 className="input w-auto min-w-[200px]"
               />
             </div>
-            <label className="inline-flex items-center gap-2 text-sm text-gray-700 font-medium whitespace-nowrap">
+            <label className="inline-flex items-center gap-2 text-sm text-slate-700 font-medium whitespace-nowrap">
               <input
                 type="checkbox"
                 checked={roleForm.is_active}
                 onChange={event => setRoleForm(form => ({ ...form, is_active: event.target.checked }))}
                 disabled={selectedRole?.name === 'SuperAdmin'}
-                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500"
               />
               Active
             </label>
           </div>
         </div>
-        <div className="p-6">
+        <div className="p-5">
           <div className="mb-6">
-            <h2 className="text-base font-semibold text-gray-800">Modules :</h2>
+            <h2 className="text-base font-semibold text-slate-900">Modules :</h2>
           </div>
           {loading ? (
-            <div className="py-8 text-sm text-gray-500 text-center">Loading permission matrix...</div>
+            <LoadingState label="Loading permission matrix..." />
           ) : (
             <div className="space-y-8">
               {Object.values(groupedPermissions).map(group => (
@@ -274,20 +274,20 @@ const RolePermissions: React.FC = () => {
                   <div className="flex items-center gap-2 mb-4">
                     <input
                       type="checkbox"
-                      className="w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500 focus:ring-2"
+                      className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 focus:ring-2"
                       checked={isGroupChecked(group.rows)}
                       onChange={(e) => toggleGroup(group.rows, e.target.checked)}
                     />
-                    <span className="font-bold text-orange-500 uppercase tracking-wide">
+                    <span className="text-sm font-semibold text-brand-700 uppercase tracking-wide">
                       {group.dashboard}
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-y-3 gap-x-6 ml-6">
                     {group.rows.map(permission => (
-                      <label key={permission.id} className="flex items-start gap-2.5 text-sm text-gray-700 cursor-pointer hover:text-gray-900">
+                      <label key={permission.id} className="flex items-start gap-2.5 text-sm text-slate-700 cursor-pointer hover:text-slate-900">
                         <input
                           type="checkbox"
-                          className="w-4 h-4 mt-0.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 focus:ring-2"
+                          className="w-4 h-4 mt-0.5 text-brand-600 rounded border-slate-300 focus:ring-brand-500 focus:ring-2"
                           checked={isPermissionChecked(permission.id)}
                           onChange={(e) => togglePermission(permission.id, e.target.checked)}
                         />
@@ -300,7 +300,7 @@ const RolePermissions: React.FC = () => {
             </div>
           )}
         </div>
-        <div className="p-4 border-t bg-gray-50 flex justify-end gap-3 rounded-b-md">
+        <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-wrap justify-end gap-3 rounded-b-xl">
           <button
             onClick={() => resetMatrix('empty')}
             className="btn-secondary"

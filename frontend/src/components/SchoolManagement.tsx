@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { canWrite } from '../utils/permissions';
 import { useAuth } from '../contexts/AuthContext';
+import { PageHeader, Alert, LoadingState, EmptyState } from './ui';
 
 interface Branch {
   id: number;
@@ -125,14 +126,11 @@ const SchoolManagement: React.FC = () => {
   return (
     <div className="min-h-full bg-slate-50 p-4 md:p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900 tracking-tight">School Management</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {isGlobalManager ? 'Full administration of all schools and branches' : 'Manage your assigned schools and branches'}
-          </p>
-        </div>
-        {canManageSchools && (
+      <PageHeader
+        eyebrow="Control Panel"
+        title="School Management"
+        subtitle={isGlobalManager ? 'Full administration of all schools and branches' : 'Manage your assigned schools and branches'}
+        actions={canManageSchools && (
           <button
             onClick={() => {
               setSchoolForm({ school_name: '', school_code: '', address: '', phone: '', email: '', theme_color: '#4f46e5', subscription_plan: 'Standard' });
@@ -145,39 +143,35 @@ const SchoolManagement: React.FC = () => {
             Create School
           </button>
         )}
-      </div>
+      />
 
       {/* Messages */}
       {msg && (
-        <div className={`mb-6 p-4 rounded-xl text-sm border ${
-          msg.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'
-        }`}>
+        <Alert tone={msg.type} className="mb-6" onClose={() => setMsg(null)}>
           {msg.text}
-        </div>
+        </Alert>
       )}
 
       {/* Loading state */}
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-slate-400">
-          <svg className="animate-spin w-8 h-8 mr-3 text-indigo-600" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-          </svg>
-          <span>Loading schools & branches...</span>
+        <LoadingState label="Loading schools & branches..." />
+      ) : schools.length === 0 ? (
+        <div className="card">
+          <EmptyState title="No schools found" />
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {schools.map(school => (
             <div key={school.id} className="card overflow-hidden flex flex-col">
               {/* School Info Block */}
-              <div className="p-6 border-b border-slate-100 flex items-start justify-between">
+              <div className="p-5 border-b border-slate-100 flex items-start justify-between gap-3">
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold" style={{ backgroundColor: school.theme_color || '#4f46e5' }}>
                     {school.school_name.charAt(0)}
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900">{school.school_name}</h2>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 mt-1">
+                    <h2 className="text-base font-semibold text-slate-900">{school.school_name}</h2>
+                    <span className="badge-neutral mt-1">
                       Code: {school.school_code || 'N/A'}
                     </span>
                   </div>
@@ -199,7 +193,7 @@ const SchoolManagement: React.FC = () => {
                         setShowSchoolForm(true);
                         setMsg(null);
                       }}
-                      className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                      className="btn-ghost btn-sm"
                       title="Edit School"
                     >
                       Edit
@@ -209,20 +203,20 @@ const SchoolManagement: React.FC = () => {
               </div>
 
               {/* School Details */}
-              <div className="px-6 py-4 bg-slate-50 grid grid-cols-2 gap-4 border-b border-slate-100 text-xs text-slate-600">
+              <div className="px-5 py-4 bg-slate-50 grid grid-cols-1 sm:grid-cols-2 gap-4 border-b border-slate-100 text-xs text-slate-600">
                 <div>
                   <span className="font-semibold text-slate-500">Phone:</span> {school.phone || 'N/A'}
                 </div>
                 <div>
                   <span className="font-semibold text-slate-500">Email:</span> {school.email || 'N/A'}
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <span className="font-semibold text-slate-500">Address:</span> {school.address || 'N/A'}
                 </div>
               </div>
 
               {/* Branches Block */}
-              <div className="p-6 flex-1 flex flex-col">
+              <div className="p-5 flex-1 flex flex-col">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold text-slate-800">Branches ({school.branches.length})</h3>
                   {canManageSchools && (
@@ -232,7 +226,7 @@ const SchoolManagement: React.FC = () => {
                         setBranchForm({ branch_name: '', branch_code: '', location_code: '' });
                         setMsg(null);
                       }}
-                      className="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline"
+                      className="text-xs text-brand-600 hover:text-brand-800 font-medium hover:underline"
                     >
                       + Add Branch
                     </button>
@@ -241,9 +235,7 @@ const SchoolManagement: React.FC = () => {
 
                 <div className="space-y-3 flex-1">
                   {school.branches.length === 0 ? (
-                    <div className="text-center py-6 text-slate-400 text-sm italic">
-                      No branches assigned/created.
-                    </div>
+                    <EmptyState compact title="No branches assigned/created." />
                   ) : (
                     school.branches.map(branch => (
                       <div key={branch.id} className="card flex items-center justify-between p-3 hover:border-slate-300 transition-colors">
@@ -270,11 +262,11 @@ const SchoolManagement: React.FC = () => {
       {showSchoolForm && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="card shadow-pop w-full max-w-lg overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="card-header">
               <h2 className="text-base font-semibold text-slate-900">{editingSchoolId ? 'Edit School Details' : 'Create New School'}</h2>
-              <button onClick={() => setShowSchoolForm(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+              <button onClick={() => setShowSchoolForm(false)} className="btn-icon" aria-label="Close">✕</button>
             </div>
-            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+            <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
               <div>
                 <label className="label">School Name</label>
                 <input
@@ -284,7 +276,7 @@ const SchoolManagement: React.FC = () => {
                   className="input"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="label">School Code</label>
                   <input
@@ -340,7 +332,7 @@ const SchoolManagement: React.FC = () => {
                 />
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-slate-100 flex gap-3">
+            <div className="px-5 py-4 border-t border-slate-100 flex gap-3">
               <button onClick={handleSaveSchool} className="btn-primary flex-1">
                 Save School
               </button>
@@ -356,11 +348,11 @@ const SchoolManagement: React.FC = () => {
       {activeBranchSchoolId !== null && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="card shadow-pop w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="card-header">
               <h2 className="text-base font-semibold text-slate-900">Add New Branch</h2>
-              <button onClick={() => setActiveBranchSchoolId(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+              <button onClick={() => setActiveBranchSchoolId(null)} className="btn-icon" aria-label="Close">✕</button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-5 space-y-4">
               <div>
                 <label className="label">Branch Name</label>
                 <input
@@ -395,7 +387,7 @@ const SchoolManagement: React.FC = () => {
                 </select>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-slate-100 flex gap-3">
+            <div className="px-5 py-4 border-t border-slate-100 flex gap-3">
               <button onClick={handleSaveBranch} className="btn-primary flex-1">
                 Save Branch
               </button>

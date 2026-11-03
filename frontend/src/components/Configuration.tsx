@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Page } from '../App';
-import { ChevronDown, Trash2, Edit2, Plus, RotateCcw, Calendar, Clock } from 'lucide-react';
+import { ChevronDown, Trash2, Edit2, Plus, RotateCcw, Calendar, Clock, Settings2 } from 'lucide-react';
 import api from '../api';
 import { confirmDialog } from './ui/feedback';
+import { PageHeader, Alert, LoadingState, EmptyState } from './ui';
 
 interface ConfigurationProps {
     navigateTo?: (page: Page) => void;
@@ -99,12 +100,12 @@ const NavDropdown: React.FC<DropdownProps> = ({ title, items, isActive }) => {
             onMouseEnter={() => setIsOpen(true)}
             onMouseLeave={() => setIsOpen(false)}
         >
-            <button className={`btn ${isActive ? 'bg-violet-700 text-white' : 'text-white bg-violet-600 hover:bg-violet-700'}`}>
+            <button className={`btn-primary ${isActive ? 'bg-brand-700' : ''}`}>
                 {title} <ChevronDown size={14} />
             </button>
 
             {isOpen && (
-                <div className="card shadow-pop absolute left-0 z-50 w-48 py-1 mt-1">
+                <div className="menu left-0 z-50 w-48">
                     {items.map((item, idx) => (
                         <button
                             key={idx}
@@ -115,7 +116,7 @@ const NavDropdown: React.FC<DropdownProps> = ({ title, items, isActive }) => {
                                 }
                             }}
                             disabled={item.disabled}
-                            className={`btn block w-full text-left ${item.disabled ? "text-gray-400 cursor-not-allowed" : "text-gray-700 hover:bg-violet-50 hover:text-violet-700" }`}
+                            className={`menu-item ${item.disabled ? "text-slate-400 cursor-not-allowed hover:bg-transparent hover:text-slate-400" : "" }`}
                         >
                             {item.label}
                         </button>
@@ -226,24 +227,24 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
 
     return (
         <div>
-            <div className="flex items-center gap-3 mb-6">
-                <Clock className="text-violet-600" size={24} />
-                <h2 className="text-xl font-bold text-gray-800">Week-off Policy</h2>
-                <span className="bg-violet-100 text-violet-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+            <div className="flex flex-wrap items-center gap-3 mb-6">
+                <Clock className="text-brand-600" size={22} />
+                <h2 className="text-base font-semibold text-slate-900">Week-off Policy</h2>
+                <span className="badge-brand">
                     {rules.length} Rules
                 </span>
             </div>
 
             {message && (
-                <div className={`mb-4 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                <Alert tone={message.type} className="mb-4" onClose={() => setMessage(null)}>
                     {message.text}
-                </div>
+                </Alert>
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Left: Form */}
-                <div className="bg-gray-50 border rounded-lg p-5">
-                    <h3 className="font-semibold text-gray-700 mb-4">Add New Weekoff Rule</h3>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                    <h3 className="text-sm font-semibold text-slate-900 mb-4">Add New Weekoff Rule</h3>
 
                     <div className="space-y-4">
                         {/* Branch */}
@@ -301,18 +302,18 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                                             name="week_rule"
                                             checked={selectedWeek === opt.value}
                                             onChange={() => setSelectedWeek(opt.value)}
-                                            className="text-violet-600 focus:ring-violet-500"
+                                            className="text-brand-600 focus:ring-brand-500"
                                         />
-                                        <span className="text-sm text-gray-700">{opt.label}</span>
+                                        <span className="text-sm text-slate-700">{opt.label}</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
 
                         {/* Preview */}
-                        <div className="bg-violet-50 border border-violet-200 rounded-lg p-3">
-                            <span className="text-xs text-violet-500 font-medium">Preview:</span>
-                            <p className="text-sm font-semibold text-violet-700 mt-1">
+                        <div className="bg-brand-50 border border-brand-200 rounded-lg p-3">
+                            <span className="text-xs text-brand-500 font-medium">Preview:</span>
+                            <p className="text-sm font-semibold text-brand-700 mt-1">
                                 {selectedWeek === null ? 'Every' : WEEK_OPTIONS.find(o => o.value === selectedWeek)?.label?.replace(' Week', '')} – {WEEKDAYS.find(d => d.value === selectedDay)?.label}
                                 {selectedClass ? ` (${classOptions.find(c => c.id === selectedClass)?.class_name})` : ' (All Classes)'}
                             </p>
@@ -341,18 +342,18 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
 
                 {/* Right: Table */}
                 <div>
-                    <h3 className="font-semibold text-gray-700 mb-4">Existing Rules</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-4">Existing Rules</h3>
                     {loading ? (
-                        <div className="text-center py-10 text-gray-400">Loading...</div>
+                        <LoadingState />
                     ) : rules.length === 0 ? (
-                        <div className="text-center py-10 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                            <Clock className="mx-auto mb-2 text-gray-300" size={32} />
-                            <p className="text-sm">No weekoff rules configured yet</p>
+                        <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                            <EmptyState compact title="No weekoff rules configured yet" icon={<Clock size={24} />} />
                         </div>
                     ) : (
-                        <div className="border rounded-lg overflow-hidden">
+                        <div className="card overflow-hidden">
+                            <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="border-b">
+                                <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
                                     <tr>
                                         <th className="px-4 py-3 text-left">S.No</th>
                                         <th className="px-4 py-3 text-left">Rule Title</th>
@@ -360,16 +361,16 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                                         <th className="px-4 py-3 text-center">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y">
+                                <tbody className="divide-y divide-slate-100">
                                     {rules.map((rule, idx) => (
-                                        <tr key={rule.id} className="hover:bg-gray-50">
-                                            <td className="px-4 py-3 text-gray-600">{idx + 1}</td>
-                                            <td className="px-4 py-3 font-medium text-gray-800">{rule.title}</td>
-                                            <td className="px-4 py-3 text-gray-600">{rule.branch_name}</td>
+                                        <tr key={rule.id} className="hover:bg-slate-50">
+                                            <td className="px-4 py-3 text-slate-600">{idx + 1}</td>
+                                            <td className="px-4 py-3 font-medium text-slate-800">{rule.title}</td>
+                                            <td className="px-4 py-3 text-slate-600">{rule.branch_name}</td>
                                             <td className="px-4 py-3 text-center">
                                                 <button
                                                     onClick={() => handleDelete(rule.id)}
-                                                    className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded transition-colors"
+                                                    className="btn-icon h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-700"
                                                     title="Delete"
                                                 >
                                                     <Trash2 size={16} />
@@ -379,6 +380,7 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                                     ))}
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -533,24 +535,24 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
 
     return (
         <div>
-            <div className="flex items-center gap-3 mb-6">
-                <Calendar className="text-violet-600" size={24} />
-                <h2 className="text-xl font-bold text-gray-800">Holiday Policy</h2>
-                <span className="bg-violet-100 text-violet-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+            <div className="flex flex-wrap items-center gap-3 mb-6">
+                <Calendar className="text-brand-600" size={22} />
+                <h2 className="text-base font-semibold text-slate-900">Holiday Policy</h2>
+                <span className="badge-brand">
                     {holidays.length} Holidays
                 </span>
             </div>
 
             {message && (
-                <div className={`mb-4 p-3 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                <Alert tone={message.type} className="mb-4" onClose={() => setMessage(null)}>
                     {message.text}
-                </div>
+                </Alert>
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Left: Form */}
-                <div className="bg-gray-50 border rounded-lg p-5">
-                    <h3 className="font-semibold text-gray-700 mb-4">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                    <h3 className="text-sm font-semibold text-slate-900 mb-4">
                         {editingId ? 'Edit Holiday' : 'Add New Holiday'}
                     </h3>
 
@@ -684,18 +686,18 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
 
                 {/* Right: Table */}
                 <div>
-                    <h3 className="font-semibold text-gray-700 mb-4">Holiday Calendar</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-4">Holiday Calendar</h3>
                     {loading ? (
-                        <div className="text-center py-10 text-gray-400">Loading...</div>
+                        <LoadingState />
                     ) : holidays.length === 0 ? (
-                        <div className="text-center py-10 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                            <Calendar className="mx-auto mb-2 text-gray-300" size={32} />
-                            <p className="text-sm">No holidays configured yet</p>
+                        <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                            <EmptyState compact title="No holidays configured yet" icon={<Calendar size={24} />} />
                         </div>
                     ) : (
-                        <div className="border rounded-lg overflow-hidden">
+                        <div className="card overflow-hidden">
+                            <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="border-b">
+                                <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
                                     <tr>
                                         <th className="px-3 py-3 text-left">S.No</th>
                                         <th className="px-3 py-3 text-left">Name</th>
@@ -704,25 +706,25 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                                         <th className="px-3 py-3 text-center">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y">
+                                <tbody className="divide-y divide-slate-100">
                                     {holidays.map((h, idx) => (
-                                        <tr key={h.id} className="hover:bg-gray-50">
-                                            <td className="px-3 py-3 text-gray-600">{idx + 1}</td>
+                                        <tr key={h.id} className="hover:bg-slate-50">
+                                            <td className="px-3 py-3 text-slate-600">{idx + 1}</td>
                                             <td className="px-3 py-3">
-                                                <div className="font-medium text-gray-800">{h.title}</div>
-                                                {h.description && <div className="text-xs text-gray-400 mt-0.5">{h.description}</div>}
+                                                <div className="font-medium text-slate-800">{h.title}</div>
+                                                {h.description && <div className="text-xs text-slate-400 mt-0.5">{h.description}</div>}
                                             </td>
-                                            <td className="px-3 py-3 text-gray-600 text-xs">
+                                            <td className="px-3 py-3 text-slate-600 text-xs">
                                                 {formatDate(h.start_date)}
                                                 {h.start_date !== h.end_date && (
                                                     <> – {formatDate(h.end_date)}</>
                                                 )}
                                             </td>
                                             <td className="px-3 py-3">
-                                                <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full ${h.holiday_for === 'All' ? 'bg-blue-50 text-blue-700'
-                                                    : h.holiday_for === 'StudentOnly' ? 'bg-green-50 text-green-700'
-                                                        : 'bg-orange-50 text-orange-700'
-                                                    }`}>
+                                                <span className={h.holiday_for === 'All' ? 'badge-brand'
+                                                    : h.holiday_for === 'StudentOnly' ? 'badge-success'
+                                                        : 'badge-warning'
+                                                    }>
                                                     {h.holiday_for === 'All' ? 'All' : h.holiday_for === 'StudentOnly' ? 'Students' : 'Staff'}
                                                 </span>
                                             </td>
@@ -730,14 +732,14 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                                                 <div className="flex items-center justify-center gap-1">
                                                     <button
                                                         onClick={() => handleEdit(h)}
-                                                        className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded transition-colors"
+                                                        className="btn-icon h-8 w-8 text-brand-600 hover:bg-brand-50 hover:text-brand-700"
                                                         title="Edit"
                                                     >
                                                         <Edit2 size={15} />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(h.id)}
-                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded transition-colors"
+                                                        className="btn-icon h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-700"
                                                         title="Delete"
                                                     >
                                                         <Trash2 size={15} />
@@ -748,6 +750,7 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                                     ))}
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -759,7 +762,7 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
 // ================================================================
 // MAIN CONFIGURATION COMPONENT
 // ================================================================
-const Configuration: React.FC<ConfigurationProps> = ({ navigateTo }) => {
+const Configuration: React.FC<ConfigurationProps> = () => {
     const [activeTab, setActiveTab] = useState<string>('masters');
     const [activeMaster, setActiveMaster] = useState<string | null>(null);
     const [branches, setBranches] = useState<BranchOption[]>([]);
@@ -785,22 +788,20 @@ const Configuration: React.FC<ConfigurationProps> = ({ navigateTo }) => {
     return (
         <div className="min-h-full bg-slate-50 flex flex-col">
             {/* Header */}
-            <div className="bg-white border-b sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center gap-4">
-                            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                                <span className="p-1 bg-violet-100 rounded text-violet-600">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                </span>
-                                Configuration Management
-                                <span className="text-sm font-normal text-violet-600 ml-2 cursor-pointer hover:underline">Get Help</span>
-                            </h1>
-                        </div>
-                        <div className="flex items-center space-x-2">
+            <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
+                    <PageHeader
+                        eyebrow="Setup"
+                        title="Configuration Management"
+                        className="mb-5"
+                        icon={
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        }
+                        actions={<>
+                            <span className="text-sm text-brand-600 cursor-pointer hover:underline mr-2">Get Help</span>
                             <NavDropdown
                                 title="Masters"
                                 isActive={activeTab === 'masters'}
@@ -813,37 +814,34 @@ const Configuration: React.FC<ConfigurationProps> = ({ navigateTo }) => {
                             />
                             <button
                                 onClick={() => { setActiveTab('settings'); setActiveMaster(null); }}
-                                className={`btn border ${activeTab === 'settings' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-violet-600 border-transparent hover:bg-violet-50'}`}
+                                className={activeTab === 'settings' ? 'btn-soft' : 'btn-ghost text-brand-600'}
                             >
                                 Setting
                             </button>
                             <button
                                 onClick={() => { setActiveTab('academic-year'); setActiveMaster(null); }}
-                                className={`btn border ${activeTab === 'academic-year' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-violet-600 border-transparent hover:bg-violet-50'}`}
+                                className={activeTab === 'academic-year' ? 'btn-soft' : 'btn-ghost text-brand-600'}
                             >
                                 Academic Year
                             </button>
                             <button
                                 onClick={() => { setActiveTab('export-data'); setActiveMaster(null); }}
-                                className={`btn border ${activeTab === 'export-data' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'text-violet-600 border-transparent hover:bg-violet-50'}`}
+                                className={activeTab === 'export-data' ? 'btn-soft' : 'btn-ghost text-brand-600'}
                             >
                                 Export Data From Old Academic Year
                             </button>
-                        </div>
-                    </div>
+                        </>}
+                    />
                 </div>
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 max-w-7xl mx-auto w-full p-6">
-                <div className="card min-h-[500px] p-6">
+            <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6">
+                <div className="card min-h-[500px] p-5">
 
                     {/* Masters Tab */}
                     {activeTab === 'masters' && !activeMaster && (
-                        <div className="text-center text-gray-500 mt-20">
-                            <h2 className="text-xl font-semibold text-gray-700">Masters Configuration</h2>
-                            <p className="mt-2">Select a master from the dropdown to configure.</p>
-                        </div>
+                        <EmptyState className="mt-10" icon={<Settings2 className="w-6 h-6" />} title="Masters Configuration" description="Select a master from the dropdown to configure." />
                     )}
 
                     {activeTab === 'masters' && activeMaster === 'Week-off Policy' && (
@@ -855,37 +853,22 @@ const Configuration: React.FC<ConfigurationProps> = ({ navigateTo }) => {
                     )}
 
                     {activeTab === 'masters' && activeMaster === 'Departments' && (
-                        <div className="text-center text-gray-500 mt-20">
-                            <h2 className="text-xl font-semibold text-gray-700">Departments</h2>
-                            <p className="mt-2">Department management coming soon.</p>
-                        </div>
+                        <EmptyState className="mt-10" icon={<Settings2 className="w-6 h-6" />} title="Departments" description="Department management coming soon." />
                     )}
 
                     {activeTab === 'masters' && activeMaster === 'Designations' && (
-                        <div className="text-center text-gray-500 mt-20">
-                            <h2 className="text-xl font-semibold text-gray-700">Designations</h2>
-                            <p className="mt-2">Designation management coming soon.</p>
-                        </div>
+                        <EmptyState className="mt-10" icon={<Settings2 className="w-6 h-6" />} title="Designations" description="Designation management coming soon." />
                     )}
 
                     {/* Other Tabs */}
                     {activeTab === 'settings' && (
-                        <div className="text-center text-gray-500 mt-20">
-                            <h2 className="text-xl font-semibold text-gray-700">System Settings</h2>
-                            <p className="mt-2">General system configuration options will appear here.</p>
-                        </div>
+                        <EmptyState className="mt-10" icon={<Settings2 className="w-6 h-6" />} title="System Settings" description="General system configuration options will appear here." />
                     )}
                     {activeTab === 'academic-year' && (
-                        <div className="text-center text-gray-500 mt-20">
-                            <h2 className="text-xl font-semibold text-gray-700">Academic Year Settings</h2>
-                            <p className="mt-2">Manage academic years here.</p>
-                        </div>
+                        <EmptyState className="mt-10" icon={<Settings2 className="w-6 h-6" />} title="Academic Year Settings" description="Manage academic years here." />
                     )}
                     {activeTab === 'export-data' && (
-                        <div className="text-center text-gray-500 mt-20">
-                            <h2 className="text-xl font-semibold text-gray-700">Export Data</h2>
-                            <p className="mt-2">Export data from previous academic years.</p>
-                        </div>
+                        <EmptyState className="mt-10" icon={<Settings2 className="w-6 h-6" />} title="Export Data" description="Export data from previous academic years." />
                     )}
                 </div>
             </div>

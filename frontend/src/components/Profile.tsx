@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
+import { PageHeader, Alert } from './ui';
 
 const Profile: React.FC = () => {
     // Username State
@@ -32,7 +33,7 @@ const Profile: React.FC = () => {
     const [addUserLoading, setAddUserLoading] = useState(false);
     const [isBranchLocked, setIsBranchLocked] = useState(false);
 
-    const { user: authUser, hasPermission } = useAuth();
+    const { hasPermission } = useAuth();
     const canManageUsers = hasPermission('system.users.user-management', 'write');
 
     useEffect(() => {
@@ -306,29 +307,24 @@ const Profile: React.FC = () => {
 
     return (
         <div className="container mx-auto p-4 md:p-6">
-            <div className="page-header">
-                <div>
-                    <p className="page-eyebrow">My Account</p>
-                    <h4 className="page-title">Username &amp; Password</h4>
-                    <p className="page-subtitle">Update your login credentials and manage users.</p>
-                </div>
-            </div>
+            <PageHeader
+                eyebrow="My Account"
+                title="Username & Password"
+                subtitle="Update your login credentials and manage users."
+            />
 
-            <div className="card p-6">
+            <div className="card p-5">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
                     {/* ==================== CHANGE USERNAME FORM ==================== */}
                     <form onSubmit={(e) => e.preventDefault()}>
-                        <div className="space-y-4 border border-gray-200 p-6 rounded-lg h-full">
+                        <div className="space-y-4 border border-slate-200 p-5 rounded-lg h-full">
                             <h3 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-4">Change Username</h3>
 
                             {usernameStatus.msg && (
-                                <div className={`p-3 rounded-md text-sm ${usernameStatus.type === 'success'
-                                    ? 'bg-green-50 border border-green-200 text-green-700'
-                                    : 'bg-red-50 border border-red-200 text-red-700'
-                                    }`}>
+                                <Alert tone={usernameStatus.type === 'success' ? 'success' : 'error'}>
                                     {usernameStatus.msg}
-                                </div>
+                                </Alert>
                             )}
 
                             <div>
@@ -374,16 +370,13 @@ const Profile: React.FC = () => {
 
                     {/* ==================== CHANGE PASSWORD FORM ==================== */}
                     <form onSubmit={(e) => e.preventDefault()}>
-                        <div className="space-y-4 border border-slate-200 p-6 rounded-lg h-full">
+                        <div className="space-y-4 border border-slate-200 p-5 rounded-lg h-full">
                             <h3 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-4">Change Password</h3>
 
                             {passwordStatus.msg && (
-                                <div className={`p-3 rounded-md text-sm ${passwordStatus.type === 'success'
-                                    ? 'bg-green-50 border border-green-200 text-green-700'
-                                    : 'bg-red-50 border border-red-200 text-red-700'
-                                    }`}>
+                                <Alert tone={passwordStatus.type === 'success' ? 'success' : 'error'}>
                                     {passwordStatus.msg}
-                                </div>
+                                </Alert>
                             )}
 
                             <div className="grid grid-cols-1 gap-4">
@@ -472,18 +465,15 @@ const Profile: React.FC = () => {
                 {/* ==================== ADD USER SECTION (ADMIN ONLY) ==================== */}
                 {canManageUsers && (
                     <div className="mt-8">
-                        <div className="card p-6">
+                        <div className="card p-5">
                             <h3 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-4">
                                 Add New User
                             </h3>
 
                             {addUserStatus.msg && (
-                                <div className={`p-4 mb-4 rounded-md ${addUserStatus.type === 'success'
-                                    ? 'bg-green-100 text-green-700 border border-green-200'
-                                    : 'bg-red-100 text-red-700 border border-red-200'
-                                    }`}>
+                                <Alert tone={addUserStatus.type === 'success' ? 'success' : 'error'} className="mb-4">
                                     {addUserStatus.msg}
-                                </div>
+                                </Alert>
                             )}
 
                             <form onSubmit={handleAddUser}>
@@ -553,44 +543,44 @@ const Profile: React.FC = () => {
                                         </label>
                                         <div className="card p-2 h-40 overflow-y-auto">
                                             {/* All Branches Option */}
-                                            <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded">
+                                            <div className="flex items-center space-x-2 p-2 hover:bg-slate-50 rounded">
                                                 <input
                                                     type="checkbox"
                                                     id="branch-all"
                                                     checked={selectedBranches.includes('All')}
                                                     onChange={() => handleBranchToggle('All')}
                                                     disabled={addUserLoading || isBranchLocked}
-                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
                                                 />
-                                                <label htmlFor="branch-all" className="label">
+                                                <label htmlFor="branch-all" className="text-sm font-medium text-slate-700">
                                                     All Branches
                                                 </label>
                                             </div>
 
-                                            <hr className="my-1" />
+                                            <hr className="my-1 border-slate-100" />
 
                                             {/* Individual Branches */}
                                             {availableBranches.map((b) => (
-                                                <div key={b.branch_code} className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded">
+                                                <div key={b.branch_code} className="flex items-center space-x-2 p-2 hover:bg-slate-50 rounded">
                                                     <input
                                                         type="checkbox"
                                                         id={`branch-${b.branch_code}`}
                                                         checked={selectedBranches.includes(b.branch_code)}
                                                         onChange={() => handleBranchToggle(b.branch_code)}
                                                         disabled={addUserLoading || isBranchLocked || selectedBranches.includes('All')}
-                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
                                                     />
-                                                    <label htmlFor={`branch-${b.branch_code}`} className="label">
+                                                    <label htmlFor={`branch-${b.branch_code}`} className="text-sm text-slate-700">
                                                         {b.branch_name}
                                                     </label>
                                                 </div>
                                             ))}
 
                                             {availableBranches.length === 0 && (
-                                                <p className="text-sm text-gray-500 p-2">No branches available</p>
+                                                <p className="text-sm text-slate-500 p-2">No branches available</p>
                                             )}
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-1">
+                                        <p className="text-xs text-slate-500 mt-1">
                                             Selected: {selectedBranches.length === 0 ? 'None' : selectedBranches.join(', ')}
                                         </p>
                                     </div>
@@ -610,7 +600,7 @@ const Profile: React.FC = () => {
                                             placeholder="Auto-filled from branch"
                                             readOnly
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">Auto-filled based on branch selection</p>
+                                        <p className="text-xs text-slate-500 mt-1">Auto-filled based on branch selection</p>
                                     </div>
 
                                     {/* Role */}

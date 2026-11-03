@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { PageHeader, Spinner } from './ui';
 
 const StaffSupport: React.FC = () => {
     const WHATSAPP_GROUP_LINK = 'https://chat.whatsapp.com/FFcwsA705dt8mMS4FciHxR';
@@ -191,21 +192,16 @@ const StaffSupport: React.FC = () => {
     );
 
     return (
-        <div className="min-h-full bg-gradient-to-br from-gray-50 via-green-50 to-emerald-50 p-6">
+        <div className="min-h-full bg-slate-50 p-4 md:p-6">
             <div className="max-w-6xl mx-auto">
 
                 {/* ── Header ── */}
-                <div className="mb-8 flex items-center gap-3">
-                    <div className="bg-green-500 p-2.5 rounded-xl shadow-md">
-                        <WaIcon cls="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Staff Support</h1>
-                        <p className="text-gray-500 text-sm">
-                            Get help from our support team via WhatsApp
-                        </p>
-                    </div>
-                </div>
+                <PageHeader
+                    eyebrow="Support"
+                    title="Staff Support"
+                    subtitle="Get help from our support team via WhatsApp"
+                    icon={<WaIcon cls="w-6 h-6 text-emerald-600" />}
+                />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -221,7 +217,7 @@ const StaffSupport: React.FC = () => {
                                     <WaIcon cls="w-5 h-5 text-white" />
                                 </div>
                                 <div>
-                                    <h2 className="text-base font-semibold text-slate-900 text-white">Submit Your Query</h2>
+                                    <h2 className="text-base font-semibold text-white">Submit Your Query</h2>
                                     <p className="text-green-100 text-xs mt-0.5">
                                         Message is copied to clipboard — just paste it in WhatsApp
                                     </p>
@@ -244,8 +240,8 @@ const StaffSupport: React.FC = () => {
                                     {/* Clipboard status badge */}
                                     <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-4 ${
                                         isCopied
-                                            ? 'bg-green-100 text-green-700 border border-green-300'
-                                            : 'bg-yellow-100 text-yellow-700 border border-yellow-300'
+                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                            : 'bg-amber-50 text-amber-700 border border-amber-200'
                                     }`}>
                                         {isCopied ? (
                                             <>
@@ -289,8 +285,8 @@ const StaffSupport: React.FC = () => {
 
                                     {/* Message box — for manual copy */}
                                     <div className="w-full max-w-md mb-4">
-                                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-left">
-                                            <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono leading-relaxed max-h-40 overflow-y-auto">
+                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-left">
+                                            <pre className="text-xs text-slate-700 whitespace-pre-wrap font-mono leading-relaxed max-h-40 overflow-y-auto">
                                                 {buildMessage()}
                                             </pre>
                                         </div>
@@ -301,7 +297,7 @@ const StaffSupport: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={handleManualCopy}
-                                            className={`btn flex-1 border ${ isCopied ? 'bg-green-50 text-green-700 border-green-300' : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200' }`}
+                                            className={`flex-1 ${ isCopied ? 'btn border bg-emerald-50 text-emerald-700 border-emerald-300' : 'btn-secondary' }`}
                                         >
                                             {isCopied ? (
                                                 <>
@@ -330,7 +326,7 @@ const StaffSupport: React.FC = () => {
                                         </button>
                                     </div>
 
-                                    <p className="text-xs text-gray-400 mt-5">
+                                    <p className="text-xs text-slate-400 mt-5">
                                         Resets automatically in a few seconds…
                                     </p>
                                 </div>
@@ -340,21 +336,21 @@ const StaffSupport: React.FC = () => {
                                 <form onSubmit={handleSubmit} noValidate className="p-6 space-y-5">
 
                                     {/* Sender chip */}
-                                    <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                                    <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
                                         <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
                                             <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                             </svg>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-xs text-gray-400 font-medium">Sending as</p>
-                                            <p className="text-sm font-bold text-gray-800 truncate">
+                                            <p className="text-xs text-slate-400 font-medium">Sending as</p>
+                                            <p className="text-sm font-bold text-slate-800 truncate">
                                                 {userName || (
-                                                    <span className="italic text-gray-400">Staff Member</span>
+                                                    <span className="italic text-slate-400">Staff Member</span>
                                                 )}
                                             </p>
                                         </div>
-                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
+                                        <span className="badge-success whitespace-nowrap">
                                             Auto-detected
                                         </span>
                                     </div>
@@ -370,7 +366,7 @@ const StaffSupport: React.FC = () => {
                                                     type="button"
                                                     key={cat.label}
                                                     onClick={() => setCategory(cat.label)}
-                                                    className={`btn btn-sm border ${ category === cat.label ? 'bg-green-500 text-white border-green-500 shadow-md scale-105' : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-green-400 hover:text-green-600' }`}
+                                                    className={`btn btn-sm border ${ category === cat.label ? 'bg-green-500 text-white border-green-500 shadow-md scale-105' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-green-400 hover:text-green-600' }`}
                                                 >
                                                     <span>{cat.icon}</span>
                                                     {cat.label}
@@ -385,7 +381,7 @@ const StaffSupport: React.FC = () => {
                                             Subject <span className="text-red-500">*</span>
                                         </label>
                                         <div className="relative">
-                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                                                 </svg>
@@ -401,7 +397,7 @@ const StaffSupport: React.FC = () => {
                                                 className={`input pl-10 ${
                                                     errors.subject
                                                         ? 'border-red-400 focus:ring-red-300'
-                                                        : 'border-gray-200 focus:ring-green-300 focus:border-green-400'
+                                                        : 'border-slate-200 focus:ring-green-300 focus:border-green-400'
                                                 }`}
                                             />
                                         </div>
@@ -431,7 +427,7 @@ const StaffSupport: React.FC = () => {
                                             className={`input resize-none ${
                                                 errors.message
                                                     ? 'border-red-400 focus:ring-red-300'
-                                                    : 'border-gray-200 focus:ring-green-300 focus:border-green-400'
+                                                    : 'border-slate-200 focus:ring-green-300 focus:border-green-400'
                                             }`}
                                         />
                                         <div className="flex justify-between items-center mt-1">
@@ -443,7 +439,7 @@ const StaffSupport: React.FC = () => {
                                                     {errors.message}
                                                 </p>
                                             ) : <span />}
-                                            <span className={`text-xs ml-auto ${message.length >= 20 ? 'text-green-500' : 'text-gray-400'}`}>
+                                            <span className={`text-xs ml-auto ${message.length >= 20 ? 'text-green-500' : 'text-slate-400'}`}>
                                                 {message.length} chars
                                             </span>
                                         </div>
@@ -451,11 +447,11 @@ const StaffSupport: React.FC = () => {
 
                                     {/* Message preview */}
                                     {(subject || message) && (
-                                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                                            <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
+                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                            <p className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1">
                                                 <span>👁️</span> Message Preview
                                             </p>
-                                            <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                                            <pre className="text-xs text-slate-700 whitespace-pre-wrap font-mono leading-relaxed">
                                                 {buildMessage()}
                                             </pre>
                                         </div>
@@ -479,14 +475,11 @@ const StaffSupport: React.FC = () => {
                                     <button
                                         type="submit"
                                         disabled={isSubmitting}
-                                        className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 text-sm"
+                                        className="btn-success btn-lg w-full text-sm"
                                     >
                                         {isSubmitting ? (
                                             <>
-                                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                                </svg>
+                                                <Spinner size="sm" className="text-white" />
                                                 Copying & Opening WhatsApp…
                                             </>
                                         ) : (
@@ -499,7 +492,7 @@ const StaffSupport: React.FC = () => {
 
                                     {/* ── Reference Documents ── */}
                                     <div className="pt-2">
-                                        <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
+                                        <p className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1">
                                             <span>📚</span> Reference Documents
                                         </p>
                                         <div className="flex flex-wrap gap-2">
@@ -509,7 +502,7 @@ const StaffSupport: React.FC = () => {
                                                     href={doc.href}
                                                     target="_blank"
                                                     rel="noreferrer"
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs font-semibold text-gray-700 hover:bg-green-50 hover:border-green-400 hover:text-green-700 transition-all duration-200 whitespace-nowrap"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-semibold text-slate-700 hover:bg-green-50 hover:border-green-400 hover:text-green-700 transition-all duration-200 whitespace-nowrap"
                                                 >
                                                     <svg className="w-3.5 h-3.5 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                                                         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/>
@@ -532,7 +525,7 @@ const StaffSupport: React.FC = () => {
                     <div className="space-y-5">
 
                         {/* Join group card */}
-                        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg p-5 text-white">
+                        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-card p-5 text-white">
                             <div className="flex items-center gap-3 mb-3">
                                 <div className="bg-white/20 p-2 rounded-lg">
                                     <WaIcon cls="w-5 h-5 text-white" />
@@ -557,7 +550,7 @@ const StaffSupport: React.FC = () => {
 
                         {/* Support hours */}
                         <div className="card p-5">
-                            <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
                                 <span className="text-lg">🕐</span> Support Hours
                             </h3>
                             <div className="space-y-2.5">
@@ -567,16 +560,14 @@ const StaffSupport: React.FC = () => {
                                     { day: 'Sunday',          time: 'Closed',             active: false },
                                 ].map((item, i) => (
                                     <div key={i} className="flex justify-between items-center">
-                                        <span className="text-xs text-gray-600">{item.day}</span>
-                                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                                            item.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
-                                        }`}>
+                                        <span className="text-xs text-slate-600">{item.day}</span>
+                                        <span className={item.active ? 'badge-success' : 'badge-danger'}>
                                             {item.time}
                                         </span>
                                     </div>
                                 ))}
                             </div>
-                            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center gap-2">
+                            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                                 <span className="text-xs text-green-600 font-medium">Support team is online</span>
                             </div>
@@ -584,21 +575,21 @@ const StaffSupport: React.FC = () => {
 
                         {/* Response times */}
                         <div className="card p-5">
-                            <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
                                 <span className="text-lg">⚡</span> Response Times
                             </h3>
                             <div className="space-y-3">
                                 {[
                                     { label: 'WhatsApp Group',  time: '< 1 hour',  color: 'bg-green-500' },
                                     { label: 'Urgent Issues',   time: '< 30 min',  color: 'bg-emerald-500' },
-                                    { label: 'General Queries', time: '< 4 hours', color: 'bg-blue-500' },
+                                    { label: 'General Queries', time: '< 4 hours', color: 'bg-brand-500' },
                                 ].map((item, i) => (
                                     <div key={i} className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <span className={`w-2 h-2 rounded-full ${item.color}`} />
-                                            <span className="text-xs text-gray-600">{item.label}</span>
+                                            <span className="text-xs text-slate-600">{item.label}</span>
                                         </div>
-                                        <span className="text-xs font-bold text-gray-800">{item.time}</span>
+                                        <span className="text-xs font-bold text-slate-800">{item.time}</span>
                                     </div>
                                 ))}
                             </div>
@@ -606,28 +597,28 @@ const StaffSupport: React.FC = () => {
 
                         {/* FAQ accordion */}
                         <div className="card p-5">
-                            <h3 className="font-bold text-gray-800 text-sm mb-4 flex items-center gap-2">
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
                                 <span className="text-lg">❓</span> Quick FAQs
                             </h3>
                             <div className="space-y-2">
                                 {faqs.map((faq, i) => (
-                                    <div key={i} className="border border-gray-100 rounded-xl overflow-hidden">
+                                    <div key={i} className="border border-slate-100 rounded-xl overflow-hidden">
                                         <button
                                             type="button"
                                             onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                                            className="w-full text-left px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                                            className="w-full text-left px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
                                         >
-                                            <span className="text-xs font-semibold text-gray-700 pr-2">{faq.question}</span>
+                                            <span className="text-xs font-semibold text-slate-700 pr-2">{faq.question}</span>
                                             <svg
-                                                className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${openFaq === i ? 'rotate-180' : ''}`}
+                                                className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200 ${openFaq === i ? 'rotate-180' : ''}`}
                                                 fill="none" stroke="currentColor" viewBox="0 0 24 24"
                                             >
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                             </svg>
                                         </button>
                                         {openFaq === i && (
-                                            <div className="px-4 pb-3 bg-green-50 border-t border-gray-100">
-                                                <p className="text-xs text-gray-600 leading-relaxed pt-2">{faq.answer}</p>
+                                            <div className="px-4 pb-3 bg-green-50 border-t border-slate-100">
+                                                <p className="text-xs text-slate-600 leading-relaxed pt-2">{faq.answer}</p>
                                             </div>
                                         )}
                                     </div>

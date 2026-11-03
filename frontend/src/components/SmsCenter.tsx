@@ -3,6 +3,7 @@ import { Page } from '../App';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { notify, confirmDialog } from './ui/feedback';
+import { Alert, LoadingState, EmptyState, PageHeader } from './ui';
 
 interface SmsCenterProps {
     navigateTo: (page: Page) => void;
@@ -349,8 +350,8 @@ const SmsReportsTab: React.FC = () => {
                                     ))}
                                     {records.length === 0 && (
                                         <tr>
-                                                <td colSpan={8} className="px-3 py-10 text-center text-slate-400 text-sm">
-                                                No SMS records found for this period.
+                                            <td colSpan={8}>
+                                                <EmptyState compact title="No SMS records found for this period." />
                                             </td>
                                         </tr>
                                     )}
@@ -375,8 +376,8 @@ const SmsReportsTab: React.FC = () => {
             )}
 
             {!grand && !loading && (
-                <div className="text-center py-16 text-slate-400 text-sm">
-                    Select a date range and click <strong>Run Report</strong>
+                <div className="card">
+                    <EmptyState title="No report yet" description={<>Select a date range and click <strong>Run Report</strong></>} />
                 </div>
             )}
         </div>
@@ -709,7 +710,7 @@ const TemplatesTab: React.FC = () => {
                             </label>
                         </div>
 
-                        {formError && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{formError}</div>}
+                        {formError && <Alert tone="error">{formError}</Alert>}
 
                         <div className="flex gap-3">
                             <button onClick={handleSave} disabled={saving}
@@ -788,18 +789,18 @@ const TemplatesTab: React.FC = () => {
                 )}
             </div>
 
-            {error && <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">{error}</div>}
+            {error && <Alert tone="warning">{error}</Alert>}
 
             {!error && data && events.length === 0 && !loading && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                <Alert tone="warning">
                     No active events yet. Create an event in the <strong>Events</strong> tab first.
-                </div>
+                </Alert>
             )}
 
             {!error && (
                 <div className="card overflow-x-auto">
                     <table className="min-w-full text-sm divide-y divide-slate-200">
-                        <thead className="">
+                        <thead>
                             <tr>
                                 {['Name', 'Event', 'Applies to', 'Send to', 'DLT ID', 'Default', 'Status', 'Updated', ''].map(h => (
                                     <th key={h} className="px-3 py-2 text-left">{h}</th>
@@ -849,13 +850,13 @@ const TemplatesTab: React.FC = () => {
                             ))}
                             {rows.length === 0 && !loading && events.length > 0 && (
                                 <tr>
-                                    <td colSpan={9} className="px-3 py-10 text-center text-slate-400 text-sm">
-                                        No templates yet. SMS for an event is sent only when it has an active template.
+                                    <td colSpan={9}>
+                                        <EmptyState compact title="No templates yet" description="SMS for an event is sent only when it has an active template." />
                                     </td>
                                 </tr>
                             )}
                             {loading && (
-                                <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400 text-sm">Loading…</td></tr>
+                                <tr><td colSpan={9}><LoadingState className="py-8" /></td></tr>
                             )}
                         </tbody>
                     </table>
@@ -869,7 +870,7 @@ const TemplatesTab: React.FC = () => {
                             <h4 className="font-semibold text-slate-800">History: {historyFor.name}</h4>
                             <button onClick={() => setHistoryFor(null)} className="btn-icon">✕</button>
                         </div>
-                        {history.length === 0 && <p className="text-sm text-slate-400">Loading…</p>}
+                        {history.length === 0 && <LoadingState className="py-6" />}
                         <div className="space-y-3">
                             {history.map((h, i) => (
                                 <div key={i} className="border border-slate-200 rounded-lg p-3">
@@ -1056,7 +1057,7 @@ const AccountCard: React.FC<{
                 </div>
             </div>
 
-            {error && <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
+            {error && <Alert tone="error">{error}</Alert>}
 
             {canEdit ? (
                 <button onClick={handleSave} disabled={saving}
@@ -1129,13 +1130,13 @@ const AccountTab: React.FC = () => {
     };
 
     if (loading && !data) {
-        return <p className="text-center text-slate-400 text-sm py-8">Loading…</p>;
+        return <LoadingState />;
     }
     if (!data) {
         return (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+            <Alert tone="warning" onRetry={load}>
                 {error || 'Could not load SMS accounts.'}
-            </div>
+            </Alert>
         );
     }
 
@@ -1175,13 +1176,13 @@ const AccountTab: React.FC = () => {
                     )}
                 </div>
             ) : (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                <Alert tone="info">
                     Select a branch in the top bar to choose which account it uses. Showing the school account only.
-                </div>
+                </Alert>
             )}
 
-            {error  && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
-            {notice && <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">{notice}</div>}
+            {error  && <Alert tone="error">{error}</Alert>}
+            {notice && <Alert tone="success">{notice}</Alert>}
 
                         {!data.can_view_school && !(data.branch && data.can_view_branch) && (
                 <p className="text-sm text-slate-400">You don't have access to view any SMS account details.</p>
@@ -1303,7 +1304,7 @@ const FeeReceiptCard: React.FC = () => {
 
     if (!data) {
         return error
-            ? <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">{error}</div>
+            ? <Alert tone="warning">{error}</Alert>
             : null;
     }
 
@@ -1387,8 +1388,8 @@ const FeeReceiptCard: React.FC = () => {
                 </div>
             )}
 
-            {error  && <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
-            {notice && <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">{notice}</div>}
+            {error  && <Alert tone="error">{error}</Alert>}
+            {notice && <Alert tone="success">{notice}</Alert>}
         </div>
     );
 };
@@ -1627,7 +1628,7 @@ const EventsTab: React.FC = () => {
                     Active
                 </label>
 
-                {formError && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{formError}</div>}
+                {formError && <Alert tone="error">{formError}</Alert>}
 
                 <div className="flex gap-3">
                     <button onClick={handleSave} disabled={saving}
@@ -1677,12 +1678,12 @@ const EventsTab: React.FC = () => {
                 )}
             </div>
 
-            {error && <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">{error}</div>}
+            {error && <Alert tone="warning">{error}</Alert>}
 
             {!error && (
                 <div className="card overflow-x-auto">
                     <table className="min-w-full text-sm divide-y divide-slate-200">
-                        <thead className="">
+                        <thead>
                             <tr>
                                 {['Name', 'Type', 'Applies to', 'Extra fields', 'Status', 'Updated', ''].map(h => (
                                     <th key={h} className="px-3 py-2 text-left">{h}</th>
@@ -1726,13 +1727,13 @@ const EventsTab: React.FC = () => {
                             ))}
                             {(data?.events || []).length === 0 && !loading && (
                                 <tr>
-                                    <td colSpan={7} className="px-3 py-10 text-center text-slate-400 text-sm">
-                                        No events yet. Create one to start sending this kind of SMS.
+                                    <td colSpan={7}>
+                                        <EmptyState compact title="No events yet" description="Create one to start sending this kind of SMS." />
                                     </td>
                                 </tr>
                             )}
                             {loading && (
-                                <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-400 text-sm">Loading…</td></tr>
+                                <tr><td colSpan={7}><LoadingState className="py-8" /></td></tr>
                             )}
                         </tbody>
                     </table>
@@ -1746,7 +1747,7 @@ const EventsTab: React.FC = () => {
                             <h4 className="font-semibold text-slate-800">History: {historyFor.name}</h4>
                             <button onClick={() => setHistoryFor(null)} className="btn-icon">✕</button>
                         </div>
-                        {history.length === 0 && <p className="text-sm text-slate-400">Loading…</p>}
+                        {history.length === 0 && <LoadingState className="py-6" />}
                         <div className="space-y-3">
                             {history.map((h, i) => (
                                 <div key={i} className="border border-slate-200 rounded-lg p-3">
@@ -1941,26 +1942,26 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
 
     const inputCls = 'input';
 
-    if (loadingOptions && !options) return <p className="text-center text-slate-400 text-sm py-8">Loading…</p>;
+    if (loadingOptions && !options) return <LoadingState />;
     if (!options) {
-        return <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">{optionsError || 'Could not load SMS options.'}</div>;
+        return <Alert tone="warning" onRetry={loadOptions}>{optionsError || 'Could not load SMS options.'}</Alert>;
     }
 
     return (
         <div className="space-y-5">
             {/* Branch / account status */}
             {!options.branch ? (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">{options.account_message}</div>
+                <Alert tone="warning">{options.account_message}</Alert>
             ) : !options.account_ready ? (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                <Alert tone="warning">
                     ⚠ {options.account_message}. Ask your admin to set it up in <strong>SMS Account</strong>.
-                </div>
+                </Alert>
             ) : null}
 
             {!canSend && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                <Alert tone="warning">
                     You can view this screen but don't have permission to send SMS.
-                </div>
+                </Alert>
             )}
 
             {/* Step 1: event */}
@@ -1984,16 +1985,16 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
             </div>
 
             {options.branch && options.events.length === 0 && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                <Alert tone="warning">
                     No events for this branch yet. Create events in <strong>Events</strong> and templates in <strong>Templates</strong>.
-                </div>
+                </Alert>
             )}
 
             {event && !event.ready && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                    <div className="label">This event can't be sent yet:</div>
+                <Alert tone="warning">
+                    <div className="font-semibold mb-1">This event can't be sent yet:</div>
                     <ul className="list-disc ml-5">{event.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
-                </div>
+                </Alert>
             )}
 
             {event && event.ready && (
@@ -2092,7 +2093,7 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
                         </div>
                     )}
                     {listLoaded && recipients.length === 0 && (
-                        <p className="text-center text-slate-400 text-sm py-6">No students found.</p>
+                        <EmptyState compact title="No students found." />
                     )}
 
                     {/* Step 4: preview → send */}
@@ -2128,7 +2129,7 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
                 </>
             )}
 
-            {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
+            {error && <Alert tone="error">{error}</Alert>}
 
             {result && (
                 <div className="space-y-2">
@@ -2173,35 +2174,37 @@ const SmsCenter: React.FC<SmsCenterProps> = ({ navigateTo }) => {
             case 'account':   return <AccountTab />;
             default:
                 return (
-                    <p className="text-center text-slate-400 text-sm py-8">
-                        You don't have access to any SMS Center tabs. Please contact your administrator.
-                    </p>
+                    <EmptyState title="No access" description="You don't have access to any SMS Center tabs. Please contact your administrator." />
                 );
         }
     };
 
     return (
-        <div className="min-h-full bg-slate-100">
+        <div className="min-h-full bg-slate-50">
             {/* Header */}
-            <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-                <div>
-                    <h1 className="page-title">SMS Center</h1>
-                    <p className="page-subtitle">Send attendance, fee, announcement and custom SMS</p>
-                </div>
-                <button onClick={() => navigateTo('administration')}
-                    className="btn-secondary btn-sm">
-                    ← Back
-                </button>
+            <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-5">
+                <PageHeader
+                    eyebrow="Administration"
+                    title="SMS Center"
+                    subtitle="Send attendance, fee, announcement and custom SMS"
+                    className="mb-4"
+                    actions={
+                        <button onClick={() => navigateTo('administration')}
+                            className="btn-secondary btn-sm">
+                            ← Back
+                        </button>
+                    }
+                />
             </div>
 
             {/* Tabs */}
-            <div className="bg-white border-b border-slate-200 px-6">
-                <div className="flex gap-1">
+            <div className="bg-white border-b border-slate-200 px-4 sm:px-6">
+                <div className="flex gap-1 overflow-x-auto">
                                         {visibleTabs.map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                            className={`px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
                                 activeTab === tab.id
                                     ? 'border-brand-600 text-brand-700'
                                     : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -2214,8 +2217,8 @@ const SmsCenter: React.FC<SmsCenterProps> = ({ navigateTo }) => {
             </div>
 
             {/* Content */}
-            <div className="p-6">
-                <div className="card p-6">
+            <div className="p-4 md:p-6">
+                <div className="card p-4 md:p-5">
                     {renderTab()}
                 </div>
             </div>

@@ -3,6 +3,7 @@ import api from '../api';
 import { canWrite } from '../utils/permissions';
 import { useAuth } from '../contexts/AuthContext';
 import { confirmDialog } from './ui/feedback';
+import { PageHeader, Alert, LoadingState, EmptyState } from './ui';
 
 interface School {
   id: number; school_name: string; school_code: string | null;
@@ -195,22 +196,21 @@ const FranchiseManagement: React.FC = () => {
   return (
     <div className="min-h-full bg-slate-50 p-4 md:p-6">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Franchise Management</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage schools, locations, and branches</p>
-        </div>
-
-        <div className="flex gap-2">
+      <PageHeader
+        eyebrow="Control Panel"
+        title="Franchise Management"
+        subtitle="Manage schools, locations, and branches"
+        actions={<>
+        <div className="segmented">
           <button
             onClick={() => setActiveTab('schools')}
-            className={`btn ${activeTab === 'schools' ? 'bg-purple-600 text-white shadow' : 'bg-white text-gray-600 border'}`}
+            className={`segmented-item ${activeTab === 'schools' ? 'segmented-item-active' : ''}`}
           >
             Schools
           </button>
           <button
             onClick={() => setActiveTab('locations')}
-            className={`btn ${activeTab === 'locations' ? 'bg-purple-600 text-white shadow' : 'bg-white text-gray-600 border'}`}
+            className={`segmented-item ${activeTab === 'locations' ? 'segmented-item-active' : ''}`}
           >
             Locations (Cities)
           </button>
@@ -235,21 +235,22 @@ const FranchiseManagement: React.FC = () => {
             New Location
           </button>
         )}
-      </div>
+        </>}
+      />
 
       {msg && !showSchoolForm && (
-        <div className={`mb-4 p-3 rounded-lg text-sm ${msg.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+        <Alert tone={msg.type} className="mb-4" onClose={() => setMsg(null)}>
           {msg.text}
-        </div>
+        </Alert>
       )}
 
       {/* ── School Form Modal ──────────────────────────────────────────────── */}
       {showSchoolForm && (
         <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="card shadow-pop w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b sticky top-0 bg-white z-10">
+            <div className="card-header sticky top-0 bg-white z-10">
               <h2 className="text-base font-semibold text-slate-900">{editingSchoolId ? 'Edit School' : 'New School'}</h2>
-              <button onClick={() => setShowSchoolForm(false)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setShowSchoolForm(false)} className="btn-icon" aria-label="Close">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -258,27 +259,27 @@ const FranchiseManagement: React.FC = () => {
 
             <div className="p-5 space-y-4">
               {msg && (
-                <div className={`p-3 rounded-lg text-sm ${msg.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                <Alert tone={msg.type}>
                   {msg.text}
-                </div>
+                </Alert>
               )}
 
               {/* Logo Upload */}
               <div className="flex items-center gap-4">
-                <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50 cursor-pointer hover:border-purple-400 transition-colors"
+                <div className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden bg-slate-50 cursor-pointer hover:border-brand-400 transition-colors"
                   onClick={() => fileRef.current?.click()}>
                   {logoPreview
                     ? <img src={logoPreview} alt="Logo" className="w-full h-full object-contain" />
-                    : <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    : <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   }
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-700">School Logo</p>
-                  <p className="text-xs text-gray-400 mb-2">PNG, JPG, WebP (click to upload)</p>
+                  <p className="text-sm font-medium text-slate-700">School Logo</p>
+                  <p className="text-xs text-slate-400 mb-2">PNG, JPG, WebP (click to upload)</p>
                   <button type="button" onClick={() => fileRef.current?.click()}
-                    className="btn btn-sm text-xs bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100">
+                    className="btn-soft btn-sm">
                     Choose File
                   </button>
                   <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
@@ -307,13 +308,13 @@ const FranchiseManagement: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <input type="color" value={schoolForm.theme_color}
                     onChange={e => setSchoolForm(f => ({ ...f, theme_color: e.target.value }))}
-                    className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer" />
-                  <span className="text-sm text-gray-500">{schoolForm.theme_color}</span>
+                    className="w-10 h-10 rounded-lg border border-slate-300 cursor-pointer" />
+                  <span className="text-sm text-slate-500">{schoolForm.theme_color}</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-3 p-5 border-t">
+            <div className="flex gap-3 p-5 border-t border-slate-200">
               <button onClick={handleSaveSchool}
                 className="btn-primary flex-1">
                 {editingSchoolId ? 'Update School' : 'Create School'}
@@ -331,9 +332,9 @@ const FranchiseManagement: React.FC = () => {
       {showLocForm && (
         <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="card shadow-pop w-full max-w-sm">
-            <div className="flex items-center justify-between p-5 border-b">
+            <div className="card-header">
               <h2 className="text-base font-semibold text-slate-900">New Location</h2>
-              <button onClick={() => setShowLocForm(false)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setShowLocForm(false)} className="btn-icon" aria-label="Close">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -341,9 +342,9 @@ const FranchiseManagement: React.FC = () => {
             </div>
             <div className="p-5 space-y-4">
               {msg && (
-                <div className={`p-3 rounded-lg text-sm ${msg.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                <Alert tone={msg.type}>
                   {msg.text}
-                </div>
+                </Alert>
               )}
               <div>
                 <label className="label">City/Location Name</label>
@@ -356,7 +357,7 @@ const FranchiseManagement: React.FC = () => {
                   placeholder="e.g. HYD" className="input" />
               </div>
             </div>
-            <div className="flex gap-3 p-5 border-t">
+            <div className="flex gap-3 p-5 border-t border-slate-200">
               <button onClick={handleSaveLocation} className="btn-primary flex-1">Create Location</button>
               <button onClick={() => setShowLocForm(false)} className="btn-secondary flex-1">Cancel</button>
             </div>
@@ -366,16 +367,16 @@ const FranchiseManagement: React.FC = () => {
 
       {/* ── Tabs Content ───────────────────────────────────────────────────── */}
       {activeTab === 'locations' ? (
-        <div className="card p-6">
-          <h2 className="font-bold text-gray-900 mb-4">Existing Locations</h2>
+        <div className="card p-5">
+          <h2 className="text-base font-semibold text-slate-900 mb-4">Existing Locations</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {locations.map(loc => (
-              <div key={loc.code} className="bg-gray-50 border rounded-xl p-4 flex items-center justify-between">
+              <div key={loc.code} className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between">
                 <div>
-                  <p className="font-bold text-gray-800">{loc.name}</p>
-                  <p className="text-xs text-gray-400 font-mono">{loc.code}</p>
+                  <p className="font-semibold text-slate-800">{loc.name}</p>
+                  <p className="text-xs text-slate-400 font-mono">{loc.code}</p>
                 </div>
-                <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
+                <div className="w-8 h-8 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center text-xs font-bold">
                   {loc.code}
                 </div>
               </div>
@@ -385,38 +386,43 @@ const FranchiseManagement: React.FC = () => {
       ) : (
         <>
           {loading ? (
-            <div className="text-center py-16 text-gray-400">Loading schools...</div>
+            <LoadingState label="Loading schools..." />
           ) : schools.length === 0 ? (
-            <div className="card text-center py-16 text-gray-400 border-dashed">
-              <svg className="mx-auto w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-              <p className="text-sm">No schools found. Create your first school to get started.</p>
+            <div className="card border-dashed">
+              <EmptyState
+                title="No schools found"
+                description="Create your first school to get started."
+                icon={
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                }
+              />
             </div>
           ) : (
             <div className="space-y-6">
               {schools.map(school => (
                 <div key={school.id} className="card overflow-hidden">
                   {/* School Header */}
-                  <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-purple-50 to-white">
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-5 border-b border-slate-100 bg-gradient-to-r from-brand-50 to-white">
                     <div className="flex items-center gap-4">
-                      <div className="card w-14 h-14 border-2 border-purple-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+                      <div className="card w-14 h-14 border-2 border-brand-100 overflow-hidden flex items-center justify-center flex-shrink-0">
                         {school.logo_url
                           ? <img src={school.logo_url.startsWith('/') ? `${API_BASE}${school.logo_url}` : school.logo_url} alt={school.school_name}
                             className="w-full h-full object-contain"
                             onError={(e) => { console.error("Logo failed:", e.currentTarget.src); }} />
-                          : <span className="text-2xl font-bold text-purple-300">{school.school_name[0]}</span>
+                          : <span className="text-2xl font-bold text-brand-300">{school.school_name[0]}</span>
                         }
                       </div>
                       <div>
                         <h2 className="text-base font-semibold text-slate-900">{school.school_name}</h2>
                         <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                           {school.school_code && (
-                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">{school.school_code}</span>
+                            <span className="badge-brand">{school.school_code}</span>
                           )}
-                          <span className="text-xs text-gray-400">{school.branch_count} branch{school.branch_count !== 1 ? 'es' : ''}</span>
+                          <span className="text-xs text-slate-400">{school.branch_count} branch{school.branch_count !== 1 ? 'es' : ''}</span>
                           {school.subscription_plan && (
-                            <span className="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full">{school.subscription_plan}</span>
+                            <span className="badge-warning">{school.subscription_plan}</span>
                           )}
                         </div>
                       </div>
@@ -424,13 +430,13 @@ const FranchiseManagement: React.FC = () => {
                     {isSuperAdmin && (
                       <div className="flex items-center gap-2">
                         <button onClick={() => openEditSchool(school)}
-                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-lg transition-colors" title="Edit">
+                          className="btn-icon text-brand-600 hover:bg-brand-50 hover:text-brand-700" title="Edit">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                         </button>
                         <button onClick={() => handleDeleteSchool(school.id, school.school_name)}
-                          className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Deactivate">
+                          className="btn-icon text-red-500 hover:bg-red-50 hover:text-red-600" title="Deactivate">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
@@ -442,9 +448,9 @@ const FranchiseManagement: React.FC = () => {
                   {/* Branches */}
                   <div className="p-5">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold text-gray-700">Branches</h3>
+                      <h3 className="text-sm font-semibold text-slate-700">Branches</h3>
                       <button onClick={() => { setActiveBranchSchoolId(school.id); setBranchForm({ branch_name: '', branch_code: '', location_code: '' }); setMsg(null); }}
-                        className="text-xs flex items-center gap-1 text-purple-600 hover:text-purple-800 hover:bg-purple-50 px-2 py-1 rounded-lg transition-colors">
+                        className="btn-ghost btn-sm text-brand-600 hover:text-brand-700 hover:bg-brand-50">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
@@ -454,8 +460,8 @@ const FranchiseManagement: React.FC = () => {
 
                     {/* Inline Add Branch Form */}
                     {activeBranchSchoolId === school.id && (
-                      <div className="mb-4 p-4 bg-purple-50 rounded-xl border border-purple-100">
-                        <p className="text-xs font-semibold text-purple-700 mb-3">New Branch</p>
+                      <div className="mb-4 p-4 bg-brand-50 rounded-xl border border-brand-100">
+                        <p className="text-xs font-semibold text-brand-700 mb-3">New Branch</p>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <input value={branchForm.branch_name} onChange={e => setBranchForm(f => ({ ...f, branch_name: e.target.value }))}
                             placeholder="Branch Name *" className="input w-auto" />
@@ -488,14 +494,14 @@ const FranchiseManagement: React.FC = () => {
 
                     {/* Branch List */}
                     {school.branches.length === 0 ? (
-                      <p className="text-sm text-gray-400 text-center py-4 bg-gray-50 rounded-lg border border-dashed">No branches yet</p>
+                      <div className="bg-slate-50 rounded-lg border border-dashed border-slate-200"><EmptyState compact title="No branches yet" className="!py-4" /></div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {school.branches.map(b => (
-                          <div key={b.id} className="flex items-center justify-between bg-gray-50 border rounded-xl px-4 py-3 group hover:border-purple-200 hover:bg-purple-50 transition-colors">
+                          <div key={b.id} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 group hover:border-brand-200 hover:bg-brand-50 transition-colors">
                             <div>
-                              <p className="font-medium text-gray-800 text-sm">{b.branch_name}</p>
-                              <p className="text-xs text-gray-400 font-mono">{b.branch_code}</p>
+                              <p className="font-medium text-slate-800 text-sm">{b.branch_name}</p>
+                              <p className="text-xs text-slate-400 font-mono">{b.branch_code}</p>
                             </div>
                             <button onClick={() => handleDeleteBranch(b.id)}
                               className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-red-400 hover:text-red-600 p-1 rounded transition-all">
