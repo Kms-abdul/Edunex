@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Edit, Trash2, Plus, Save, RotateCcw, Check, X } from 'lucide-react';
+import { Edit, Trash2, Plus, Save, Check, X, ArrowLeft } from 'lucide-react';
 import { notify, confirmDialog } from './ui/feedback';
-import { Alert, EmptyState } from './ui';
+import { Alert, EmptyState, DataList, Field, ActionBar } from './ui';
+import type { Column } from './ui';
+import { SetupIntro } from './exam-setup/shared';
 
 interface GradeScaleDetail {
     id?: number;
@@ -48,6 +50,9 @@ const GradeScaleManager: React.FC = () => {
     // Row Editing State
     const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
     const [tempRowData, setTempRowData] = useState<GradeScaleDetail | null>(null);
+
+    // Which screen is showing: the list of scales, or one scale being added/edited
+    const [mode, setMode] = useState<'list' | 'edit'>('list');
 
     // Validation State
     const [error, setError] = useState<string | null>(null);
@@ -147,7 +152,7 @@ const GradeScaleManager: React.FC = () => {
 
         } catch (err) {
             console.error("Failed to load scale details", err);
-            setError("Failed to load scale details");
+            setError("Could not open this grade scale. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -208,15 +213,15 @@ const GradeScaleManager: React.FC = () => {
 
         // Basic Inline Validation
         if (!tempRowData.grade.trim()) {
-            notify("Grade cannot be empty");
+            notify("Type a grade, like A or B1.");
             return;
         }
         if (Number(tempRowData.min_marks) > Number(tempRowData.max_marks)) {
-            notify("Min marks cannot be greater than Max marks");
+            notify('"From" marks cannot be more than "To" marks.');
             return;
         }
         if (Number(tempRowData.max_marks) > Number(totalMarks)) {
-            notify(`Max marks cannot exceed Total Marks (${totalMarks})`);
+            notify(`"To" marks cannot be more than the total marks (${totalMarks}).`);
             return;
         }
 
@@ -247,43 +252,43 @@ const GradeScaleManager: React.FC = () => {
         }
     };
 
-    const handleSave = async () => {
+    const handleSave = async (): Promise<boolean> => {
         if (!scaleName.trim()) {
-            setError("Scale Name is required");
-            return;
+            setError("Type a name for this grade scale.");
+            return false;
         }
         if (!academicYear || !branch) {
-            setError("Context (Academic Year/Branch) is missing");
-            return;
+            setError("The year or branch is missing. Choose them at the top of the screen.");
+            return false;
         }
 
         if (editingRowIndex !== null) {
-            setError("Please save or cancel the currently editing row first.");
-            return;
+            setError("Finish the grade you are editing first (tap Done or Cancel).");
+            return false;
         }
 
         if (selectedClasses.length === 0) {
-            setError("Please select at least one class");
-            return;
+            setError("Choose at least one class.");
+            return false;
         }
 
         // Validate Details
         for (const d of details) {
             if (!d.grade.trim()) {
-                setError("All rows must have a Grade defined");
-                return;
+                setError("Every row needs a grade name, like A or B1.");
+                return false;
             }
             if (d.min_marks < 0 || d.max_marks < 0) {
-                setError("Marks cannot be negative");
-                return;
+                setError("Marks cannot be less than 0.");
+                return false;
             }
             if (Number(d.min_marks) > Number(d.max_marks)) {
-                setError(`Min marks cannot be greater than Max marks for grade ${d.grade}`);
-                return;
+                setError(`For grade ${d.grade}, "From" marks cannot be more than "To" marks.`);
+                return false;
             }
             if (Number(d.max_marks) > Number(totalMarks)) {
-                setError(`Max marks for grade ${d.grade} cannot exceed Total Marks (${totalMarks})`);
-                return;
+                setError(`For grade ${d.grade}, "To" marks cannot be more than the total marks (${totalMarks}).`);
+                return false;
             }
         }
 
@@ -292,8 +297,8 @@ const GradeScaleManager: React.FC = () => {
         const sorted = [...details].sort((a, b) => Number(a.min_marks) - Number(b.min_marks));
         for (let i = 0; i < sorted.length - 1; i++) {
             if (Number(sorted[i].max_marks) >= Number(sorted[i + 1].min_marks)) {
-                setError(`Overlapping range detected between ${sorted[i].grade} and ${sorted[i + 1].grade}`);
-                return;
+                setError(`The marks for ${sorted[i].grade} and ${sorted[i + 1].grade} overlap. Each mark should belong to only one grade.`);
+                return false;
             }
         }
 
@@ -316,360 +321,327 @@ const GradeScaleManager: React.FC = () => {
             if (selectedScaleId) {
                 // Update
                 await api.put(`/grade-scales/${selectedScaleId}`, payload);
-                setSuccess("Grade Scale updated successfully");
+                setSuccess("Grade scale saved");
                 setSelectedScaleId(null);
             } else {
                 // Create
                 await api.post('/grade-scales', payload);
-                setSuccess("Grade Scale created successfully");
+                setSuccess("Grade scale added");
                 handleReset(); // Reset form for new entry or keep? Usually reset.
             }
             fetchScales(); // Refresh list
+            return true;
         } catch (err: any) {
             console.error("Save failed", err);
-            setError(err.response?.data?.error || "Failed to save Grade Scale");
+            setError(err.response?.data?.error || "Could not save the grade scale. Please try again.");
+            return false;
         } finally {
             setLoading(false);
         }
     };
 
     const handleDelete = async (id: number) => {
-        if (!await confirmDialog("Are you sure you want to delete this Grade Scale?")) return;
+        if (!await confirmDialog("Delete this grade scale? This cannot be undone.")) return;
 
         setLoading(true);
         try {
             await api.delete(`/grade-scales/${id}`);
-            setSuccess("Grade Scale deleted successfully");
+            setSuccess("Grade scale deleted");
             if (selectedScaleId === id) {
                 handleReset();
             }
             fetchScales();
         } catch (err: any) {
             console.error("Delete failed", err);
-            setError(err.response?.data?.error || "Failed to delete Grade Scale");
+            setError(err.response?.data?.error || "Could not delete the grade scale. Please try again.");
         } finally {
             setLoading(false);
         }
     }
 
+    // ---------------------------------------------------------------- UI only
+    const contextLine = [
+        academicYear ? `Year ${academicYear}` : 'Loading year…',
+        `${location} · all branches`,
+    ];
+
+    const openNew = () => {
+        handleReset();
+        setMode('edit');
+    };
+
+    const openExisting = async (id: number) => {
+        setSuccess(null);
+        await loadScale(id);
+        setMode('edit');
+    };
+
+    const backToList = () => {
+        handleReset();
+        setMode('list');
+    };
+
+    const submit = async () => {
+        const wasEdit = !!selectedScaleId;
+        const ok = await handleSave();
+        if (ok) {
+            notify.success(wasEdit ? 'Grade scale saved' : 'Grade scale added');
+            setSuccess(null); // the toast already says it
+            setMode('list');
+        }
+    };
+
+    const classNames = (sc: any) => sc.classes && sc.classes.length > 0
+        ? sc.classes.map((c: any) => c.class_name).join(', ')
+        : 'No classes';
+
+    const scaleActions = (sc: any) => (
+        <>
+            <button type="button" onClick={() => openExisting(sc.id)} className="btn-secondary btn-sm">
+                <Edit size={14} /> Edit
+            </button>
+            <button type="button" onClick={() => handleDelete(sc.id)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50 hover:text-red-700">
+                <Trash2 size={14} /> Delete
+            </button>
+        </>
+    );
+
+    const scaleColumns: Column<any>[] = [
+        { key: 'scale_name', header: 'Grade scale', primary: true, render: sc => <span className="font-medium text-slate-900">{sc.scale_name}</span> },
+        { key: 'classes', header: 'Classes', secondary: true, render: sc => <span className="text-slate-600">{classNames(sc)}</span> },
+        { key: 'actions', header: '', align: 'right', hideOnMobile: true, render: sc => <div className="flex justify-end gap-1.5">{scaleActions(sc)}</div> },
+    ];
+
+    /* ------------------------------------------------------------ List */
+    if (mode === 'list') {
+        return (
+            <div className="max-w-4xl">
+                <SetupIntro
+                    title="Grades"
+                    context={contextLine}
+                    action={(
+                        <button type="button" className="btn-primary" onClick={openNew} disabled={!academicYear || !branch}>
+                            <Plus size={18} /> Add grade scale
+                        </button>
+                    )}
+                >
+                    A grade scale says which marks get which grade (for example 91–100 = A1). Each scale is used for the classes you choose.
+                </SetupIntro>
+
+                {(!academicYear || !branch) && !loading && (
+                    <Alert tone="warning" className="mb-4">The year or branch is missing. Choose them at the top of the screen.</Alert>
+                )}
+                {error && <Alert tone="error" className="mb-4" onClose={() => setError(null)}>{error}</Alert>}
+                {success && <Alert tone="success" className="mb-4" onClose={() => setSuccess(null)}>{success}</Alert>}
+
+                <DataList
+                    columns={scaleColumns}
+                    rows={scales}
+                    rowKey={sc => sc.id}
+                    loading={loading && scales.length === 0}
+                    emptyTitle="No grade scales yet"
+                    emptyHint='Tap "Add grade scale" to make the first one.'
+                    mobileActions={scaleActions}
+                />
+            </div>
+        );
+    }
+
+    /* ------------------------------------------------------------ Add / edit */
+    const editingNew = !selectedScaleId;
+
     return (
-        <div className="flex flex-col gap-6 h-full">
-            {/* Context Header */}
-            <div className="bg-brand-50 p-4 rounded-xl border border-brand-100 flex flex-wrap gap-3 justify-between items-center text-sm text-brand-800">
-                <div className="flex flex-wrap gap-x-6 gap-y-2 items-center">
-                    <span><strong>Academic Year:</strong> {academicYear || 'Loading...'}</span>
-                    {/* Branch is still relevant for user context, but Scale is Location Wide */}
-                    <span><strong>User Branch:</strong> {branch || 'Loading...'}</span>
-                    <span className="badge-brand">Scope: {location} (All Branches)</span>
-                </div>
-                <div>
-                    {!academicYear || !branch ? <span className="badge-danger">Context Missing! Check Header.</span> : null}
-                </div>
-            </div>
+        <div className="max-w-3xl">
+            <button type="button" onClick={backToList} className="mb-2 inline-flex items-center gap-1.5 min-h-[44px] px-1 text-sm font-medium text-brand-700 hover:text-brand-800">
+                <ArrowLeft className="w-4 h-4" aria-hidden="true" /> All grade scales
+            </button>
+            <SetupIntro title={editingNew ? 'Add grade scale' : `Edit: ${scaleName || 'grade scale'}`} context={contextLine} />
 
-            {/* Main Split Layout */}
-            <div className="flex flex-col md:flex-row gap-6 items-start h-full">
+            {/* About this scale */}
+            <section className="card mb-4">
+                <div className="card-header"><h2 className="text-base font-semibold text-slate-900">About this scale</h2></div>
+                <div className="card-body space-y-4">
+                    <Field label="Name" htmlFor="gs-name" required>
+                        <input
+                            id="gs-name"
+                            type="text"
+                            className="input"
+                            placeholder="For example: Primary grades"
+                            value={scaleName}
+                            onChange={e => setScaleName(e.target.value)}
+                        />
+                    </Field>
 
-                {/* Left Panel: Master Form & List */}
-                <div className="w-full md:w-1/3 flex flex-col gap-6">
-
-                    {/* Form */}
-                    <div className="card p-5">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                                Grade Scale Master
-                            </h3>
+                    <Field label="Classes that use it" required hint={`${selectedClasses.length} chosen`}>
+                        <div className="flex flex-wrap gap-2">
+                            {availableClasses.map(c => {
+                                const on = selectedClasses.includes(c.id);
+                                return (
+                                    <label key={c.id} className={`inline-flex items-center gap-2 min-h-[44px] px-3 rounded-lg border cursor-pointer text-sm ${on ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}>
+                                        <input
+                                            type="checkbox"
+                                            className="w-5 h-5 accent-brand-600"
+                                            checked={on}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setSelectedClasses([...selectedClasses, c.id]);
+                                                } else {
+                                                    setSelectedClasses(selectedClasses.filter(id => id !== c.id));
+                                                }
+                                            }}
+                                        />
+                                        {c.class_name}
+                                    </label>
+                                );
+                            })}
+                            {availableClasses.length === 0 && <span className="text-sm text-slate-500">No classes found.</span>}
                         </div>
+                    </Field>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="label">Scale Name <span className="text-red-500">*</span></label>
-                                <input
-                                    type="text"
-                                    className="input"
-                                    placeholder="Enter Scale Name"
-                                    value={scaleName}
-                                    onChange={e => setScaleName(e.target.value)}
-                                />
-                            </div>
-
-                            <div>
-                                <label className="label">Classes <span className="text-red-500">*</span></label>
-                                <div className="border border-slate-200 rounded-lg p-2 max-h-32 overflow-y-auto bg-slate-50 flex flex-wrap gap-2">
-                                    {availableClasses.map(c => (
-                                        <label key={c.id} className="flex items-center space-x-2 bg-white px-2 py-1 rounded-md border border-slate-200 shadow-sm cursor-pointer hover:bg-slate-100">
-                                            <input
-                                                type="checkbox"
-                                                className="rounded accent-brand-600"
-                                                checked={selectedClasses.includes(c.id)}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setSelectedClasses([...selectedClasses, c.id]);
-                                                    } else {
-                                                        setSelectedClasses(selectedClasses.filter(id => id !== c.id));
-                                                    }
-                                                }}
-                                            />
-                                            <span className="text-sm">{c.class_name}</span>
-                                        </label>
-                                    ))}
-                                    {availableClasses.length === 0 && <span className="text-sm text-slate-500">No classes found.</span>}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="label">Total Marks <span className="text-red-500">*</span></label>
-                                <input
-                                    type="number"
-                                    className="input"
-                                    placeholder="e.g. 100"
-                                    value={totalMarks}
-                                    onChange={e => setTotalMarks(Number(e.target.value))}
-                                />
-                            </div>
-
-                            <div>
-                                <label className="label">Scale Description</label>
-                                <textarea
-                                    className="input h-20 resize-none"
-                                    placeholder="Enter Description"
-                                    value={scaleDescription}
-                                    onChange={e => setScaleDescription(e.target.value)}
-                                />
-                            </div>
-
-                            {error && (
-                                <Alert tone="error">{error}</Alert>
-                            )}
-                            {success && (
-                                <Alert tone="success">{success}</Alert>
-                            )}
-
-                            <div className="flex gap-2 justify-end pt-2">
-                                <button
-                                    onClick={handleSave}
-                                    disabled={loading}
-                                    className="btn-primary"
-                                >
-                                    <Save size={16} /> {selectedScaleId ? "Update" : "Save"}
-                                </button>
-                                <button
-                                    onClick={handleReset}
-                                    className="btn-secondary"
-                                >
-                                    <RotateCcw size={16} /> Reset
-                                </button>
-                            </div>
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Total marks" htmlFor="gs-total" required hint="Grades are worked out out of this total.">
+                            <input
+                                id="gs-total"
+                                type="number"
+                                inputMode="numeric"
+                                className="input"
+                                placeholder="For example: 100"
+                                value={totalMarks}
+                                onChange={e => setTotalMarks(Number(e.target.value))}
+                            />
+                        </Field>
+                        <Field label="Note (optional)" htmlFor="gs-desc">
+                            <input
+                                id="gs-desc"
+                                type="text"
+                                className="input"
+                                placeholder="Anything to remember about this scale"
+                                value={scaleDescription}
+                                onChange={e => setScaleDescription(e.target.value)}
+                            />
+                        </Field>
                     </div>
-
-                    {/* List */}
-                    <div className="card p-5 flex-1">
-                        <h3 className="text-base font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">Grade Scale List</h3>
-
-                        <div className="overflow-auto max-h-[400px]">
-                            <table className="w-full text-sm">
-                                <thead className="bg-slate-50 text-slate-600">
-                                    <tr>
-                                        <th className="p-2 text-left">Scale Name</th>
-                                        <th className="p-2 text-left">Classes</th>
-                                        <th className="p-2 text-right">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {scales.length === 0 ? (
-                                        <tr><td colSpan={3}><EmptyState compact title="No scales found." /></td></tr>
-                                    ) : (
-                                        scales.map((s: any) => (
-                                            <tr key={s.id} className={`border-b border-slate-100 hover:bg-slate-50 ${selectedScaleId === s.id ? 'bg-brand-50' : ''}`}>
-                                                <td className="p-2 font-medium">{s.scale_name}</td>
-                                                <td className="p-2 text-xs text-slate-600 truncate max-w-[150px]" title={s.classes?.map((c: any) => c.class_name).join(', ')}>
-                                                    {s.classes && s.classes.length > 0
-                                                        ? s.classes.map((c: any) => c.class_name).join(', ')
-                                                        : 'None'}
-                                                </td>
-                                                <td className="p-2 flex justify-end gap-2">
-                                                    <button
-                                                        onClick={() => loadScale(s.id)}
-                                                        className="btn-soft btn-sm"
-                                                        title="Edit"
-                                                    >
-                                                        <Edit size={14} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(s.id)}
-                                                        className="btn btn-sm bg-red-50 text-red-600 hover:bg-red-100"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
                 </div>
+            </section>
 
-                {/* Right Panel: Details Table */}
-                <div className="w-full md:w-2/3">
-                    <div className="card p-5 min-h-[500px]">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                                <span className="w-2 h-6 bg-brand-600 rounded-sm"></span>
-                                {selectedScaleId ? scaleName : 'Grade Scale Details'}
-                                {selectedScaleId && <span className="text-sm text-slate-500 font-normal ml-2">(Total Marks: {totalMarks})</span>}
-                            </h3>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={handleAddDetailRow}
-                                    className="btn-primary"
-                                    title={selectedScaleId ? "Add Row" : "Select a scale to add rows"}
-                                    disabled={!selectedScaleId}
-                                >
-                                    <Plus size={20} />
-                                </button>
-                            </div>
-                        </div>
+            {/* Grades */}
+            <section className="card">
+                <div className="card-header">
+                    <div>
+                        <h2 className="text-base font-semibold text-slate-900">Grades</h2>
+                        <p className="text-sm text-slate-500">Marks from – to for each grade, out of {totalMarks}.</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleAddDetailRow}
+                        className="btn-soft"
+                        disabled={editingNew || editingRowIndex !== null}
+                    >
+                        <Plus size={16} /> Add grade
+                    </button>
+                </div>
+                <div className="card-body">
+                    {editingNew ? (
+                        <Alert tone="info">Save this grade scale first. Then open it again to add grades.</Alert>
+                    ) : details.length === 0 ? (
+                        <EmptyState compact title="No grades yet" description='Tap "Add grade" to add the first one, like A1 for 91 to 100.' />
+                    ) : (
+                        <ul className="space-y-2">
+                            {details.map((row, idx) => {
+                                const isEditing = editingRowIndex === idx;
+                                const currentData = isEditing && tempRowData ? tempRowData : row;
 
-                        <div className="overflow-x-auto rounded-lg border border-slate-200">
-                            <table className="w-full text-sm">
-                                <thead className="bg-slate-50 text-slate-600">
-                                    <tr>
-                                        <th className="p-3 text-center w-16">S.No</th>
-                                        <th className="p-3 text-center w-24">Grade</th>
-                                        <th className="p-3 text-center w-24">Min</th>
-                                        <th className="p-3 text-center w-24">Maximum</th>
-                                        <th className="p-3 text-left">Description</th>
-                                        <th className="p-3 text-center w-20">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {details.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={6}>
-                                                <EmptyState
-                                                    compact
-                                                    title={!selectedScaleId ? "No grade scale selected" : "No grades added yet"}
-                                                    description={!selectedScaleId
-                                                        ? "Please select/edit a Grade Scale from the list to manage details."
-                                                        : "No grades added yet. Click + to add."}
+                                if (isEditing) {
+                                    return (
+                                        <li key={idx} className="rounded-xl border border-brand-300 bg-brand-50/50 p-3">
+                                            <div className="grid grid-cols-3 gap-3">
+                                                <Field label="Grade" htmlFor={`gd-grade-${idx}`}>
+                                                    <input
+                                                        id={`gd-grade-${idx}`}
+                                                        type="text"
+                                                        className="input text-center uppercase"
+                                                        value={currentData.grade}
+                                                        onChange={e => handleTempChange('grade', e.target.value)}
+                                                        placeholder="A1"
+                                                        autoFocus
+                                                    />
+                                                </Field>
+                                                <Field label="From" htmlFor={`gd-min-${idx}`}>
+                                                    <input
+                                                        id={`gd-min-${idx}`}
+                                                        type="number"
+                                                        inputMode="decimal"
+                                                        className="input text-center"
+                                                        value={currentData.min_marks}
+                                                        onChange={e => handleTempChange('min_marks', e.target.value)}
+                                                    />
+                                                </Field>
+                                                <Field label="To" htmlFor={`gd-max-${idx}`}>
+                                                    <input
+                                                        id={`gd-max-${idx}`}
+                                                        type="number"
+                                                        inputMode="decimal"
+                                                        className="input text-center"
+                                                        value={currentData.max_marks}
+                                                        onChange={e => handleTempChange('max_marks', e.target.value)}
+                                                    />
+                                                </Field>
+                                            </div>
+                                            <Field label="Meaning (optional)" htmlFor={`gd-desc-${idx}`} className="mt-3">
+                                                <input
+                                                    id={`gd-desc-${idx}`}
+                                                    type="text"
+                                                    className="input"
+                                                    value={currentData.description || ''}
+                                                    onChange={e => handleTempChange('description', e.target.value)}
+                                                    placeholder="For example: Excellent"
                                                 />
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        details.map((row, idx) => {
-                                            const isEditing = editingRowIndex === idx;
-                                            const currentData = isEditing && tempRowData ? tempRowData : row;
+                                            </Field>
+                                            <div className="mt-3 flex justify-end gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
+                                                <button type="button" onClick={handleCancelEdit} className="btn-secondary">
+                                                    <X size={16} /> Cancel
+                                                </button>
+                                                <button type="button" onClick={handleSaveEdit} className="btn-primary">
+                                                    <Check size={16} /> Done
+                                                </button>
+                                            </div>
+                                        </li>
+                                    );
+                                }
 
-                                            return (
-                                                <tr key={idx} className={`border-b border-slate-100 hover:bg-slate-50 ${isEditing ? 'bg-brand-50' : ''}`}>
-                                                    <td className="p-2 text-center text-slate-500">
-                                                        {idx + 1}
-                                                    </td>
-                                                    <td className="p-2 text-center">
-                                                        {isEditing ? (
-                                                            <input
-                                                                type="text"
-                                                                className="input w-16 text-center uppercase"
-                                                                value={currentData.grade}
-                                                                onChange={e => handleTempChange('grade', e.target.value)}
-                                                                placeholder="A1"
-                                                            />
-                                                        ) : (
-                                                            <span className="font-medium text-slate-700">{row.grade}</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="p-2 text-center">
-                                                        {isEditing ? (
-                                                            <input
-                                                                type="number"
-                                                                className="input w-20 text-center"
-                                                                value={currentData.min_marks}
-                                                                onChange={e => handleTempChange('min_marks', e.target.value)}
-                                                            />
-                                                        ) : (
-                                                            <span className="text-slate-600">{row.min_marks}</span>
-                                                        )}
-
-                                                    </td>
-                                                    <td className="p-2 text-center">
-                                                        {isEditing ? (
-                                                            <input
-                                                                type="number"
-                                                                className="input w-20 text-center"
-                                                                value={currentData.max_marks}
-                                                                onChange={e => handleTempChange('max_marks', e.target.value)}
-                                                            />
-                                                        ) : (
-                                                            <span className="text-slate-600">{row.max_marks}</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="p-2 text-left">
-                                                        {isEditing ? (
-                                                            <input
-                                                                type="text"
-                                                                className="input text-left"
-                                                                value={currentData.description || ''}
-                                                                onChange={e => handleTempChange('description', e.target.value)}
-                                                                placeholder="Grade Description"
-                                                            />
-                                                        ) : (
-                                                            <span className="text-slate-600">{row.description}</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="p-2 text-center flex justify-center gap-2">
-                                                        {isEditing ? (
-                                                            <>
-                                                                <button
-                                                                    onClick={handleSaveEdit}
-                                                                    className="btn-success btn-sm"
-                                                                    title="Save Changes"
-                                                                >
-                                                                    <Check size={16} />
-                                                                </button>
-                                                                <button
-                                                                    onClick={handleCancelEdit}
-                                                                    className="btn-danger btn-sm"
-                                                                    title="Cancel Changes"
-                                                                >
-                                                                    <X size={16} />
-                                                                </button>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <button
-                                                                    onClick={() => handleStartEdit(idx)}
-                                                                    className="btn-soft btn-sm"
-                                                                    title="Edit Row"
-                                                                >
-                                                                    <Edit size={14} />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleRemoveDetailRow(idx)}
-                                                                    className="btn btn-sm bg-red-50 text-red-600 hover:bg-red-100"
-                                                                    title="Remove Row"
-                                                                >
-                                                                    <Trash2 size={14} />
-                                                                </button>
-                                                            </>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                    </div>
+                                return (
+                                    <li key={idx} className="rounded-xl border border-slate-200 bg-white flex flex-wrap items-center gap-3 px-3 py-2">
+                                        <span className="w-12 h-10 rounded-lg bg-slate-100 flex items-center justify-center font-semibold text-slate-900">{row.grade}</span>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-medium text-slate-900">{row.min_marks} to {row.max_marks} marks</p>
+                                            {row.description && <p className="text-sm text-slate-500 break-words">{row.description}</p>}
+                                        </div>
+                                        <div className="flex gap-1.5">
+                                            <button type="button" onClick={() => handleStartEdit(idx)} className="btn-secondary btn-sm" disabled={editingRowIndex !== null}>
+                                                <Edit size={14} /> Edit
+                                            </button>
+                                            <button type="button" onClick={() => handleRemoveDetailRow(idx)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50 hover:text-red-700" aria-label={`Remove grade ${row.grade}`}>
+                                                <Trash2 size={14} /> Remove
+                                            </button>
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
                 </div>
+            </section>
 
-            </div>
+            {error && <Alert tone="error" className="mt-4">{error}</Alert>}
+
+            <ActionBar note={editingRowIndex !== null ? 'Tap Done on the grade you are editing, then save.' : (!editingNew ? 'Grade changes are kept only after you save.' : undefined)}>
+                <button type="button" onClick={backToList} className="btn-secondary btn-lg">
+                    Cancel
+                </button>
+                <button type="button" onClick={submit} disabled={loading} className="btn-primary btn-lg">
+                    <Save size={16} /> {editingNew ? 'Add grade scale' : 'Save grade scale'}
+                </button>
+            </ActionBar>
         </div>
     );
 };

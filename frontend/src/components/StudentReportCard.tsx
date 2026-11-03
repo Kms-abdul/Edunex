@@ -8,7 +8,9 @@ import {
   HistoricalPerformance
 } from '../reportcardtypes';
 import ReportCard from './ReportCard';
-import { PageHeader, Alert, EmptyState, LoadingState, Spinner } from './ui';
+import { FileText, Printer } from 'lucide-react';
+import { Alert, EmptyState, LoadingState, Spinner, ActionBar, Field } from './ui';
+import { SetupIntro } from './exam-setup/shared';
 
 // Import the reusable component
 
@@ -169,6 +171,8 @@ const StudentReportCard: React.FC = () => {
 
   // ============== MESSAGE STATE ==============
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  // UI only: reopen the filters after a report is shown
+  const [filtersOpen, setFiltersOpen] = useState<boolean>(false);
 
   // ============== REPORT DATA STATE ==============
   const [data, setData] = useState<ProgressReportData | null>(null);
@@ -182,7 +186,7 @@ const StudentReportCard: React.FC = () => {
   // ============== GET ALL STUDENTS REPORTS HANDLER ==============
   const handleGetAllStudentsReports = async () => {
     if (!selectedTestId || students.length === 0) {
-      setMessage({ type: 'error', text: 'Please select Test and ensure students are loaded' });
+      setMessage({ type: 'error', text: 'Choose an exam, and a section that has students.' });
       return;
     }
 
@@ -212,7 +216,7 @@ const StudentReportCard: React.FC = () => {
 
     } catch (err: any) {
       console.error('Error fetching all student reports:', err);
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to load all student reports' });
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Could not get the report cards. Please try again.' });
     } finally {
       setLoadingAllReports(false);
     }
@@ -254,7 +258,7 @@ const StudentReportCard: React.FC = () => {
       })
       .catch(err => {
         console.error('Error fetching classes:', err);
-        setMessage({ type: 'error', text: 'Failed to load classes' });
+        setMessage({ type: 'error', text: 'Could not load the classes. Please try again.' });
       })
       .finally(() => setLoadingClasses(false));
   }, [selectedBranch]);
@@ -344,7 +348,7 @@ const StudentReportCard: React.FC = () => {
   // ============== FETCH REPORT DATA ==============
   const handleGetReport = () => {
     if (!selectedStudentId || !selectedTestId) {
-      setMessage({ type: 'error', text: 'Please select Test and Student' });
+      setMessage({ type: 'error', text: 'Choose an exam and a student.' });
       return;
     }
 
@@ -368,7 +372,7 @@ const StudentReportCard: React.FC = () => {
       })
       .catch(err => {
         console.error('Error fetching report:', err);
-        setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to load report' });
+        setMessage({ type: 'error', text: err.response?.data?.error || 'Could not get the report card. Please try again.' });
       })
       .finally(() => setLoadingReport(false));
   };
@@ -420,145 +424,147 @@ const StudentReportCard: React.FC = () => {
     setMessage(null);
   };
 
+  // ============== UI-ONLY HELPERS ==============
+  const hasReport = !!data || allStudentsData.length > 0;
+  const showFilters = !hasReport || filtersOpen;
+  const className = classes.find(c => String(c.id) === selectedClass)?.class_name;
+  const testName = tests.find(t => String(t.test_id) === selectedTestId)?.test_name;
+  const studentObj = students.find(s => String(s.student_id || s.id) === selectedStudentId);
+  const studentName = studentObj?.name || studentObj?.student_name;
+
+  const shownLine = (() => {
+    const parts: string[] = [];
+    if (testName) parts.push(testName);
+    if (className) parts.push(`Class ${className}${selectedSection ? `-${selectedSection}` : ''}`);
+    if (allStudentsData.length > 0) parts.unshift(`${allStudentsData.length} report card${allStudentsData.length !== 1 ? 's' : ''}`);
+    else if (data) parts.unshift(data.student?.studentName || studentName || "Report card");
+    return parts.join(' · ');
+  })();
+
+  const whyDisabled = !selectedClass ? 'Choose a class first'
+    : !selectedSection ? 'Choose a section'
+    : !selectedTestId ? 'Choose an exam'
+    : (!selectAllStudents && !selectedStudentId) ? 'Choose a student, or choose "Whole section"'
+    : (selectAllStudents && students.length === 0) ? 'No students in this section'
+    : undefined;
+
+  const getReports = () => {
+    setFiltersOpen(false);
+    if (selectAllStudents) handleGetAllStudentsReports();
+    else handleGetReport();
+  };
+
   // ============== RENDER FILTER SECTION ==============
   const renderFilterSection = () => (
-    <div className="card p-4 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-slate-900 flex items-center">
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-          </svg>
-          Select Report Filters
-        </h2>
-        <button
-          onClick={handleReset}
-          className="btn-ghost btn-sm text-brand-600"
-        >
-          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Reset
+    <div className="card p-4 mb-4">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h2 className="text-base font-semibold text-slate-900">Whose report card?</h2>
+        <button type="button" onClick={handleReset} className="btn-ghost btn-sm text-brand-700">
+          Start again
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
-        {/* Branch */}
-        <div>
-          <label className="label">
-            Branch <span className="text-red-500">*</span>
-          </label>
-          <select
-            value={selectedBranch}
-            onChange={handleBranchChange}
-            disabled={branches.length <= 1}
-            className="input"
-          >
-            {branches.map(b => (
-              <option key={b.branch_code} value={b.branch_code}>{b.branch_name}</option>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {branches.length > 1 && (
+          <Field label="Branch" htmlFor="rc-branch">
+            <select id="rc-branch" value={selectedBranch} onChange={handleBranchChange} className="input">
+              {branches.map(b => (
+                <option key={b.branch_code} value={b.branch_code}>{b.branch_name}</option>
+              ))}
+            </select>
+          </Field>
+        )}
+
+        <Field label="Class" htmlFor="rc-class">
+          <select id="rc-class" value={selectedClass} onChange={handleClassChange} disabled={loadingClasses} className="input">
+            <option value="">{loadingClasses ? 'Loading…' : 'Choose a class'}</option>
+            {classes.map(c => (
+              <option key={c.id} value={c.id}>{c.class_name}</option>
             ))}
           </select>
-        </div>
+        </Field>
 
-        {/* Class */}
-        <div>
-          <label className="label">
-            Class <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <select
-              value={selectedClass}
-              onChange={handleClassChange}
-              disabled={loadingClasses}
-              className="input"
-            >
-              <option value="">
-                {loadingClasses ? 'Loading...' : 'Select Class'}
-              </option>
-              {classes.map(c => (
-                <option key={c.id} value={c.id}>{c.class_name}</option>
-              ))}
-            </select>
-            {loadingClasses && (
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                <Spinner size="sm" />
-              </div>
-            )}
+        <Field label="Section" htmlFor="rc-section">
+          <select
+            id="rc-section"
+            value={selectedSection}
+            onChange={handleSectionChange}
+            disabled={!selectedClass || loadingSections}
+            className="input"
+          >
+            <option value="">
+              {!selectedClass ? 'Choose a class first' : loadingSections ? 'Loading…' : 'Choose a section'}
+            </option>
+            {sections.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Exam" htmlFor="rc-test">
+          <select
+            id="rc-test"
+            value={selectedTestId}
+            onChange={handleTestChange}
+            disabled={!selectedClass || loadingTests}
+            className="input"
+          >
+            <option value="">
+              {!selectedClass ? 'Choose a class first' : loadingTests ? 'Loading…' : 'Choose an exam'}
+            </option>
+            {tests.map(t => (
+              <option key={t.test_id} value={t.test_id}>{t.test_name}</option>
+            ))}
+          </select>
+        </Field>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="For">
+          <div role="radiogroup" aria-label="For" className="flex flex-wrap gap-2">
+            {[
+              { all: false, label: 'One student' },
+              { all: true, label: `Whole section${students.length ? ` (${students.length})` : ''}` },
+            ].map(o => (
+              <button
+                key={String(o.all)}
+                type="button"
+                role="radio"
+                aria-checked={selectAllStudents === o.all}
+                disabled={o.all && students.length === 0}
+                onClick={() => {
+                  setSelectAllStudents(o.all);
+                  if (o.all) {
+                    setSelectedStudentId('');
+                    setData(null);
+                  }
+                }}
+                className={`min-h-[44px] px-4 rounded-lg border text-sm font-medium disabled:opacity-50 ${selectAllStudents === o.all
+                  ? 'border-brand-600 bg-brand-50 text-brand-800 ring-1 ring-brand-600'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}
+              >
+                {o.label}
+              </button>
+            ))}
           </div>
-        </div>
+        </Field>
 
-        {/* Section */}
-        <div>
-          <label className="label">
-            Section <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <select
-              value={selectedSection}
-              onChange={handleSectionChange}
-              disabled={!selectedClass || loadingSections}
-              className="input"
-            >
-              <option value="">
-                {!selectedClass ? 'Select Class First' : loadingSections ? 'Loading...' : 'Select Section'}
-              </option>
-              {sections.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            {loadingSections && (
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                <Spinner size="sm" />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Test */}
-        <div>
-          <label className="label">
-            Test/Exam <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <select
-              value={selectedTestId}
-              onChange={handleTestChange}
-              disabled={!selectedClass || loadingTests}
-              className="input"
-            >
-              <option value="">
-                {!selectedClass ? 'Select Class First' : loadingTests ? 'Loading...' : 'Select Test'}
-              </option>
-              {tests.map(t => (
-                <option key={t.test_id} value={t.test_id}>{t.test_name}</option>
-              ))}
-            </select>
-            {loadingTests && (
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                <Spinner size="sm" />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Student */}
-        <div>
-          <label className="label">
-            Student <span className="text-red-500">*</span>
-          </label>
-          <div className="space-y-2">
+        {!selectAllStudents && (
+          <Field label="Student" htmlFor="rc-student">
             <div className="relative">
               <select
-                value={selectAllStudents ? "all" : selectedStudentId}
+                id="rc-student"
+                value={selectedStudentId}
                 onChange={handleStudentChange}
-                disabled={!selectedSection || loadingStudents || selectAllStudents}
+                disabled={!selectedSection || loadingStudents}
                 className="input"
               >
                 <option value="">
                   {!selectedSection
-                    ? 'Select Section First'
+                    ? 'Choose a section first'
                     : loadingStudents
-                      ? 'Loading...'
-                      : `Select Student (${students.length})`}
+                      ? 'Loading…'
+                      : `Choose a student (${students.length})`}
                 </option>
                 {students.map(s => (
                   <option key={s.student_id || s.id} value={s.student_id || s.id}>
@@ -567,128 +573,12 @@ const StudentReportCard: React.FC = () => {
                 ))}
               </select>
               {loadingStudents && (
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                <div className="absolute right-8 top-1/2 -translate-y-1/2">
                   <Spinner size="sm" />
                 </div>
               )}
             </div>
-            {students.length > 0 && (
-              <label className="flex items-center text-sm text-slate-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectAllStudents}
-                  onChange={(e) => {
-                    setSelectAllStudents(e.target.checked);
-                    if (e.target.checked) {
-                      setSelectedStudentId('');
-                      setData(null);
-                    }
-                  }}
-                  className="mr-2 h-4 w-4 accent-brand-600 border-slate-300 rounded"
-                />
-                <span className="font-medium">Select All Students ({students.length})</span>
-              </label>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Get Report Button */}
-      <div className="flex flex-wrap items-center gap-4">
-        {!selectAllStudents ? (
-          <button
-            type="button"
-            onClick={handleGetReport}
-            disabled={loadingReport || !selectedTestId || !selectedStudentId}
-            className="btn-primary"
-          >
-            {loadingReport ? (
-              <>
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Loading Report...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Get Report
-              </>
-            )}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleGetAllStudentsReports}
-            disabled={loadingAllReports || !selectedTestId || students.length === 0}
-            className="btn-primary"
-          >
-            {loadingAllReports ? (
-              <>
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Loading {students.length} Reports...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Get Reports ({students.length})
-              </>
-            )}
-          </button>
-        )}
-
-        {/* Print Button (shown when reports are loaded) */}
-        {(data || allStudentsData.length > 0) && (
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="btn-success"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            {allStudentsData.length > 0 ? `Print All Reports (${allStudentsData.length})` : 'Print Report'}
-          </button>
-        )}
-
-        {/* Selection Tags */}
-        {(selectedClass || selectedSection || selectedTestId || selectedStudentId || selectAllStudents) && (
-          <div className="flex flex-wrap gap-2">
-            {selectedClass && (
-              <span className="badge-brand">
-                Class: {classes.find(c => String(c.id) === selectedClass)?.class_name}
-              </span>
-            )}
-            {selectedSection && (
-              <span className="badge-brand">
-                Section: {selectedSection}
-              </span>
-            )}
-            {selectedTestId && (
-              <span className="badge-success">
-                Test: {tests.find(t => String(t.test_id) === selectedTestId)?.test_name}
-              </span>
-            )}
-            {selectAllStudents && (
-              <span className="badge-warning">
-                All Students ({students.length})
-              </span>
-            )}
-            {selectedStudentId && !selectAllStudents && (
-              <span className="badge-warning">
-                Student: {students.find(s => String(s.student_id || s.id) === selectedStudentId)?.name ||
-                  students.find(s => String(s.student_id || s.id) === selectedStudentId)?.student_name}
-              </span>
-            )}
-          </div>
+          </Field>
         )}
       </div>
     </div>
@@ -698,11 +588,8 @@ const StudentReportCard: React.FC = () => {
   const renderEmptyState = () => (
     <div className="card">
       <EmptyState
-        title="No Report Selected"
-        description={<>
-          Please select Class, Section, Test, and Student from the filters above, then click "Get Report" to view the progress report.
-          <span className="block mt-3 text-brand-600">Tip: All filters are required to generate the report</span>
-        </>}
+        title="No report card yet"
+        description="Choose the class, section, exam and student above, then tap “Show report card”."
       />
     </div>
   );
@@ -710,7 +597,10 @@ const StudentReportCard: React.FC = () => {
   // ============== RENDER LOADING STATE ==============
   const renderLoadingState = () => (
     <div className="card">
-      <LoadingState label="Loading Report Data... Please wait while we fetch the student report" className="py-16" />
+      <LoadingState
+        label={loadingAllReports ? `Getting ${students.length} report cards… This can take a little while.` : 'Getting the report card…'}
+        className="py-16"
+      />
     </div>
   );
 
@@ -728,7 +618,7 @@ const StudentReportCard: React.FC = () => {
       <div className="mb-8 no-print">
         <div className="card overflow-hidden">
           <div className="bg-brand-800 text-white px-4 py-2 text-sm font-semibold">
-            PREVIOUS YEAR PERFORMANCE
+            Previous years
           </div>
           <div className="p-4">
             <div className="space-y-4">
@@ -775,41 +665,101 @@ const StudentReportCard: React.FC = () => {
   // ============== MAIN RENDER ==============
   return (
     <div className="student-reports-wrapper">
-      <PageHeader className="no-print" title="Student Progress Report" />
-
-      {/* Filter Section */}
       <div className="no-print">
-        {renderFilterSection()}
+        <SetupIntro
+          title="Report cards"
+          context={[academicYear ? `Year ${academicYear}` : null, selectedBranch && selectedBranch !== 'All' ? selectedBranch : null]}
+        >
+          See and print a student's report card, or the whole section's at once.
+        </SetupIntro>
+
+        {/* Filter Section (on phones it folds away once a report is shown) */}
+        {showFilters ? (
+          renderFilterSection()
+        ) : (
+          <div className="hidden md:block">{renderFilterSection()}</div>
+        )}
+        {!showFilters && (
+          <div className="md:hidden card p-4 mb-4 flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-slate-500">Showing</p>
+              <p className="font-semibold text-slate-900 break-words">{shownLine}</p>
+            </div>
+            <button type="button" className="btn-secondary btn-sm flex-shrink-0" onClick={() => setFiltersOpen(true)}>
+              Change
+            </button>
+          </div>
+        )}
+
+        {/* Message Display */}
+        {message && (
+          <Alert tone={message.type === 'error' ? 'error' : 'success'} className="mb-4" onClose={() => setMessage(null)}>
+            {message.type === 'success' && hasReport
+              ? (allStudentsData.length > 0 ? `${allStudentsData.length} report cards are ready to print.` : 'Report card is ready.')
+              : message.text}
+          </Alert>
+        )}
+
       </div>
 
-      {/* Message Display */}
-      {message && (
-        <Alert tone={message.type === 'error' ? 'error' : 'success'} className="no-print mb-4">
-          {message.text}
-        </Alert>
-      )}
+      <ActionBar note={whyDisabled && (showFilters || !hasReport) ? whyDisabled : undefined} className="mt-0 mb-4">
+        {showFilters && hasReport && (
+          <button type="button" className="btn-secondary btn-lg md:hidden" onClick={() => setFiltersOpen(false)}>
+            Cancel
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={getReports}
+          disabled={!!whyDisabled || loadingReport || loadingAllReports}
+          className={`btn-primary btn-lg ${showFilters ? '' : 'hidden md:inline-flex'}`}
+        >
+          <FileText className="w-5 h-5" />
+          {loadingReport || loadingAllReports
+            ? 'Getting…'
+            : selectAllStudents ? `Show ${students.length} report cards` : 'Show report card'}
+        </button>
+        {hasReport && !(showFilters && filtersOpen) && (
+          <button type="button" onClick={handlePrint} className="btn-success btn-lg">
+            <Printer className="w-5 h-5" />
+            {allStudentsData.length > 0 ? `Print all ${allStudentsData.length}` : 'Print report card'}
+          </button>
+        )}
+        {hasReport && showFilters && filtersOpen && (
+          <button type="button" onClick={handlePrint} className="btn-success btn-lg hidden md:inline-flex">
+            <Printer className="w-5 h-5" />
+            {allStudentsData.length > 0 ? `Print all ${allStudentsData.length}` : 'Print report card'}
+          </button>
+        )}
+      </ActionBar>
 
       {/* Report Card Container */}
       {loadingReport || loadingAllReports ? (
-        renderLoadingState()
-      ) : !data && allStudentsData.length === 0 ? (
-        renderEmptyState()
+        <div className="no-print">{renderLoadingState()}</div>
+      ) : !hasReport ? (
+        <div className="no-print">{renderEmptyState()}</div>
       ) : (
-        <div className="all-reports-container">
+        <div className="all-reports-container overflow-x-auto">
           {/* Historical Performance (only for single student) */}
           {data && renderHistoricalPerformance()}
 
-          {/* Render single student report */}
-          {data && (
-            <ReportCard data={data} />
-          )}
+          <p className="no-print md:hidden mb-2 text-xs text-slate-500">Swipe sideways to see the whole report card.</p>
 
-          {/* Render all students reports */}
-          {allStudentsData.length > 0 && allStudentsData.map((studentData, index) => (
-            <ReportCard key={index} data={studentData} />
-          ))}
+          {/* On phones the printed-size card scrolls sideways; on paper it is exactly as before */}
+          <div className="min-w-[760px] md:min-w-0 print:min-w-0">
+            {/* Render single student report */}
+            {data && (
+              <ReportCard data={data} />
+            )}
+
+            {/* Render all students reports */}
+            {allStudentsData.length > 0 && allStudentsData.map((studentData, index) => (
+              <ReportCard key={index} data={studentData} />
+            ))}
+          </div>
         </div>
       )}
+
     </div>
   );
 };

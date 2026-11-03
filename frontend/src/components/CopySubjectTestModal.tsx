@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import { notify, confirmDialog } from './ui/feedback';
-import { LoadingState, EmptyState } from './ui';
+import { LoadingState, EmptyState, Alert, Field } from './ui';
+import { SetupSheet, Choice } from './exam-setup/shared';
 
 interface CopySubjectTestModalProps {
     isOpen: boolean;
@@ -84,7 +85,7 @@ export default function CopySubjectTestModal({
             setOptions(data);
         } catch (err) {
             console.error("Failed to fetch copy targets", err);
-            notify("Failed to load target options");
+            notify.error("Could not load the list. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -99,11 +100,11 @@ export default function CopySubjectTestModal({
     const handleCopy = async () => {
         if (!sourceClassTestId) return;
         if (selectedTargets.length === 0) {
-            notify("Please select at least one target.");
+            notify("Choose at least one to copy to.");
             return;
         }
 
-        if (!await confirmDialog(`Are you sure you want to copy assignments to ${selectedTargets.length} targets? Existing assignments will be overwritten.`)) {
+        if (!await confirmDialog(`Copy these subjects to ${selectedTargets.length} more? What is already set there will be replaced.`)) {
             return;
         }
 
@@ -118,10 +119,10 @@ export default function CopySubjectTestModal({
                 current_class: currentClass,
                 current_test: currentTest
             });
-            notify("Copy successful!");
+            notify.success("Subjects copied");
             onClose();
         } catch (err: any) {
-            notify(err.response?.data?.error || "Copy failed");
+            notify.error(err.response?.data?.error || "Could not copy. Please try again.");
         } finally {
             setCopying(false);
         }
@@ -129,77 +130,85 @@ export default function CopySubjectTestModal({
 
     if (!isOpen) return null;
 
+    const n = selectedTargets.length;
+    const modeWord = copyMode === "test_to_test" ? "exam" : copyMode === "class_to_class" ? "class" : "branch";
+    const plural = (w: string, c: number) => c === 1 ? w : (w === "class" ? "classes" : w === "branch" ? "branches" : `${w}s`);
+
     return (
-        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
-            <div className="card shadow-pop p-6 w-[500px] max-w-[calc(100vw-2rem)] max-h-[80vh] flex flex-col">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-base font-semibold text-slate-900">Copy Assignments</h3>
-                    <button onClick={onClose} className="btn-icon h-8 w-8 text-xl font-bold" aria-label="Close">&times;</button>
-                </div>
+        <SetupSheet
+            open={isOpen}
+            onClose={onClose}
+            title="Copy these subjects"
+            subtitle="Give other exams, classes or branches the same subjects and marks."
+            footer={<>
+                <button type="button" onClick={onClose} className="btn-secondary">
+                    Cancel
+                </button>
+                <button
+                    type="button"
+                    onClick={handleCopy}
+                    disabled={copying || n === 0}
+                    className="btn-primary"
+                >
+                    {copying ? "Copying…" : n === 0 ? `Choose ${modeWord === "exam" ? "an" : "a"} ${modeWord}` : `Copy to ${n} ${plural(modeWord, n)}`}
+                </button>
+            </>}
+        >
+            {/* Mode Selection */}
+            <Field label="Copy to" className="mb-4">
+                <Choice
+                    label="Copy to"
+                    value={copyMode}
+                    onChange={setCopyMode}
+                    options={[
+                        { value: "test_to_test", label: "Other exams" },
+                        { value: "class_to_class", label: "Other classes" },
+                        { value: "branch_to_branch", label: "Other branches" },
+                    ]}
+                />
+                <p className="mt-1.5 text-sm text-slate-500">
+                    {copyMode === "test_to_test" && "Same class and branch, different exams."}
+                    {copyMode === "class_to_class" && "Same exam and branch, different classes."}
+                    {copyMode === "branch_to_branch" && "Same exam and class, different branches."}
+                </p>
+            </Field>
 
-                {/* Mode Selection */}
-                <div className="mb-4">
-                    <label className="label">Copy Mode</label>
-                    <select
-                        className="input"
-                        value={copyMode}
-                        onChange={(e: any) => setCopyMode(e.target.value)}
-                    >
-                        <option value="test_to_test">Test to Test (Same Class/Branch)</option>
-                        <option value="class_to_class">Class to Class (Same Test/Branch)</option>
-                        <option value="branch_to_branch">Branch to Branch (Same Test/Class)</option>
-                    </select>
-                </div>
+            <Alert tone="warning" className="mb-4">
+                What is already set there will be replaced.
+            </Alert>
 
-                {/* Target Selection */}
-                <div className="flex-1 overflow-auto border border-slate-200 p-2 rounded-lg mb-4">
-                    {loading ? (
-                        <LoadingState label="Loading targets..." className="py-6" />
-                    ) : options.length === 0 ? (
-                        <EmptyState compact title="No targets found." />
-                    ) : (
-                        <div className="space-y-2">
-                            <div className="flex items-center space-x-2 pb-2 border-b border-slate-100">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedTargets.length === options.length}
-                                    onChange={(e) => {
-                                        if (e.target.checked) setSelectedTargets(options.map(o => o.id));
-                                        else setSelectedTargets([]);
-                                    }}
-                                />
-                                <span className="font-semibold">Select All</span>
-                            </div>
-                            {options.map(opt => (
-                                <div key={opt.id} className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedTargets.includes(opt.id)}
-                                        onChange={() => handleToggle(opt.id)}
-                                    />
-                                    <span>{opt.label}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+            {/* Target Selection */}
+            {loading ? (
+                <LoadingState label="Loading…" className="py-6" />
+            ) : options.length === 0 ? (
+                <EmptyState compact title={`No other ${plural(modeWord, 2)} found`} />
+            ) : (
+                <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+                    <label className="flex items-center gap-3 px-3 min-h-[48px] cursor-pointer bg-slate-50 hover:bg-slate-100">
+                        <input
+                            type="checkbox"
+                            className="w-5 h-5 accent-brand-600"
+                            checked={selectedTargets.length === options.length}
+                            onChange={(e) => {
+                                if (e.target.checked) setSelectedTargets(options.map(o => o.id));
+                                else setSelectedTargets([]);
+                            }}
+                        />
+                        <span className="font-semibold text-slate-800">Choose all</span>
+                    </label>
+                    {options.map(opt => (
+                        <label key={opt.id} className="flex items-center gap-3 px-3 min-h-[48px] cursor-pointer hover:bg-slate-50 active:bg-slate-100">
+                            <input
+                                type="checkbox"
+                                className="w-5 h-5 accent-brand-600"
+                                checked={selectedTargets.includes(opt.id)}
+                                onChange={() => handleToggle(opt.id)}
+                            />
+                            <span className="text-[15px] text-slate-800">{opt.label}</span>
+                        </label>
+                    ))}
                 </div>
-
-                <div className="flex justify-end space-x-2">
-                    <button
-                        onClick={onClose}
-                        className="btn-secondary"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleCopy}
-                        disabled={copying || selectedTargets.length === 0}
-                        className="btn-primary"
-                    >
-                        {copying ? "Copying..." : "Copy"}
-                    </button>
-                </div>
-            </div>
-        </div>
+            )}
+        </SetupSheet>
     );
 }

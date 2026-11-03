@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Save, CheckCircle, AlertCircle } from 'lucide-react';
+import { Calendar, Save } from 'lucide-react';
 import api from '../api';
 import { notify } from './ui/feedback';
-import { PageHeader, Alert, LoadingState, EmptyState } from './ui';
+import { Alert, LoadingState, ActionBar, Field, Steps } from './ui';
+import { SetupIntro } from './exam-setup/shared';
+
+const STEP_TITLES = ['Choose class and exam', 'Choose months'];
 
 interface TestType {
     id: number;
@@ -55,6 +58,8 @@ const SetExamAttendance: React.FC = () => {
     const [loadingMapping, setLoadingMapping] = useState(false);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    // UI only: true when the months step is showing
+    const [onMonths, setOnMonths] = useState(false);
 
     // --- Init ---
     // --- Init ---
@@ -222,7 +227,7 @@ const SetExamAttendance: React.FC = () => {
             setSelectedMonths(loaded);
         } catch (error) {
             console.error("Failed to fetch mapping", error);
-            setMessage({ type: 'error', text: "Failed to load existing attendance settings." });
+            setMessage({ type: 'error', text: "Could not load the saved months. Please try again." });
         } finally {
             setLoadingMapping(false);
         }
@@ -248,10 +253,10 @@ const SetExamAttendance: React.FC = () => {
                 months: monthsPayload
             });
 
-            setMessage({ type: 'success', text: "Attendance settings saved successfully!" });
+            setMessage({ type: 'success', text: "Saved. These months now count for this exam." });
         } catch (error: any) {
             console.error("Save error", error);
-            setMessage({ type: 'error', text: error.response?.data?.error || "Failed to save settings." });
+            setMessage({ type: 'error', text: error.response?.data?.error || "Could not save. Please try again." });
         } finally {
             setSaving(false);
         }
@@ -264,7 +269,7 @@ const SetExamAttendance: React.FC = () => {
             newSet.delete(key);
         } else {
             if (newSet.size >= 12) {
-                notify("You cannot select more than 12 months.");
+                notify("You can choose at most 12 months. Untick one first.");
                 return;
             }
             newSet.add(key);
@@ -278,7 +283,7 @@ const SetExamAttendance: React.FC = () => {
         if (selectedMonths.size > 0) {
             setSelectedMonths(new Set());
         } else {
-            setMessage({ type: 'error', text: 'Please manually select the months (Max 12).' });
+            setMessage({ type: 'error', text: 'Tick the months you want (up to 12).' });
         }
     };
 
@@ -287,191 +292,154 @@ const SetExamAttendance: React.FC = () => {
         if (yearMonths.length === 0) return null;
 
         return (
-            <div className="mb-6">
-                <h4 className="text-base font-semibold text-slate-900 mb-3 border-b border-slate-100 pb-1">{year}</h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {yearMonths.map(m => (
-                        <label
-                            key={m.key}
-                            className={`
-                                flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all
-                                ${selectedMonths.has(m.key)
-                                    ? 'bg-brand-50 border-brand-200 ring-1 ring-brand-200'
-                                    : 'hover:bg-slate-50 border-slate-200'}
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            
-                            `}
-                        >
-                            <input
-                                type="checkbox"
-                                checked={selectedMonths.has(m.key)}
-                                onChange={() => toggleMonth(m.key)}
-                                className="w-5 h-5 accent-brand-600 rounded"
-                            />
-                            <div>
-                                <div className="font-medium text-slate-800">{m.name}</div>
-                            </div>
-                        </label>
-                    ))}
+            <div key={year} className="mb-5">
+                <h4 className="text-sm font-semibold text-slate-700 mb-2">{year}</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {yearMonths.map(m => {
+                        const on = selectedMonths.has(m.key);
+                        return (
+                            <label
+                                key={m.key}
+                                className={`flex items-center gap-3 min-h-[48px] px-3 rounded-lg border cursor-pointer select-none ${on
+                                    ? 'bg-brand-50 border-brand-500 ring-1 ring-brand-500 text-brand-900'
+                                    : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-800'}`}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={on}
+                                    onChange={() => toggleMonth(m.key)}
+                                    className="w-5 h-5 accent-brand-600 flex-shrink-0"
+                                />
+                                <span className="font-medium">{m.name}</span>
+                            </label>
+                        );
+                    })}
                 </div>
             </div>
         );
     };
 
-    return (
-        <div className="max-w-5xl mx-auto">
-            <PageHeader title="Set Exam Attendance" icon={<Calendar className="w-6 h-6" />} />
+    const branchName = branches.find(b => b.branch_code === selectedBranch)?.branch_name || selectedBranch;
+    const className = classes.find(c => String(c.id) === String(selectedClass))?.class_name;
+    const testName = testTypes.find(t => t.id === selectedTestId)?.test_name;
+    const years = academicYear.split('-').map(y => parseInt(y)).filter(y => !isNaN(y));
+    const ready = !!(selectedTestId && selectedBranch && selectedClass);
+    const step = ready && onMonths ? 1 : 0;
 
-            {/* Config Area */}
-            <div className="card p-6 mb-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    {/* Academic Year */}
-                    <div>
-                        <label className="label">Academic Year</label>
-                        <div className="input bg-slate-50 text-slate-700 font-medium">
-                            {academicYear}
-                        </div>
-                    </div>
+    const intro = (
+        <SetupIntro
+            title="Exam attendance"
+            context={[academicYear ? `Year ${academicYear}` : null, branchName || null]}
+        >
+            Choose which months of attendance count for an exam. This attendance is shown on the report card.
+        </SetupIntro>
+    );
 
-                    {/* Branch Selector */}
-                    <div>
-                        <label className="label">Branch</label>
-                        <select
-                            value={selectedBranch}
-                            disabled={true}
-                            onChange={(e) => {
-                                setSelectedBranch(e.target.value);
-                                setSelectedClass(''); // Reset class on branch change
-                            }}
-                            className="input"
+    /* Step 1: class and exam */
+    if (step === 0) {
+        return (
+            <div className="max-w-3xl">
+                {intro}
+                <Steps steps={STEP_TITLES} current={0} className="mb-4" />
+                <div className="card p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Class" htmlFor="sea-class">
+                            <select
+                                id="sea-class"
+                                value={selectedClass}
+                                onChange={(e) => setSelectedClass(e.target.value)}
+                                className="input"
+                                disabled={!selectedBranch || loadingClasses}
+                            >
+                                <option value="">{loadingClasses ? 'Loading…' : 'Choose a class'}</option>
+                                {classes.map(c => (
+                                    <option key={c.id} value={c.id}>{c.class_name}</option>
+                                ))}
+                            </select>
+                        </Field>
+
+                        <Field
+                            label="Exam"
+                            htmlFor="sea-test"
+                            hint={selectedClass && !loadingTests && testTypes.length === 0 ? 'This class has no exams yet. Add one in "Add an exam to classes".' : undefined}
                         >
-                            <option value="">-- Select Branch --</option>
-                            {branches.map(b => (
-                                <option key={b.branch_code} value={b.branch_code}>{b.branch_name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Class Selector */}
-                    <div>
-                        <label className="label">Class</label>
-                        <select
-                            value={selectedClass}
-                            onChange={(e) => setSelectedClass(e.target.value)}
-                            className="input"
-                            disabled={!selectedBranch || loadingClasses}
-                        >
-                            <option value="">-- Select Class --</option>
-                            {classes.map(c => (
-                                <option key={c.id} value={c.id}>{c.class_name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Test Selector */}
-                    <div>
-                        <label className="label">Select Exam</label>
-                        <select
-                            value={selectedTestId || ''}
-                            onChange={(e) => setSelectedTestId(Number(e.target.value) || null)}
-                            className="input"
-                            disabled={loadingTests}
-                        >
-                            <option value="">-- Select Exam --</option>
-                            {testTypes.map(t => (
-                                <option key={t.id} value={t.id}>{t.test_name}</option>
-                            ))}
-                        </select>
+                            <select
+                                id="sea-test"
+                                value={selectedTestId || ''}
+                                onChange={(e) => setSelectedTestId(Number(e.target.value) || null)}
+                                className="input"
+                                disabled={!selectedClass || loadingTests}
+                            >
+                                <option value="">{!selectedClass ? 'Choose a class first' : loadingTests ? 'Loading…' : 'Choose an exam'}</option>
+                                {testTypes.map(t => (
+                                    <option key={t.id} value={t.id}>{t.test_name}</option>
+                                ))}
+                            </select>
+                        </Field>
                     </div>
                 </div>
+                <ActionBar note={!selectedClass ? 'Choose a class first' : !selectedTestId ? 'Choose an exam' : undefined}>
+                    <button type="button" className="btn-primary btn-lg" disabled={!ready} onClick={() => { setMessage(null); setOnMonths(true); }}>
+                        Choose months
+                    </button>
+                </ActionBar>
+            </div>
+        );
+    }
 
-                {/* Info Box */}
-                <Alert tone="info" className="mb-6">
-                    <p>
-                        Select the months that should be considered for attendance calculation for this specific <strong>Class & Exam</strong>.
-                        <br />
-                        Allowed range: <strong>Jan 2025 - Dec 2026</strong>. Max selection: <strong>12 months</strong>.
-                    </p>
+    /* Step 2: months */
+    return (
+        <div className="max-w-3xl">
+            {intro}
+            <Steps steps={STEP_TITLES} current={1} onJump={() => setOnMonths(false)} className="mb-4" />
+
+            <div className="card p-4 mb-4 flex items-start gap-3">
+                <Calendar className="w-5 h-5 text-brand-600 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-slate-900 break-words">{testName || 'Exam'} · Class {className || ''}</p>
+                    <p className="text-sm text-slate-600">Choose up to 12 months{years.length === 2 ? ` between January ${years[0]} and December ${years[1]}` : ''}.</p>
+                </div>
+                <button type="button" className="btn-secondary btn-sm flex-shrink-0" onClick={() => setOnMonths(false)}>Change</button>
+            </div>
+
+            {message && (
+                <Alert tone={message.type === 'error' ? 'error' : 'success'} className="mb-4" onClose={() => setMessage(null)}>
+                    {message.text}
                 </Alert>
+            )}
 
-                {/* Months Selection */}
-                {selectedTestId && selectedBranch && selectedClass && (
-                    <div className="animate-fade-in">
-                        <div className="flex justify-between items-center mb-3">
-                            <h3 className="text-base font-semibold text-slate-900">Attendance Months ({selectedMonths.size}/12)</h3>
-                            <button
-                                onClick={toggleAll}
-                                className="text-sm text-red-600 hover:text-red-800 font-medium"
-                            >
-                                Clear Selection
-                            </button>
-                        </div>
+            <div className="card p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                    <p className="text-base font-semibold text-slate-900" aria-live="polite">{selectedMonths.size} of 12 months chosen</p>
+                    {selectedMonths.size > 0 && (
+                        <button type="button" onClick={toggleAll} className="btn-ghost btn-sm text-red-600 hover:bg-red-50">
+                            Clear all
+                        </button>
+                    )}
+                </div>
 
-                        {loadingMapping ? (
-                            <LoadingState label="Loading settings..." />
-                        ) : (
-                            <div>
-                                {academicYear.split('-').map(yearStr => {
-                                    const year = parseInt(yearStr);
-                                    return !isNaN(year) ? renderYearSection(year) : null;
-                                })}
-                            </div>
-                        )}
-
-                        {/* Save Button */}
-                        <div className="mt-8 flex flex-wrap gap-3 items-center justify-between border-t border-slate-100 pt-4">
-                            <div>
-                                {message && (
-                                    <span className={`text-sm flex items-center gap-1 ${message.type === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
-                                        {message.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-                                        {message.text}
-                                    </span>
-                                )}
-                            </div>
-                            <button
-                                onClick={handleSave}
-                                disabled={saving || loadingMapping || selectedMonths.size === 0}
-                                className="btn-primary"
-                            >
-                                {saving ? 'Saving...' : <><Save size={18} /> Save Settings</>}
-                            </button>
-                        </div>
+                {loadingMapping ? (
+                    <LoadingState label="Loading months…" />
+                ) : (
+                    <div>
+                        {years.map(year => renderYearSection(year))}
                     </div>
                 )}
-
-                {(!selectedTestId || !selectedBranch || !selectedClass) && (
-                    <EmptyState compact title="Please select Branch, Class, and Exam to configure attendance." />
-                )}
             </div>
+
+            <ActionBar note={selectedMonths.size === 0 && !loadingMapping ? 'Choose at least one month' : undefined}>
+                <button type="button" className="btn-secondary btn-lg" onClick={() => setOnMonths(false)}>
+                    Back
+                </button>
+                <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving || loadingMapping || selectedMonths.size === 0}
+                    className="btn-primary btn-lg"
+                >
+                    <Save size={18} /> {saving ? 'Saving…' : `Save ${selectedMonths.size} month${selectedMonths.size !== 1 ? 's' : ''}`}
+                </button>
+            </ActionBar>
         </div>
     );
 };

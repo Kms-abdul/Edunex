@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import api from "../api";
 import { notify } from './ui/feedback';
-import { PageHeader, LoadingState, EmptyState } from './ui';
+import { LoadingState, EmptyState, ActionBar, Field } from './ui';
+import { SetupIntro, GridCard, GridCheck, Choice } from './exam-setup/shared';
 
 interface Student {
     student_id: number;
@@ -33,6 +34,8 @@ const AssignStudentSubjects: React.FC = () => {
     const [subjects, setSubjects] = useState<Subject[]>([]);
     // assignmentMap: student_id -> { subject_id : boolean }
     const [assignmentMap, setAssignmentMap] = useState<Record<number, Record<number, boolean>>>({});
+    // What was last loaded from the server (only used to count unsaved changes)
+    const [savedMap, setSavedMap] = useState<Record<number, Record<number, boolean>>>({});
 
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -149,10 +152,11 @@ const AssignStudentSubjects: React.FC = () => {
             });
 
             setAssignmentMap(initialMap);
+            setSavedMap(JSON.parse(JSON.stringify(initialMap)));
 
         } catch (e) {
             console.error("Failed to fetch assignment data", e);
-            notify("Error fetching data");
+            notify.error("Could not load the students. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -237,204 +241,180 @@ const AssignStudentSubjects: React.FC = () => {
                 data: payloadData
             });
 
-            notify("Saved successfully!");
+            notify.success("Subjects for students saved");
             // Refresh to sync
             fetchData();
 
         } catch (e) {
             console.error("Save failed", e);
-            notify("Failed to save assignments.");
+            notify.error("Could not save. Please try again.");
         } finally {
             setSaving(false);
         }
     };
 
+    // Count boxes that differ from what was loaded (for the Save button)
+    let changeCount = 0;
+    students.forEach(std => {
+        subjects.forEach(sub => {
+            const now = !!assignmentMap[std.student_id]?.[sub.subject_id];
+            const before = !!savedMap[std.student_id]?.[sub.subject_id];
+            if (now !== before) changeCount++;
+        });
+    });
+
+    const isChecked = (studentId: number, subjectId: number) => assignmentMap[studentId]?.[subjectId] || false;
+    const allInColumn = (subjectId: number) => students.length > 0 && students.every(st => isChecked(st.student_id, subjectId));
+    const allInRow = (studentId: number) => subjects.length > 0 && subjects.every(sub => isChecked(studentId, sub.subject_id));
+    const allTicked = students.length > 0 && students.every(st => allInRow(st.student_id));
+
     return (
         <div className="min-h-full">
-            <PageHeader title="Assign Student-Subjects" />
+            <SetupIntro
+                title="Subjects for students"
+                context={[academicYear ? `Year ${academicYear}` : null, branch === 'All' ? 'All branches' : branch]}
+            >
+                Choose a class, then tick the subjects each student studies.
+            </SetupIntro>
 
-            {/* Top Bar / Filters */}
-            <div className="card grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6 p-4">
-                {/* Academic Year (Read Only) */}
-                <div className="flex flex-col">
-                    <label className="label">Academic Year</label>
-                    <div className="input bg-slate-50 text-slate-700 font-medium">
-                        {academicYear}
-                    </div>
+            {/* Choose class */}
+            <div className="card p-4 mb-4 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Class" htmlFor="ass-class">
+                        <select
+                            id="ass-class"
+                            className="input"
+                            value={selectedClass}
+                            onChange={(e) => setSelectedClass(e.target.value)}
+                        >
+                            <option value="">Choose a class</option>
+                            {classList.map((c: any) => (
+                                <option key={c.id} value={c.class_name}>{c.class_name}</option>
+                            ))}
+                        </select>
+                    </Field>
+
+                    <Field label="Section (optional)" htmlFor="ass-section">
+                        <select
+                            id="ass-section"
+                            className="input"
+                            value={selectedSection}
+                            onChange={(e) => setSelectedSection(e.target.value)}
+                            disabled={!selectedClass}
+                        >
+                            <option value="">All sections</option>
+                            {sectionList.map((sec) => (
+                                <option key={sec} value={sec}>{sec}</option>
+                            ))}
+                        </select>
+                    </Field>
                 </div>
 
-                {/* Branch (Read Only) */}
-                <div className="flex flex-col">
-                    <label className="label">Branch</label>
-                    <div className="input bg-slate-50 text-slate-700 font-medium whitespace-nowrap overflow-hidden text-ellipsis">
-                        {branch}
-                    </div>
-                </div>
-
-                {/* Class Dropdown */}
-                <div className="flex flex-col">
-                    <label className="label">Class</label>
-                    <select
-                        className="input"
-                        value={selectedClass}
-                        onChange={(e) => setSelectedClass(e.target.value)}
-                    >
-                        <option value="">Select Class</option>
-                        {classList.map((c: any) => (
-                            <option key={c.id} value={c.class_name}>{c.class_name}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Section Dropdown */}
-                <div className="flex flex-col">
-                    <label className="label">Section</label>
-                    <select
-                        className="input"
-                        value={selectedSection}
-                        onChange={(e) => setSelectedSection(e.target.value)}
-                        disabled={!selectedClass}
-                    >
-                        <option value="">All Sections</option>
-                        {sectionList.map((sec) => (
-                            <option key={sec} value={sec}>{sec}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Subject Type */}
-                <div className="flex flex-col">
-                    <label className="label">Subject Type</label>
-                    <div className="flex items-center space-x-4 h-full">
-                        <label className="flex items-center cursor-pointer text-sm text-slate-700">
-                            <input
-                                type="radio"
-                                name="subjectType"
-                                className="mr-2 accent-brand-600"
-                                value="Academic"
-                                checked={subjectType === "Academic"}
-                                onChange={(e) => setSubjectType(e.target.value)}
-                            />
-                            Academic
-                        </label>
-                        <label className="flex items-center cursor-pointer text-sm text-slate-700">
-                            <input
-                                type="radio"
-                                name="subjectType"
-                                className="mr-2 accent-brand-600"
-                                value="Deeniyath"
-                                checked={subjectType === "Deeniyath"}
-                                onChange={(e) => setSubjectType(e.target.value)}
-                            />
-                            Deeniyath
-                        </label>
-                    </div>
-                </div>
+                <Field label="Subject group">
+                    <Choice
+                        label="Subject group"
+                        value={subjectType}
+                        onChange={setSubjectType}
+                        options={[{ value: 'Academic', label: 'Academic' }, { value: 'Deeniyath', label: 'Deeniyath' }]}
+                    />
+                </Field>
             </div>
 
             {/* Grid */}
             {loading ? (
-                <div className="card"><LoadingState label="Loading data..." /></div>
+                <div className="card"><LoadingState label="Loading students…" /></div>
+            ) : !selectedClass ? (
+                <div className="card"><EmptyState title="Choose a class" description="The students of that class will show here." /></div>
+            ) : students.length === 0 ? (
+                <div className="card"><EmptyState title="No students found" description="There are no students in this class and section." /></div>
             ) : (
-                students.length === 0 ? (
-                    <div className="card">
-                        <EmptyState title="No students found or no class selected." />
-                    </div>
-                ) : (
-                    <div className="card overflow-hidden"><div className="overflow-x-auto">
-                        <table className="min-w-full bg-white text-sm">
-                            <thead className="bg-slate-50 text-slate-600">
-                                <tr>
-                                    <th className="py-3 px-4 text-left w-16">S.No</th>
-                                    <th className="py-3 px-4 text-left w-48 sticky left-0 z-10 bg-slate-50">Student Name</th>
-                                    <th className="py-3 px-4 text-left w-24">Roll No</th>
-                                    <th className="py-3 px-4 text-left w-32">Adm No</th>
-                                    {subjects.map(sub => (
-                                        <th key={sub.subject_id} className="py-3 px-4 text-center min-w-[100px]">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <span>{sub.subject_name}</span>
-                                                <input
-                                                    type="checkbox"
-                                                    className="w-4 h-4 accent-brand-600 rounded"
-                                                    onChange={(e) => handleSelectAllColumn(sub.subject_id, e.target.checked)}
-                                                    title="Assign this subject to all shown students"
-                                                />
-                                            </div>
-                                        </th>
-                                    ))}
-                                    <th className="py-3 px-4 text-center w-24">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <span>All</span>
-                                            <input
-                                                type="checkbox"
-                                                className="w-4 h-4 accent-emerald-600 rounded"
-                                                onChange={(e) => handleSelectAllCheckboxes(e.target.checked)}
-                                                title="Select/Deselect all checkboxes"
+                <GridCard>
+                    <table className="border-separate border-spacing-0 text-sm">
+                        <thead>
+                            <tr>
+                                <th className="sticky left-0 top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-3 py-2 text-left min-w-[160px]">
+                                    Student
+                                </th>
+                                {subjects.map(sub => (
+                                    <th key={sub.subject_id} className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 px-2 py-2 text-center min-w-[88px]">
+                                        <div className="flex flex-col items-center gap-1">
+                                            <span className="font-semibold text-slate-800 leading-tight">{sub.subject_name}</span>
+                                            <GridCheck
+                                                checked={allInColumn(sub.subject_id)}
+                                                onChange={checked => handleSelectAllColumn(sub.subject_id, checked)}
+                                                label={`${sub.subject_name} for all students shown`}
                                             />
                                         </div>
                                     </th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-slate-700">
-                                {students.map((student, idx) => (
-                                    <tr key={student.student_id} className={`border-b border-slate-100 hover:bg-slate-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                                        <td className="py-2 px-4">{idx + 1}</td>
-                                        <td className="py-2 px-4 font-medium sticky left-0 z-10 bg-inherit border-r">
-                                            {student.name}
-                                        </td>
-                                        <td className="py-2 px-4">{student.roll_number}</td>
-                                        <td className="py-2 px-4">{student.admission_no}</td>
+                                ))}
+                                <th className="sticky top-0 z-10 bg-slate-50 border-b border-l border-slate-200 px-2 py-2 text-center min-w-[80px]">
+                                    <div className="flex flex-col items-center gap-1">
+                                        <span className="font-semibold text-slate-800">All</span>
+                                        <GridCheck
+                                            tone="emerald"
+                                            checked={allTicked}
+                                            onChange={checked => handleSelectAllCheckboxes(checked)}
+                                            label="Every subject for every student"
+                                        />
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="text-slate-700">
+                            {students.map((student, idx) => (
+                                <tr key={student.student_id} className="hover:bg-slate-50/60">
+                                    <td className="sticky left-0 z-10 bg-white border-b border-r border-slate-100 px-3 py-1.5">
+                                        <div className="font-medium text-slate-900 leading-snug">{idx + 1}. {student.name}</div>
+                                        <div className="text-xs text-slate-500">
+                                            Roll {student.roll_number ?? '—'} · Adm. {student.admission_no}
+                                        </div>
+                                    </td>
 
-                                        {subjects.map(sub => {
-                                            const isChecked = assignmentMap[student.student_id]?.[sub.subject_id] || false;
-                                            return (
-                                                <td key={sub.subject_id} className="py-2 px-4 text-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="w-5 h-5 accent-brand-600 rounded cursor-pointer"
-                                                        checked={isChecked}
-                                                        onChange={() => handleToggle(student.student_id, sub.subject_id)}
-                                                    />
-                                                </td>
-                                            );
-                                        })}
-
-                                        <td className="py-2 px-4 text-center">
-                                            <input
-                                                type="checkbox"
-                                                className="w-5 h-5 accent-emerald-600 rounded cursor-pointer"
-                                                onChange={(e) => handleSelectAllRow(student.student_id, e.target.checked)}
-                                                title="Select/Deselect All"
+                                    {subjects.map(sub => (
+                                        <td key={sub.subject_id} className="border-b border-slate-100 p-0.5 text-center">
+                                            <GridCheck
+                                                checked={isChecked(student.student_id, sub.subject_id)}
+                                                onChange={() => handleToggle(student.student_id, sub.subject_id)}
+                                                label={`${sub.subject_name} for ${student.name}`}
                                             />
                                         </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div></div>
-                )
+                                    ))}
+
+                                    <td className="border-b border-l border-slate-100 p-0.5 text-center">
+                                        <GridCheck
+                                            tone="emerald"
+                                            checked={allInRow(student.student_id)}
+                                            onChange={checked => handleSelectAllRow(student.student_id, checked)}
+                                            label={`Every subject for ${student.name}`}
+                                        />
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </GridCard>
             )}
 
-            {/* Save Button */}
             {students.length > 0 && (
-                <div className="mt-6 flex justify-end gap-2">
+                <ActionBar note={changeCount > 0 ? `${changeCount} change${changeCount !== 1 ? 's' : ''} not saved yet` : 'No changes yet. Tick or untick boxes above.'}>
                     <button
+                        type="button"
                         onClick={() => fetchData()}
-                        disabled={saving}
-                        className="btn-secondary"
+                        disabled={saving || changeCount === 0}
+                        className="btn-secondary btn-lg"
                     >
-                        Cancel
+                        Undo changes
                     </button>
                     <button
+                        type="button"
                         onClick={handleSave}
-                        disabled={saving}
+                        disabled={saving || changeCount === 0}
                         className="btn-primary btn-lg"
                     >
-                        {saving ? "Saving..." : "Save Assignments"}
+                        {saving ? "Saving…" : `Save changes (${changeCount})`}
                     </button>
-                </div>
+                </ActionBar>
             )}
-
         </div>
     );
 };

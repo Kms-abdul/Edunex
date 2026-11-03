@@ -1,8 +1,11 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
+import { Copy } from "lucide-react";
 import api from "../api";
 import { canWrite } from "../utils/permissions";
 import { notify, confirmDialog } from './ui/feedback';
-import { PageHeader, EmptyState, Spinner } from './ui';
+import { EmptyState, LoadingState, ActionBar, Field } from './ui';
+import { SetupIntro, GridCard, GridCheck, Choice, CopyToBranchesSheet } from './exam-setup/shared';
+import type { CopyTarget } from './exam-setup/shared';
 
 interface Option {
     id: number | string;
@@ -43,22 +46,6 @@ const ClassSubjectAssignment: React.FC = () => {
     // Copy Feature State
     const [copyTargets, setCopyTargets] = useState<Set<string>>(new Set());
     const [isCopyDropdownOpen, setIsCopyDropdownOpen] = useState(false);
-    const copyDropdownRef = useRef<HTMLDivElement>(null);
-
-    // Close dropdown on outside click
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (copyDropdownRef.current && !copyDropdownRef.current.contains(event.target as Node)) {
-                setIsCopyDropdownOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
-
-
     // Initial Load
     useEffect(() => {
         const fetchMetadata = async () => {
@@ -327,7 +314,7 @@ const ClassSubjectAssignment: React.FC = () => {
         });
 
         if (updates.length === 0) {
-            notify("No changes to save.");
+            notify("Nothing has changed yet.");
             setSaving(false);
             return;
         }
@@ -341,10 +328,10 @@ const ClassSubjectAssignment: React.FC = () => {
 
             // On success, update Initial to match Current
             setInitialAssignments(new Set(assignments));
-            notify("Assignments saved successfully!");
+            notify.success("Subjects for each class saved");
         } catch (error: any) {
             console.error("Failed to save assignments", error);
-            let alertMessage = "Failed to save assignments. Please check the console for details.";
+            let alertMessage = "Could not save. Please try again.";
 
             if (error.response && error.response.data) {
                 // Check for the specific "in use by students" message
@@ -353,7 +340,7 @@ const ClassSubjectAssignment: React.FC = () => {
                     : [];
 
                 if (inUseMessages.length > 0) {
-                    alertMessage = "Students assigned to this subject. Unable to unassign.";
+                    alertMessage = "Some students already study this subject, so it cannot be removed from the class. Remove it from those students first.";
                     // If there are multiple specific messages, append them
                 } else if (error.response.data.error) {
                     alertMessage = error.response.data.error;
@@ -393,11 +380,11 @@ const ClassSubjectAssignment: React.FC = () => {
 
     const handleCopy = async () => {
         if (copyTargets.size === 0) {
-            notify("Please select at least one branch to copy to.");
+            notify("Choose at least one branch to copy to.");
             return;
         }
 
-        if (!await confirmDialog(`Are you sure you want to copy assignments to ${copyTargets.size} branches?\n(Merge Mode: Only missing assignments will be added)`)) {
+        if (!await confirmDialog(`Copy subjects for each class to ${copyTargets.size} branch${copyTargets.size !== 1 ? "es" : ""}? Only missing subjects are added.`)) {
             return;
         }
 
@@ -408,7 +395,7 @@ const ClassSubjectAssignment: React.FC = () => {
                 target_branch_ids: Array.from(copyTargets),
                 academic_year_id: selectedYear
             });
-            notify("Assignments copied successfully!");
+            notify.success("Copied to the other branches");
             setCopyTargets(new Set()); // Reset selections
             setIsCopyDropdownOpen(false);
         } catch (error: any) {
@@ -419,204 +406,148 @@ const ClassSubjectAssignment: React.FC = () => {
         }
     };
 
+    // How many boxes differ from what is saved (for the Save button)
+    let changeCount = 0;
+    assignments.forEach(k => { if (!initialAssignments.has(k)) changeCount++; });
+    initialAssignments.forEach(k => { if (!assignments.has(k)) changeCount++; });
+
+    const yearName = academicYears.find(y => String(y.id) === String(selectedYear))?.name;
+    const branchName = branches.find(b => String(b.id) === String(selectedBranch))?.name;
+    const canCopy = !!selectedBranch && selectedBranch !== "All";
+
+    const copyGroups: Record<string, CopyTarget[]> = {};
+    Object.keys(branchesByLocation).forEach(loc => {
+        copyGroups[loc] = branchesByLocation[loc].map(b => ({ key: String(b.id), label: b.name }));
+    });
+
+    const allInColumn = (classId: number) => filteredSubjects.length > 0 && filteredSubjects.every(s => assignments.has(`${classId}-${s.id}`));
+    const allInRow = (subjectId: number) => classes.length > 0 && classes.every(c => assignments.has(`${c.id}-${subjectId}`));
+
     return (
         <div>
-            <PageHeader title="Class-Subject Assignment" />
-            <div className="card p-6 mb-4">
-                {/* Filters */}
-                <div className="flex flex-wrap gap-4 mb-6 items-end">
-                    <div className="w-48">
-                        <label className="label">Academic Year</label>
-                        <select
-                            className="input"
-                            value={selectedYear}
-                            disabled={true}
-                            onChange={e => setSelectedYear(e.target.value)}
-                        >
-                            <option value="">Select Year</option>
-                            {academicYears.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}
-                        </select>
-                    </div>
+            <SetupIntro
+                title="Subjects for each class"
+                context={[yearName ? `Year ${yearName}` : null, branchName || null]}
+                action={canCopy ? (
+                    <button type="button" className="btn-secondary" onClick={() => setIsCopyDropdownOpen(true)}>
+                        <Copy className="w-4 h-4" /> Copy to other branches
+                    </button>
+                ) : undefined}
+            >
+                Tick the subjects each class studies. Use "All" to tick a whole row or column.
+            </SetupIntro>
 
-                    <div className="w-48">
-                        <label className="label">Branch</label>
-                        <select
-                            className="input"
-                            value={selectedBranch}
-                            disabled={true}
-                            onChange={e => setSelectedBranch(e.target.value)}
-                        >
-                            <option value="">Select Branch</option>
-                            {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                        </select>
-                    </div>
+            <div className="card p-4 mb-4">
+                <Field label="Show subjects">
+                    <Choice
+                        label="Show subjects"
+                        value={selectedSubjectType}
+                        onChange={setSelectedSubjectType}
+                        options={[
+                            { value: 'Academic', label: 'Academic' },
+                            { value: 'Deeniyath', label: 'Deeniyath' },
+                            { value: 'All', label: 'All subjects' },
+                        ]}
+                    />
+                </Field>
+            </div>
 
-                    <div className="w-48">
-                        <label className="label">Subject Group</label>
-                        <select
-                            className="input"
-                            value={selectedSubjectType}
-                            onChange={e => setSelectedSubjectType(e.target.value)}
-                        >
-                            <option value="Academic">Academic</option>
-                            <option value="Deeniyath">Deeniyath</option>
-                            <option value="All">All Types</option>
-                        </select>
-                    </div>
-                </div>
-
-                {/* Matrix Table */}
-                <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                    <table className="w-full border-collapse text-sm">
-                        <thead className="bg-slate-50 text-slate-600">
+            {loading && assignments.size === 0 ? (
+                <div className="card"><LoadingState label="Loading subjects…" /></div>
+            ) : filteredSubjects.length === 0 ? (
+                <div className="card"><EmptyState compact title="No subjects in this group" description="Add subjects in the Subject list first, or choose another group." /></div>
+            ) : (
+                <GridCard>
+                    <table className="border-separate border-spacing-0 text-sm">
+                        <thead>
                             <tr>
-                                <th className="border p-2 min-w-[150px] text-left">Subjects \ Classes</th>
+                                <th className="sticky left-0 top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-3 py-2 text-left min-w-[140px]">Subject</th>
                                 {classes.map(c => (
-                                    <th key={c.id} className="border p-2 text-center min-w-[60px]">
+                                    <th key={c.id} className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 px-1 py-2 text-center min-w-[64px]">
                                         <div className="flex flex-col items-center gap-1">
-                                            <span>{c.name}</span>
+                                            <span className="font-semibold text-slate-800 whitespace-nowrap">{c.name}</span>
                                             <button
+                                                type="button"
                                                 onClick={() => handleCheckAllColumn(c.id)}
-                                                className="btn-soft btn-sm h-6 px-2 text-[10px]"
-                                                title="Check/Uncheck all subjects for this class"
+                                                className={`h-9 min-w-[44px] px-2 rounded-md text-xs font-medium ${allInColumn(c.id) ? 'bg-brand-600 text-white' : 'bg-brand-50 text-brand-700 hover:bg-brand-100'}`}
+                                                aria-label={`Tick or untick all subjects for class ${c.name}`}
                                             >
-                                                ✓ All
+                                                All
                                             </button>
                                         </div>
                                     </th>
                                 ))}
-                                <th className="border p-2 text-center min-w-[80px]">Action</th>
+                                <th className="sticky top-0 z-10 bg-slate-50 border-b border-l border-slate-200 px-2 py-2 text-center min-w-[72px]">Every class</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {loading && assignments.size === 0 ? (
-                                <tr><td colSpan={classes.length + 2} className="p-4"><div className="flex items-center justify-center gap-2 text-sm text-slate-500"><Spinner size="sm" /> Loading Assignments...</div></td></tr>
-                            ) : filteredSubjects.map(s => (
-                                <tr key={s.id} className="hover:bg-slate-50">
-                                    <td className="border p-2 font-medium bg-slate-50">
+                            {filteredSubjects.map(s => (
+                                <tr key={s.id} className="hover:bg-slate-50/60">
+                                    <td className="sticky left-0 z-10 bg-white border-b border-r border-slate-100 px-3 py-1 font-medium text-slate-900">
                                         {s.name}
                                     </td>
-                                    {classes.map(c => {
-                                        const key = `${c.id}-${s.id}`;
-                                        const isAssigned = assignments.has(key);
-
-                                        return (
-                                            <td key={c.id} className="border p-1 text-center">
-                                                <div className="flex justify-center items-center h-full">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={isAssigned}
-                                                        onChange={() => handleToggle(c.id, s.id)}
-                                                        className="w-5 h-5 cursor-pointer accent-brand-600"
-                                                    />
-                                                </div>
-                                            </td>
-                                        );
-                                    })}
-                                    {/* Action Column: Check All Row */}
-                                    <td className="border p-1 text-center">
+                                    {classes.map(c => (
+                                        <td key={c.id} className="border-b border-slate-100 p-0.5 text-center">
+                                            <GridCheck
+                                                checked={assignments.has(`${c.id}-${s.id}`)}
+                                                onChange={() => handleToggle(c.id, s.id)}
+                                                label={`${s.name} for class ${c.name}`}
+                                            />
+                                        </td>
+                                    ))}
+                                    <td className="border-b border-l border-slate-100 p-1 text-center">
                                         <button
+                                            type="button"
                                             onClick={() => handleCheckAllRow(s.id)}
-                                            className="btn-secondary btn-sm"
-                                            title="Toggle All Classes for this Subject"
+                                            className={`h-9 min-w-[44px] px-2 rounded-md text-xs font-medium ${allInRow(s.id) ? 'bg-brand-600 text-white' : 'bg-brand-50 text-brand-700 hover:bg-brand-100'}`}
+                                            aria-label={`Tick or untick ${s.name} for every class`}
                                         >
-                                            Check/Uncheck All
+                                            All
                                         </button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
-                </div>
-                {filteredSubjects.length === 0 && (
-                    <EmptyState compact title="No subjects found for selected group." />
-                )}
+                </GridCard>
+            )}
 
-                <div className="mt-4 flex flex-wrap gap-3 justify-between items-center">
-                    {/* Copy Section Button */}
-                    <div>
-                        {selectedBranch && selectedBranch !== "All" && (
-                            <div className="relative" ref={copyDropdownRef}>
-                                <button
-                                    className="btn-primary"
-                                    onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
-                                >
-                                    <span>Copy to Branches</span>
-                                    <span className="text-xs">▼</span>
-                                </button>
-                                {/* Grouped Dropdown */}
-                                {isCopyDropdownOpen && (
-                                    <div className="card shadow-pop absolute left-full top-0 ml-2 w-72 z-20 max-h-80 overflow-y-auto">
-                                        <div className="mb-2 px-3 pt-3 text-sm font-semibold text-slate-700 pb-2 border-b border-slate-100">
-                                            Select Target Branches
-                                        </div>
-                                        {Object.keys(branchesByLocation).length === 0 ? (
-                                            <EmptyState compact title="No other branches available" />
-                                        ) : (
-                                            Object.keys(branchesByLocation).map(loc => (
-                                                <div key={loc} className="mb-1">
-                                                    {/* Header - Clean & Bold */}
-                                                    <div className="text-sm font-semibold text-slate-900 px-3 py-2 bg-slate-50 border-b border-slate-100">
-                                                        {loc}
-                                                    </div>
-                                                    {/* Items - Indented */}
-                                                    <div className="py-1">
-                                                        {branchesByLocation[loc].map(b => (
-                                                            <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-brand-50 cursor-pointer transition-colors pl-6">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={copyTargets.has(String(b.id))}
-                                                                    onChange={() => toggleCopyTarget(String(b.id))}
-                                                                    className="w-4 h-4 accent-brand-600 rounded border-slate-300"
-                                                                />
-                                                                <span className="text-sm text-slate-700">{b.name}</span>
-                                                            </label>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )}
-                                        <div className="mt-2 p-3 border-t border-slate-100 flex justify-between items-center sticky bottom-0 bg-white">
-                                            <span className="text-xs text-slate-500">{copyTargets.size} selected</span>
-                                            <button
-                                                onClick={handleCopy}
-                                                disabled={copying || copyTargets.size === 0}
-                                                className="btn-success btn-sm"
-                                            >
-                                                {copying ? "Copying..." : "Confirm Copy"}
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
+            <ActionBar note={changeCount > 0 ? `${changeCount} change${changeCount !== 1 ? 's' : ''} not saved yet` : 'No changes yet. Tick or untick boxes above.'}>
+                <button
+                    type="button"
+                    onClick={() => {
+                        // Reset to initial assignments
+                        setAssignments(new Set(initialAssignments));
+                    }}
+                    disabled={saving || changeCount === 0}
+                    className="btn-secondary btn-lg"
+                >
+                    Undo changes
+                </button>
+                <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving || changeCount === 0}
+                    className="btn-primary btn-lg"
+                >
+                    {saving ? "Saving…" : `Save changes (${changeCount})`}
+                </button>
+            </ActionBar>
 
-                    <div className="flex gap-2 justify-end">
-                        <button
-                            onClick={() => {
-                                // Reset to initial assignments
-                                setAssignments(new Set(initialAssignments));
-                            }}
-                            disabled={saving}
-                            className="btn-secondary"
-                        >
-                            Cancel
-                        </button>
-
-                        <button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="btn-primary"
-                        >
-                            {saving ? "Saving..." : "Save Assignments"}
-                        </button>
-                    </div>
-
-                </div>
-
-
-            </div>
+            <CopyToBranchesSheet
+                open={isCopyDropdownOpen}
+                onClose={() => setIsCopyDropdownOpen(false)}
+                what="subjects for each class"
+                groups={copyGroups}
+                selected={copyTargets}
+                onToggle={toggleCopyTarget}
+                onCopy={handleCopy}
+                copying={copying}
+                note={<>
+                    Only subjects the other branch does not have yet are added. Nothing is removed there.
+                    {changeCount > 0 && <span className="block mt-1 text-amber-700">You have changes that are not saved. Save them first, or they will not be copied.</span>}
+                </>}
+            />
         </div>
     );
 };

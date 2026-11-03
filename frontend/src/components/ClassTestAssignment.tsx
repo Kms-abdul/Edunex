@@ -1,7 +1,10 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
+import { Copy } from "lucide-react";
 import api from "../api";
 import { notify, confirmDialog } from './ui/feedback';
-import { PageHeader, Alert, EmptyState, LoadingState } from './ui';
+import { Alert, EmptyState, LoadingState, ActionBar } from './ui';
+import { SetupIntro, GridCard, GridCheck, CopyToBranchesSheet } from './exam-setup/shared';
+import type { CopyTarget } from './exam-setup/shared';
 
 interface ClassItem {
     id: number;
@@ -55,7 +58,6 @@ const ClassTestAssignment: React.FC = () => {
     // --- Copy Feature State ---
     const [copyTargets, setCopyTargets] = useState<Set<string>>(new Set()); // Set of "BranchName|LocationName" strings
     const [isCopyDropdownOpen, setIsCopyDropdownOpen] = useState(false);
-    const copyDropdownRef = useRef<HTMLDivElement>(null);
     const [copying, setCopying] = useState(false);
 
     // --- Initial Load ---
@@ -104,15 +106,6 @@ const ClassTestAssignment: React.FC = () => {
             }
         };
         fetchMetadata();
-
-        // Click outside listener for copy dropdown
-        function handleClickOutside(event: MouseEvent) {
-            if (copyDropdownRef.current && !copyDropdownRef.current.contains(event.target as Node)) {
-                setIsCopyDropdownOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
 
@@ -304,7 +297,7 @@ const ClassTestAssignment: React.FC = () => {
                 const item = assignmentMap.get(key);
                 if (item && item.status) {
                     if (orders.has(item.test_order)) {
-                        notify(`Duplicate order number ${item.test_order} in Class ${cls.name}. Please fix before saving.`);
+                        notify(`Class ${cls.name} has two exams at position ${item.test_order}. Give each exam a different number, then save.`);
                         setSaving(false);
                         return;
                     }
@@ -342,11 +335,11 @@ const ClassTestAssignment: React.FC = () => {
 
         try {
             await Promise.all(promises);
-            notify("Assignments saved successfully");
+            notify.success("Exams for each class saved");
             fetchMatrix(); // Refresh
         } catch (e: any) {
             console.error("Save error", e);
-            notify("Error saving: " + (e.response?.data?.error || e.message));
+            notify.error("Could not save: " + (e.response?.data?.error || e.message));
         } finally {
             setSaving(false);
         }
@@ -360,8 +353,8 @@ const ClassTestAssignment: React.FC = () => {
     });
 
     const handleCopy = async () => {
-        if (copyTargets.size === 0) return notify("Select target branches");
-        if (!await confirmDialog(`Copy assignments to ${copyTargets.size} branches?`)) return;
+        if (copyTargets.size === 0) return notify("Choose at least one branch to copy to.");
+        if (!await confirmDialog(`Copy exams for each class to ${copyTargets.size} branch${copyTargets.size !== 1 ? "es" : ""}?`)) return;
 
         setCopying(true);
         try {
@@ -376,11 +369,11 @@ const ClassTestAssignment: React.FC = () => {
                     academic_year: selectedYear
                 });
             }
-            notify("Copy successful");
+            notify.success("Copied to the other branches");
             setIsCopyDropdownOpen(false);
             setCopyTargets(new Set());
         } catch (e: any) {
-            notify("Copy failed: " + e.message);
+            notify.error("Could not copy: " + e.message);
         } finally {
             setCopying(false);
         }
@@ -388,174 +381,159 @@ const ClassTestAssignment: React.FC = () => {
 
     if (isAllBranchesMode) {
         return (
-            <div className="p-6">
-                <Alert tone="warning" title={'Cannot create tests in "All Branches" mode.'} className="mb-6">
-                    Please select a specific branch from the header to create or modify assignments.
+            <div className="max-w-2xl">
+                <SetupIntro title="Exams for each class" />
+                <Alert tone="warning" title="Choose one branch first">
+                    You are looking at all branches. Choose one branch at the top of the screen to add exams to its classes.
                 </Alert>
             </div>
         );
     }
 
+    // How many boxes or order numbers differ from what is saved (same test as handleSave)
+    let changeCount = 0;
+    assignmentMap.forEach((val, key) => {
+        const initial = initialAssignmentMap.get(key);
+        if (!initial) { if (val.status) changeCount++; }
+        else if (initial.status !== val.status || initial.test_order !== val.test_order) changeCount++;
+    });
+
+    const copyGroups: Record<string, CopyTarget[]> = {};
+    Object.keys(branchesByLocation).forEach(loc => {
+        copyGroups[loc] = branchesByLocation[loc].map(b => ({ key: `${b.name}|${b.location_name}`, label: b.name }));
+    });
+
+    const isOn = (classId: number, testId: number) => !!assignmentMap.get(`${classId}-${testId}`)?.status;
+    const allInColumn = (testId: number) => classes.length > 0 && classes.every(c => isOn(c.id, testId));
+    const allInRow = (classId: number) => testTypes.length > 0 && testTypes.every(t => isOn(classId, t.id));
+    const allBtn = (on: boolean) => `h-9 min-w-[44px] px-2 rounded-md text-xs font-medium ${on ? 'bg-brand-600 text-white' : 'bg-brand-50 text-brand-700 hover:bg-brand-100'}`;
+
     return (
         <div>
-            <PageHeader title="Assign Tests to Classes" className="mb-3" />
-            <div className="card p-4">
+            <SetupIntro
+                title="Exams for each class"
+                context={[selectedYear ? `Year ${selectedYear}` : 'Loading year…', selectedBranch]}
+                action={(
+                    <button type="button" onClick={() => setIsCopyDropdownOpen(true)} className="btn-secondary">
+                        <Copy className="w-4 h-4" /> Copy to other branches
+                    </button>
+                )}
+            >
+                Tick the exams each class writes. The small number next to a tick is the exam's position for that class (1 = first).
+            </SetupIntro>
 
-            {/* Filters */}
-            <div className="flex flex-wrap gap-4 mb-4">
-                <div>
-                    <label className="label">Academic Year</label>
-                    <div className="input bg-slate-50 min-w-[150px] text-slate-700">
-                        {selectedYear || "Loading..."}
-                    </div>
-                </div>
-                <div>
-                    <label className="label">Branch</label>
-                    <div className="input bg-slate-50 min-w-[200px] text-slate-700">
-                        {selectedBranch || "Loading..."}
-                    </div>
-                </div>
-            </div>
+            {loading ? (
+                <div className="card"><LoadingState label="Loading exams…" /></div>
+            ) : classes.length === 0 ? (
+                <div className="card"><EmptyState compact title="Nothing to show" description="No classes or exam names were found for this year and branch." /></div>
+            ) : (
+                <GridCard>
+                    <table className="border-separate border-spacing-0 text-sm">
+                        <thead>
+                            <tr>
+                                <th className="sticky left-0 top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-3 py-2 text-left min-w-[90px]">Class</th>
+                                {testTypes.map(t => (
+                                    <th key={t.id} className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 px-2 py-2 text-center min-w-[104px]">
+                                        <div className="flex flex-col items-center gap-1">
+                                            <span className="font-semibold text-slate-800 leading-tight">{t.name}</span>
+                                            <button
+                                                type="button"
+                                                className={allBtn(allInColumn(t.id))}
+                                                aria-label={`Tick or untick ${t.name} for all classes`}
+                                                onClick={() => toggleColumn(t.id)}
+                                            >
+                                                All
+                                            </button>
+                                        </div>
+                                    </th>
+                                ))}
+                                <th className="sticky top-0 z-10 bg-slate-50 border-b border-l border-slate-200 px-2 py-2 text-center min-w-[72px]">Every exam</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {classes.map(cls => (
+                                <tr key={cls.id} className="hover:bg-slate-50/60">
+                                    <td className="sticky left-0 z-10 bg-white border-b border-r border-slate-100 px-3 py-1 font-semibold text-slate-900 whitespace-nowrap">{cls.name}</td>
+                                    {testTypes.map(t => {
+                                        const key = `${cls.id}-${t.id}`;
+                                        const entry = assignmentMap.get(key);
+                                        const isChecked = entry?.status || false;
+                                        const order = entry?.test_order;
 
-            {/* Matrix */}
-            <div className="border border-slate-200 rounded-lg overflow-x-auto mb-4">
-                <table className="w-full text-sm text-left collapse-borders">
-                    <thead className="bg-slate-50 text-slate-600">
-                        <tr>
-                            <th className="p-3 border-r border-slate-200 sticky left-0 z-10 bg-slate-50">Class</th>
-                            {testTypes.map(t => (
-                                <th key={t.id} className="p-3 text-center border-r border-slate-200 min-w-[100px]">
-                                    <div>{t.name}</div>
-                                    <input
-                                        type="checkbox"
-                                        className="mt-1 w-3 h-3 accent-brand-400 cursor-pointer"
-                                        title={`Assign ${t.name} to all classes`}
-                                        onClick={(e) => { e.stopPropagation(); toggleColumn(t.id); }}
-                                    />
-                                </th>
-                            ))}
-                            <th className="p-3 text-center border-r border-slate-200 min-w-[50px] bg-slate-50">
-                                All
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {classes.map(cls => (
-                            <tr key={cls.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                <td className="p-3 font-semibold text-slate-800 bg-slate-50 sticky left-0 border-r">{cls.name}</td>
-                                {testTypes.map(t => {
-                                    const key = `${cls.id}-${t.id}`;
-                                    const entry = assignmentMap.get(key);
-                                    const isChecked = entry?.status || false;
-                                    const order = entry?.test_order;
-
-                                    return (
-                                        <td key={t.id} className="p-2 border-r text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isChecked}
-                                                    onChange={e => handleCheck(cls.id, t.id, e.target.checked)}
-                                                    className="w-4 h-4 accent-brand-600 cursor-pointer"
-                                                />
-                                                {isChecked && (
-                                                    <div className="flex items-center">
-                                                        <span className="text-slate-500 text-xs mr-1">(</span>
+                                        return (
+                                            <td key={t.id} className="border-b border-slate-100 p-0.5 text-center">
+                                                <div className="flex items-center justify-center gap-0.5">
+                                                    <GridCheck
+                                                        checked={isChecked}
+                                                        onChange={checked => handleCheck(cls.id, t.id, checked)}
+                                                        label={`${t.name} for class ${cls.name}`}
+                                                    />
+                                                    {isChecked && (
                                                         <input
                                                             type="number"
+                                                            inputMode="numeric"
+                                                            aria-label={`Position of ${t.name} for class ${cls.name}`}
                                                             value={order || ''}
                                                             onChange={e => handleOrderChange(cls.id, t.id, parseInt(e.target.value) || 0)}
-                                                            className="input py-1 px-2 w-8 text-center no-spinner text-xs"
+                                                            className="input h-9 w-11 px-1 py-1 text-center no-spinner"
                                                         />
-                                                        <span className="text-slate-500 text-xs ml-1">)</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                    );
-                                })}
-                                {/* Row Check All */}
-                                <td className="p-2 border-r text-center">
-                                    <input
-                                        type="checkbox"
-                                        className="w-4 h-4 accent-brand-600 cursor-pointer"
-                                        title={`Assign all tests to ${cls.name}`}
-                                        onClick={(e) => { e.stopPropagation(); toggleRow(cls.id); }}
-                                    />
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                {loading && <LoadingState />}
-                {!loading && classes.length === 0 && <EmptyState compact title="No data" description="Please verify Academic Year and Branch selection." />}
-            </div>
-
-            <div className="flex flex-wrap gap-3 justify-between items-center">
-                {/* Copy Button */}
-                <div className="relative" ref={copyDropdownRef}>
-                    <button
-                        onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
-                        className="btn-primary"
-                    >
-                        Copy to Branches ▼
-                    </button>
-                    {isCopyDropdownOpen && (
-                        <div className="card shadow-pop absolute left-full top-0 ml-2 w-72 z-20 max-h-80 overflow-y-auto">
-                            <div className="p-2 border-b border-slate-100 text-sm font-semibold text-slate-700 bg-slate-50">Select Target Branches</div>
-                            {Object.keys(branchesByLocation).map(loc => (
-                                <div key={loc}>
-                                    <div className="bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 uppercase">{loc}</div>
-                                    {branchesByLocation[loc].map(b => {
-                                        const compositeKey = `${b.name}|${b.location_name}`;
-                                        return (
-                                            <label key={b.id} className="flex items-center gap-2 px-3 py-2 hover:bg-brand-50 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={copyTargets.has(compositeKey)}
-                                                    onChange={() => {
-                                                        const s = new Set(copyTargets);
-                                                        if (s.has(compositeKey)) s.delete(compositeKey);
-                                                        else s.add(compositeKey);
-                                                        setCopyTargets(s);
-                                                    }}
-                                                />
-                                                <span className="text-sm text-slate-700">{b.name}</span>
-                                            </label>
+                                                    )}
+                                                </div>
+                                            </td>
                                         );
                                     })}
-                                </div>
+                                    <td className="border-b border-l border-slate-100 p-1 text-center">
+                                        <button
+                                            type="button"
+                                            className={allBtn(allInRow(cls.id))}
+                                            aria-label={`Tick or untick every exam for class ${cls.name}`}
+                                            onClick={() => toggleRow(cls.id)}
+                                        >
+                                            All
+                                        </button>
+                                    </td>
+                                </tr>
                             ))}
-                            <div className="p-2 border-t border-slate-100 flex justify-end">
-                                <button
-                                    onClick={handleCopy}
-                                    disabled={copying || copyTargets.size === 0}
-                                    className="btn-success btn-sm"
-                                >
-                                    {copying ? 'Copying...' : 'Confirm'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-                <div className="flex gap-2 justify-end">
-                    <button
-                        onClick={() => fetchMatrix()}
-                        disabled={saving}
-                        className="btn-secondary"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="btn-primary"
-                    >
-                        {saving ? 'Saving...' : 'Save Test'}
-                    </button>
-                </div>
-            </div>
-            </div>
+                        </tbody>
+                    </table>
+                </GridCard>
+            )}
+
+            <ActionBar note={changeCount > 0 ? `${changeCount} change${changeCount !== 1 ? 's' : ''} not saved yet` : 'No changes yet. Tick or untick boxes above.'}>
+                <button
+                    type="button"
+                    onClick={() => fetchMatrix()}
+                    disabled={saving || changeCount === 0}
+                    className="btn-secondary btn-lg"
+                >
+                    Undo changes
+                </button>
+                <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving || changeCount === 0}
+                    className="btn-primary btn-lg"
+                >
+                    {saving ? 'Saving…' : `Save changes (${changeCount})`}
+                </button>
+            </ActionBar>
+
+            <CopyToBranchesSheet
+                open={isCopyDropdownOpen}
+                onClose={() => setIsCopyDropdownOpen(false)}
+                what="exams for each class"
+                groups={copyGroups}
+                selected={copyTargets}
+                onToggle={key => {
+                    const next = new Set(copyTargets);
+                    if (next.has(key)) next.delete(key);
+                    else next.add(key);
+                    setCopyTargets(next);
+                }}
+                onCopy={handleCopy}
+                copying={copying}
+                note={changeCount > 0 ? <span className="text-amber-700">You have changes that are not saved. Save them first, or they will not be copied.</span> : undefined}
+            />
         </div>
     );
 };

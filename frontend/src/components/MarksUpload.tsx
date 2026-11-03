@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import api from "../api";
-import { Upload, FileDown } from "lucide-react";
+import { Upload, FileDown, CheckCircle2 } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { notify } from './ui/feedback';
-import { PageHeader, Alert } from './ui';
+import { Alert, ActionBar, Field, Steps } from './ui';
+
+const STEP_TITLES = ['Choose class, exam and subject', 'Get the Excel sheet', 'Upload the filled sheet'];
 
 interface MarksUploadProps { }
 
@@ -32,6 +34,9 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
+    // UI only
+    const [step, setStep] = useState<0 | 1 | 2>(0);
+    const [fileName, setFileName] = useState("");
 
     // --- Init ---
     useEffect(() => {
@@ -115,7 +120,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
             })
             .catch(err => {
                 console.error(err);
-                setMessage({ type: 'error', text: "Failed to load class configuration." });
+                setMessage({ type: 'error', text: "Could not load the students for this subject. Please try again." });
             })
             .finally(() => setLoading(false));
 
@@ -125,7 +130,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
     // --- Template Download ---
     const handleDownloadTemplate = () => {
         if (students.length === 0) {
-            setMessage({ type: 'error', text: "No students found to generate template." });
+            setMessage({ type: 'error', text: "No students found, so there is no sheet to download." });
             return;
         }
 
@@ -163,7 +168,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
         if (!file) return;
 
         if (!activeClassTestId) {
-            setMessage({ type: 'error', text: "System Error: Missing active class test ID." });
+            setMessage({ type: 'error', text: "This exam is not set up for this class yet. Go back and choose again." });
             return;
         }
 
@@ -208,11 +213,11 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
                         } else {
                             const pVal = parseFloat(sVal);
                             if (isNaN(pVal)) {
-                                errors.push(`Row ${i + 1}: Invalid mark '${rawMark}' for ${studentExists.name}`);
+                                errors.push(`Row ${i + 1}: '${rawMark}' is not a mark (${studentExists.name})`);
                                 continue;
                             }
                             if (pVal < 0 || pVal > subjectTotalMarks) {
-                                errors.push(`Row ${i + 1}: Mark ${pVal} exceeds max ${subjectTotalMarks} for ${studentExists.name}`);
+                                errors.push(`Row ${i + 1}: ${pVal} must be between 0 and ${subjectTotalMarks} (${studentExists.name})`);
                                 continue;
                             }
                             val = pVal;
@@ -226,13 +231,13 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
                 }
 
                 if (errors.length > 0) {
-                    notify("Issues found in Excel:\n" + errors.slice(0, 10).join("\n"));
+                    notify.error("Nothing was saved. Fix these rows in the sheet and upload again:\n" + errors.slice(0, 10).join("\n"));
                     setSaving(false);
                     return;
                 }
 
                 if (pendingUpdates.length === 0) {
-                    setMessage({ type: 'error', text: "No valid marks found in file." });
+                    setMessage({ type: 'error', text: "No marks found in the sheet. Type marks in the last column and try again." });
                     setSaving(false);
                     return;
                 }
@@ -249,141 +254,200 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
 
                 api.post(`/marks/entry/subject`, payload)
                     .then(() => {
-                        setMessage({ type: 'success', text: `Successfully saved marks for ${pendingUpdates.length} students!` });
+                        setMessage({ type: 'success', text: `Marks saved for ${pendingUpdates.length} student${pendingUpdates.length !== 1 ? 's' : ''}.` });
                     })
                     .catch(err => {
                         console.error(err);
-                        setMessage({ type: 'error', text: err.response?.data?.error || "Failed to save marks" });
+                        setMessage({ type: 'error', text: err.response?.data?.error || "Could not save the marks. Please try again." });
                     })
                     .finally(() => setSaving(false));
 
             } catch (err) {
                 console.error(err);
-                setMessage({ type: 'error', text: "Failed to parse Excel file." });
+                setMessage({ type: 'error', text: "Could not read this file. Make sure it is the Excel sheet you downloaded here." });
                 setSaving(false);
             }
         };
         reader.readAsBinaryString(file);
     };
 
-    return (
-        <div>
-            <PageHeader
-                title="Import Subject Marks"
-                icon={<Upload className="w-6 h-6" />}
-            />
+    // ---------------------------------------------------------------- UI only
+    const className = classes.find(c => c.id == selectedClass)?.class_name;
+    const subjectName = subjects.find(s => s.id == selectedSubjectId)?.subject_name;
+    const testName = tests.find(t => t.test_id == selectedTestId)?.test_name;
+    const chosen = !!(selectedClass && selectedTestId && selectedSubjectId);
+    const what = `${subjectName || 'Subject'} · ${testName || 'Exam'} · Class ${className || ''}`;
 
-            {/* Instructions Box */}
-            <Alert tone="warning" title="Important!!" className="mb-6">
-                <p className="mb-1 font-medium">Note :Please read the following instructions:</p>
-                <ul className="list-decimal pl-5 space-y-1">
-                    <li>Please don't make any changes in given template.</li>
-                    <li>Only 80 records are accepted in the list at a time.</li>
-                    <li>The data should be in valid format to upload successfully.</li>
-                    <li>For Ispresent column enter score for Absent  use 'AB' in Marks column</li>
-                    <li>In mark column you can enter mark, grade and absent remark.</li>
-                </ul>
-            </Alert>
+    const fileInput = (
+        <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            accept=".xlsx, .xls"
+            onChange={e => { setFileName(e.target.files?.[0]?.name || ''); handleFileUpload(e); }}
+        />
+    );
 
-            <div className="card p-4 mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    {/* Class */}
-                    <div>
-                        <label className="label">Select Class <span className="text-red-500">*</span></label>
-                        <select
-                            value={selectedClass}
-                            onChange={e => setSelectedClass(e.target.value)}
-                            className="input"
-                        >
-                            <option value="">Select Class</option>
-                            {classes.map(c => <option key={c.id} value={c.id}>{c.class_name}</option>)}
-                        </select>
-                    </div>
+    const summaryCard = (
+        <div className="card p-4 mb-4 flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+                <p className="font-semibold text-slate-900 break-words">{what}</p>
+                <p className="text-sm text-slate-600">
+                    {loading ? 'Loading students…' : `${students.length} student${students.length !== 1 ? 's' : ''} · full marks ${subjectTotalMarks}`}
+                </p>
+            </div>
+            <button type="button" className="btn-secondary btn-sm flex-shrink-0" onClick={() => { setMessage(null); setStep(0); }}>Change</button>
+        </div>
+    );
 
-                    {/* Test */}
-                    <div>
-                        <label className="label">Select Schedule Test <span className="text-red-500">*</span></label>
-                        <select
-                            value={selectedTestId}
-                            onChange={e => setSelectedTestId(e.target.value)}
-                            className="input"
-                        >
-                            <option value="">Select Test</option>
-                            {tests.map(t => <option key={t.test_id} value={t.test_id}>{t.test_name}</option>)}
-                        </select>
-                    </div>
-
-                    {/* Subject */}
-                    <div>
-                        <label className="label">Select Subject <span className="text-red-500">*</span></label>
-                        <select
-                            value={selectedSubjectId}
-                            onChange={e => setSelectedSubjectId(e.target.value)}
-                            className="input"
-                        >
-                            <option value="">Select Subject</option>
-                            {subjects.map(s => <option key={s.id} value={s.id}>{s.subject_name}</option>)}
-                        </select>
-                    </div>
-
-
-                </div>
-
-                {/* Upload Section */}
-                <div className="flex flex-col md:flex-row items-end gap-4 border-t border-slate-100 pt-4">
-                    <div className="flex-1 w-full">
-                        <label className="label">Browse for the excel sheet:</label>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                readOnly
-                                placeholder="No file chosen"
+    /* Step 1: choose class, exam and subject */
+    if (step === 0) {
+        return (
+            <div className="max-w-3xl">
+                <Steps steps={STEP_TITLES} current={0} className="mb-4" />
+                <div className="card p-4">
+                    <p className="text-sm text-slate-600 mb-4">Fill marks in an Excel sheet on your computer, then upload it here. First choose what the marks are for.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <Field label="Class" htmlFor="mu-class">
+                            <select
+                                id="mu-class"
+                                value={selectedClass}
+                                onChange={e => setSelectedClass(e.target.value)}
                                 className="input"
-                            />
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                style={{ display: 'none' }}
-                                accept=".xlsx, .xls"
-                                onChange={handleFileUpload}
-                            />
-                            <button
-                                type="button"
-                                onClick={handleTriggerUpload}
-                                className="btn-secondary"
                             >
-                                Choose File
-                            </button>
-                        </div>
+                                <option value="">Choose a class</option>
+                                {classes.map(c => <option key={c.id} value={c.id}>{c.class_name}</option>)}
+                            </select>
+                        </Field>
+
+                        <Field label="Exam" htmlFor="mu-test">
+                            <select
+                                id="mu-test"
+                                value={selectedTestId}
+                                onChange={e => setSelectedTestId(e.target.value)}
+                                className="input"
+                                disabled={!selectedClass}
+                            >
+                                <option value="">{selectedClass ? 'Choose an exam' : 'Choose a class first'}</option>
+                                {tests.map(t => <option key={t.test_id} value={t.test_id}>{t.test_name}</option>)}
+                            </select>
+                        </Field>
+
+                        <Field label="Subject" htmlFor="mu-subject">
+                            <select
+                                id="mu-subject"
+                                value={selectedSubjectId}
+                                onChange={e => setSelectedSubjectId(e.target.value)}
+                                className="input"
+                                disabled={!selectedTestId}
+                            >
+                                <option value="">{selectedTestId ? 'Choose a subject' : 'Choose an exam first'}</option>
+                                {subjects.map(s => <option key={s.id} value={s.id}>{s.subject_name}</option>)}
+                            </select>
+                        </Field>
                     </div>
-
-                    <button
-                        type="button"
-                        onClick={handleTriggerUpload}
-                        disabled={saving || !selectedTestId || !selectedSubjectId}
-                        className="btn-primary"
-                    >
-                        {saving ? "Uploading..." : "Upload Excel"}
+                </div>
+                <ActionBar note={!selectedClass ? 'Choose a class first' : !selectedTestId ? 'Choose an exam' : !selectedSubjectId ? 'Choose a subject' : undefined}>
+                    <button type="button" className="btn-primary btn-lg" disabled={!chosen} onClick={() => { setMessage(null); setStep(1); }}>
+                        Next
                     </button>
+                </ActionBar>
+            </div>
+        );
+    }
 
+    /* Step 2: download the sheet */
+    if (step === 1) {
+        return (
+            <div className="max-w-3xl">
+                <Steps steps={STEP_TITLES} current={1} onJump={i => setStep(i as 0 | 1 | 2)} className="mb-4" />
+                {summaryCard}
+                {message && (
+                    <Alert tone={message.type === 'error' ? 'error' : 'success'} className="mb-4">{message.text}</Alert>
+                )}
+                <div className="card p-4 space-y-4">
+                    <ol className="list-decimal pl-5 space-y-1.5 text-sm text-slate-700">
+                        <li>Download the sheet. It already has the student names.</li>
+                        <li>Type each student's marks in the last column (out of {subjectTotalMarks || 'full marks'}).</li>
+                        <li>For a student who was absent, type <strong>AB</strong>.</li>
+                        <li>Leave the box empty to skip a student.</li>
+                        <li>Do not add, remove or move columns. Up to 80 students at a time.</li>
+                    </ol>
                     <button
                         type="button"
                         onClick={handleDownloadTemplate}
                         disabled={loading || !selectedTestId || students.length === 0}
-                        className="btn-success"
+                        className="btn-success btn-lg w-full sm:w-auto"
                     >
                         <FileDown size={18} />
-                        Download Template
+                        {loading ? 'Loading students…' : 'Download the sheet'}
                     </button>
+                    {!loading && students.length === 0 && (
+                        <p className="text-sm text-slate-500">No students found for this class, so there is no sheet to download.</p>
+                    )}
                 </div>
+                <ActionBar note="Already filled the sheet? Go to the next step.">
+                    <button type="button" className="btn-secondary btn-lg" onClick={() => setStep(0)}>Back</button>
+                    <button type="button" className="btn-primary btn-lg" onClick={() => { setMessage(null); setStep(2); }}>
+                        Next: upload
+                    </button>
+                </ActionBar>
             </div>
+        );
+    }
 
-            {/* Message */}
-            {message && (
-                <Alert tone={message.type === 'error' ? 'error' : 'success'} className="mb-4">
-                    {message.text}
-                </Alert>
+    /* Step 3: upload the filled sheet (picking the file saves the marks, as before) */
+    const done = message?.type === 'success';
+    return (
+        <div className="max-w-3xl">
+            <Steps steps={STEP_TITLES} current={2} onJump={i => setStep(i as 0 | 1 | 2)} className="mb-4" />
+            {summaryCard}
+            {fileInput}
+
+            {done ? (
+                <div className="card">
+                    <div className="card-body flex flex-col items-center text-center py-8">
+                        <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3">
+                            <CheckCircle2 className="w-9 h-9" />
+                        </div>
+                        <p className="text-xl font-semibold text-slate-900">Marks saved</p>
+                        <p className="mt-1 text-slate-600">{message?.text}</p>
+                        <p className="text-sm text-slate-500 mt-1 break-words">{what}</p>
+                    </div>
+                </div>
+            ) : (
+                <div className="card p-4 space-y-3">
+                    <p className="text-sm text-slate-700">Choose the Excel sheet you filled. The marks are saved as soon as you pick it.</p>
+                    <button
+                        type="button"
+                        onClick={handleTriggerUpload}
+                        disabled={saving || !selectedTestId || !selectedSubjectId}
+                        className="btn-primary btn-lg w-full sm:w-auto"
+                    >
+                        <Upload size={18} />
+                        {saving ? "Uploading…" : "Choose sheet and upload"}
+                    </button>
+                    {fileName && <p className="text-sm text-slate-500 break-all">File: {fileName}</p>}
+                    {message && (
+                        <Alert tone={message.type === 'error' ? 'error' : 'success'}>{message.text}</Alert>
+                    )}
+                </div>
             )}
+
+            <ActionBar>
+                {done ? (
+                    <>
+                        <button type="button" className="btn-secondary btn-lg" onClick={() => { setMessage(null); setFileName(''); }}>
+                            Upload again
+                        </button>
+                        <button type="button" className="btn-primary btn-lg" onClick={() => { setMessage(null); setFileName(''); setSelectedSubjectId(''); setStep(0); }}>
+                            Upload another subject
+                        </button>
+                    </>
+                ) : (
+                    <button type="button" className="btn-secondary btn-lg" onClick={() => setStep(1)}>Back</button>
+                )}
+            </ActionBar>
         </div>
     );
 };

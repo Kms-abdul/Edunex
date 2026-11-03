@@ -3,7 +3,10 @@ import api from "../api";
 import { Copy, Save } from "lucide-react";
 import CopySubjectTestModal from "./CopySubjectTestModal";
 import { notify } from './ui/feedback';
-import { PageHeader, LoadingState, EmptyState } from './ui';
+import { LoadingState, EmptyState, ActionBar, Field, Steps } from './ui';
+import { SetupIntro, Choice } from './exam-setup/shared';
+
+const STEP_TITLES = ['Choose class and exam', 'Choose subjects and marks'];
 
 interface SubjectRow {
     subject_id: number;
@@ -30,8 +33,8 @@ export default function AssignSubjectTests() {
     });
 
     // Dropdown Lists
-    const [academicYears, setAcademicYears] = useState<DropdownItem[]>([]);
-    const [branches, setBranches] = useState<DropdownItem[]>([]);
+    const [, setAcademicYears] = useState<DropdownItem[]>([]);
+    const [, setBranches] = useState<DropdownItem[]>([]);
     const [classes, setClasses] = useState<DropdownItem[]>([]);
     const [tests, setTests] = useState<DropdownItem[]>([]);
 
@@ -43,6 +46,7 @@ export default function AssignSubjectTests() {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
+    const [step, setStep] = useState<0 | 1>(0);
 
     /* ---------------- INIT ---------------- */
     useEffect(() => {
@@ -120,7 +124,7 @@ export default function AssignSubjectTests() {
             setTestMaxMarks(res.data.test_max_marks || 0);
         } catch (err: any) {
             console.error(err);
-            notify(err.response?.data?.error || "Failed to load subjects");
+            notify.error(err.response?.data?.error || "Could not load the subjects. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -129,7 +133,7 @@ export default function AssignSubjectTests() {
     const handleSave = async () => {
         // Validation handled by backend regarding if class/branch/test selected
         if (!filters.academic_year_id || !filters.branch_id || !filters.class_id || !filters.test_id) {
-            notify("Please select all filters first.");
+            notify("Choose a class and an exam first.");
             return;
         }
 
@@ -138,13 +142,13 @@ export default function AssignSubjectTests() {
         const totalMarks = assignedSubjects.reduce((sum, s) => sum + (s.max_marks || 0), 0);
 
         if (totalMarks > testMaxMarks) {
-            notify(`Total Subject Marks (${totalMarks}) cannot exceed Test Max Marks (${testMaxMarks})`);
+            notify(`The total of subject marks (${totalMarks}) cannot be more than the exam's full marks (${testMaxMarks}).`);
             return;
         }
 
         const orders = assignedSubjects.map(s => s.subject_order).filter(o => o !== null);
         if (new Set(orders).size !== orders.length) {
-            notify("Subject Orders must be unique");
+            notify("Two subjects have the same position. Give each subject a different number.");
             return;
         }
 
@@ -161,14 +165,14 @@ export default function AssignSubjectTests() {
 
         try {
             const res = await api.post("/class-test-subjects/", payload);
-            notify("Assignments saved successfully");
+            notify.success("Subjects for this exam saved");
 
             // If backend created a new ID, update state
             if (res.data.class_test_id) {
                 setClassTestId(res.data.class_test_id);
             }
         } catch (err: any) {
-            notify(err.response?.data?.error || "Save failed");
+            notify.error(err.response?.data?.error || "Could not save. Please try again.");
         } finally {
             setSaving(false);
         }
@@ -197,180 +201,192 @@ export default function AssignSubjectTests() {
     };
 
     /* ---------------- RENDER ---------------- */
-    return (
-        <div className="min-h-full">
-            {/* HEADER */}
-            <PageHeader
-                title="Assign Subjects to Test"
-                actions={classTestId ? (
-                    <button
-                        onClick={() => setIsCopyModalOpen(true)}
-                        className="btn-primary"
-                    >
-                        <Copy size={16} /> <span>Copy Structure</span>
+    const total = calculateTotal();
+    const overLimit = total > testMaxMarks;
+    const assignedCount = subjects.filter(s => s.assigned).length;
+    const className = classes.find(c => String(c.id) === String(filters.class_id))?.name;
+    const testName = tests.find(t => String(t.id) === String(filters.test_id))?.name;
+    const ready = !!(filters.class_id && filters.test_id);
+
+    const intro = (
+        <SetupIntro
+            title="Subjects in each exam"
+            context={[filters.academic_year_id ? `Year ${filters.academic_year_id}` : null, filters.branch_id || null]}
+        >
+            Choose the subjects for one exam in one class, with the full marks for each subject.
+        </SetupIntro>
+    );
+
+    /* Step 1: choose class and exam */
+    if (step === 0) {
+        return (
+            <div className="min-h-full max-w-3xl">
+                {intro}
+                <Steps steps={STEP_TITLES} current={0} className="mb-4" />
+                <div className="card p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Class" htmlFor="ast-class">
+                            <select
+                                id="ast-class"
+                                className="input"
+                                value={filters.class_id}
+                                onChange={e => setFilters({ ...filters, class_id: e.target.value, test_id: "" })}
+                            >
+                                <option value="">Choose a class</option>
+                                {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                        </Field>
+
+                        <Field
+                            label="Exam"
+                            htmlFor="ast-test"
+                            hint={filters.class_id && tests.length === 0 ? 'This class has no exams yet. Add one in "Add an exam to classes".' : undefined}
+                        >
+                            <select
+                                id="ast-test"
+                                className="input"
+                                value={filters.test_id}
+                                disabled={!filters.class_id}
+                                onChange={e => setFilters({ ...filters, test_id: e.target.value })}
+                            >
+                                <option value="">{filters.class_id ? 'Choose an exam' : 'Choose a class first'}</option>
+                                {tests.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                            </select>
+                        </Field>
+                    </div>
+                </div>
+                <ActionBar note={!filters.class_id ? 'Choose a class first' : !filters.test_id ? 'Choose an exam' : undefined}>
+                    <button type="button" className="btn-primary btn-lg" disabled={!ready} onClick={() => setStep(1)}>
+                        Show subjects
                     </button>
-                ) : undefined}
-            />
-            <div className="card p-6">
+                </ActionBar>
+            </div>
+        );
+    }
 
-            {/* FILTERS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
-                {/* Academic Year */}
-                <div>
-                    <label className="label">Academic Year</label>
-                    <select
-                        className="input"
-                        value={filters.academic_year_id}
-                        disabled
-                        onChange={e => setFilters({ ...filters, academic_year_id: e.target.value })}
-                    >
-                        <option value="">Select Year</option>
-                        {academicYears.map(y => <option key={y.id} value={y.name}>{y.name}</option>)}
-                    </select>
-                </div>
+    /* Step 2: tick subjects and enter marks */
+    return (
+        <div className="min-h-full max-w-3xl">
+            {intro}
+            <Steps steps={STEP_TITLES} current={1} onJump={() => setStep(0)} className="mb-4" />
 
-                {/* Branch */}
-                <div>
-                    <label className="label">Branch</label>
-                    <select
-                        className="input"
-                        value={filters.branch_id}
-                        disabled
-                        onChange={e => setFilters({ ...filters, branch_id: e.target.value })}
-                    >
-                        <option value="">Select Branch</option>
-                        {branches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
-                    </select>
+            <div className="card p-4 mb-4 flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-slate-900 break-words">{testName || 'Exam'} · Class {className || ''}</p>
+                    <p className="text-sm text-slate-600">Full marks for this exam: {testMaxMarks}</p>
                 </div>
-
-                {/* Class */}
-                <div>
-                    <label className="label">Class</label>
-                    <select
-                        className="input"
-                        value={filters.class_id}
-                        onChange={e => setFilters({ ...filters, class_id: e.target.value })}
-                    >
-                        <option value="">Select Class</option>
-                        {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                </div>
-
-                {/* Test */}
-                <div>
-                    <label className="label">Test</label>
-                    <select
-                        className="input"
-                        value={filters.test_id}
-                        onChange={e => setFilters({ ...filters, test_id: e.target.value })}
-                    >
-                        <option value="">Select Test</option>
-                        {tests.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </select>
-                </div>
-
-                {/* Subject Type */}
-                <div>
-                    <label className="label">Subject Type</label>
-                    <select
-                        className="input"
-                        value={filters.subject_type}
-                        onChange={e => setFilters({ ...filters, subject_type: e.target.value })}
-                    >
-                        <option value="">All Types</option>
-                        <option value="Academic">Academic</option>
-                        <option value="Deeniyath">Deeniyath</option>
-                    </select>
-                </div>
+                <button type="button" className="btn-secondary btn-sm flex-shrink-0" onClick={() => setStep(0)}>Change</button>
             </div>
 
-            {/* MAIN CONTENT */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                <div className="flex-1">
+                    <Choice
+                        label="Show subjects"
+                        value={filters.subject_type as '' | 'Academic' | 'Deeniyath'}
+                        onChange={v => setFilters({ ...filters, subject_type: v })}
+                        options={[{ value: '', label: 'All subjects' }, { value: 'Academic', label: 'Academic' }, { value: 'Deeniyath', label: 'Deeniyath' }]}
+                    />
+                </div>
+                {classTestId && (
+                    <button type="button" onClick={() => setIsCopyModalOpen(true)} className="btn-secondary">
+                        <Copy size={16} /> <span>Copy to other exams or classes</span>
+                    </button>
+                )}
+            </div>
+
             {loading ? (
-                <LoadingState label="Loading Matrix..." />
+                <div className="card"><LoadingState label="Loading subjects…" /></div>
             ) : !classTestId ? (
-                <EmptyState title="Select filters to view assignment matrix" />
+                <div className="card">
+                    <EmptyState
+                        title="This exam is not set up for this class"
+                        description='Add this exam to the class first in "Add an exam to classes".'
+                        action={<button type="button" className="btn-secondary" onClick={() => setStep(0)}>Choose another</button>}
+                    />
+                </div>
             ) : (
-                <div>
-                    {/* Validation INFO */}
-                    <div className="flex flex-wrap gap-2 justify-between items-center mb-2 px-2">
-                        <div className="text-sm text-slate-600">
-                            Test Max Marks: <span className="font-bold">{testMaxMarks}</span>
+                <>
+                    {/* Total vs full marks */}
+                    <div className={`card p-4 mb-3 flex items-center justify-between gap-3 ${overLimit ? 'border-red-300 bg-red-50' : ''}`} aria-live="polite">
+                        <div>
+                            <p className="text-sm text-slate-600">{assignedCount} subject{assignedCount !== 1 ? 's' : ''} chosen</p>
+                            <p className={`text-lg font-semibold ${overLimit ? 'text-red-700' : 'text-slate-900'}`}>
+                                Total {total} of {testMaxMarks} marks
+                            </p>
                         </div>
-                        <div className={`text-sm ${calculateTotal() > testMaxMarks ? 'text-red-600 font-bold' : 'text-emerald-600'}`}>
-                            Total Assigned: {calculateTotal()}
-                        </div>
+                        {overLimit
+                            ? <span className="badge-danger">Too many marks</span>
+                            : <span className="badge-success">OK</span>}
                     </div>
 
-                    {/* TABLE */}
-                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 text-slate-600">
-                                <tr>
-                                    <th className="px-4 py-3">Subject Name</th>
-                                    <th className="px-4 py-3">Type</th>
-                                    <th className="px-4 py-3 text-center">Assigned</th>
-                                    <th className="px-4 py-3 w-32">Max Marks</th>
-                                    <th className="px-4 py-3 w-32">Order</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {subjects.length === 0 && (
-                                    <tr><td colSpan={5}><EmptyState compact title="No subjects found" /></td></tr>
-                                )}
-                                {subjects.map((s, idx) => (
-                                    <tr key={s.subject_id} className={`hover:bg-slate-50 ${s.assigned ? 'bg-brand-50' : ''}`}>
-                                        <td className="px-4 py-2 font-medium">{s.subject_name}</td>
-                                        <td className="px-4 py-2 text-slate-500">{s.subject_type}</td>
-                                        <td className="px-4 py-2 text-center">
+                    {subjects.length === 0 ? (
+                        <div className="card"><EmptyState compact title="No subjects found" description="Add subjects to this class first." /></div>
+                    ) : (
+                        <ul className="space-y-2">
+                            {subjects.map((s, idx) => (
+                                <li key={s.subject_id} className={`rounded-xl border bg-white ${s.assigned ? 'border-brand-300 ring-1 ring-brand-200' : 'border-slate-200'}`}>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2">
+                                        <label className="flex items-center gap-3 min-h-[44px] flex-1 min-w-[180px] cursor-pointer">
                                             <input
                                                 type="checkbox"
-                                                className="w-5 h-5 accent-brand-600"
+                                                className="w-5 h-5 accent-brand-600 flex-shrink-0"
                                                 checked={s.assigned}
                                                 onChange={(e) => updateSubject(idx, 'assigned', e.target.checked)}
                                             />
-                                        </td>
-                                        <td className="px-4 py-2">
-                                            <input
-                                                type="number"
-                                                className={`input ${!s.assigned ? 'bg-slate-100' : ''}`}
-                                                disabled={!s.assigned}
-                                                value={s.max_marks ?? ''}
-                                                onChange={(e) => updateSubject(idx, 'max_marks', Number(e.target.value))}
-                                            />
-                                        </td>
-                                        <td className="px-4 py-2">
-                                            <input
-                                                type="number"
-                                                className={`input ${!s.assigned ? 'bg-slate-100' : ''}`}
-                                                disabled={!s.assigned}
-                                                value={s.subject_order ?? ''}
-                                                onChange={(e) => updateSubject(idx, 'subject_order', Number(e.target.value))}
-                                            />
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                            <span className="min-w-0">
+                                                <span className="block font-medium text-slate-900">{s.subject_name}</span>
+                                                <span className="block text-xs text-slate-500">{s.subject_type}</span>
+                                            </span>
+                                        </label>
+                                        <div className="flex items-end gap-2 ml-8 sm:ml-0">
+                                            <label className="block">
+                                                <span className="block text-xs text-slate-500 mb-0.5">Full marks</span>
+                                                <input
+                                                    type="number"
+                                                    inputMode="numeric"
+                                                    className={`input w-24 ${!s.assigned ? 'bg-slate-100' : ''}`}
+                                                    disabled={!s.assigned}
+                                                    value={s.max_marks ?? ''}
+                                                    onChange={(e) => updateSubject(idx, 'max_marks', Number(e.target.value))}
+                                                />
+                                            </label>
+                                            <label className="block">
+                                                <span className="block text-xs text-slate-500 mb-0.5">Position</span>
+                                                <input
+                                                    type="number"
+                                                    inputMode="numeric"
+                                                    className={`input w-20 ${!s.assigned ? 'bg-slate-100' : ''}`}
+                                                    disabled={!s.assigned}
+                                                    value={s.subject_order ?? ''}
+                                                    onChange={(e) => updateSubject(idx, 'subject_order', Number(e.target.value))}
+                                                />
+                                            </label>
+                                        </div>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
 
-                    {/* ACTION BAR */}
-                    <div className="mt-6 flex justify-end gap-2">
+                    <ActionBar note={overLimit ? `The total (${total}) is more than the exam's full marks (${testMaxMarks}). Lower some marks.` : undefined}>
                         <button
+                            type="button"
                             onClick={() => loadMatrix()}
                             disabled={saving}
                             className="btn-secondary btn-lg"
                         >
-                            Cancel
+                            Undo changes
                         </button>
                         <button
+                            type="button"
                             onClick={handleSave}
-                            disabled={saving}
+                            disabled={saving || overLimit}
                             className="btn-primary btn-lg"
                         >
-                            <Save size={16} /> <span>{saving ? "Saving..." : "Save Assignments"}</span>
+                            <Save size={16} /> <span>{saving ? "Saving…" : "Save subjects"}</span>
                         </button>
-                    </div>
-                </div>
+                    </ActionBar>
+                </>
             )}
 
             {/* COPY MODAL */}
@@ -383,7 +399,6 @@ export default function AssignSubjectTests() {
                 currentClass={filters.class_id}
                 currentTest={filters.test_id}
             />
-            </div>
         </div>
     );
 }

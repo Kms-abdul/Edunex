@@ -1,7 +1,11 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
+import { Plus, Pencil, Trash2, Copy } from "lucide-react";
 import api from "../api";
 import { notify, confirmDialog } from './ui/feedback';
-import { PageHeader, Alert, EmptyState } from './ui';
+import { Alert, DataList, Field } from './ui';
+import type { Column } from './ui';
+import { SetupIntro, SetupSheet, CopyToBranchesSheet, Choice } from './exam-setup/shared';
+import type { CopyTarget } from './exam-setup/shared';
 
 interface Subject {
     id: number;
@@ -38,21 +42,8 @@ const SubjectMaster: React.FC = () => {
     const [copyTargets, setCopyTargets] = useState<Set<string>>(new Set());
     const [isCopyDropdownOpen, setIsCopyDropdownOpen] = useState(false);
     const [copying, setCopying] = useState(false);
-    const copyDropdownRef = useRef<HTMLDivElement>(null);
-
-    // Close dropdown on outside click
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (copyDropdownRef.current && !copyDropdownRef.current.contains(event.target as Node)) {
-                setIsCopyDropdownOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
-
+    const [formOpen, setFormOpen] = useState(false);
+    const [savingForm, setSavingForm] = useState(false);
     const loadSubjects = async () => {
         try {
             const res = await api.get("/academic/subjects", {
@@ -70,8 +61,8 @@ const SubjectMaster: React.FC = () => {
     };
 
 
-    const addSubject = async () => {
-        if (!name.trim()) return;
+    const addSubject = async (): Promise<boolean> => {
+        if (!name.trim()) return false;
 
         try {
             await api.post("/academic/subjects", {
@@ -83,15 +74,17 @@ const SubjectMaster: React.FC = () => {
             setName("");
             setGroup("Academic"); // Reset to default
             loadSubjects();
+            return true;
         } catch (error: any) {
             console.error("Failed to add subject:", error);
             const errorMsg = error.response?.data?.error || error.message || "Failed to add subject. Please try again.";
             notify(errorMsg);
+            return false;
         }
     };
 
-    const updateSubject = async (id: number) => {
-        if (!editName.trim()) return;
+    const updateSubject = async (id: number): Promise<boolean> => {
+        if (!editName.trim()) return false;
 
         try {
             await api.put(`/academic/subjects/${id}`, {
@@ -100,9 +93,11 @@ const SubjectMaster: React.FC = () => {
             });
             setEditingId(null);
             loadSubjects();
+            return true;
         } catch (error) {
             console.error("Failed to update subject:", error);
-            notify("Failed to update subject. Please try again.");
+            notify("Could not save the subject. Please try again.");
+            return false;
         }
     };
 
@@ -114,12 +109,12 @@ const SubjectMaster: React.FC = () => {
             loadSubjects();
         } catch (error) {
             console.error("Failed to update status:", error);
-            notify("Failed to update status.");
+            notify("Could not change the status. Please try again.");
         }
     };
 
     const deleteSubject = async (id: number) => {
-        if (!await confirmDialog("Are you sure you want to delete this subject?")) return;
+        if (!await confirmDialog("Delete this subject? This cannot be undone. To only hide it, use Turn off instead.")) return;
 
         try {
             await api.delete(`/academic/subjects/${id}`);
@@ -166,11 +161,11 @@ const SubjectMaster: React.FC = () => {
 
     const handleCopySubjects = async () => {
         if (copyTargets.size === 0) {
-            notify("Please select at least one branch to copy to.");
+            notify("Choose at least one branch to copy to.");
             return;
         }
 
-        if (!await confirmDialog(`Are you sure you want to copy subjects to ${copyTargets.size} branches?`)) return;
+        if (!await confirmDialog(`Copy this subject list to ${copyTargets.size} branch${copyTargets.size !== 1 ? "es" : ""}?`)) return;
 
         setCopying(true);
         try {
@@ -179,7 +174,7 @@ const SubjectMaster: React.FC = () => {
                 target_branch_ids: Array.from(copyTargets),
                 academic_year: academicYear
             });
-            notify("Subjects copied successfully!");
+            notify.success("Subjects copied");
             setCopyTargets(new Set());
             setIsCopyDropdownOpen(false);
         } catch (error: any) {
@@ -200,214 +195,167 @@ const SubjectMaster: React.FC = () => {
         branchesByLocation[b.location_name].push(b);
     });
 
+    const openAdd = () => {
+        setEditingId(null);
+        setName("");
+        setGroup("Academic");
+        setFormOpen(true);
+    };
+
+    const openEdit = (s: Subject) => {
+        setEditingId(s.id);
+        setEditName(s.subject_name);
+        setEditGroup(s.subject_type || "Academic");
+        setFormOpen(true);
+    };
+
+    const closeForm = () => {
+        setFormOpen(false);
+        setEditingId(null);
+    };
+
+    const submitForm = async () => {
+        setSavingForm(true);
+        const ok = editingId !== null ? await updateSubject(editingId) : await addSubject();
+        setSavingForm(false);
+        if (ok) {
+            notify.success(editingId !== null ? "Subject saved" : "Subject added");
+            closeForm();
+        }
+    };
+
+    const formName = editingId !== null ? editName : name;
+    const formGroup = editingId !== null ? editGroup : group;
+
+    const copyGroups: Record<string, CopyTarget[]> = {};
+    Object.keys(branchesByLocation).forEach(loc => {
+        copyGroups[loc] = branchesByLocation[loc].map(b => ({ key: String(b.id), label: b.name }));
+    });
+
+    const columns: Column<Subject>[] = [
+        {
+            key: 'subject_name',
+            header: 'Subject',
+            primary: true,
+            render: s => <span className={!s.is_active ? 'text-slate-400' : 'font-medium text-slate-900'}>{s.subject_name}</span>,
+        },
+        {
+            key: 'subject_type',
+            header: 'Group',
+            render: s => (
+                <span className={s.subject_type === 'Deeniyath' ? 'badge-success' : 'badge-brand'}>
+                    {s.subject_type || 'Academic'}
+                </span>
+            ),
+        },
+        {
+            key: 'is_active',
+            header: 'Status',
+            render: s => s.is_active ? <span className="badge-success">In use</span> : <span className="badge-neutral">Turned off</span>,
+        },
+        {
+            key: 'actions',
+            header: '',
+            hideOnMobile: true,
+            align: 'right',
+            render: s => <div className="flex justify-end gap-1.5">{rowActions(s)}</div>,
+        },
+    ];
+
+    function rowActions(s: Subject) {
+        return (
+            <>
+                <button type="button" className="btn-secondary btn-sm" onClick={() => openEdit(s)}>
+                    <Pencil className="w-4 h-4" /> Edit
+                </button>
+                <button type="button" className="btn-ghost btn-sm" onClick={() => toggleStatus(s.id, s.is_active)}>
+                    {s.is_active ? 'Turn off' : 'Turn on'}
+                </button>
+                <button type="button" className="btn-ghost btn-sm text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => deleteSubject(s.id)}>
+                    <Trash2 className="w-4 h-4" /> Delete
+                </button>
+            </>
+        );
+    }
+
     return (
-        <div>
-            <PageHeader
-                title="Subject Master"
-                subtitle={`Scope: ${academicYear}`}
-                actions={isSpecificBranch ? (
-                    <div className="relative" ref={copyDropdownRef}>
-                        <button
-                            className="btn-secondary"
-                            onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
-                        >
-                            <span>Copy to Branches</span>
-                            <span className="text-xs">▼</span>
+        <div className="max-w-4xl">
+            <SetupIntro
+                title="Subject list"
+                context={[`Year ${academicYear}`, isSpecificBranch ? currentBranch : null]}
+                action={isSpecificBranch ? (
+                    <>
+                        <button type="button" className="btn-secondary" onClick={() => setIsCopyDropdownOpen(true)}>
+                            <Copy className="w-4 h-4" /> Copy to other branches
                         </button>
-                        {isCopyDropdownOpen && (
-                            <div className="card shadow-pop absolute top-10 right-0 w-80 z-50 p-2 max-h-96 overflow-y-auto">
-                                <div className="mb-2 text-sm font-semibold text-slate-700 pb-2 border-b border-slate-100">
-                                    Select Target Branches
-                                </div>
-                                {Object.keys(branchesByLocation).length === 0 ? (
-                                    <EmptyState compact title="No other branches available" />
-                                ) : (
-                                    Object.keys(branchesByLocation).map(loc => (
-                                        <div key={loc} className="mb-1">
-                                            <div className="text-sm font-semibold text-slate-900 px-3 py-2 bg-slate-50 border-b border-slate-100">
-                                                {loc}
-                                            </div>
-                                            <div className="py-1">
-                                                {branchesByLocation[loc].map(b => (
-                                                    <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-brand-50 cursor-pointer transition-colors pl-6">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={copyTargets.has(String(b.id))}
-                                                            onChange={() => toggleCopyTarget(String(b.id))}
-                                                            className="w-4 h-4 accent-brand-600 rounded border-slate-300"
-                                                        />
-                                                        <span className="text-sm text-slate-800 select-none font-medium">{b.name}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                                <div className="mt-3 border-t border-slate-100 pt-3 flex justify-end gap-2 sticky bottom-0 bg-white pb-1">
-                                    <button
-                                        className="btn-ghost btn-sm"
-                                        onClick={() => setIsCopyDropdownOpen(false)}
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        className="btn-primary btn-sm"
-                                        onClick={handleCopySubjects}
-                                        disabled={copyTargets.size === 0 || copying}
-                                    >
-                                        {copying ? 'Copying...' : `Copy to ${copyTargets.size} branch${copyTargets.size !== 1 ? 'es' : ''}`}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                        <button type="button" className="btn-primary" onClick={openAdd}>
+                            <Plus className="w-4 h-4" /> Add subject
+                        </button>
+                    </>
                 ) : undefined}
-            />
+            >
+                All the subjects your school teaches. Turn off a subject to hide it without deleting it.
+            </SetupIntro>
 
-            <div className="card p-5">
-            {/* Add Subject */}
-            {!isSpecificBranch ? (
-                <Alert tone="warning" className="mb-6">
-                    Please select a specific branch from the top menu to add subjects.
+            {!isSpecificBranch && (
+                <Alert tone="warning" className="mb-4">
+                    To add subjects, first choose one branch at the top of the screen.
                 </Alert>
-            ) : (
-                <div className="flex flex-wrap gap-3 mb-6 items-end">
-                    <div>
-                        <label className="label">Subject Name</label>
-                        <input
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="input w-64"
-                            placeholder="Enter subject name"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="label">Group</label>
-                        <select
-                            value={group}
-                            onChange={(e) => setGroup(e.target.value as "Academic" | "Deeniyath")}
-                            className="input w-40"
-                        >
-                            <option value="Academic">Academic</option>
-                            <option value="Deeniyath">Deeniyath</option>
-                        </select>
-                    </div>
-
-                    <button
-                        onClick={addSubject}
-                        className="btn-primary"
-                    >
-                        Add Subject
-                    </button>
-                </div>
             )}
 
-            {/* Subject Table */}
-            <div className="overflow-x-auto">
-            <table className="w-full text-sm border border-slate-200">
-                <thead className="bg-slate-50 text-slate-600">
-                    <tr>
-                        <th className="border px-3 py-2 text-left">Subject Name</th>
-                        <th className="border px-3 py-2 text-left">Group</th>
-                        <th className="border px-3 py-2 text-center w-24">Status</th>
-                        <th className="border px-3 py-2 text-left">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {subjects.length === 0 && (
-                        <tr>
-                            <td colSpan={4} className="border px-3 py-2">
-                                <EmptyState compact title="No subjects found" description="Add a subject above to get started." />
-                            </td>
-                        </tr>
-                    )}
-                    {subjects.map((s) => (
-                        <tr key={s.id} className={`border-t ${!s.is_active ? 'bg-slate-50' : ''}`}>
-                            <td className="border px-3 py-2">
-                                {editingId === s.id ? (
-                                    <input
-                                        value={editName}
-                                        onChange={(e) => setEditName(e.target.value)}
-                                        className="input"
-                                    />
-                                ) : (
-                                    <span className={!s.is_active ? 'text-slate-400' : ''}>{s.subject_name}</span>
-                                )}
-                            </td>
+            <DataList
+                columns={columns}
+                rows={subjects}
+                rowKey={s => s.id}
+                emptyTitle="No subjects yet"
+                emptyHint={isSpecificBranch ? 'Tap "Add subject" to add the first one.' : undefined}
+                mobileActions={rowActions}
+            />
 
-                            <td className="border px-3 py-2">
-                                {editingId === s.id ? (
-                                    <select
-                                        value={editGroup}
-                                        onChange={(e) => setEditGroup(e.target.value as "Academic" | "Deeniyath")}
-                                        className="input"
-                                    >
-                                        <option value="Academic">Academic</option>
-                                        <option value="Deeniyath">Deeniyath</option>
-                                    </select>
-                                ) : (
-                                    <span className={s.subject_type === 'Deeniyath' ? 'badge-success' : 'badge-brand'}>
-                                        {s.subject_type || 'Academic'}
-                                    </span>
-                                )}
-                            </td>
+            {/* Add / edit subject */}
+            <SetupSheet
+                open={formOpen}
+                onClose={closeForm}
+                title={editingId !== null ? 'Edit subject' : 'Add subject'}
+                footer={<>
+                    <button type="button" className="btn-secondary" onClick={closeForm}>Cancel</button>
+                    <button type="button" className="btn-primary" onClick={submitForm} disabled={!formName.trim() || savingForm}>
+                        {savingForm ? 'Saving…' : editingId !== null ? 'Save subject' : 'Add subject'}
+                    </button>
+                </>}
+            >
+                <form className="space-y-4" onSubmit={e => { e.preventDefault(); if (formName.trim()) submitForm(); }}>
+                    <Field label="Subject name" htmlFor="subj-name" required error={null}>
+                        <input
+                            id="subj-name"
+                            value={formName}
+                            onChange={e => editingId !== null ? setEditName(e.target.value) : setName(e.target.value)}
+                            className="input"
+                            placeholder="For example: English"
+                            autoFocus
+                        />
+                    </Field>
+                    <Field label="Group" hint="Deeniyath subjects are shown separately on report cards.">
+                        <Choice
+                            label="Group"
+                            value={formGroup}
+                            onChange={v => editingId !== null ? setEditGroup(v) : setGroup(v)}
+                            options={[{ value: 'Academic', label: 'Academic' }, { value: 'Deeniyath', label: 'Deeniyath' }]}
+                        />
+                    </Field>
+                </form>
+            </SetupSheet>
 
-                            {/* Status Toggle */}
-                            <td className="border px-3 py-2 text-center">
-                                <button
-                                    onClick={() => toggleStatus(s.id, s.is_active)}
-                                    className={`relative inline-flex items-center w-10 h-5 px-1 rounded-full transition-colors ${s.is_active ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                                    title={s.is_active ? "Click to Deactivate" : "Click to Activate"}
-                                >
-                                    <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform ${s.is_active ? 'translate-x-5' : 'translate-x-0'
-                                        }`} />
-                                </button>
-                            </td>
-
-                            <td className="border px-3 py-2 flex gap-3">
-                                {editingId === s.id ? (
-                                    <>
-                                        <button
-                                            className="font-medium text-emerald-600 hover:text-emerald-800"
-                                            onClick={() => updateSubject(s.id)}
-                                        >
-                                            Save
-                                        </button>
-                                        <button
-                                            className="font-medium text-slate-500 hover:text-slate-700"
-                                            onClick={() => setEditingId(null)}
-                                        >
-                                            Cancel
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <button
-                                            className="font-medium text-brand-600 hover:text-brand-800"
-                                            onClick={() => {
-                                                setEditingId(s.id);
-                                                setEditName(s.subject_name);
-                                                setEditGroup(s.subject_type || "Academic");
-                                            }}
-                                        >
-                                            Edit
-                                        </button>
-                                        <button
-                                            className="font-medium text-red-600 hover:text-red-800"
-                                            onClick={() => deleteSubject(s.id)}
-                                        >
-                                            Delete
-                                        </button>
-                                    </>
-                                )}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-            </div>
-            </div>
+            <CopyToBranchesSheet
+                open={isCopyDropdownOpen}
+                onClose={() => setIsCopyDropdownOpen(false)}
+                what="subject list"
+                groups={copyGroups}
+                selected={copyTargets}
+                onToggle={toggleCopyTarget}
+                onCopy={handleCopySubjects}
+                copying={copying}
+            />
         </div>
     );
 };

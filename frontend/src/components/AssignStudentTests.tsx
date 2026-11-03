@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import api from "../api";
 import { Save } from "lucide-react";
 import { notify } from './ui/feedback';
-import { PageHeader, LoadingState, EmptyState, ErrorState } from './ui';
+import { LoadingState, EmptyState, ErrorState, ActionBar, Field, Alert } from './ui';
+import { SetupIntro, GridCard, GridCheck } from './exam-setup/shared';
 
 const getNormalizedBranch = (): string => {
     const b = localStorage.getItem('currentBranch') || 'All';
@@ -99,7 +100,7 @@ export default function AssignStudentTests() {
             setAssignments(res.data.assignments);
         } catch (e: any) {
             console.error(e);
-            setLoadError(e.response?.data?.error || "Failed to load data");
+            setLoadError(e.response?.data?.error || "Could not load the students. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -107,7 +108,7 @@ export default function AssignStudentTests() {
 
     const handleSave = async () => {
         if (changes.length === 0) {
-            notify("No changes to save");
+            notify("Nothing has changed yet.");
             return;
         }
         setSaving(true);
@@ -116,11 +117,11 @@ export default function AssignStudentTests() {
                 ...filters,
                 updates: changes
             });
-            notify("Saved successfully!");
+            notify.success("Students in each exam saved");
             fetchMatrix(); // Reload to refresh state and clear changes
         } catch (e: any) {
             console.error(e);
-            notify("Failed to save: " + (e.response?.data?.error || "Unknown error"));
+            notify.error("Could not save: " + (e.response?.data?.error || "Please try again."));
         } finally {
             setSaving(false);
         }
@@ -182,74 +183,62 @@ export default function AssignStudentTests() {
     };
 
     /* ---------------- RENDER ---------------- */
+    const n = changes.length;
+    const allInColumn = (testId: number) => students.length > 0 && students.every(s => isAssigned(s.student_id, testId));
+    const branchLabel = filters.branch_id === 'All Locations' ? 'All branches' : filters.branch_id;
+
     return (
         <div className="min-h-full flex flex-col">
-            <PageHeader title="Assign Test to Students" />
-            <div className="card p-4 flex-1 flex flex-col">
+            <SetupIntro
+                title="Students in each exam"
+                context={[filters.academic_year_id ? `Year ${filters.academic_year_id}` : null, branchLabel]}
+            >
+                Choose a class, then tick the exams each student writes.
+            </SetupIntro>
 
             {/* FILTERS */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <div>
-                    <label className="label">Academic Year</label>
+            <div className="card p-4 mb-4">
+                <Field label="Class" htmlFor="ast-class" className="sm:max-w-xs">
                     <select
-                        className="input"
-                        value={filters.academic_year_id}
-                        disabled
-                        onChange={e => setFilters({ ...filters, academic_year_id: e.target.value })}
-                    >
-                        <option value="">Select Year</option>
-                        {dropdowns.years.map((y: any) => <option key={y.id} value={y.name}>{y.name}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="label">Branch</label>
-                    <select
-                        className="input"
-                        value={filters.branch_id}
-                        disabled
-                        onChange={e => setFilters({ ...filters, branch_id: e.target.value })}
-                    >
-                        <option value="">Select Branch</option>
-                        <option value="All Locations">All Locations</option>
-                        {dropdowns.branches.map((b: any) => <option key={b.id} value={b.branch_name}>{b.branch_name}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="label">Class</label>
-                    <select
+                        id="ast-class"
                         className="input"
                         value={filters.class_id}
                         onChange={e => setFilters({ ...filters, class_id: e.target.value })}
                     >
-                        <option value="">Select Class</option>
+                        <option value="">Choose a class</option>
                         {dropdowns.classes.map((c: any) => <option key={c.id} value={c.id}>{c.class_name}</option>)}
                     </select>
-                </div>
+                </Field>
             </div>
 
             {/* CONTENT */}
-            {loading && <LoadingState label="Loading Data..." />}
-            {loadError && <ErrorState message={loadError} />}
+            {loading && <div className="card"><LoadingState label="Loading students…" /></div>}
+            {loadError && <div className="card"><ErrorState message={loadError} onRetry={fetchMatrix} /></div>}
+
+            {!loading && !loadError && !filters.class_id && (
+                <div className="card"><EmptyState title="Choose a class" description="The students of that class will show here." /></div>
+            )}
 
             {!loading && !loadError && students.length > 0 && (
                 <>
-                    <div className="overflow-x-auto border border-slate-200 rounded-lg flex-1">
-                        <table className="w-full text-sm text-left border-collapse">
-                            <thead className="sticky top-0 bg-slate-50 text-slate-600">
+                    {columns.length === 0 && (
+                        <Alert tone="info" className="mb-3">
+                            This class has no exams yet. Add exams to the class first in "Add an exam to classes".
+                        </Alert>
+                    )}
+                    <GridCard>
+                        <table className="border-separate border-spacing-0 text-sm text-left">
+                            <thead>
                                 <tr>
-                                    <th className="px-3 py-2 border w-12 text-center">S.No</th>
-                                    <th className="px-3 py-2 border">Student Name</th>
-                                    <th className="px-3 py-2 border">Sec</th>
-                                    <th className="px-3 py-2 border w-24">Roll</th>
-                                    <th className="px-3 py-2 border w-24">Adm No</th>
+                                    <th className="sticky left-0 top-0 z-20 bg-slate-50 border-b border-r border-slate-200 px-3 py-2 min-w-[170px]">Student</th>
                                     {columns.map(col => (
-                                        <th key={col.class_test_id} className="px-3 py-2 border text-center min-w-[100px]">
-                                            <div className="flex flex-col items-center">
-                                                <span className="mb-1">{col.test_name}</span>
-                                                <input
-                                                    type="checkbox"
-                                                    title="Select All"
-                                                    onChange={(e) => toggleColumn(col.class_test_id, e.target.checked)}
+                                        <th key={col.class_test_id} className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 px-2 py-2 text-center min-w-[96px]">
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span className="font-semibold text-slate-800 leading-tight">{col.test_name}</span>
+                                                <GridCheck
+                                                    checked={allInColumn(col.class_test_id)}
+                                                    onChange={checked => toggleColumn(col.class_test_id, checked)}
+                                                    label={`${col.test_name} for all students`}
                                                 />
                                             </div>
                                         </th>
@@ -258,19 +247,19 @@ export default function AssignStudentTests() {
                             </thead>
                             <tbody>
                                 {students.map((s, idx) => (
-                                    <tr key={s.student_id} className="hover:bg-slate-50">
-                                        <td className="px-3 py-2 border text-center">{idx + 1}</td>
-                                        <td className="px-3 py-2 border font-medium">{s.name}</td>
-                                        <td className="px-3 py-2 border text-center">{s.section}</td>
-                                        <td className="px-3 py-2 border">{s.roll_number}</td>
-                                        <td className="px-3 py-2 border">{s.admission_no}</td>
+                                    <tr key={s.student_id} className="hover:bg-slate-50/60">
+                                        <td className="sticky left-0 z-10 bg-white border-b border-r border-slate-100 px-3 py-1.5">
+                                            <div className="font-medium text-slate-900 leading-snug">{idx + 1}. {s.name}</div>
+                                            <div className="text-xs text-slate-500">
+                                                {s.section ? `Section ${s.section} · ` : ''}Roll {s.roll_number ?? '—'} · Adm. {s.admission_no}
+                                            </div>
+                                        </td>
                                         {columns.map(col => (
-                                            <td key={col.class_test_id} className="px-3 py-2 border text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    className="w-4 h-4 accent-brand-600"
+                                            <td key={col.class_test_id} className="border-b border-slate-100 p-0.5 text-center">
+                                                <GridCheck
                                                     checked={isAssigned(s.student_id, col.class_test_id)}
-                                                    onChange={e => toggleAssignment(s.student_id, col.class_test_id, e.target.checked)}
+                                                    onChange={checked => toggleAssignment(s.student_id, col.class_test_id, checked)}
+                                                    label={`${col.test_name} for ${s.name}`}
                                                 />
                                             </td>
                                         ))}
@@ -278,32 +267,33 @@ export default function AssignStudentTests() {
                                 ))}
                             </tbody>
                         </table>
-                    </div>
+                    </GridCard>
 
-                    <div className="mt-4 flex justify-end space-x-2">
+                    <ActionBar note={n > 0 ? `${n} change${n !== 1 ? 's' : ''} not saved yet` : 'No changes yet. Tick or untick boxes above.'}>
                         <button
+                            type="button"
                             onClick={() => fetchMatrix()}
-                            disabled={saving || changes.length === 0}
-                            className="btn-secondary"
+                            disabled={saving || n === 0}
+                            className="btn-secondary btn-lg"
                         >
-                            Cancel
+                            Undo changes
                         </button>
                         <button
+                            type="button"
                             onClick={handleSave}
-                            disabled={saving || changes.length === 0}
-                            className="btn-primary"
+                            disabled={saving || n === 0}
+                            className="btn-primary btn-lg"
                         >
                             <Save size={18} />
-                            <span>{saving ? "Saving..." : "Save Assignments"}</span>
+                            <span>{saving ? "Saving…" : `Save changes (${n})`}</span>
                         </button>
-                    </div>
+                    </ActionBar>
                 </>
             )}
 
             {!loading && !loadError && students.length === 0 && filters.class_id && (
-                <EmptyState title="No students found" description="No students found or data not loaded. Check filters." />
+                <div className="card"><EmptyState title="No students found" description="There are no students in this class." /></div>
             )}
-            </div>
         </div>
     );
 }
