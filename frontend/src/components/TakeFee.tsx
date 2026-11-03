@@ -1,97 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { CheckCircle2, ChevronDown, ChevronUp, History, Search } from 'lucide-react';
 import api from '../api';
-import { PrinterIcon } from './icons';
 import FeeReceipt from './FeeReceipt';
 import { Page } from '../App';
 import { notify } from './ui/feedback';
-import { Badge, EmptyState } from './ui';
-
-// Removed monthOrder in favor of Sr based dynamic grouping
-
-const groupInstallments = (items: any[]) => {
-    const installmentFees = items.filter(i => i.installment && i.installment !== "One-Time" && i.installment !== "None");
-    const otherFees = items.filter(i => !i.installment || i.installment === "One-Time" || i.installment === "None");
-
-    const groups: any[] = [];
-
-    const byType: Record<string, any[]> = {};
-    installmentFees.forEach(i => {
-        const type = i.fee_type || "Tuition Fee";
-        if (!byType[type]) byType[type] = [];
-        byType[type].push(i);
-    });
-
-    Object.keys(byType).forEach(type => {
-        const sorted = byType[type].sort((a, b) => (a.sr || 0) - (b.sr || 0));
-        if (sorted.length === 0) return;
-
-        let currentGroup = [sorted[0]];
-
-        for (let i = 1; i < sorted.length; i++) {
-            const prev = currentGroup[currentGroup.length - 1];
-            const curr = sorted[i];
-            const prevSr = prev.sr || 0;
-            const currSr = curr.sr || 0;
-
-            if (prevSr > 0 && currSr > 0 && currSr === prevSr + 1) {
-                currentGroup.push(curr);
-            } else {
-                groups.push(createGroupedItem(type, currentGroup));
-                currentGroup = [curr];
-            }
-        }
-        if (currentGroup.length > 0) {
-            groups.push(createGroupedItem(type, currentGroup));
-        }
-    });
-
-    otherFees.forEach(f => {
-        const paid = parseFloat(f.amount_paid || f.paid || 0);
-        const due = parseFloat(f.due_amount || f.due || 0);
-        const concession = parseFloat(f.concession_amount || f.concession || 0);
-        const gross = parseFloat(f.gross_amount || f.amount || 0) || (paid + due + concession);
-        groups.push({
-            title: f.fee_type === "General" ? "One-Time Fee" : f.fee_type,
-            amount: gross,
-            amount_paid: paid,
-            paid: paid,
-            concession: concession,
-            payable: gross,
-            due_amount: due,
-            due: due,
-            originalItems: [f]
-        });
-    });
-
-    return groups;
-};
-
-const createGroupedItem = (type: string, items: any[]) => {
-    const start = (items[0].installment || items[0].title || "").replace(" Fee", "");
-    const end = (items[items.length - 1].installment || items[items.length - 1].title || "").replace(" Fee", "");
-
-    let title = `${type} - ${start} Fee`;
-    if (items.length > 1) {
-        title = `Payment for ${start} Fee to ${end} Fee`;
-    }
-
-    const totalPaid = items.reduce((sum: number, i: any) => sum + parseFloat(i.amount_paid || i.paid || 0), 0);
-    const totalConcession = items.reduce((sum: number, i: any) => sum + parseFloat(i.concession_amount || i.concession || 0), 0);
-    const totalDue = items.reduce((sum: number, i: any) => sum + parseFloat(i.due_amount || i.due || 0), 0);
-    const totalGross = items.reduce((sum: number, i: any) => sum + parseFloat(i.gross_amount || i.amount || 0), 0) || (totalPaid + totalDue + totalConcession);
-
-    return {
-        title,
-        amount: totalGross,
-        amount_paid: totalPaid,
-        paid: totalPaid,
-        concession: totalConcession,
-        payable: totalGross,
-        due_amount: totalDue,
-        due: totalDue,
-        originalItems: items
-    };
-};
+import { ActionBar, Alert, EmptyState, Field, Steps } from './ui';
+import { groupInstallments } from './fee-collection/groupInstallments';
+import StudentCard from './fee-collection/StudentCard';
+import FeeCard, { rupees, formatDay } from './fee-collection/FeeCard';
+import PaymentModePicker, { paymentModeLabel } from './fee-collection/PaymentModePicker';
+import PaymentHistoryDialog from './fee-collection/PaymentHistoryDialog';
 
 interface FeeStudent {
     student_id: number;
@@ -141,89 +59,18 @@ interface Concession {
     items: ConcessionItem[];
 }
 
-const InfoCard: React.FC<{
-    title: string;
-    value: string;
-    bgColor: string;
-    textColor: string;
-    icon: React.ReactNode;
-}> = ({ title, value, bgColor, textColor, icon }) => (
-    <div className={`p-2 rounded-lg text-center ${bgColor}`}>
-        <p className={`text-xs font-semibold ${textColor}`}>{title}</p>
-        <div className="flex items-center justify-center space-x-1">
-            {icon}
-            <p className={`font-bold text-lg ${textColor}`}>{value}</p>
-        </div>
-    </div>
-);
+const STEP_LABELS = ['Find the student', 'Choose fees', 'Payment', 'Done'];
+const STUDENT_PAGE = 30;
 
-const InstallmentRow: React.FC<{
-    installment: FeeInstallment;
-    isSelected: boolean;
-    onSelect: (sr: number) => void;
-    isDisabled: boolean;
-}> = ({ installment, isSelected, onSelect, isDisabled }) => {
-    const { sr, title, payable, paid, paidAmount, dueAmount, concession } = installment;
-
-    const due = dueAmount !== undefined ? dueAmount : (payable - (paidAmount || 0));
-    const isPartial = !paid && (paidAmount || 0) > 0;
-    const isFullyPaid = paid || due <= 0;
-
-    let details = `Payable = ${payable}`;
-    if (concession && concession > 0) {
-        details += `, Concession = ${concession}`;
-    }
-
-    let rowClass = "bg-white hover:bg-slate-50";
-
-    if (isFullyPaid) {
-        details = `Payable = ${payable}`;
-        if (concession && concession > 0) details += `, Concession = ${concession}`;
-        details += `, Paid = ${paidAmount || (payable - (concession || 0))}, Due = 0`;
-        rowClass = "bg-emerald-50 text-emerald-800 hover:bg-emerald-100";
-    } else if (isPartial) {
-        details = `Payable = ${payable}`;
-        if (concession && concession > 0) details += `, Concession = ${concession}`;
-        details += `, Paid = ${paidAmount}, Due = ${due}`;
-        rowClass = "bg-red-50 text-red-800 hover:bg-red-100";
-    } else if (due > 0) {
-        details = `Payable = ${payable}`;
-        if (concession && concession > 0) details += `, Concession = ${concession}`;
-        details += `, Due = ${due}`;
-        rowClass = "bg-red-50 text-red-800 hover:bg-red-100";
-    }
-
-    if (isSelected) {
-        rowClass += " bg-brand-100";
-    }
-
-    if (isDisabled) {
-        rowClass += " opacity-50 cursor-not-allowed";
-    }
-
-    return (
-        <tr className={rowClass}>
-            <td className="border border-slate-200 px-2 py-2 text-center">
-                {isFullyPaid ? (
-                    <span className="text-emerald-600 font-bold">✔</span>
-                ) : (
-                    <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => !isDisabled && onSelect(sr)}
-                        disabled={isDisabled}
-                        className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
-                )}
-            </td>
-            <td className="border border-slate-200 px-2 py-2 text-center text-sm text-slate-600">{sr}</td>
-            <td className="border border-slate-200 px-2 py-2 text-sm text-slate-800">{title}</td>
-            <td className="border border-slate-200 px-2 py-2 text-xs text-slate-500">{details}</td>
-        </tr>
-    );
-};
-
-const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
+const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = ({ navigateTo }) => {
+    // UI-only state for the step-by-step flow
+    const [step, setStep] = useState(0);
+    const [saving, setSaving] = useState(false);
+    const [doneReceipt, setDoneReceipt] = useState<any>(null);
+    const [studentLimit, setStudentLimit] = useState(STUDENT_PAGE);
+    const [showPaidFees, setShowPaidFees] = useState(false);
+    const [showConcession, setShowConcession] = useState(false);
+    const topRef = useRef<HTMLDivElement>(null);
     const [students, setStudents] = useState<FeeStudent[]>([]);
     const [classes, setClasses] = useState<string[]>([]);
     const [sectionOptions, setSectionOptions] = useState<string[]>([]);
@@ -405,7 +252,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
     const [schoolReceiptNo, setSchoolReceiptNo] = useState('');
     const [paymentNote, setPaymentNote] = useState('');
     const [paymentMode, setPaymentMode] = useState('Cash');
-    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+    const [paymentDate, setPaymentDate] = useState(new Date().toLocaleDateString('en-CA') /* local YYYY-MM-DD, not UTC */);
     const [transactionId, setTransactionId] = useState('');
     const [transactionIdDescription, setTransactionIdDescription] = useState('');
     const [chequeNo, setChequeNo] = useState('');
@@ -693,7 +540,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
         setChequeNo('');
         if (!options.keepPaymentDetails) {
             setPaymentMode('Cash');
-            setPaymentDate(new Date().toISOString().split('T')[0]);
+            setPaymentDate(new Date().toLocaleDateString('en-CA') /* local YYYY-MM-DD, not UTC */);
             setTransactionIdDescription('');
             setBankName('');
             setChequeDate('');
@@ -823,7 +670,9 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                 due
             };
             setReceiptData(data);
-            setShowReceipt(true);
+            // The receipt is no longer popped up here: the "Done" step shows it on "Print receipt".
+            setDoneReceipt(data);
+            setStep(3);
 
             const params = new URLSearchParams();
             if (selectedClass) params.append('class', selectedClass);
@@ -850,439 +699,649 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
         handleReset({ keepPaymentDetails });
     };
 
-    const RupeeIcon = () => <span className="font-sans">₹</span>;
+
+    /* ------------------------------------------------------------------ step flow (UI only) */
+
+    // If the chosen student disappears (e.g. the list changed), go back to finding one.
+    useEffect(() => {
+        if (!selectedStudent && (step === 1 || step === 2)) setStep(0);
+    }, [selectedStudent, step]);
+
+    const firstStepRender = useRef(true);
+    useEffect(() => {
+        if (firstStepRender.current) {
+            firstStepRender.current = false;
+            return;
+        }
+        topRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }, [step]);
+
+    useEffect(() => {
+        setStudentLimit(STUDENT_PAGE);
+    }, [selectedClass, selectedSection, searchTerm]);
+
+    const pickStudent = (id: number) => {
+        setSelectedStudentId(id);
+        setShowPaidFees(false);
+        setShowConcession(false);
+        setStep(1);
+    };
+
+    const changeStudent = () => {
+        setSelectedStudentId(null);
+        setStep(0);
+    };
+
+    const handleCollect = async () => {
+        if (saving) return;
+        setSaving(true);
+        try {
+            await handleTakeFee();
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const collectFromAnother = () => {
+        handleReset({ keepPaymentDetails });
+        setSelectedStudentId(null);
+        setSearchTerm('');
+        setDoneReceipt(null);
+        setStep(0);
+    };
+
+    const collectMoreFromSame = () => {
+        handleReset({ keepPaymentDetails });
+        setDoneReceipt(null);
+        setStep(1);
+    };
+
+    const printDoneReceipt = () => {
+        if (!doneReceipt) return;
+        setReceiptData(doneReceipt);
+        setShowReceipt(true);
+    };
+
+    const classSectionOf = (s: { class: string; section: string }) =>
+        [s.class, s.section].filter(Boolean).join('-');
+
+    // Same "must pay earlier installment first" rule as before, worked out per row.
+    const feeRows = filteredInstallments.map((inst, index) => {
+        let isDisabled = false;
+        if (!inst.paid) {
+            const previousInSameFeeType = filteredInstallments
+                .slice(0, index)
+                .filter(p => p.fee_type_id === inst.fee_type_id);
+            const allPreviousCleared = previousInSameFeeType.every(p => p.paid || selectedIds.includes(p.sr));
+            if (!allPreviousCleared) isDisabled = true;
+        }
+        const rowDue = inst.dueAmount !== undefined ? inst.dueAmount : inst.payable - (inst.paidAmount || 0);
+        return { inst, isDisabled, isFullyPaid: inst.paid || rowDue <= 0 };
+    });
+    const openFeeRows = feeRows.filter(r => !r.isFullyPaid);
+    const paidFeeRows = feeRows.filter(r => r.isFullyPaid);
+
+    const feesStepReady = selectedItems.length > 0 && (totalPaying > 0 || appliedConcession > 0);
+    const feesStepNote =
+        selectedItems.length === 0
+            ? 'Tap a fee to choose it.'
+            : !feesStepReady
+            ? 'Enter an amount more than ₹0 in "Paying now".'
+            : `${selectedItems.length} ${selectedItems.length === 1 ? 'fee' : 'fees'} chosen · Paying ${rupees(totalPaying)}`;
+
+    const renderFindStudent = () => (
+        <div className="space-y-4">
+            {selectedStudent && (
+                <StudentCard
+                    student={selectedStudent}
+                    actions={
+                        <button type="button" className="btn-secondary btn-sm" onClick={changeStudent}>
+                            Change student
+                        </button>
+                    }
+                />
+            )}
+
+            <Field
+                label="Search student"
+                htmlFor="fee-student-search"
+                hint="Type a name, admission number or enrollment number."
+            >
+                <div className="relative">
+                    <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                        id="fee-student-search"
+                        type="search"
+                        autoComplete="off"
+                        placeholder="Name or admission number"
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter' && students.length === 1) pickStudent(students[0].student_id);
+                        }}
+                        className="input pl-10 min-h-[44px]"
+                    />
+                </div>
+            </Field>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Class" htmlFor="fee-class">
+                    <select
+                        id="fee-class"
+                        value={selectedClass}
+                        onChange={e => {
+                            setSelectedClass(e.target.value);
+                            setSelectedSection('');
+                        }}
+                        className="input min-h-[44px]"
+                    >
+                        <option value="">All classes</option>
+                        {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                </Field>
+                <Field label="Section" htmlFor="fee-section">
+                    <select
+                        id="fee-section"
+                        value={selectedSection}
+                        onChange={e => setSelectedSection(e.target.value)}
+                        disabled={!selectedClass}
+                        className="input min-h-[44px]"
+                    >
+                        <option value="">{selectedClass ? 'All sections' : 'Choose a class first'}</option>
+                        {sectionOptions.map(section => (
+                            <option key={section} value={section}>{section}</option>
+                        ))}
+                    </select>
+                </Field>
+            </div>
+
+            <div>
+                <p className="text-sm text-slate-500 mb-2">
+                    {students.length === 0
+                        ? 'No student found.'
+                        : `${students.length} ${students.length === 1 ? 'student' : 'students'} found. Tap one to continue.`}
+                </p>
+                {students.length === 0 ? (
+                    <EmptyState
+                        compact
+                        title="No student found"
+                        description="Check the spelling, or choose a different class."
+                    />
+                ) : (
+                    <ul className="space-y-2">
+                        {students.slice(0, studentLimit).map(s => {
+                            const active = s.student_id === selectedStudentId;
+                            return (
+                                <li key={s.student_id}>
+                                    <button
+                                        type="button"
+                                        onClick={() => pickStudent(s.student_id)}
+                                        className={`w-full text-left rounded-xl border-2 px-4 py-3 min-h-[56px] transition-colors ${
+                                            active ? 'border-brand-500 bg-brand-50' : 'border-slate-200 bg-white hover:border-slate-300'
+                                        }`}
+                                    >
+                                        <span className="block font-medium text-slate-900 break-words">{s.name}</span>
+                                        <span className="block text-sm text-slate-500 break-words">
+                                            {classSectionOf(s) ? `Class ${classSectionOf(s)} · ` : ''}
+                                            Admission number {s.admNo}
+                                            {s.fatherName ? ` · Father: ${s.fatherName}` : ''}
+                                        </span>
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+                {students.length > studentLimit && (
+                    <button
+                        type="button"
+                        className="btn-ghost w-full mt-2"
+                        onClick={() => setStudentLimit(l => l + STUDENT_PAGE)}
+                    >
+                        Show more students ({students.length - studentLimit} more)
+                    </button>
+                )}
+            </div>
+
+            <ActionBar note={!selectedStudent ? 'Choose a student first.' : undefined}>
+                <button type="button" className="btn-primary btn-lg" disabled={!selectedStudent} onClick={() => setStep(1)}>
+                    Next: choose fees
+                </button>
+            </ActionBar>
+        </div>
+    );
+
+    const renderChooseFees = () => (
+        <div className="space-y-4">
+            {selectedStudent && (
+                <StudentCard
+                    student={selectedStudent}
+                    actions={
+                        <>
+                            <button type="button" className="btn-secondary btn-sm" onClick={fetchPaymentHistory}>
+                                <History className="w-4 h-4" /> Past payments
+                            </button>
+                            <button type="button" className="btn-ghost btn-sm" onClick={changeStudent}>
+                                Change student
+                            </button>
+                        </>
+                    }
+                />
+            )}
+
+            <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-emerald-50 px-2 py-2 text-center">
+                    <p className="text-xs text-emerald-800">Paid so far</p>
+                    <p className="font-semibold text-emerald-900">{rupees(summary.totalPaids)}</p>
+                </div>
+                <div className="rounded-xl bg-brand-50 px-2 py-2 text-center">
+                    <p className="text-xs text-brand-800">Due now</p>
+                    <p className="font-semibold text-brand-900">{rupees(summary.currentDue)}</p>
+                </div>
+                <div className="rounded-xl bg-amber-50 px-2 py-2 text-center">
+                    <p className="text-xs text-amber-800">Total due</p>
+                    <p className="font-semibold text-amber-900">{rupees(summary.totalDue)}</p>
+                </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-end gap-3 justify-between">
+                <h3 className="text-base font-semibold text-slate-900">Which fees are being paid?</h3>
+                <div className="sm:w-56">
+                    <label htmlFor="fee-type-filter" className="sr-only">Show fee type</label>
+                    <select
+                        id="fee-type-filter"
+                        value={selectedFeeType}
+                        onChange={handleFeeTypeChange}
+                        disabled={!selectedStudent}
+                        className="input min-h-[44px]"
+                    >
+                        <option value="all">All fee types</option>
+                        {feeTypes.map(ft => (
+                            <option key={ft.id} value={String(ft.id)}>{ft.fee_type}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
+            {filteredInstallments.length === 0 ? (
+                <EmptyState compact title="No fees found" description="This student has no fees of this type." />
+            ) : (
+                <div className="space-y-2">
+                    {openFeeRows.length === 0 && (
+                        <Alert tone="success">All fees shown here are fully paid.</Alert>
+                    )}
+                    {openFeeRows.map(({ inst, isDisabled }) => {
+                        const itemConcession = itemConcessions[inst.sr] || 0;
+                        const grossNeeded =
+                            inst.dueAmount !== undefined && inst.dueAmount > 0
+                                ? inst.dueAmount
+                                : inst.payable - (inst.paidAmount || 0);
+                        const netNeeded = Math.max(0, grossNeeded - itemConcession);
+                        const payingVal = itemPayingAmounts[inst.sr];
+                        const payingNum =
+                            payingVal === '' || payingVal === undefined ? 0 : Number(payingVal) || 0;
+                        const rowDue = Math.max(0, netNeeded - payingNum);
+                        return (
+                            <FeeCard
+                                key={inst.sr}
+                                installment={inst}
+                                isSelected={selectedIds.includes(inst.sr)}
+                                isDisabled={isDisabled}
+                                onSelect={handleSelect}
+                            >
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                                    <Field
+                                        label="Paying now (₹)"
+                                        htmlFor={`paying-${inst.sr}`}
+                                        hint={
+                                            rowDue > 0
+                                                ? `${rupees(rowDue)} will stay due.`
+                                                : `Full amount${itemConcession > 0 ? ` after ${rupees(itemConcession)} concession` : ''}.`
+                                        }
+                                    >
+                                        <input
+                                            id={`paying-${inst.sr}`}
+                                            type="number"
+                                            inputMode="decimal"
+                                            min="0"
+                                            max={netNeeded}
+                                            value={payingVal ?? ''}
+                                            onChange={e => handleItemPayingChange(inst.sr, e.target.value)}
+                                            onBlur={() => handleItemPayingBlur(inst.sr)}
+                                            className="input min-h-[44px] text-right font-semibold"
+                                        />
+                                    </Field>
+                                    <p className="text-sm text-slate-600 sm:pb-7">
+                                        Most you can pay: <span className="font-semibold">{rupees(netNeeded)}</span>
+                                    </p>
+                                </div>
+                            </FeeCard>
+                        );
+                    })}
+
+                    {paidFeeRows.length > 0 && (
+                        <>
+                            <button
+                                type="button"
+                                className="btn-ghost w-full justify-center"
+                                onClick={() => setShowPaidFees(v => !v)}
+                                aria-expanded={showPaidFees}
+                            >
+                                {showPaidFees ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                {showPaidFees ? 'Hide paid fees' : `Show paid fees (${paidFeeRows.length})`}
+                            </button>
+                            {showPaidFees &&
+                                paidFeeRows.map(({ inst, isDisabled }) => (
+                                    <FeeCard
+                                        key={inst.sr}
+                                        installment={inst}
+                                        isSelected={selectedIds.includes(inst.sr)}
+                                        isDisabled={isDisabled}
+                                        onSelect={handleSelect}
+                                    />
+                                ))}
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* Concession: kept, but tucked away */}
+            <div className="rounded-xl border border-slate-200 bg-white">
+                <button
+                    type="button"
+                    className="w-full flex items-center justify-between gap-2 px-4 py-3 min-h-[48px] text-sm font-medium text-slate-700"
+                    onClick={() => setShowConcession(v => !v)}
+                    aria-expanded={showConcession}
+                >
+                    <span>
+                        Concession / discount
+                        {appliedConcession > 0 && (
+                            <span className="ml-2 text-emerald-700">({rupees(appliedConcession)} applied)</span>
+                        )}
+                    </span>
+                    {showConcession ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+                {showConcession && (
+                    <div className="border-t border-slate-100 px-4 py-3 space-y-3">
+                        <p className="text-sm text-slate-500">
+                            Choose the fees first, then apply. Fees past their due date on the payment date do not get the concession.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <Field label="Concession" htmlFor="fee-concession">
+                                <select
+                                    id="fee-concession"
+                                    value={selectedConcession}
+                                    onChange={e => setSelectedConcession(e.target.value)}
+                                    className="input min-h-[44px]"
+                                    disabled={!selectedStudent}
+                                >
+                                    <option value="0">No concession</option>
+                                    {concessions
+                                        .filter(c => c.show_in_payment)
+                                        .map((c, idx) => (
+                                            <option key={idx} value={c.title}>{c.title}</option>
+                                        ))}
+                                </select>
+                            </Field>
+                            <Field label="Payment date" htmlFor="fee-concession-date">
+                                <input
+                                    id="fee-concession-date"
+                                    type="date"
+                                    value={paymentDate}
+                                    onChange={e => setPaymentDate(e.target.value)}
+                                    className="input min-h-[44px]"
+                                />
+                            </Field>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleApplyConcession}
+                            className="btn-secondary w-full sm:w-auto"
+                            disabled={!selectedStudent}
+                        >
+                            Apply concession
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Running total */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                    <span className="text-slate-600">Total of chosen fees</span>
+                    <span className="font-medium text-slate-800">{rupees(amount)}</span>
+                </div>
+                {appliedConcession > 0 && (
+                    <div className="flex justify-between">
+                        <span className="text-slate-600">Concession</span>
+                        <span className="font-medium text-emerald-700">− {rupees(appliedConcession)}</span>
+                    </div>
+                )}
+                <div className="flex justify-between border-t border-slate-200 pt-1.5">
+                    <span className="text-slate-600">To pay</span>
+                    <span className="font-medium text-slate-800">{rupees(payable)}</span>
+                </div>
+                <div className="flex justify-between text-base">
+                    <span className="font-semibold text-slate-900">Paying now</span>
+                    <span className="font-semibold text-slate-900">{rupees(totalPaying)}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span className="text-slate-600">Still due after this</span>
+                    <span className={`font-medium ${due > 0 ? 'text-red-600' : 'text-slate-800'}`}>{rupees(due)}</span>
+                </div>
+                {selectedItems.length > 0 && (
+                    <div className="pt-1 text-right">
+                        <button type="button" className="text-sm text-slate-500 underline-offset-2 hover:underline" onClick={() => handleReset()}>
+                            Clear choices
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            <ActionBar note={feesStepNote}>
+                <button type="button" className="btn-secondary btn-lg" onClick={() => setStep(0)}>
+                    Back
+                </button>
+                <button type="button" className="btn-primary btn-lg" disabled={!feesStepReady} onClick={() => setStep(2)}>
+                    Next: payment
+                </button>
+            </ActionBar>
+        </div>
+    );
+
+    const collectLine = selectedStudent
+        ? `Collect ${rupees(totalPaying)} from ${selectedStudent.name}${
+              classSectionOf(selectedStudent) ? ` (Class ${classSectionOf(selectedStudent)})` : ''
+          } by ${paymentModeLabel(paymentMode)}`
+        : '';
+
+    const renderPayment = () => (
+        <div className="space-y-4">
+            {selectedStudent && (
+                <Alert tone="info" title={collectLine}>
+                    {selectedItems.length} {selectedItems.length === 1 ? 'fee' : 'fees'}
+                    {appliedConcession > 0 ? ` · Concession ${rupees(appliedConcession)}` : ''}
+                    {due > 0 ? ` · ${rupees(due)} will stay due` : ''}
+                </Alert>
+            )}
+
+            <Field label="How is the money paid?">
+                <PaymentModePicker value={paymentMode} onChange={setPaymentMode} />
+            </Field>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(paymentMode === 'CardSwap' || paymentMode === 'UPI') && (
+                    <>
+                        <Field
+                            label="Transaction ID"
+                            htmlFor="fee-txn-id"
+                            hint={paymentMode === 'UPI' ? 'From the UPI app.' : 'From the card machine slip.'}
+                        >
+                            <input
+                                id="fee-txn-id"
+                                type="text"
+                                value={transactionId}
+                                onChange={e => setTransactionId(e.target.value)}
+                                className="input min-h-[44px]"
+                            />
+                        </Field>
+                        <Field label="Payment details" htmlFor="fee-txn-desc" hint="For example: Google Pay, or the card's bank.">
+                            <input
+                                id="fee-txn-desc"
+                                type="text"
+                                value={transactionIdDescription}
+                                onChange={e => setTransactionIdDescription(e.target.value)}
+                                className="input min-h-[44px]"
+                            />
+                        </Field>
+                    </>
+                )}
+                {paymentMode === 'Cheque' && (
+                    <>
+                        <Field label="Cheque number" htmlFor="fee-cheque-no">
+                            <input
+                                id="fee-cheque-no"
+                                type="text"
+                                inputMode="numeric"
+                                value={chequeNo}
+                                onChange={e => setChequeNo(e.target.value)}
+                                className="input min-h-[44px]"
+                            />
+                        </Field>
+                        <Field label="Bank name" htmlFor="fee-bank">
+                            <input
+                                id="fee-bank"
+                                type="text"
+                                value={bankName}
+                                onChange={e => setBankName(e.target.value)}
+                                className="input min-h-[44px]"
+                            />
+                        </Field>
+                        <Field label="Cheque date" htmlFor="fee-cheque-date">
+                            <input
+                                id="fee-cheque-date"
+                                type="date"
+                                value={chequeDate}
+                                onChange={e => setChequeDate(e.target.value)}
+                                className="input min-h-[44px]"
+                            />
+                        </Field>
+                    </>
+                )}
+                <Field label="Payment date" htmlFor="fee-pay-date">
+                    <input
+                        id="fee-pay-date"
+                        type="date"
+                        value={paymentDate}
+                        onChange={e => setPaymentDate(e.target.value)}
+                        className="input min-h-[44px]"
+                    />
+                </Field>
+                <Field label="Note (optional)" htmlFor="fee-note" hint="Up to 25 letters. Printed on the receipt.">
+                    <input
+                        id="fee-note"
+                        type="text"
+                        value={paymentNote}
+                        maxLength={25}
+                        onChange={e => setPaymentNote(e.target.value)}
+                        className="input min-h-[44px]"
+                    />
+                </Field>
+            </div>
+
+            <label htmlFor="keep-details" className="flex items-start gap-3 min-h-[44px] text-sm text-slate-700">
+                <input
+                    id="keep-details"
+                    type="checkbox"
+                    checked={keepPaymentDetails}
+                    onChange={e => setKeepPaymentDetails(e.target.checked)}
+                    className="mt-0.5 h-5 w-5 text-brand-600 border-slate-300 rounded focus:ring-brand-500"
+                />
+                <span>
+                    Keep the same payment way and date for the next payment
+                    <span className="block text-slate-500">Cheque number and transaction ID are always cleared.</span>
+                </span>
+            </label>
+
+            <ActionBar note={collectLine}>
+                <button type="button" className="btn-secondary btn-lg" onClick={() => setStep(1)} disabled={saving}>
+                    Back
+                </button>
+                <button
+                    type="button"
+                    className="btn-primary btn-lg"
+                    onClick={handleCollect}
+                    disabled={!selectedStudent || saving}
+                    aria-busy={saving || undefined}
+                >
+                    {saving ? 'Saving…' : `Collect ${rupees(totalPaying)}`}
+                </button>
+            </ActionBar>
+        </div>
+    );
+
+    const renderDone = () => (
+        <div className="space-y-4">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-6 text-center">
+                <CheckCircle2 className="w-14 h-14 text-emerald-600 mx-auto" />
+                <p className="mt-3 text-xl font-semibold text-slate-900">
+                    {rupees(doneReceipt?.paid ?? 0)} collected
+                </p>
+                {doneReceipt && (
+                    <div className="mt-2 space-y-0.5 text-sm text-slate-700">
+                        <p>
+                            From {doneReceipt.studentName}
+                            {doneReceipt.className ? ` (Class ${doneReceipt.className})` : ''}
+                        </p>
+                        <p>
+                            Receipt number <span className="font-semibold">{doneReceipt.receiptNo}</span>
+                        </p>
+                        <p>
+                            {paymentModeLabel(doneReceipt.paymentMode)} · {formatDay(doneReceipt.paymentDate)}
+                        </p>
+                        {Number(doneReceipt.due) > 0 && (
+                            <p className="text-red-700">Still due on these fees: {rupees(doneReceipt.due)}</p>
+                        )}
+                    </div>
+                )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button type="button" className="btn-primary btn-lg sm:col-span-2" onClick={printDoneReceipt} disabled={!doneReceipt}>
+                    Print receipt
+                </button>
+                <button type="button" className="btn-secondary btn-lg" onClick={collectFromAnother}>
+                    Collect from another student
+                </button>
+                {selectedStudent ? (
+                    <button type="button" className="btn-secondary btn-lg" onClick={collectMoreFromSame}>
+                        Collect more from {selectedStudent.name}
+                    </button>
+                ) : null}
+                <button
+                    type="button"
+                    className={`btn-ghost btn-lg ${selectedStudent ? 'sm:col-span-2' : ''}`}
+                    onClick={() => navigateTo?.('dashboard')}
+                >
+                    Back to home
+                </button>
+            </div>
+        </div>
+    );
 
     return (
         <div className="container-fluid mx-auto">
-            <div className="p-4">
-                <div className="card shadow-pop p-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                        {/* Left Column */}
-                        <div className="lg:col-span-3 space-y-4">
-                            <h3 className="text-base font-semibold text-slate-900 flex items-center">
-                                <RupeeIcon />&nbsp;Collect Fee
-                            </h3>
-
-                            <div className="p-4 border border-slate-200 rounded-lg shadow-sm bg-brand-50/50 space-y-3">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Search Adm No, Enrollment No or Name..."
-                                        value={searchTerm}
-                                        onChange={e => setSearchTerm(e.target.value)}
-                                        className="input"
-                                    />
-                                    <select
-                                        value={selectedClass}
-                                        onChange={e => {
-                                            setSelectedClass(e.target.value);
-                                            setSelectedSection('');
-                                        }}
-                                        className="input"
-                                    >
-                                        <option value="">-- Select Class --</option>
-                                        {classes.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                    <select
-                                        value={selectedSection}
-                                        onChange={e => setSelectedSection(e.target.value)}
-                                        className="input"
-                                    >
-                                        <option value="">-- Select Section --</option>
-                                        {sectionOptions.map(section => (
-                                            <option key={section} value={section}>{section}</option>
-                                        ))}
-                                    </select>
-                                    <select
-                                        value={selectedFeeType}
-                                        onChange={handleFeeTypeChange}
-                                        disabled={!selectedStudent}
-                                        className="input"
-                                    >
-                                        <option value="all">-- All Fee Types --</option>
-                                        {feeTypes.map(ft => (
-                                            <option key={ft.id} value={String(ft.id)}>{ft.fee_type}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <select
-                                        value={selectedStudentId || ''}
-                                        onChange={e => setSelectedStudentId(Number(e.target.value) || null)}
-                                        className="input"
-                                    >
-                                        <option value="">-- Select Student --</option>
-                                        {students.map(s => (
-                                            <option key={s.student_id} value={s.student_id}>
-                                                {s.name} ({s.admNo})
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                {/* "Download QR" and "Student" buttons hidden: they had no action and the
-                                    backend has no QR endpoint yet. Restore here once those features exist. */}
-                            </div>
-
-                            {selectedStudent && (
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                    <InfoCard
-                                        title="Total Paids"
-                                        value={summary.totalPaids.toLocaleString()}
-                                        bgColor="bg-emerald-50"
-                                        textColor="text-emerald-800"
-                                        icon={<RupeeIcon />}
-                                    />
-                                    <InfoCard
-                                        title="Current Due"
-                                        value={summary.currentDue.toLocaleString()}
-                                        bgColor="bg-brand-50"
-                                        textColor="text-brand-800"
-                                        icon={<RupeeIcon />}
-                                    />
-                                    <InfoCard
-                                        title="Total Due"
-                                        value={summary.totalDue.toLocaleString()}
-                                        bgColor="bg-amber-50"
-                                        textColor="text-amber-800"
-                                        icon={<RupeeIcon />}
-                                    />
-                                </div>
-                            )}
-
-                            <div className="flex items-center justify-between">
-                                <h4 className="font-semibold text-slate-900">
-                                    Details{' '}
-                                    <span className="text-sm text-slate-600 font-normal ml-3">
-                                        {selectedStudent
-                                            ? `Student Name: ${selectedStudent.name} || FatherName: ${selectedStudent.fatherName} || Adm No: ${selectedStudent.admNo} || Phone: ${selectedStudent.fatherPhone}`
-                                            : 'Details : N/A'}
-                                    </span>
-                                </h4>
-                            </div>
-
-                            <div className="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-                                <div className="bg-slate-50 text-slate-800 text-sm border-b border-slate-200 rounded-t-xl px-4 py-2 flex justify-between items-center">
-                                    <h4 className="font-semibold relative">
-                                        Installment
-                                        {filteredInstallments.length > 0 && (
-                                            <span className="absolute -top-2 -right-5 bg-amber-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                                                {filteredInstallments.length}
-                                            </span>
-                                        )}
-                                    </h4>
-                                    <button
-                                        onClick={fetchPaymentHistory}
-                                        className="btn-warn btn-sm"
-                                    >
-                                        Print / Cancel
-                                    </button>
-                                </div>
-                                <div className="overflow-x-auto max-h-96">
-                                    <table className="w-full text-sm">
-                                        <thead className="sticky top-0 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                            <tr className="sticky top-0">
-                                                <th className="px-2 py-2 border border-slate-200 w-12"></th>
-                                                <th className="px-2 py-2 border border-slate-200 w-12">Sr.</th>
-                                                <th className="px-2 py-2 border border-slate-200 text-left">Title</th>
-                                                <th className="px-2 py-2 border border-slate-200 text-left">Details</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {selectedStudent ? (
-                                                filteredInstallments.length > 0 ? (
-                                                    filteredInstallments.map((inst, index) => {
-                                                        const isPaid = inst.paid;
-                                                        let isDisabled = false;
-                                                        if (!isPaid) {
-                                                            const previousInSameFeeType = filteredInstallments
-                                                                .slice(0, index)
-                                                                .filter(p => p.fee_type_id === inst.fee_type_id);
-                                                            const allPreviousCleared = previousInSameFeeType
-                                                                .every(p => p.paid || selectedIds.includes(p.sr));
-                                                            if (!allPreviousCleared) isDisabled = true;
-                                                        }
-                                                        return (
-                                                            <InstallmentRow
-                                                                key={inst.sr}
-                                                                installment={inst}
-                                                                isSelected={selectedIds.includes(inst.sr)}
-                                                                onSelect={handleSelect}
-                                                                isDisabled={isDisabled}
-                                                            />
-                                                        );
-                                                    })
-                                                ) : (
-                                                    <tr>
-                                                        <td colSpan={4}>
-                                                            <EmptyState compact title="No installments found for this fee type." />
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            ) : (
-                                                <tr>
-                                                    <td colSpan={4}>
-                                                        <EmptyState compact title="Please select a student to view installments." />
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Right Column */}
-                        <div className="lg:col-span-2 space-y-4">
-                            <div className="border border-slate-200 rounded-lg p-4 space-y-3 bg-slate-50/50 shadow-sm">
-                                <div className="flex flex-wrap gap-2 justify-between items-center">
-                                    <h3 className="text-base font-semibold text-slate-900">
-                                        Fee Structure{' '}
-                                        <a href="#" className="text-brand-600 text-sm font-normal hover:underline">
-                                            Get Help
-                                        </a>
-                                    </h3>
-                                    <div className="flex items-center">
-                                        <select
-                                            value={selectedConcession}
-                                            onChange={e => setSelectedConcession(e.target.value)}
-                                            className="input w-auto rounded-l-md"
-                                            disabled={!selectedStudent}
-                                        >
-                                            <option value="0">Select Concession</option>
-                                            {concessions
-                                                .filter(c => c.show_in_payment)
-                                                .map((c, idx) => (
-                                                    <option key={idx} value={c.title}>{c.title}</option>
-                                                ))}
-                                        </select>
-                                        <button
-                                            onClick={handleApplyConcession}
-                                            className="btn-success btn-sm rounded-r-md"
-                                            disabled={!selectedStudent}
-                                        >
-                                            Apply
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="overflow-x-auto rounded-lg border border-slate-200">
-                                    <table className="w-full text-sm bg-white">
-                                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                            <tr>
-                                                <th className="border p-2 w-10">
-                                                    <button className="btn-success w-6 h-6">
-                                                        +
-                                                    </button>
-                                                </th>
-                                                <th className="border p-2 text-left">Title</th>
-                                                <th className="border p-2 text-right">Payable</th>
-                                                <th className="border p-2 text-right">Paid</th>
-                                                <th className="border p-2 text-right w-28">Paying</th>
-                                                <th className="border p-2 text-right">Due</th>
-                                                <th className="border p-2 w-28">+ Extra Charge</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {selectedItems.length > 0 ? (
-                                                selectedItems.map(item => {
-                                                    const grossPayable = item.payable;
-                                                    const paidAlready = item.paidAmount || 0;
-                                                    const itemConcession = itemConcessions[item.sr] || 0;
-                                                    const grossNeeded =
-                                                        item.dueAmount !== undefined && item.dueAmount > 0
-                                                            ? item.dueAmount
-                                                            : grossPayable - paidAlready;
-                                                    const netNeeded = Math.max(0, grossNeeded - itemConcession);
-                                                    const payingVal = itemPayingAmounts[item.sr];
-                                                    const payingNum =
-                                                        payingVal === '' || payingVal === undefined
-                                                            ? 0
-                                                            : Number(payingVal) || 0;
-                                                    const rowDue = Math.max(0, netNeeded - payingNum);
-
-                                                    return (
-                                                        <tr key={item.sr} className="hover:bg-slate-50">
-                                                            <td className="border p-2"></td>
-                                                            <td className="border p-2 font-medium text-slate-800">{item.title}</td>
-                                                            <td className="border p-2 text-right">{grossPayable.toFixed(0)}</td>
-                                                            <td className="border p-2 text-right text-slate-600">{paidAlready.toFixed(0)}</td>
-                                                            <td className="border p-2 text-right">
-                                                                <input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    max={netNeeded}
-                                                                    value={payingVal ?? ''}
-                                                                    onChange={e => handleItemPayingChange(item.sr, e.target.value)}
-                                                                    onBlur={() => handleItemPayingBlur(item.sr)}
-                                                                    className="input w-24 text-right font-semibold"
-                                                                />
-                                                            </td>
-                                                            <td className="border p-2 text-right font-semibold text-red-600">
-                                                                {rowDue.toFixed(0)}
-                                                            </td>
-                                                            <td className="border p-2"></td>
-                                                        </tr>
-                                                    );
-                                                })
-                                            ) : (
-                                                <tr>
-                                                    <td className="border p-0" colSpan={7}>
-                                                        <EmptyState compact title="Select installments to pay" />
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div className="space-y-2 pt-4">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-slate-600">Amount</span>
-                                        <span className="font-semibold text-slate-800">{amount.toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-slate-600">Concession</span>
-                                        <span className="font-semibold text-slate-800">
-                                            {appliedConcession.toLocaleString()}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm font-semibold border-t pt-2">
-                                        <span className="text-slate-800">Payable(Amount - Concession)</span>
-                                        <span className="font-semibold text-slate-800">{payable.toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm border-t pt-2">
-                                        <span className="text-slate-600">Paid</span>
-                                        <span className="font-semibold text-slate-800">{totalPaying.toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm font-semibold text-red-600 border-t pt-2">
-                                        <span>Due (Payable - Paid)</span>
-                                        <span>{due.toLocaleString()}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="border border-slate-200 rounded-lg p-4 space-y-4 bg-slate-50/50 shadow-sm">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="label">Payment Mode*</label>
-                                        <select
-                                            value={paymentMode}
-                                            onChange={e => setPaymentMode(e.target.value)}
-                                            className="input mt-1"
-                                        >
-                                            <option>Cash</option>
-                                            <option>CardSwap</option>
-                                            <option>Online</option>
-                                            <option>UPI</option>
-                                            <option>Cheque</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="label">Payment Date*</label>
-                                        <input
-                                            type="date"
-                                            value={paymentDate}
-                                            //disabled={true}
-                                            onChange={e => setPaymentDate(e.target.value)}
-                                            className="input mt-1"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="label">
-                                            School Receipt No
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={schoolReceiptNo}
-                                            onChange={e => setSchoolReceiptNo(e.target.value)}
-                                            disabled={true}
-                                            className="input mt-1"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="label">Payment Note</label>
-                                        <input
-                                            type="text"
-                                            value={paymentNote}
-                                            maxLength={25}
-                                            onChange={e => setPaymentNote(e.target.value)}
-                                            className="input mt-1"
-                                        />
-                                    </div>
-                                    {(paymentMode === 'CardSwap' || paymentMode === 'UPI') && (
-                                        <>
-                                            <div>
-                                                <label className="label">
-                                                    UPI/Card Transaction ID*
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={transactionId}
-                                                    onChange={e => setTransactionId(e.target.value)}
-                                                    className="input mt-1"
-                                                    placeholder="Enter UPI/Card transaction ID"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="label">
-                                                    UPI/Card Description*
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={transactionIdDescription}
-                                                    required
-                                                    onChange={e => setTransactionIdDescription(e.target.value)}
-                                                    className="input mt-1"
-                                                    placeholder="Enter UPI/Card description"
-                                                />
-                                            </div>
-                                        </>
-                                    )}
-                                    {(paymentMode === 'Cheque') && (
-                                        <>
-                                            <div>
-                                                <label className="label">Cheque No*</label>
-                                                <input type="text" value={chequeNo} onChange={e => setChequeNo(e.target.value)} required className="input mt-1" placeholder="Enter Cheque No" />
-                                            </div>
-                                            <div>
-                                                <label className="label">Bank Name*</label>
-                                                <input type="text" value={bankName} onChange={e => setBankName(e.target.value)} required className="input mt-1" placeholder="Enter Bank Name" />
-                                            </div>
-                                            <div>
-                                                <label className="label">Cheque Date*</label>
-                                                <input type="date" value={chequeDate} onChange={e => setChequeDate(e.target.value)} required className="input mt-1" />
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                                <div className="flex items-center">
-                                    <input
-                                        id="keep-details"
-                                        type="checkbox"
-                                        checked={keepPaymentDetails}
-                                        onChange={e => setKeepPaymentDetails(e.target.checked)}
-                                        className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500"
-                                    />
-                                    <label htmlFor="keep-details" className="label mb-0 ml-2">
-                                        Keep same payment detail for the next fee payment
-                                    </label>
-                                </div>
-                                <div className="flex justify-end space-x-2 pt-2">
-                                    <button
-                                        onClick={handleTakeFee}
-                                        className="btn-primary"
-                                        disabled={!selectedStudent}
-                                    >
-                                        Collect Fee
-                                    </button>
-                                    <button
-                                        onClick={() => handleReset()}
-                                        className="btn-secondary"
-                                    >
-                                        Reset
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <div ref={topRef} className="p-4 scroll-mt-4">
+                <div className="card p-4 sm:p-5 max-w-3xl mx-auto">
+                    <Steps
+                        steps={STEP_LABELS}
+                        current={step}
+                        onJump={step < 3 ? setStep : undefined}
+                        className="mb-5"
+                    />
+                    {step === 0 && renderFindStudent()}
+                    {step === 1 && renderChooseFees()}
+                    {step === 2 && renderPayment()}
+                    {step === 3 && renderDone()}
                 </div>
             </div>
 
@@ -1291,148 +1350,16 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
             )}
 
             {showHistory && (
-                <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
-                    <div className="card shadow-pop w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
-                        <div className="flex flex-wrap gap-3 justify-between items-center mb-4">
-                            <h2 className="text-base font-semibold text-slate-900">
-                                Payment History - {selectedStudent?.name} ({localStorage.getItem('academicYear')})
-                            </h2>
-                            <div className="flex items-center space-x-4">
-                                <label className="flex items-center space-x-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        checked={showCancelled}
-                                        onChange={e => setShowCancelled(e.target.checked)}
-                                        className="h-4 w-4 text-brand-600 rounded border-slate-300"
-                                    />
-                                    <span>Show Cancelled</span>
-                                </label>
-                                <button
-                                    onClick={() => setShowHistory(false)}
-                                    className="btn-icon"
-                                    aria-label="Close"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        </div>
-                        {/* ────────────────────────────────────────────────────────── */}
-
-                        <div className="card overflow-hidden">
-                        <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                <tr>
-                                    <th className="p-2">Receipt No</th>
-                                    <th className="p-2">Academic Year</th>
-                                    <th className="p-2">Date</th>
-                                    <th className="p-2" colSpan={2}>Title</th>
-                                    <th className="p-2 text-right">Amount</th>
-                                    <th className="p-2 text-right">Concession</th>
-                                    <th className="p-2">Mode</th>
-                                    <th className="p-2">Status</th>
-                                    <th className="p-2 text-center">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {Object.values(
-                                    paymentHistory.reduce((acc: any, curr) => {
-                                        if (!acc[curr.receipt_no]) acc[curr.receipt_no] = [];
-                                        acc[curr.receipt_no].push(curr);
-                                        return acc;
-                                    }, {})
-                                ).map((group: any) => {
-                                    const first = group[0];
-
-                                    const enrichedGroup = group.map((p: any) => {
-                                        const match = installments.find(
-                                            i => i.title === p.installment || i.title === `${p.installment} Fee`
-                                        );
-                                        return { ...p, sr: match ? match.sr : 0 };
-                                    });
-
-                                    const groupedDetails = groupInstallments(enrichedGroup);
-                                    const totalAmount = group.reduce(
-                                        (sum: number, p: any) => sum + parseFloat(p.amount_paid),
-                                        0
-                                    );
-                                    const totalConcession = group.reduce(
-                                        (sum: number, p: any) => sum + parseFloat(p.concession_amount),
-                                        0
-                                    );
-
-                                    const isCancelled = first.status === 'I';
-
-                                    return (
-                                        <tr
-                                            key={first.receipt_no}
-                                            className={`border-b border-slate-100 hover:bg-slate-50 align-top ${isCancelled ? 'bg-red-50' : ''}`}
-                                        >
-                                            <td className="p-2">{first.receipt_no}</td>
-                                            <td className="p-2">{first.academic_year}</td>
-                                            <td className="p-2">{first.payment_date}</td>
-                                            <td className="p-2" colSpan={2}>
-                                                <div className="space-y-1">
-                                                    {groupedDetails.map((g: any, i: number) => (
-                                                        <div key={i} className="font-medium">{g.title}</div>
-                                                    ))}
-                                                </div>
-                                            </td>
-                                            <td className="p-2 text-right">₹{totalAmount.toLocaleString('en-IN')}</td>
-                                            <td className="p-2 text-right">
-                                                ₹{totalConcession.toLocaleString('en-IN')}
-                                            </td>
-                                            <td className="p-2">{first.mode}</td>
-                                            <td className="p-2">
-                                                {isCancelled ? (
-                                                    <div className="text-xs">
-                                                        <Badge tone="danger">Cancelled</Badge>
-                                                        {first.cancel_reason && (
-                                                            <div className="mt-1 text-slate-500 font-normal italic">
-                                                                {first.cancel_reason}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <Badge tone="success">Active</Badge>
-                                                )}
-                                            </td>
-                                            <td className="p-2">
-                                                <div className="flex justify-center space-x-2">
-                                                    {/* Print – visible to everyone */}
-                                                    <button
-                                                        onClick={() => handlePrintHistoryReceipt(first.receipt_no)}
-                                                        title="Print Receipt"
-                                                        className="btn-icon text-brand-600 hover:text-brand-800 hover:bg-brand-50"
-                                                    >
-                                                        <PrinterIcon className="w-5 h-5" />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                                {paymentHistory.length === 0 && (
-                                    <tr>
-                                        <td colSpan={10}>
-                                            <EmptyState compact title="No payments found." />
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                        </div>
-                        </div>
-                        <div className="mt-4 flex justify-end">
-                            <button
-                                onClick={() => setShowHistory(false)}
-                                className="btn-secondary"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <PaymentHistoryDialog
+                    studentName={selectedStudent?.name}
+                    academicYear={localStorage.getItem('academicYear')}
+                    paymentHistory={paymentHistory}
+                    installments={installments}
+                    showCancelled={showCancelled}
+                    onShowCancelledChange={setShowCancelled}
+                    onPrint={handlePrintHistoryReceipt}
+                    onClose={() => setShowHistory(false)}
+                />
             )}
         </div>
     );
