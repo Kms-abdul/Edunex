@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { ArrowRight } from 'lucide-react';
 import api from '../api';
-import { ArrowBackIcon } from './icons';
-import { notify, confirmDialog } from './ui/feedback';
-import { LoadingState, EmptyState } from './ui';
+import { notify } from './ui/feedback';
+import { Steps, ActionBar, Button, Field, Alert } from './ui';
+import { JobPage, JobIntro, ChoiceSummary, DoneCard, StudentPickList, namesPreview, studentsCount } from './student-jobs/common';
 
 interface ChangeSectionProps {
     onBack?: () => void;
 }
 
+const STEPS = ['Choose class', 'Choose students', 'Choose new section', 'Done'];
+
 const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
+    const [step, setStep] = useState(0);
+
     // -------------------------------------------------------------
-    // Source State 
+    // Source State
     // -------------------------------------------------------------
     const [academicYear] = useState(localStorage.getItem('academicYear') || '');
     const [sourceClass, setSourceClass] = useState('');
@@ -31,6 +36,7 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
     const [sections, setSections] = useState<string[]>([]);
     const [loadingSource, setLoadingSource] = useState(false);
     const [processing, setProcessing] = useState(false);
+    const [lastMove, setLastMove] = useState<{ count: number; names: string[]; from: string; to: string } | null>(null);
 
     useEffect(() => {
         // Fetch Classes
@@ -82,34 +88,25 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
             .then(res => setSourceStudents(res.data.students || []))
             .catch(err => {
                 console.error(err);
-                notify("Error fetching students: " + (err.response?.data?.error || err.message));
+                notify.error("Could not load students: " + (err.response?.data?.error || err.message));
             })
             .finally(() => setLoadingSource(false));
     }, [academicYear, sourceClass, sourceSection, sourceSearch]);
 
-    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.checked) {
-            setSelectedStudentIds(sourceStudents.map(s => s.student_id).filter((id): id is number => id !== undefined));
-        } else {
-            setSelectedStudentIds([]);
-        }
-    };
-
-    const handleSelectOne = (id: number | undefined) => {
-        if (!id) return;
-        if (selectedStudentIds.includes(id)) {
-            setSelectedStudentIds(selectedStudentIds.filter(i => i !== id));
-        } else {
-            setSelectedStudentIds([...selectedStudentIds, id]);
-        }
-    };
+    const selectedStudentsList = sourceStudents.filter(s => s.student_id && selectedStudentIds.includes(s.student_id));
+    const fromLabel = `${sourceClass}-${sourceSection}`;
 
     const handleChangeSection = async () => {
-        if (selectedStudentIds.length === 0) return notify("Select students to change section");
-        if (!targetSection) return notify("Select target section");
-        if (sourceSection === targetSection) return notify("Source and Target section cannot be same");
+        if (selectedStudentIds.length === 0) return notify.warning("Choose the students to move first");
+        if (!targetSection) return notify.warning("Choose the new section first");
+        if (sourceSection === targetSection) return notify.warning("The new section must be different from the current one");
 
-        if (!await confirmDialog(`Change section for ${selectedStudentIds.length} students to ${sourceClass} - ${targetSection}?`)) return;
+        const moved = {
+            count: selectedStudentIds.length,
+            names: selectedStudentsList.map(s => s.name),
+            from: fromLabel,
+            to: `${sourceClass}-${targetSection}`,
+        };
 
         setProcessing(true);
         try {
@@ -120,7 +117,7 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
             }, {
                 headers: { 'X-Academic-Year': academicYear }
             });
-            notify("Sections changed successfully!");
+            notify.success(`${studentsCount(moved.count)} moved to ${moved.to}`);
 
             // Refresh source students
             setSourceStudents(prev =>
@@ -128,162 +125,174 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
             );
             setSelectedStudentIds([]);
             setTargetSection('');
+            setLastMove(moved);
+            setStep(3);
 
         } catch (error: any) {
             console.error(error);
-            notify("Failed to change sections: " + (error.response?.data?.error || error.message));
+            notify.error("Could not change the section: " + (error.response?.data?.error || error.message));
         } finally {
             setProcessing(false);
         }
     };
 
-    const selectedStudentsList = sourceStudents.filter(s => s.student_id && selectedStudentIds.includes(s.student_id));
+    const pickItems = sourceStudents
+        .filter(s => s.student_id !== undefined)
+        .map(s => ({
+            id: s.student_id as number,
+            title: s.name,
+            subtitle: [`Admission number ${s.admNo || s.admission_no || '—'}`, s.father ? `Father: ${s.father}` : ''].filter(Boolean).join(' · '),
+        }));
 
-    return (
-        <div className="p-4 sm:p-6 bg-surface-muted min-h-full">
-            <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
-                <div className="flex items-center gap-2">
-                    {onBack && (
-                        <button onClick={onBack} className="btn-icon" aria-label="Go back">
-                            <ArrowBackIcon className="w-5 h-5 text-slate-600" />
-                        </button>
-                    )}
-                    <h2 className="text-base font-semibold text-slate-900">Change in Section</h2>
-                </div>
-                <div className="bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg text-sm font-semibold border border-amber-200">
-                    Academic Year: {academicYear}
-                </div>
-            </div>
+    const backButton = onBack && (
+        <Button variant="secondary" size="lg" onClick={onBack}>Back to students</Button>
+    );
 
-            <div className="flex flex-col lg:flex-row gap-6 lg:h-[75vh]">
-                {/* ----------------- LEFT PANEL: SOURCE STUDENTS ----------------- */}
-                <div className="card flex-[1.5] min-w-0 flex flex-col overflow-hidden">
-                    <div className="p-4 bg-brand-50 border-b border-slate-200">
-                        <h3 className="font-semibold text-brand-800 mb-3 uppercase tracking-wider text-sm">Students</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+    /* ------------------------------------------------------------ Step 1 */
+    if (step === 0) {
+        return (
+            <JobPage>
+                <Steps steps={STEPS} current={0} />
+                <JobIntro>Move students to another section of the same class. Year {academicYear || '—'}.</JobIntro>
+                <div className="card">
+                    <div className="card-body grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Class" htmlFor="cs-class">
                             <select
+                                id="cs-class"
                                 value={sourceClass}
-                                onChange={e => { setSourceClass(e.target.value); setSourceSection(''); }}
-                                className="input w-auto"
+                                onChange={e => { setSourceClass(e.target.value); setSourceSection(''); setSelectedStudentIds([]); setTargetSection(''); }}
+                                className="input"
                             >
-                                <option value="">Select Class</option>
+                                <option value="">Choose a class</option>
                                 {classes.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
                             </select>
+                        </Field>
+                        <Field label="Current section" htmlFor="cs-section">
                             <select
+                                id="cs-section"
                                 value={sourceSection}
-                                onChange={e => setSourceSection(e.target.value)}
-                                className="input w-auto"
+                                onChange={e => { setSourceSection(e.target.value); setSelectedStudentIds([]); setTargetSection(''); }}
+                                className="input"
                                 disabled={!sourceClass}
                             >
-                                <option value="">Select Section</option>
+                                <option value="">Choose a section</option>
                                 {sections.map(section => <option key={section} value={section}>{section}</option>)}
                             </select>
-                        </div>
-                        <div className="relative">
-                            <input
-                                placeholder="Search students by name or admission no..."
-                                className="input pl-10"
-                                value={sourceSearch}
-                                onChange={e => setSourceSearch(e.target.value)}
-                            />
-                            <span className="absolute left-3 top-2.5 opacity-40">🔍</span>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 overflow-auto">
-                        <table className="min-w-full text-sm border-collapse">
-                            <thead className="sticky top-0 z-10 shadow-sm">
-                                <tr className="text-left border-b">
-                                    <th className="p-3 w-12"><input type="checkbox" onChange={handleSelectAll} checked={sourceStudents.filter(s => s.student_id !== undefined).length > 0 && selectedStudentIds.length === sourceStudents.filter(s => s.student_id !== undefined).length} className="w-4 h-4 rounded text-brand-600" /></th>
-                                    <th className="p-3">Admission No</th>
-                                    <th className="p-3">Student Name</th>
-                                    <th className="p-3">Father Name</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {loadingSource ? (
-                                    <tr><td colSpan={4}><LoadingState label="Loading students..." /></td></tr>
-                                ) : sourceStudents.length === 0 ? (
-                                    <tr><td colSpan={4}><EmptyState compact title="No records found" description="Please select class and section." /></td></tr>
-                                ) : (
-                                    sourceStudents.map((s) => (
-                                        <tr key={s.student_id ?? s.admNo ?? s.admission_no} className={`hover:bg-brand-50 transition-colors ${s.student_id && selectedStudentIds.includes(s.student_id) ? 'bg-brand-50/50' : ''}`}>
-                                            <td className="p-3">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={s.student_id ? selectedStudentIds.includes(s.student_id) : false}
-                                                    onChange={() => handleSelectOne(s.student_id)}
-                                                    className="w-4 h-4 rounded text-brand-600"
-                                                />
-                                            </td>
-                                            <td className="p-3 font-mono text-gray-600">{s.admNo || s.admission_no}</td>
-                                            <td className="p-3 font-semibold text-gray-800">{s.name}</td>
-                                            <td className="p-3 text-gray-600">{s.father}</td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-sm">
-                        <span className="text-slate-600 font-medium">Total: <b className="text-brand-700">{sourceStudents.length}</b></span>
-                        <span className="text-slate-600 font-medium">Selected: <b className="text-brand-700">{selectedStudentIds.length}</b></span>
+                        </Field>
                     </div>
                 </div>
+                <ActionBar note={!sourceClass ? 'Choose a class first' : !sourceSection ? 'Choose the current section' : undefined}>
+                    {backButton}
+                    <Button size="lg" disabled={!sourceClass || !sourceSection} onClick={() => setStep(1)}>
+                        Show students
+                    </Button>
+                </ActionBar>
+            </JobPage>
+        );
+    }
 
-                {/* ----------------- RIGHT PANEL: SELECTED STUDENTS & ACTION ----------------- */}
-                <div className="card flex-1 min-w-0 flex flex-col overflow-hidden">
-                    <div className="p-4 bg-emerald-50 border-b border-slate-200">
-                        <h3 className="font-semibold text-emerald-800 mb-3 uppercase tracking-wider text-sm">Selected Students</h3>
-                        <div className="flex flex-wrap gap-3">
-                            <select
-                                value={targetSection}
-                                onChange={e => setTargetSection(e.target.value)}
-                                className="input flex-1 min-w-[10rem]"
-                            >
-                                <option value="">Select Target Section</option>
-                                {sections.filter(s => s !== sourceSection).map(section => <option key={section} value={section}>{section}</option>)}
-                            </select>
-                            <button
-                                onClick={handleChangeSection}
-                                disabled={selectedStudentIds.length === 0 || !targetSection || processing}
-                                className={`btn ${selectedStudentIds.length > 0 && targetSection && !processing ? 'bg-brand-600 text-brand-contrast hover:bg-brand-700 active:transform active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
-                            >
-                                {processing ? 'Processing...' : 'Click here for change section'}
-                            </button>
-                        </div>
-                    </div>
+    /* ------------------------------------------------------------ Step 4 */
+    if (step === 3 && lastMove) {
+        return (
+            <JobPage>
+                <Steps steps={STEPS} current={3} />
+                <DoneCard title="Section changed">
+                    <p>{studentsCount(lastMove.count)} moved from {lastMove.from} to {lastMove.to}.</p>
+                    {lastMove.names.length > 0 && <p className="text-sm">{namesPreview(lastMove.names)}</p>}
+                    {onBack && (
+                        <button type="button" className="btn-ghost btn-sm mt-3" onClick={onBack}>Back to students</button>
+                    )}
+                </DoneCard>
+                <ActionBar>
+                    <Button variant="secondary" size="lg" onClick={() => { setLastMove(null); setStep(0); }}>Choose another class</Button>
+                    <Button size="lg" onClick={() => { setLastMove(null); setStep(1); }}>Move more from {lastMove.from}</Button>
+                </ActionBar>
+            </JobPage>
+        );
+    }
 
-                    <div className="flex-1 overflow-auto bg-slate-50/30">
-                        <table className="min-w-full text-sm border-collapse">
-                            <thead className="sticky top-0 z-10 shadow-sm border-b">
-                                <tr className="text-left">
-                                    <th className="p-3">Student Name</th>
-                                    <th className="p-3">Adm No</th>
-                                    <th className="p-3">Father Name</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {selectedStudentsList.length === 0 ? (
-                                    <tr><td colSpan={3}><EmptyState compact title="No students selected" description="No students selected from the left panel." /></td></tr>
-                                ) : (
-                                    selectedStudentsList.map((s) => (
-                                        <tr key={s.student_id} className="bg-white">
-                                            <td className="p-3 font-semibold text-gray-800">{s.name}</td>
-                                            <td className="p-3 font-mono text-gray-600">{s.admNo || s.admission_no}</td>
-                                            <td className="p-3 text-gray-600">{s.father}</td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-sm">
-                        <span className="text-slate-600 font-medium">Selected Count: <b className="text-emerald-700">{selectedStudentIds.length}</b></span>
-                    </div>
+    /* ------------------------------------------------------------ Step 2 */
+    if (step === 1) {
+        return (
+            <JobPage>
+                <Steps steps={STEPS} current={1} onJump={i => setStep(i)} />
+                <ChoiceSummary title={`Class ${fromLabel}`} detail={`Year ${academicYear || '—'}`} onChange={() => setStep(0)} />
+                <StudentPickList
+                    items={pickItems}
+                    selected={selectedStudentIds}
+                    onChange={setSelectedStudentIds}
+                    loading={loadingSource}
+                    search={sourceSearch}
+                    onSearch={setSourceSearch}
+                    emptyTitle={sourceSearch ? 'No student matches your search' : 'No students in this section'}
+                />
+                <ActionBar note={selectedStudentIds.length === 0 ? 'Tap the students you want to move' : `${studentsCount(selectedStudentIds.length)} chosen`}>
+                    <Button variant="secondary" size="lg" onClick={() => setStep(0)}>Back</Button>
+                    <Button size="lg" disabled={selectedStudentIds.length === 0} onClick={() => setStep(2)}>
+                        Next
+                    </Button>
+                </ActionBar>
+            </JobPage>
+        );
+    }
+
+    /* ------------------------------------------------------------ Step 3 */
+    const otherSections = sections.filter(s => s !== sourceSection);
+    return (
+        <JobPage>
+            <Steps steps={STEPS} current={2} onJump={i => setStep(i)} />
+            <div className="card">
+                <div className="card-body space-y-4">
+                    <Field label="Move them to section" htmlFor="cs-target">
+                        <select
+                            id="cs-target"
+                            value={targetSection}
+                            onChange={e => setTargetSection(e.target.value)}
+                            className="input"
+                        >
+                            <option value="">Choose the new section</option>
+                            {otherSections.map(section => <option key={section} value={section}>{section}</option>)}
+                        </select>
+                    </Field>
+                    {otherSections.length === 0 && (
+                        <Alert tone="warning">Class {sourceClass} has no other section to move to.</Alert>
+                    )}
                 </div>
             </div>
-        </div>
+
+            {targetSection && (
+                <div className="card">
+                    <div className="card-body">
+                        <p className="text-sm text-slate-500">Please check</p>
+                        <p className="mt-1 text-lg font-semibold text-slate-900 flex flex-wrap items-center gap-2">
+                            Move {studentsCount(selectedStudentIds.length)} from {fromLabel}
+                            <ArrowRight className="w-5 h-5 text-brand-600" />
+                            {sourceClass}-{targetSection}
+                        </p>
+                        <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200 max-h-64 overflow-y-auto">
+                            {selectedStudentsList.map(s => (
+                                <li key={s.student_id} className="px-3 py-2 text-sm">
+                                    <span className="font-medium text-slate-900">{s.name}</span>
+                                    <span className="text-slate-500"> · {s.admNo || s.admission_no}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            )}
+
+            <ActionBar note={!targetSection ? 'Choose the new section first' : undefined}>
+                <Button variant="secondary" size="lg" onClick={() => setStep(1)}>Back</Button>
+                <Button
+                    size="lg"
+                    onClick={handleChangeSection}
+                    disabled={selectedStudentIds.length === 0 || !targetSection || processing}
+                    loading={processing}
+                >
+                    Move {studentsCount(selectedStudentIds.length)}
+                </Button>
+            </ActionBar>
+        </JobPage>
     );
 };
 

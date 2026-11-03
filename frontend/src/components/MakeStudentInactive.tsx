@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { confirmDialog } from './ui/feedback';
-import { Alert, LoadingState, EmptyState } from './ui';
+import { confirmDialog, notify } from './ui/feedback';
+import { Alert, LoadingState, EmptyState, Steps, ActionBar, Button, Field } from './ui';
+import { JobPage, JobIntro, ChoiceSummary, DoneCard } from './student-jobs/common';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -38,7 +39,14 @@ interface FeeInstallment {
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
+const STEPS = ['Find the student', 'Check fees', 'Date and reason', 'Done'];
+type FindMode = 'adm' | 'name' | 'class';
+
 const MakeStudentInactive: React.FC = () => {
+    const [step, setStep] = useState(0);
+    const [findMode, setFindMode] = useState<FindMode>('adm');
+    const [finding, setFinding] = useState(false);
+    const [doneName, setDoneName] = useState('');
     // ── Search state ──────────────────────────────────────────────────────────
     const [admSearch, setAdmSearch] = useState('');
     const [nameSearch, setNameSearch] = useState('');
@@ -83,7 +91,7 @@ const MakeStudentInactive: React.FC = () => {
     }, [selectedClass]);
 
     // ── Go: load the selected student's details + fee structure ───────────────
-    const handleGo = async () => {
+    const handleGo = async (): Promise<boolean> => {
         // Resolve student id – by admission number search or dropdown
         let targetId = selectedStudentId;
 
@@ -97,12 +105,12 @@ const MakeStudentInactive: React.FC = () => {
                     targetId = match.student_id;
                     setStudent(match);
                 } else {
-                    setMessage({ type: 'error', text: 'No student found with that admission number.' });
-                    return;
+                    setMessage({ type: 'error', text: 'No student has that admission number. Check the number and try again.' });
+                    return false;
                 }
             } catch {
-                setMessage({ type: 'error', text: 'Error searching student.' });
-                return;
+                setMessage({ type: 'error', text: 'Could not search for the student. Try again.' });
+                return false;
             }
         } else if (!targetId && nameSearch.trim()) {
             try {
@@ -112,12 +120,12 @@ const MakeStudentInactive: React.FC = () => {
                     targetId = found[0].student_id;
                     setStudent(found[0]);
                 } else {
-                    setMessage({ type: 'error', text: 'No student found with that name.' });
-                    return;
+                    setMessage({ type: 'error', text: 'No student has that name. Check the spelling and try again.' });
+                    return false;
                 }
             } catch {
-                setMessage({ type: 'error', text: 'Error searching student.' });
-                return;
+                setMessage({ type: 'error', text: 'Could not search for the student. Try again.' });
+                return false;
             }
         } else if (targetId) {
             const s = studentOptions.find(s => s.student_id === targetId);
@@ -125,8 +133,8 @@ const MakeStudentInactive: React.FC = () => {
         }
 
         if (!targetId) {
-            setMessage({ type: 'error', text: 'Please select or search for a student first.' });
-            return;
+            setMessage({ type: 'error', text: 'Find a student first.' });
+            return false;
         }
 
         setMessage(null);
@@ -144,10 +152,11 @@ const MakeStudentInactive: React.FC = () => {
             }));
             setFees(installments);
         } catch {
-            setMessage({ type: 'error', text: 'Failed to load fee structure.' });
+            setMessage({ type: 'error', text: 'Could not load the fees of this student.' });
         } finally {
             setLoadingFees(false);
         }
+        return true;
     };
 
     // ── Make Inactive ──────────────────────────────────────────────────────────
@@ -156,15 +165,15 @@ const MakeStudentInactive: React.FC = () => {
 
         const hasDueFees = fees.some(fee => fee.dueAmount > 0);
         if (hasDueFees) {
-            setMessage({ type: 'error', text: 'student has fee to pay unable to deactivate' });
+            setMessage({ type: 'error', text: 'This student still has fees to pay. Collect the fee or clear unpaid fees first.' });
             return;
         }
 
         if (!inactivationDate) {
-            setMessage({ type: 'error', text: 'Please enter an inactivation date.' });
+            setMessage({ type: 'error', text: 'Choose the date the student left.' });
             return;
         }
-        if (!await confirmDialog(`Are you sure you want to make ${student.name} inactive?`)) return;
+        if (!await confirmDialog(`Make ${student.name} inactive? They will no longer appear in class lists.`, { title: 'Make student inactive?', confirmText: 'Make inactive', tone: 'danger' })) return;
 
         setSubmitting(true);
         setMessage(null);
@@ -174,7 +183,10 @@ const MakeStudentInactive: React.FC = () => {
                 inactivation_date: inactivationDate,
                 inactivation_reason: reason,
             });
-            setMessage({ type: 'success', text: `${student.name} has been marked as Inactive successfully.` });
+            setMessage(null);
+            notify.success(`${student.name} is now inactive`);
+            setDoneName(student.name);
+            setStep(3);
             // Reset
             setStudent(null);
             setFees([]);
@@ -185,7 +197,7 @@ const MakeStudentInactive: React.FC = () => {
             setInactivationDate('');
             setReason('');
         } catch (err: any) {
-            const errMsg = err?.response?.data?.error || 'Failed to make student inactive.';
+            const errMsg = err?.response?.data?.error || 'Could not make the student inactive.';
             setMessage({ type: 'error', text: errMsg });
         } finally {
             setSubmitting(false);
@@ -195,13 +207,13 @@ const MakeStudentInactive: React.FC = () => {
     // ── Nullify Fee Structure ──────────────────────────────────────────────────
     const handleNullify = async () => {
         if (!student) return;
-        if (!await confirmDialog('This will zero out all unpaid fee installments. Continue?')) return;
+        if (!await confirmDialog('All unpaid fees of this student will be set to ₹0. Fees already paid stay as they are. Continue?', { title: 'Clear unpaid fees?', confirmText: 'Clear unpaid fees', tone: 'danger' })) return;
 
         setNullifying(true);
         setMessage(null);
         try {
             const res = await api.post(`/fees/nullify/${student.student_id}`);
-            setMessage({ type: 'success', text: res.data.message || 'Fee structure nullified.' });
+            setMessage({ type: 'success', text: res.data.message || 'Unpaid fees cleared.' });
             // Reload fees
             const feeRes = await api.get(`/fees/student-details/${student.student_id}`);
             const installments: FeeInstallment[] = (feeRes.data.installments || []).map((i: any) => ({
@@ -215,7 +227,7 @@ const MakeStudentInactive: React.FC = () => {
             }));
             setFees(installments);
         } catch (err: any) {
-            setMessage({ type: 'error', text: err?.response?.data?.error || 'Failed to nullify fees.' });
+            setMessage({ type: 'error', text: err?.response?.data?.error || 'Could not clear unpaid fees.' });
         } finally {
             setNullifying(false);
         }
@@ -224,213 +236,251 @@ const MakeStudentInactive: React.FC = () => {
     // ─────────────────────────────────────────────────────────────────────────
     // Render
     // ─────────────────────────────────────────────────────────────────────────
-    return (
-        <div className="p-4 sm:p-6 bg-surface-muted min-h-full">
-            <div className="flex flex-col lg:flex-row gap-6">
-                {/* ── LEFT PANEL ──────────────────────────────────────────── */}
-                <div className="w-full lg:w-1/2">
-                    {/* Search Panel */}
-                    <div className="card p-4 mb-4">
-                        <h3 className="text-base font-semibold text-slate-900 mb-3">
-                            Make Student Inactive
-                            <span className="ml-2 text-xs font-normal text-brand-600 cursor-pointer hover:underline">Get Help</span>
-                        </h3>
+    const totalDue = fees.reduce((sum, f) => sum + (f.dueAmount > 0 ? f.dueAmount : 0), 0);
+    const hasDue = fees.some(fee => fee.dueAmount > 0);
+    const money = (n: number) => `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
-                        {/* Row 1: adm search + name search */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                            <input
-                                type="text"
-                                placeholder="search adm. number"
-                                value={admSearch}
-                                onChange={e => setAdmSearch(e.target.value)}
-                                className="input w-auto"
-                            />
-                            <input
-                                type="text"
-                                placeholder="search student name"
-                                value={nameSearch}
-                                onChange={e => setNameSearch(e.target.value)}
-                                className="input w-auto"
-                            />
-                        </div>
+    const chooseMode = (mode: FindMode) => {
+        // Only one way of finding is used at a time, so clear the others
+        setFindMode(mode);
+        setMessage(null);
+        if (mode !== 'adm') setAdmSearch('');
+        if (mode !== 'name') setNameSearch('');
+        if (mode !== 'class') { setSelectedClass(''); setSelectedStudentId(null); }
+    };
 
-                        {/* Row 2: class dropdown + student dropdown + Go button */}
-                        <div className="flex gap-2 mb-2 items-center">
-                            <select
-                                value={selectedClass}
-                                onChange={e => setSelectedClass(e.target.value)}
-                                className="input flex-1"
-                            >
-                                <option value="">Select Class</option>
-                                {classOptions.map(c => (
-                                    <option key={c.id} value={c.class_name}>{c.class_name}</option>
-                                ))}
-                            </select>
+    const canFind = findMode === 'adm' ? !!admSearch.trim() : findMode === 'name' ? !!nameSearch.trim() : !!selectedStudentId;
 
-                            <select
-                                value={selectedStudentId ?? ''}
-                                onChange={e => setSelectedStudentId(Number(e.target.value) || null)}
-                                disabled={!selectedClass}
-                                className="input flex-1"
-                            >
-                                <option value="">Select Student</option>
-                                {studentOptions.map(s => (
-                                    <option key={s.student_id} value={s.student_id}>
-                                        {s.rollNo ? `${s.rollNo} ${s.name}` : s.name}
-                                    </option>
-                                ))}
-                            </select>
+    const find = async () => {
+        setFinding(true);
+        try {
+            if (await handleGo()) setStep(1);
+        } finally {
+            setFinding(false);
+        }
+    };
 
-                            <button
-                                onClick={handleGo}
-                                className="btn-primary"
-                            >
-                                Go ▶
-                            </button>
-                        </div>
+    const studentDetail = student && (
+        <ChoiceSummary
+            title={student.name}
+            detail={
+                <>
+                    Admission number {student.admNo || '—'} · Class {student.class} {student.section}
+                    {student.rollNo ? ` · Roll ${student.rollNo}` : ''}
+                    <br />
+                    Father: {student.father || '—'}{student.fatherMobile ? ` (${student.fatherMobile})` : ''}
+                    {student.Motherfirstname ? <> · Mother: {student.Motherfirstname}{student.SecondaryPhone ? ` (${student.SecondaryPhone})` : ''}</> : null}
+                </>
+            }
+            changeLabel="Change student"
+            onChange={() => { setMessage(null); setStep(0); }}
+        />
+    );
 
-                        {/* Row 3: date + reason + Make Inactive button */}
-                        <div className="flex gap-2 items-center">
-                            {student && (
-                                <>
-                                    <input
-                                        type="date"
-                                        value={inactivationDate}
-                                        onChange={e => setInactivationDate(e.target.value)}
-                                        className="input w-40"
-                                        placeholder="date"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="reason"
-                                        value={reason}
-                                        onChange={e => setReason(e.target.value)}
-                                        className="input flex-1"
-                                    />
+    const messageBanner = message && (
+        <Alert tone={message.type === 'success' ? 'success' : 'error'} onClose={() => setMessage(null)}>
+            {message.text}
+        </Alert>
+    );
+
+    /* ------------------------------------------------------------ Step 1: find */
+    if (step === 0) {
+        return (
+            <JobPage>
+                <Steps steps={STEPS} current={0} />
+                <JobIntro>Use this when a student has left the school. Inactive students no longer appear in class lists.</JobIntro>
+                <div className="card">
+                    <div className="card-body space-y-4">
+                        <div>
+                            <p className="label">Find the student by</p>
+                            <div className="segmented w-full sm:w-auto flex" role="tablist">
+                                {([['adm', 'Admission number'], ['name', 'Name'], ['class', 'Class list']] as [FindMode, string][]).map(([m, label]) => (
                                     <button
-                                        onClick={handleMakeInactive}
-                                        disabled={submitting}
-                                        className="btn-danger"
+                                        key={m}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={findMode === m}
+                                        onClick={() => chooseMode(m)}
+                                        className={`segmented-item flex-1 min-h-[40px] ${findMode === m ? 'segmented-item-active' : ''}`}
                                     >
-                                        {submitting ? 'Saving...' : 'Make Inactive'}
+                                        {label}
                                     </button>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Message Banner */}
-                    {message && (
-                        <Alert tone={message.type === 'success' ? 'success' : 'error'} className="mb-3">
-                            {message.text}
-                        </Alert>
-                    )}
-
-                    {/* Fee Table */}
-                    {student && (
-                        <div className="card overflow-hidden">
-                            {/* Fee Header */}
-                            <div className="card-header py-2.5">
-                                <span className="text-base font-semibold text-slate-900 flex items-center gap-1">
-                                    <span className="text-emerald-600">₹</span> Fee
-                                </span>
-                                <button
-                                    onClick={handleNullify}
-                                    disabled={nullifying}
-                                    className="btn-primary btn-sm"
-                                >
-                                    <span>⊘</span> {nullifying ? 'Nullifying...' : 'Nullify fee Structure'}
-                                </button>
+                                ))}
                             </div>
-
-                            {loadingFees ? (
-                                <LoadingState label="Loading fee structure..." />
-                            ) : fees.length === 0 ? (
-                                <EmptyState compact title="No fee records found." />
-                            ) : (
-                                <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="">
-                                            <th className="w-8 px-2 py-2">
-                                                <input type="checkbox" className="rounded" />
-                                            </th>
-                                            <th className="px-3 py-2 text-left">Sr.</th>
-                                            <th className="px-3 py-2 text-left">Title</th>
-                                            <th className="px-3 py-2 text-left">Details</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {fees.map((fee, idx) => {
-                                            const isPaid = fee.paidAmount > 0;
-                                            const rowBg = isPaid ? 'bg-emerald-50' : 'bg-white';
-                                            return (
-                                                <tr key={fee.id} className={`${rowBg} border-t border-slate-100`}>
-                                                    <td className="px-2 py-2 text-center">
-                                                        {!isPaid && (
-                                                            <input type="checkbox" className="rounded" />
-                                                        )}
-                                                    </td>
-                                                    <td className="px-3 py-2 text-gray-500">{idx + 1}</td>
-                                                    <td className="px-3 py-2 font-medium text-gray-800">{fee.title}</td>
-                                                    <td className="px-3 py-2 text-gray-600 text-xs">
-                                                        {isPaid
-                                                            ? `Payable = ${fee.totalFee.toFixed(0)}, Paid = ${fee.paidAmount.toFixed(0)}, Due = ${fee.dueAmount.toFixed(0)}`
-                                                            : `Payable = ${fee.totalFee.toFixed(0)}`
-                                                        }
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                                </div>
-                            )}
                         </div>
+
+                        {findMode === 'adm' && (
+                            <Field label="Admission number" htmlFor="inact-adm">
+                                <input
+                                    id="inact-adm"
+                                    type="text"
+                                    placeholder="e.g. 2026-003"
+                                    value={admSearch}
+                                    onChange={e => setAdmSearch(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter' && canFind) find(); }}
+                                    className="input"
+                                    autoFocus
+                                />
+                            </Field>
+                        )}
+                        {findMode === 'name' && (
+                            <Field label="Student name" htmlFor="inact-name" hint="The first student that matches will be opened">
+                                <input
+                                    id="inact-name"
+                                    type="text"
+                                    placeholder="Type the name"
+                                    value={nameSearch}
+                                    onChange={e => setNameSearch(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter' && canFind) find(); }}
+                                    className="input"
+                                    autoFocus
+                                />
+                            </Field>
+                        )}
+                        {findMode === 'class' && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Field label="Class" htmlFor="inact-class">
+                                    <select id="inact-class" value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="input">
+                                        <option value="">Choose a class</option>
+                                        {classOptions.map(c => (
+                                            <option key={c.id} value={c.class_name}>{c.class_name}</option>
+                                        ))}
+                                    </select>
+                                </Field>
+                                <Field label="Student" htmlFor="inact-student">
+                                    <select
+                                        id="inact-student"
+                                        value={selectedStudentId ?? ''}
+                                        onChange={e => setSelectedStudentId(Number(e.target.value) || null)}
+                                        disabled={!selectedClass}
+                                        className="input"
+                                    >
+                                        <option value="">Choose a student</option>
+                                        {studentOptions.map(s => (
+                                            <option key={s.student_id} value={s.student_id}>
+                                                {s.rollNo ? `${s.rollNo} ${s.name}` : s.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </Field>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                {messageBanner}
+                <ActionBar note={!canFind ? (findMode === 'class' ? 'Choose a class and a student' : findMode === 'adm' ? 'Type the admission number' : 'Type the name') : undefined}>
+                    <Button size="lg" onClick={find} disabled={!canFind} loading={finding}>Find student</Button>
+                </ActionBar>
+            </JobPage>
+        );
+    }
+
+    /* ------------------------------------------------------------ Done */
+    if (step === 3) {
+        return (
+            <JobPage>
+                <Steps steps={STEPS} current={3} />
+                <DoneCard title="Student made inactive">
+                    <p>{doneName} is now inactive.</p>
+                </DoneCard>
+                <ActionBar>
+                    <Button size="lg" onClick={() => { setDoneName(''); setStep(0); }}>Make another student inactive</Button>
+                </ActionBar>
+            </JobPage>
+        );
+    }
+
+    /* ------------------------------------------------------------ Step 2: fees */
+    if (step === 1) {
+        return (
+            <JobPage>
+                <Steps steps={STEPS} current={1} onJump={i => setStep(i)} />
+                {studentDetail}
+                {messageBanner}
+                <div className="card overflow-hidden">
+                    <div className="card-header py-2.5">
+                        <span className="text-base font-semibold text-slate-900">Fees</span>
+                        {student && fees.length > 0 && (
+                            <Button variant="secondary" size="sm" onClick={handleNullify} loading={nullifying}>
+                                Clear unpaid fees
+                            </Button>
+                        )}
+                    </div>
+                    {loadingFees ? (
+                        <LoadingState label="Loading fees…" />
+                    ) : fees.length === 0 ? (
+                        <EmptyState compact title="No fees found for this student" />
+                    ) : (
+                        <ul className="divide-y divide-slate-100">
+                            {fees.map(fee => {
+                                const isPaid = fee.paidAmount > 0;
+                                return (
+                                    <li key={fee.id} className={`px-4 py-3 flex items-start justify-between gap-3 ${fee.dueAmount > 0 ? '' : 'bg-emerald-50/50'}`}>
+                                        <div className="min-w-0">
+                                            <p className="font-medium text-slate-900 break-words">{fee.title}</p>
+                                            <p className="text-sm text-slate-500">
+                                                Fee {money(fee.totalFee)}
+                                                {isPaid && <> · Paid {money(fee.paidAmount)}</>}
+                                            </p>
+                                        </div>
+                                        <span className={`text-sm font-semibold flex-shrink-0 ${fee.dueAmount > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                            {fee.dueAmount > 0 ? `${money(fee.dueAmount)} to pay` : 'Nothing to pay'}
+                                        </span>
+                                    </li>
+                                );
+                            })}
+                        </ul>
                     )}
                 </div>
+                {!loadingFees && hasDue && (
+                    <Alert tone="warning" title={`${money(totalDue)} still to pay`}>
+                        Collect the fee first, or tap “Clear unpaid fees” if the school will not collect it.
+                    </Alert>
+                )}
+                <ActionBar note={hasDue ? 'This student still has fees to pay' : undefined}>
+                    <Button variant="secondary" size="lg" onClick={() => { setMessage(null); setStep(0); }}>Back</Button>
+                    <Button size="lg" disabled={!student || loadingFees || hasDue} onClick={() => { setMessage(null); setStep(2); }}>Next</Button>
+                </ActionBar>
+            </JobPage>
+        );
+    }
 
-                {/* ── RIGHT PANEL ─────────────────────────────────────────── */}
-                <div className="w-full lg:w-1/2">
-                    <div className="card p-5">
-                        <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-1">
-                            <span className="text-brand-500">ℹ</span> Student Detail
-                        </h3>
-
-                        <table className="w-full text-sm">
-                            <tbody>
-                                <tr className="border-b border-gray-100">
-                                    <td className="py-3 pr-4 font-semibold text-gray-600 w-1/3">Student Name:</td>
-                                    <td className="py-3 pr-4 text-gray-800">{student?.name || ''}</td>
-                                    <td className="py-3 pr-4 font-semibold text-gray-600 w-1/4">Admission no.:</td>
-                                    <td className="py-3 text-gray-800">{student?.admNo || ''}</td>
-                                </tr>
-                                <tr className="border-b border-gray-100">
-                                    <td className="py-3 pr-4 font-semibold text-gray-600">Roll No:</td>
-                                    <td className="py-3 pr-4 text-gray-800">{student?.rollNo || ''}</td>
-                                    <td className="py-3 pr-4 font-semibold text-gray-600">Class:</td>
-                                    <td className="py-3 text-gray-800">
-                                        {student ? `${student.class} ${student.section}` : ''}
-                                    </td>
-                                </tr>
-                                <tr className="border-b border-gray-100">
-                                    <td className="py-3 pr-4 font-semibold text-gray-600">Father name:</td>
-                                    <td className="py-3 pr-4 text-gray-800">{student?.father || ''}</td>
-                                    <td className="py-3 pr-4 font-semibold text-gray-600">Mother Name:</td>
-                                    <td className="py-3 text-gray-800">{student?.Motherfirstname || ''}</td>
-                                </tr>
-                                <tr>
-                                    <td className="py-3 pr-4 font-semibold text-gray-600">Father Mobile:</td>
-                                    <td className="py-3 pr-4 text-gray-800">{student?.fatherMobile || ''}</td>
-                                    <td className="py-3 pr-4 font-semibold text-gray-600">Mother Mobile:</td>
-                                    <td className="py-3 text-gray-800">{student?.SecondaryPhone || ''}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+    /* ------------------------------------------------------------ Step 3: date + reason */
+    return (
+        <JobPage>
+            <Steps steps={STEPS} current={2} onJump={i => setStep(i)} />
+            {studentDetail}
+            <div className="card">
+                <div className="card-body grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Date the student left" htmlFor="inact-date" required>
+                        <input
+                            id="inact-date"
+                            type="date"
+                            value={inactivationDate}
+                            onChange={e => setInactivationDate(e.target.value)}
+                            className="input"
+                        />
+                    </Field>
+                    <Field label="Reason (optional)" htmlFor="inact-reason">
+                        <input
+                            id="inact-reason"
+                            type="text"
+                            placeholder="e.g. Moved to another city"
+                            value={reason}
+                            onChange={e => setReason(e.target.value)}
+                            className="input"
+                        />
+                    </Field>
                 </div>
             </div>
-        </div>
+            {messageBanner}
+            <ActionBar note={!inactivationDate ? 'Choose the date the student left' : undefined}>
+                <Button variant="secondary" size="lg" onClick={() => setStep(1)}>Back</Button>
+                <Button variant="danger" size="lg" onClick={handleMakeInactive} disabled={!student || !inactivationDate} loading={submitting}>
+                    Make {student?.name?.split(' ')[0] || 'student'} inactive
+                </Button>
+            </ActionBar>
+        </JobPage>
     );
 };
 

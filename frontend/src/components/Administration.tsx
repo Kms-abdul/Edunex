@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { Page } from '../App';
 import {
     TimeIcon,
@@ -23,6 +24,7 @@ interface AdministrationProps {
 interface AdministrationModule {
     id: string;
     name: string;
+    description?: string;
     icon: React.ReactNode;
     iconBg: string;
     iconColor: string;
@@ -45,7 +47,8 @@ const Administration: React.FC<AdministrationProps> = ({ navigateTo }) => {
         },
         {
             id: 'document',
-            name: 'Document',
+            name: 'Documents',
+            description: "Upload and check each student's papers",
             icon: <DocumentReportIcon className="w-6 h-6" />,
             iconBg: 'bg-slate-50',
             iconColor: 'text-slate-600',
@@ -95,7 +98,8 @@ const Administration: React.FC<AdministrationProps> = ({ navigateTo }) => {
         },
         {
             id: 'student-attendance',
-            name: 'Student Attendance',
+            name: 'Student attendance',
+            description: "Mark who is present today",
             icon: <ChartBarIcon className="w-6 h-6" />,
             iconBg: 'bg-teal-50',
             iconColor: 'text-teal-600',
@@ -104,7 +108,8 @@ const Administration: React.FC<AdministrationProps> = ({ navigateTo }) => {
         },
         {
             id: 'student',
-            name: 'Student',
+            name: 'Students',
+            description: "Add, find, promote or update students",
             icon: <UserIcon className="w-6 h-6" />,
             iconBg: 'bg-indigo-50',
             iconColor: 'text-indigo-600',
@@ -121,7 +126,7 @@ const Administration: React.FC<AdministrationProps> = ({ navigateTo }) => {
         },
         {
             id: 'attendance-staff',
-            name: 'Attendance(Stf)',
+            name: 'Staff attendance',
             icon: <UserIcon className="w-6 h-6" />,
             iconBg: 'bg-red-50',
             iconColor: 'text-red-600',
@@ -153,7 +158,7 @@ const Administration: React.FC<AdministrationProps> = ({ navigateTo }) => {
         },
         {
             id: 'post-jobs',
-            name: 'Post Jobs',
+            name: 'Job posts',
             icon: <DocumentReportIcon className="w-6 h-6" />,
             iconBg: 'bg-fuchsia-50',
             iconColor: 'text-fuchsia-600',
@@ -177,7 +182,8 @@ const Administration: React.FC<AdministrationProps> = ({ navigateTo }) => {
         },
         {
             id: 'sms-center',
-            name: 'SMS Center',
+            name: 'Messages (SMS)',
+            description: "Send SMS to parents and staff",
             icon: <DocumentReportIcon className="w-6 h-6" />,
             iconBg: 'bg-orange-50',
             iconColor: 'text-orange-600',
@@ -192,6 +198,8 @@ const Administration: React.FC<AdministrationProps> = ({ navigateTo }) => {
         }
     };
 
+    const [showLater, setShowLater] = useState(false);
+
     const visibleModules = administrationModules
         .filter(module => {
             if (!module.permission) return true;
@@ -205,35 +213,62 @@ const Administration: React.FC<AdministrationProps> = ({ navigateTo }) => {
             return a.comingSoon ? 1 : -1;
         });
 
+    const readyModules = visibleModules.filter(m => !m.comingSoon);
+    const laterModules = visibleModules.filter(m => m.comingSoon);
+
     return (
         <div className="min-h-full bg-surface-muted">
             <div className="bg-white border-b border-slate-200">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
                     <PageHeader
-                        eyebrow="Administration"
                         title="Administration"
-                        subtitle="Take control of your school operations"
+                        subtitle="Choose what you want to do"
                         icon={<SetupIcon className="w-6 h-6" />}
                         className="mb-5"
                     />
                 </div>
             </div>
 
-            {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {visibleModules.map((module) => (
+                    {readyModules.map((module) => (
                         <ModuleTile
                             key={module.id}
                             name={module.name}
+                            description={module.description}
                             icon={module.icon}
                             iconClassName={`${module.iconBg} ${module.iconColor}`}
-                            comingSoon={module.comingSoon}
-                            active={!!module.page && !module.comingSoon}
                             onClick={() => handleModuleClick(module)}
                         />
                     ))}
                 </div>
+
+                {laterModules.length > 0 && (
+                    <div>
+                        <button
+                            type="button"
+                            className="btn-ghost min-h-[44px]"
+                            aria-expanded={showLater}
+                            onClick={() => setShowLater(v => !v)}
+                        >
+                            Coming later ({laterModules.length})
+                            <ChevronDown className={`w-4 h-4 transition-transform ${showLater ? 'rotate-180' : ''}`} />
+                        </button>
+                        {showLater && (
+                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {laterModules.map((module) => (
+                                    <ModuleTile
+                                        key={module.id}
+                                        name={module.name}
+                                        icon={module.icon}
+                                        iconClassName={`${module.iconBg} ${module.iconColor}`}
+                                        comingSoon
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

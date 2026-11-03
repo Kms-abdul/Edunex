@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Student } from '../types';
-import { notify, confirmDialog } from './ui/feedback';
-import { LoadingState, EmptyState } from './ui';
+import { ArrowRight } from 'lucide-react';
+import { notify } from './ui/feedback';
+import { Steps, ActionBar, Button, Field, Alert } from './ui';
+import { JobPage, JobIntro, ChoiceSummary, DoneCard, StudentPickList, namesPreview, studentsCount } from './student-jobs/common';
 
 interface PromoteStudentsProps {
     onBack?: () => void;
 }
 
+const STEPS = ['Choose class', 'Choose students', 'Choose new class', 'Done'];
+
 const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
+    const [step, setStep] = useState(0);
+    const [lastPromotion, setLastPromotion] = useState<{ count: number; names: string[]; from: string; to: string } | null>(null);
+
     // -------------------------------------------------------------
     // Source State 
     // -------------------------------------------------------------
@@ -114,7 +121,7 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
             .then(res => setSourceStudents(res.data.students || []))
             .catch(err => {
                 console.error(err);
-                notify("Error fetching source students: " + (err.response?.data?.error || err.message));
+                notify.error("Could not load students: " + (err.response?.data?.error || err.message));
             })
             .finally(() => setLoadingSource(false));
     }, [sourceYear, sourceClass, sourceSection, sourceSearch]);
@@ -143,29 +150,22 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
 
     const eligibleStudents = sourceStudents.filter(s => !s.total_due || s.total_due <= 0);
 
-    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.checked) {
-            setSelectedStudentIds(eligibleStudents.map(s => s.student_id).filter((id): id is number => id !== undefined));
-        } else {
-            setSelectedStudentIds([]);
-        }
-    };
-
-    const handleSelectOne = (id: number | undefined) => {
-        if (!id) return;
-        if (selectedStudentIds.includes(id)) {
-            setSelectedStudentIds(selectedStudentIds.filter(i => i !== id));
-        } else {
-            setSelectedStudentIds([...selectedStudentIds, id]);
-        }
-    };
+    const sourceLabel = `Class ${sourceClass}${sourceSection ? `-${sourceSection}` : ' (all sections)'} · ${sourceYear}`;
+    const targetLabel = `Class ${targetClass}${targetSection ? `-${targetSection}` : ''} · ${targetYear}`;
 
     const handleUpgrade = async () => {
-        if (selectedStudentIds.length === 0) return notify("Select students to upgrade");
-        if (!targetYear || !targetClass) return notify("Select Target Year and Class");
-        if (sourceYear === targetYear) return notify("Source and Target Year cannot be same");
+        if (selectedStudentIds.length === 0) return notify.warning("Choose the students to promote first");
+        if (!targetYear || !targetClass) return notify.warning("Choose the new year and class first");
+        if (sourceYear === targetYear) return notify.warning("The new year must be different from the current year");
 
-        if (!await confirmDialog(`Promote ${selectedStudentIds.length} students to Class ${targetClass} (${targetYear})?`)) return;
+        const promoted = {
+            count: selectedStudentIds.length,
+            names: sourceStudents
+                .filter(s => s.student_id !== undefined && selectedStudentIds.includes(s.student_id))
+                .map(s => `${s.first_name || s.name} ${s.last_name || ''}`.trim()),
+            from: sourceLabel,
+            to: targetLabel,
+        };
 
         setProcessing(true);
         try {
@@ -175,7 +175,9 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
                 target_class: targetClass,
                 target_section: targetSection
             });
-            notify("Students Promoted Successfully!");
+            notify.success(`${studentsCount(promoted.count)} promoted`);
+            setLastPromotion(promoted);
+            setStep(3);
             // Refresh
             setSourceStudents(prev =>
                 prev.filter(s => s.student_id === undefined || !selectedStudentIds.includes(s.student_id))
@@ -192,153 +194,195 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
 
         } catch (error) {
             console.error(error);
-            notify("Failed to promote students Please Check If students are already in targeted class and Academic Year");
+            notify.error("Could not promote. Some students may already be in the new class for that year. Check and try again.");
         } finally {
             setProcessing(false);
         }
     };
 
-    return (
-        <div className="p-4 sm:p-6 bg-surface-muted min-h-full">
-            <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
-                <h2 className="text-base font-semibold text-slate-900">Bulk Student Upgrade</h2>
-                {onBack && <button onClick={onBack} className="btn-secondary btn-sm">Back</button>}
-            </div>
+    const pickItems = sourceStudents
+        .filter(s => s.student_id !== undefined)
+        .map(s => {
+            const hasDue = Boolean(s.total_due && s.total_due > 0);
+            return {
+                id: s.student_id as number,
+                title: `${s.first_name || s.name} ${s.last_name || ''}`.trim(),
+                subtitle: `Admission number ${s.admNo || '—'} · Class ${s.class} ${s.section || ''}`,
+                aside: hasDue
+                    ? <span className="font-semibold text-red-600">₹{s.total_due} to pay</span>
+                    : <span className="text-emerald-600">No dues</span>,
+                blockedReason: hasDue ? 'Collect the fee first to promote' : undefined,
+            };
+        });
+    const blockedCount = sourceStudents.length - eligibleStudents.length;
 
-            <div className="flex flex-col lg:flex-row gap-4 lg:h-[80vh]">
-                {/* ----------------- SOURCE PANEL ----------------- */}
-                <div className="card flex-1 min-w-0 flex flex-col overflow-hidden">
-                    <div className="p-3 border-b border-slate-200 bg-brand-50">
-                        <h3 className="text-base font-semibold text-brand-700">Source (Current State)</h3>
-                        <div className="flex gap-2 mt-2">
-                            <select value={sourceYear} onChange={e => setSourceYear(e.target.value)} className="input w-1/3">
-                                {years.map(y => <option key={y} value={y}>{y}</option>)}
+    const yearOptions = years.map(y => <option key={y} value={y}>{y}</option>);
+    const classOptions = classes.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>);
+
+    const backButton = onBack && (
+        <Button variant="secondary" size="lg" onClick={onBack}>Back to students</Button>
+    );
+
+    /* ------------------------------------------------------------ Step 1: where they are now */
+    if (step === 0) {
+        return (
+            <JobPage>
+                <Steps steps={STEPS} current={0} />
+                <JobIntro>Move students up to the next class for the new year. Students who still have fees to pay cannot be promoted.</JobIntro>
+                <div className="card">
+                    <div className="card-body grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <Field label="Current year" htmlFor="pr-src-year">
+                            <select id="pr-src-year" value={sourceYear} onChange={e => { setSourceYear(e.target.value); setSelectedStudentIds([]); }} className="input">
+                                <option value="">Choose a year</option>
+                                {yearOptions}
                             </select>
-                            <select value={sourceClass} onChange={e => setSourceClass(e.target.value)} className="input w-1/3">
-                                <option value="">Select Class</option>
-                                {classes.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
+                        </Field>
+                        <Field label="Current class" htmlFor="pr-src-class">
+                            <select id="pr-src-class" value={sourceClass} onChange={e => { setSourceClass(e.target.value); setSelectedStudentIds([]); }} className="input">
+                                <option value="">Choose a class</option>
+                                {classOptions}
                             </select>
-                            <select value={sourceSection} onChange={e => setSourceSection(e.target.value)} className="input w-1/4">
-                                <option value="">All Sec</option>
+                        </Field>
+                        <Field label="Section (optional)" htmlFor="pr-src-section">
+                            <select id="pr-src-section" value={sourceSection} onChange={e => { setSourceSection(e.target.value); setSelectedStudentIds([]); }} className="input" disabled={!sourceClass}>
+                                <option value="">All sections</option>
                                 {sourceSections.map(section => <option key={section} value={section}>{section}</option>)}
                             </select>
-                        </div>
-                        <input
-                            placeholder="Search Source Students..."
-                            className="input mt-2"
-                            value={sourceSearch}
-                            onChange={e => setSourceSearch(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="flex-1 overflow-auto p-2">
-                        <h4 className="text-sm font-semibold text-slate-700 mb-2">{sourceStudents.length} Students Found</h4>
-                        <table className="w-full text-sm border-collapse">
-                            <thead>
-                                <tr className="text-left">
-                                    <th className="p-2 border"><input type="checkbox" onChange={handleSelectAll} checked={eligibleStudents.length > 0 && selectedStudentIds.length === eligibleStudents.length} /></th>
-                                    <th className="p-2 border">Adm No</th>
-                                    <th className="p-2 border">Name</th>
-                                    <th className="p-2 border">Class</th>
-                                    <th className="p-2 border text-right">Total Due</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loadingSource ? <tr><td colSpan={5}><LoadingState /></td></tr> :
-                                    sourceStudents.map((s) => {
-                                        const hasDue = s.total_due && s.total_due > 0;
-                                        return (
-                                            <tr key={s.student_id} className="hover:bg-brand-50">
-                                                <td className="p-2 border">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={s.student_id ? selectedStudentIds.includes(s.student_id) : false}
-                                                        onChange={() => {
-                                                            if (hasDue) {
-                                                                notify(`Cannot select student. Pending due: ₹${s.total_due}`);
-                                                                return;
-                                                            }
-                                                            handleSelectOne(s.student_id);
-                                                        }}
-                                                        disabled={Boolean(hasDue)}
-                                                        title={hasDue ? 'Clear dues to promote' : undefined}
-                                                    />
-                                                </td>
-                                                <td className="p-2 border">{s.admNo}</td>
-                                                <td className="p-2 border">{s.first_name || s.name} {s.last_name || ''}</td>
-                                                <td className="p-2 border">{s.class} {s.section}</td>
-                                                <td className={`p-2 border text-right ${hasDue ? 'text-red-600 font-semibold' : 'text-emerald-600'}`}>
-                                                    ₹{s.total_due || 0}
-                                                </td>
-                                            </tr>
-                                        )
-                                    })}
-                            </tbody>
-                        </table>
+                        </Field>
                     </div>
                 </div>
+                <ActionBar note={!sourceYear ? 'Choose the current year first' : !sourceClass ? 'Choose a class first' : undefined}>
+                    {backButton}
+                    <Button size="lg" disabled={!sourceYear || !sourceClass} onClick={() => setStep(1)}>Show students</Button>
+                </ActionBar>
+            </JobPage>
+        );
+    }
 
-                {/* ----------------- ACTION CENTER ----------------- */}
-                <div className="flex lg:flex-col justify-center items-center gap-4 lg:w-32">
-                    <button
-                        onClick={handleUpgrade}
-                        disabled={selectedStudentIds.length === 0 || processing}
-                        className={`btn shadow-lg transform ${selectedStudentIds.length > 0 && !processing ? 'bg-brand-600 text-brand-contrast hover:scale-105 hover:bg-brand-700' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}
-                    >
-                        {processing ? '...' : 'Upgrade >>'}
-                    </button>
-                    <div className="text-xs text-center text-slate-500">
-                        {selectedStudentIds.length} Selected
-                    </div>
-                </div>
+    /* ------------------------------------------------------------ Done */
+    if (step === 3 && lastPromotion) {
+        return (
+            <JobPage>
+                <Steps steps={STEPS} current={3} />
+                <DoneCard title="Students promoted">
+                    <p>{studentsCount(lastPromotion.count)} moved to {lastPromotion.to}.</p>
+                    <p className="text-sm">From {lastPromotion.from}</p>
+                    {lastPromotion.names.length > 0 && <p className="text-sm">{namesPreview(lastPromotion.names)}</p>}
+                    {onBack && (
+                        <button type="button" className="btn-ghost btn-sm mt-3" onClick={onBack}>Back to students</button>
+                    )}
+                </DoneCard>
+                <ActionBar>
+                    <Button variant="secondary" size="lg" onClick={() => { setLastPromotion(null); setStep(0); }}>Choose another class</Button>
+                    <Button size="lg" onClick={() => { setLastPromotion(null); setStep(1); }}>Promote more from this class</Button>
+                </ActionBar>
+            </JobPage>
+        );
+    }
 
-                {/* ----------------- TARGET PANEL ----------------- */}
-                <div className="card flex-1 min-w-0 flex flex-col overflow-hidden">
-                    <div className="p-3 border-b border-slate-200 bg-emerald-50">
-                        <h3 className="text-base font-semibold text-emerald-700">Target (Promote To)</h3>
-                        <div className="flex gap-2 mt-2">
-                            <select value={targetYear} onChange={e => setTargetYear(e.target.value)} className="input w-1/2">
-                                {years.map(y => <option key={y} value={y}>{y}</option>)}
-                            </select>
-                            <select value={targetClass} onChange={e => setTargetClass(e.target.value)} className="input w-1/3">
-                                <option value="">Select Class</option>
-                                {classes.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
-                            </select>
-                            <select value={targetSection} onChange={e => setTargetSection(e.target.value)} className="input w-1/4">
-                                <option value="">All Sec</option>
-                                {targetSections.map(section => <option key={section} value={section}>{section}</option>)}
-                            </select>
-                        </div>
-                    </div>
+    /* ------------------------------------------------------------ Step 2: pick students */
+    if (step === 1) {
+        return (
+            <JobPage>
+                <Steps steps={STEPS} current={1} onJump={i => setStep(i)} />
+                <ChoiceSummary title={sourceLabel} onChange={() => setStep(0)} />
+                {blockedCount > 0 && !loadingSource && (
+                    <Alert tone="warning">
+                        {studentsCount(blockedCount)} still {blockedCount === 1 ? 'has' : 'have'} fees to pay and cannot be promoted until the fee is collected.
+                    </Alert>
+                )}
+                <StudentPickList
+                    items={pickItems}
+                    selected={selectedStudentIds}
+                    onChange={setSelectedStudentIds}
+                    loading={loadingSource}
+                    search={sourceSearch}
+                    onSearch={setSourceSearch}
+                    emptyTitle={sourceSearch ? 'No student matches your search' : 'No students in this class'}
+                    onBlockedTap={() => notify.warning('This student has fees to pay. Collect the fee first to promote.')}
+                />
+                <ActionBar note={selectedStudentIds.length === 0 ? 'Tap the students you want to promote' : `${studentsCount(selectedStudentIds.length)} chosen`}>
+                    <Button variant="secondary" size="lg" onClick={() => setStep(0)}>Back</Button>
+                    <Button size="lg" disabled={selectedStudentIds.length === 0} onClick={() => setStep(2)}>Next</Button>
+                </ActionBar>
+            </JobPage>
+        );
+    }
 
-                    <div className="flex-1 overflow-auto p-2">
-                        <h4 className="text-sm font-semibold text-slate-700 mb-2">{targetStudents.length} Students Already in Target</h4>
-                        <table className="w-full text-sm border-collapse">
-                            <thead>
-                                <tr className="text-left">
-                                    <th className="p-2 border">Adm No</th>
-                                    <th className="p-2 border">Name</th>
-                                    <th className="p-2 border">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loadingTarget ? <tr><td colSpan={3}><LoadingState /></td></tr> :
-                                    targetStudents.map((s) => (
-                                        <tr key={s.student_id}>
-                                            <td className="p-2 border">{s.admNo}</td>
-                                            <td className="p-2 border">{s.first_name || s.name}</td>
-                                            <td className="p-2 border"><span className="badge-success">Promoted</span></td>
-                                        </tr>
-                                    ))}
-                                {targetStudents.length === 0 && !loadingTarget && (
-                                    <tr><td colSpan={3}><EmptyState compact title="No Records Found" /></td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+    /* ------------------------------------------------------------ Step 3: new class + check */
+    const sameYear = !!targetYear && sourceYear === targetYear;
+    const ready = selectedStudentIds.length > 0 && !!targetYear && !!targetClass && !sameYear;
+    return (
+        <JobPage>
+            <Steps steps={STEPS} current={2} onJump={i => setStep(i)} />
+            <div className="card">
+                <div className="card-body grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Field label="New year" htmlFor="pr-tgt-year" error={sameYear ? 'Choose a different year from the current one' : null}>
+                        <select id="pr-tgt-year" value={targetYear} onChange={e => setTargetYear(e.target.value)} className="input">
+                            <option value="">Choose a year</option>
+                            {yearOptions}
+                        </select>
+                    </Field>
+                    <Field label="New class" htmlFor="pr-tgt-class">
+                        <select id="pr-tgt-class" value={targetClass} onChange={e => setTargetClass(e.target.value)} className="input">
+                            <option value="">Choose a class</option>
+                            {classOptions}
+                        </select>
+                    </Field>
+                    <Field label="Section (optional)" htmlFor="pr-tgt-section">
+                        <select id="pr-tgt-section" value={targetSection} onChange={e => setTargetSection(e.target.value)} className="input" disabled={!targetClass}>
+                            <option value="">Any section</option>
+                            {targetSections.map(section => <option key={section} value={section}>{section}</option>)}
+                        </select>
+                    </Field>
                 </div>
             </div>
-        </div>
+
+            {targetYear && targetClass && !sameYear && (
+                <div className="card">
+                    <div className="card-body">
+                        <p className="text-sm text-slate-500">Please check</p>
+                        <p className="mt-1 text-lg font-semibold text-slate-900">
+                            Promote {studentsCount(selectedStudentIds.length)}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                            <span className="badge-neutral">{sourceLabel}</span>
+                            <ArrowRight className="w-4 h-4 text-brand-600" />
+                            <span className="badge-brand">{targetLabel}</span>
+                        </div>
+                        <p className="mt-3 text-sm text-slate-600">
+                            {loadingTarget
+                                ? 'Checking the new class…'
+                                : targetStudents.length > 0
+                                    ? `${studentsCount(targetStudents.length)} already in the new class.`
+                                    : 'No students in the new class yet.'}
+                        </p>
+                        {targetStudents.length > 0 && !loadingTarget && (
+                            <details className="mt-2">
+                                <summary className="cursor-pointer text-sm font-medium text-brand-700 min-h-[44px] flex items-center">See who is already there</summary>
+                                <ul className="mt-1 divide-y divide-slate-100 rounded-lg border border-slate-200 max-h-56 overflow-y-auto">
+                                    {targetStudents.map(s => (
+                                        <li key={s.student_id} className="px-3 py-2 text-sm">
+                                            <span className="font-medium text-slate-900">{s.first_name || s.name}</span>
+                                            <span className="text-slate-500"> · {s.admNo}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </details>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <ActionBar
+                note={!targetYear ? 'Choose the new year first' : sameYear ? 'The new year must be different' : !targetClass ? 'Choose the new class' : undefined}
+            >
+                <Button variant="secondary" size="lg" onClick={() => setStep(1)}>Back</Button>
+                <Button size="lg" onClick={handleUpgrade} disabled={!ready || processing} loading={processing}>
+                    Promote {studentsCount(selectedStudentIds.length)}
+                </Button>
+            </ActionBar>
+        </JobPage>
     );
 };
 

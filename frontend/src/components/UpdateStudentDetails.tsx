@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
-import { SearchIcon, ArrowBackIcon, UserIcon } from './icons';
-import { notify } from './ui/feedback';
-import { LoadingState, EmptyState, Spinner } from './ui';
+import { SearchIcon } from './icons';
+import { confirmDialog } from './ui/feedback';
+import { LoadingState, EmptyState, Spinner, Steps, ActionBar, Button, Field } from './ui';
+import { StudentAvatar } from './students/common';
 
 interface UpdateStudentDetailsProps {
     onBack: () => void;
@@ -31,61 +32,61 @@ interface Category {
 const CATEGORIES: Category[] = [
     {
         id: 'personal',
-        label: 'Personal Details',
+        label: 'Personal',
         columns: [
-            { key: 'dob', label: 'DOB' },
+            { key: 'dob', label: 'Date of birth' },
             { key: 'gender', label: 'Gender' },
             { key: 'BloodGroup', label: 'Blood Group' },
             { key: 'Religion', label: 'Religion' },
             { key: 'Caste', label: 'Caste' },
-            { key: 'Category', label: 'Student Category' },
+            { key: 'Category', label: 'Category' },
             { key: 'MotherTongue', label: 'Mother Tongue' },
         ]
     },
     {
         id: 'contact',
-        label: 'Contact Details',
+        label: 'Phone and email',
         columns: [
-            { key: 'phone', label: 'Mobile' },
+            { key: 'phone', label: 'Mobile number' },
             { key: 'email', label: 'Email' },
-            { key: 'address', label: 'Present Address' },
-            { key: 'Fatherfirstname', label: 'Father Name' },
-            { key: 'FatherPhone', label: 'Father Mobile' },
+            { key: 'address', label: 'Address' },
+            { key: 'Fatherfirstname', label: "Father's name" },
+            { key: 'FatherPhone', label: "Father's mobile" },
         ]
     },
     {
         id: 'academic',
-        label: 'Academic Details',
+        label: 'School details',
         columns: [
             { key: 'Roll_Number', label: 'Roll Number' },
-            { key: 'admission_date', label: 'Admission Date' },
-            { key: 'AdmissionClass', label: 'Admission Class' },
-            { key: 'AdmissionCategory', label: 'Admission Category' },
-            { key: 'StudentType', label: 'Student Type' },
+            { key: 'admission_date', label: 'Admission date' },
+            { key: 'AdmissionClass', label: 'Joined in class' },
+            { key: 'AdmissionCategory', label: 'Admission category' },
+            { key: 'StudentType', label: 'Day scholar or hosteller' },
             { key: 'House', label: 'House' },
         ]
     },
     {
         id: 'address',
-        label: 'Address & Physical',
+        label: 'Address, height, weight',
         columns: [
-            { key: 'address', label: 'Present Address' },
-            { key: 'permanentCity', label: 'Permanent City' },
-            { key: 'StudentHeight', label: 'Student Height' },
-            { key: 'StudentWeight', label: 'Student Weight' },
+            { key: 'address', label: 'Address' },
+            { key: 'permanentCity', label: 'Home town (permanent)' },
+            { key: 'StudentHeight', label: 'Height' },
+            { key: 'StudentWeight', label: 'Weight' },
         ]
     },
     {
         id: 'parent_id',
-        label: 'Parent & ID Details',
+        label: 'Parents and ID numbers',
         columns: [
-            { key: 'Fatherfirstname', label: 'Father Name' },
-            { key: 'Motherfirstname', label: 'Mother Name' },
-            { key: 'GuardianName', label: 'Guardian Name' },
-            { key: 'Adharcardno', label: 'Aadhar No' },
+            { key: 'Fatherfirstname', label: "Father's name" },
+            { key: 'Motherfirstname', label: "Mother's name" },
+            { key: 'GuardianName', label: "Guardian's name" },
+            { key: 'Adharcardno', label: 'Aadhaar number' },
             { key: 'SamagraId', label: 'Samagra ID' },
-            { key: 'PEN', label: 'PEN' },
-            { key: 'ApaarId', label: 'Apaar ID' },
+            { key: 'PEN', label: 'PEN number' },
+            { key: 'ApaarId', label: 'APAAR ID' },
         ]
     }
 ];
@@ -100,7 +101,21 @@ const DISPLAY_READONLY_FIELDS = ['admission_date', 'AdmissionClass'];
 
 const STUDENTS_PER_PAGE = 10;
 
+const STEPS = ['Choose class', 'Update details'];
+
+/** Phone keypad for number-only fields */
+const INPUT_MODE: Record<string, React.HTMLAttributes<HTMLInputElement>['inputMode']> = {
+    phone: 'tel',
+    FatherPhone: 'tel',
+    email: 'email',
+    Roll_Number: 'numeric',
+    Adharcardno: 'numeric',
+    StudentHeight: 'decimal',
+    StudentWeight: 'decimal',
+};
+
 const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) => {
+    const [step, setStep] = useState(0);
     const [selectedCategory, setSelectedCategory] = useState<string>(CATEGORIES[0].id);
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(false);
@@ -265,7 +280,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
             }, 3000);
 
         } catch (err: any) {
-            const errorMsg = err.response?.data?.error || err.message || "Failed to update";
+            const errorMsg = err.response?.data?.error || err.message || "Could not save. Try again.";
             setSaveErrors(prev => ({ ...prev, [studentId]: errorMsg }));
         } finally {
             setSavingIds(prev => {
@@ -320,308 +335,320 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
         return pages;
     };
 
-    return (
-        <div className="flex flex-col h-screen overflow-hidden bg-white">
-            {/* Top Toolbar */}
-            <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3 shadow-sm">
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={onBack}
-                        className="btn-icon"
-                        title="Back"
-                    >
-                        <ArrowBackIcon className="w-5 h-5 text-slate-600" />
-                    </button>
-                    <h2 className="text-base font-semibold text-slate-900 uppercase tracking-wider">
-                        Update Student Details
-                    </h2>
-                </div>
+    const changedIds = Object.keys(modifiedStudents)
+        .map(Number)
+        .filter(id => Object.keys(modifiedStudents[id] || {}).length > 0);
+    const savingAny = savingIds.size > 0;
 
-                <div className="flex items-center gap-3 flex-wrap">
-                    <select
-                        value={selectedClass}
-                        onChange={(e) => {
-                            setSelectedClass(e.target.value);
-                            setSelectedSection('');
-                        }}
-                        className="input w-auto"
-                    >
-                        <option value="">-- Select Class --</option>
-                        {classOptions.map(c => (
-                            <option key={c.id} value={c.class_name}>{c.class_name}</option>
-                        ))}
-                    </select>
+    const saveAllChanged = async () => {
+        for (const id of changedIds) {
+            // Same save as the per-student button, one after another
+            await saveStudentChanges(id);
+        }
+    };
 
-                    <select
-                        value={selectedSection}
-                        onChange={(e) => setSelectedSection(e.target.value)}
-                        className="input w-auto"
-                    >
-                        <option value="">-- Select Section --</option>
-                        {sectionOptions.map(s => (
-                            <option key={s} value={s}>{s}</option>
-                        ))}
-                    </select>
+    const leaveToClassChoice = async () => {
+        if (changedIds.length > 0 && !await confirmDialog(
+            `${changedIds.length} student${changedIds.length === 1 ? ' has' : 's have'} changes that are not saved. Discard them?`,
+            { confirmText: 'Discard changes', tone: 'danger' }
+        )) return;
+        setStep(0);
+    };
 
-                    <div className="relative">
-                        <input
-                            type="text"
-                            placeholder="Search students..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="input pl-9 w-full sm:w-64"
-                        />
-                        <SearchIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+    const fieldInput = (student: Student, sid: number, col: { key: string; label: string }, isSaving: boolean, mobile: boolean) => {
+        const isDisplayReadOnly = DISPLAY_READONLY_FIELDS.includes(col.key);
+        const currentVal = modifiedStudents[sid]?.[col.key] ?? student[col.key] ?? '';
+        const displayVal = currentVal !== null && currentVal !== undefined ? String(currentVal) : '';
+        const changed = modifiedStudents[sid]?.[col.key] !== undefined;
+
+        if (isDisplayReadOnly) {
+            return <span className="text-slate-500 text-sm px-1">{displayVal || '—'}</span>;
+        }
+        return (
+            <input
+                type="text"
+                inputMode={INPUT_MODE[col.key]}
+                aria-label={`${col.label} of ${student.name}`}
+                value={displayVal}
+                onChange={(e) => handleFieldChange(sid, col.key, e.target.value)}
+                disabled={isSaving}
+                className={`input ${mobile ? '' : 'min-w-[110px]'} ${isSaving
+                    ? 'opacity-50 cursor-not-allowed'
+                    : changed
+                        ? 'border-amber-400 bg-amber-50 focus:bg-white'
+                        : mobile ? '' : 'border-transparent hover:border-slate-300 focus:bg-white bg-transparent'
+                    }`}
+            />
+        );
+    };
+
+    const rowStatus = (sid: number, isModified: boolean, isSaving: boolean) => (
+        <>
+            {saveErrors[sid] && (
+                <span role="alert" className="text-xs text-red-600 leading-tight break-words">{saveErrors[sid]}</span>
+            )}
+            {saveSuccess.has(sid) && <span className="text-xs text-emerald-600 font-medium">Saved ✓</span>}
+            {isSaving && (
+                <span className="flex items-center gap-1 text-xs text-brand-600"><Spinner size="sm" /> Saving…</span>
+            )}
+            {isModified && !isSaving && (
+                <button type="button" onClick={() => saveStudentChanges(sid)} className="btn-success btn-sm min-h-[40px]">
+                    Save
+                </button>
+            )}
+        </>
+    );
+
+    /* ------------------------------------------------------------ Step 1: class */
+    if (step === 0) {
+        return (
+            <div className="p-4 sm:p-6 bg-surface-muted min-h-full">
+                <div className="max-w-3xl mx-auto space-y-4">
+                    <Steps steps={STEPS} current={0} />
+                    <p className="text-sm text-slate-600">Correct details like date of birth, phone or Aadhaar for a whole class at once.</p>
+                    <div className="card">
+                        <div className="card-body grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field label="Class" htmlFor="usd-class">
+                                <select
+                                    id="usd-class"
+                                    value={selectedClass}
+                                    onChange={(e) => {
+                                        setSelectedClass(e.target.value);
+                                        setSelectedSection('');
+                                    }}
+                                    className="input"
+                                >
+                                    <option value="">Choose a class</option>
+                                    {classOptions.map(c => (
+                                        <option key={c.id} value={c.class_name}>{c.class_name}</option>
+                                    ))}
+                                </select>
+                            </Field>
+                            <Field label="Section" htmlFor="usd-section">
+                                <select
+                                    id="usd-section"
+                                    value={selectedSection}
+                                    onChange={(e) => setSelectedSection(e.target.value)}
+                                    className="input"
+                                    disabled={!selectedClass}
+                                >
+                                    <option value="">Choose a section</option>
+                                    {sectionOptions.map(s => (
+                                        <option key={s} value={s}>{s}</option>
+                                    ))}
+                                </select>
+                            </Field>
+                        </div>
                     </div>
+                    <ActionBar note={!selectedClass ? 'Choose a class first' : !selectedSection ? 'Choose a section' : undefined}>
+                        <Button variant="secondary" size="lg" onClick={onBack}>Back to students</Button>
+                        <Button size="lg" disabled={!selectedClass || !selectedSection} onClick={() => setStep(1)}>Show students</Button>
+                    </ActionBar>
                 </div>
             </div>
+        );
+    }
 
-            <div className="flex flex-1 overflow-hidden">
-                {/* Left Panel */}
-                <div className="w-64 border-r border-slate-200 bg-slate-50 flex-shrink-0">
-                    <div className="p-4">
-                        <h3 className="text-xs font-semibold text-slate-400 uppercase mb-4 tracking-widest">
-                            Categories
-                        </h3>
-                        <nav className="space-y-1">
-                            {CATEGORIES.map(cat => (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => setSelectedCategory(cat.id)}
-                                    className={`btn w-full justify-start text-left ${selectedCategory === cat.id ? 'bg-brand-600 text-brand-contrast shadow-sm' : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900' }`}
-                                >
-                                    {cat.label}
-                                </button>
-                            ))}
-                        </nav>
+    /* ------------------------------------------------------------ Step 2: edit */
+    return (
+        <div className="p-4 sm:p-6 bg-surface-muted min-h-full">
+            <div className="max-w-7xl mx-auto space-y-4">
+                <Steps steps={STEPS} current={1} onJump={() => leaveToClassChoice()} />
+
+                <div className="card">
+                    <div className="card-body space-y-3">
+                        <div className="flex items-start gap-3">
+                            <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-slate-900">Class {selectedClass}-{selectedSection}</p>
+                                <p className="text-sm text-slate-600">Change a box, then tap Save. Changed boxes turn yellow.</p>
+                            </div>
+                            <button type="button" className="btn-secondary btn-sm flex-shrink-0" onClick={leaveToClassChoice}>Change class</button>
+                        </div>
+
+                        <div>
+                            <p className="label">What do you want to update?</p>
+                            <div className="-mx-4 px-4 overflow-x-auto">
+                                <div className="segmented" role="tablist">
+                                    {CATEGORIES.map(cat => (
+                                        <button
+                                            key={cat.id}
+                                            type="button"
+                                            role="tab"
+                                            aria-selected={selectedCategory === cat.id}
+                                            onClick={() => setSelectedCategory(cat.id)}
+                                            className={`segmented-item whitespace-nowrap min-h-[40px] ${selectedCategory === cat.id ? 'segmented-item-active' : ''}`}
+                                        >
+                                            {cat.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative">
+                            <input
+                                type="search"
+                                placeholder="Search by name, admission or roll number"
+                                aria-label="Search students"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="input pl-9"
+                            />
+                            <SearchIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        </div>
                     </div>
                 </div>
 
-                {/* Right Panel */}
-                <div className="flex-1 flex flex-col overflow-hidden">
-                    {/* Table */}
-                    <div className="flex-1 overflow-auto">
-                        <table className="min-w-full divide-y divide-slate-200 text-sm">
-                            <thead className="sticky top-0 z-10 shadow-sm bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                <tr>
-                                    <th className="px-4 py-3 text-left tracking-tight whitespace-nowrap">
-                                        S.No
-                                    </th>
-                                    <th className="px-4 py-3 text-left tracking-tight whitespace-nowrap">
-                                        Student Name
-                                    </th>
-                                    <th className="px-4 py-3 text-left tracking-tight whitespace-nowrap">
-                                        Adm No.
-                                    </th>
-                                    {activeCat.columns.map(col => (
-                                        <th
-                                            key={col.key}
-                                            className="px-4 py-3 text-left tracking-tight whitespace-nowrap"
-                                        >
-                                            {col.label}
-                                        </th>
-                                    ))}
-                                    <th className="px-4 py-3 text-left text-violet-700 tracking-tight bg-violet-50 w-28 whitespace-nowrap">
-                                        Action
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-slate-100">
-                                {loading ? (
-                                    <tr>
-                                        <td
-                                            colSpan={activeCat.columns.length + 4}
-                                        >
-                                            <LoadingState label="Loading students..." />
-                                        </td>
-                                    </tr>
-                                ) : currentStudents.length === 0 ? (
-                                    <tr>
-                                        <td
-                                            colSpan={activeCat.columns.length + 4}
-                                        >
-                                            <EmptyState
-                                                compact
-                                                title={selectedClass && selectedSection ? 'No students found' : 'Select a class and section'}
-                                                description={selectedClass && selectedSection
-                                                    ? 'No students found matching your filters.'
-                                                    : 'Please select a Class and Section to view students.'}
-                                            />
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    currentStudents.map((student, idx) => {
-                                        const sid = student.student_id || student.id;
-                                        const isModified = !!modifiedStudents[sid] &&
-                                            Object.keys(modifiedStudents[sid]).length > 0;
-                                        const isSaving = savingIds.has(sid);
-                                        const hasError = !!saveErrors[sid];
-                                        const isSuccess = saveSuccess.has(sid);
-
-                                        return (
-                                            <tr
-                                                key={sid}
-                                                className={`transition-colors duration-150 ${hasError
-                                                    ? 'bg-red-50'
-                                                    : isSuccess
-                                                        ? 'bg-emerald-50'
-                                                        : isModified
-                                                            ? 'bg-amber-50'
-                                                            : 'hover:bg-violet-50'
-                                                    }`}
-                                            >
-                                                <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                                                    {indexOfFirstStudent + idx + 1}
-                                                </td>
-                                                <td className="px-4 py-3 whitespace-nowrap">
-                                                    <div className="flex items-center gap-3">
-                                                        {student.photo ? (
-                                                            <img
-                                                                src={student.photo}
-                                                                className="w-9 h-9 rounded-full border shadow-sm object-cover flex-shrink-0"
-                                                                alt={student.name}
-                                                                onError={(e) => {
-                                                                    (e.target as HTMLImageElement).src = '';
-                                                                    (e.target as HTMLImageElement).style.display = 'none';
-                                                                }}
-                                                            />
-                                                        ) : (
-                                                            <div className="w-9 h-9 rounded-full border bg-violet-50 flex items-center justify-center flex-shrink-0">
-                                                                <UserIcon className="w-5 h-5 text-violet-400" />
-                                                            </div>
-                                                        )}
-                                                        <span className="font-semibold text-gray-900 text-sm">
-                                                            {student.name}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3 font-mono text-gray-600 text-xs whitespace-nowrap">
-                                                    {student.admission_no || student.admNo}
-                                                </td>
-
-                                                {activeCat.columns.map(col => {
-                                                    const isDisplayReadOnly = DISPLAY_READONLY_FIELDS.includes(col.key);
-                                                    const currentVal = modifiedStudents[sid]?.[col.key] ?? student[col.key] ?? '';
-                                                    const displayVal = currentVal !== null && currentVal !== undefined
-                                                        ? String(currentVal)
-                                                        : '';
-
-                                                    return (
-                                                        <td key={col.key} className="px-2 py-2 text-gray-700">
-                                                            {isDisplayReadOnly ? (
-                                                                <span className="text-gray-400 italic text-xs px-2">
-                                                                    {displayVal || '-'}
-                                                                </span>
-                                                            ) : (
-                                                                <input
-                                                                    type="text"
-                                                                    value={displayVal}
-                                                                    onChange={(e) =>
-                                                                        handleFieldChange(sid, col.key, e.target.value)
-                                                                    }
-                                                                    disabled={isSaving}
-                                                                    className={`input min-w-[100px] ${isSaving
-                                                                        ? 'opacity-50 cursor-not-allowed bg-gray-100 border-gray-200'
-                                                                        : modifiedStudents[sid]?.[col.key] !== undefined
-                                                                            ? 'border-violet-400 bg-violet-50 focus:border-violet-600 focus:bg-white'
-                                                                            : 'border-transparent hover:border-gray-300 focus:border-violet-500 focus:bg-white bg-transparent'
-                                                                        }`}
-                                                                />
-                                                            )}
-                                                        </td>
-                                                    );
-                                                })}
-
-                                                <td className="px-4 py-3 bg-violet-50">
-                                                    <div className="flex flex-col gap-1 items-center">
-                                                        {hasError && (
-                                                            <div
-                                                                className="text-xs text-red-600 max-w-[120px] text-center leading-tight cursor-pointer"
-                                                                title={saveErrors[sid]}
-                                                                onClick={() => notify(saveErrors[sid])}
-                                                            >
-                                                                ⚠️ Error
-                                                            </div>
-                                                        )}
-                                                        {isSuccess && (
-                                                            <span className="text-xs text-emerald-600 font-medium">
-                                                                ✓ Saved
-                                                            </span>
-                                                        )}
-                                                        {isModified && !isSaving && (
-                                                            <button
-                                                                onClick={() => saveStudentChanges(sid)}
-                                                                className="btn-success btn-sm w-full"
-                                                            >
-                                                                SAVE
-                                                            </button>
-                                                        )}
-                                                        {isSaving && (
-                                                            <div className="flex items-center gap-1 text-xs text-brand-600">
-                                                                <Spinner size="sm" />
-                                                                Saving...
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                {loading ? (
+                    <div className="card"><LoadingState label="Loading students…" /></div>
+                ) : currentStudents.length === 0 ? (
+                    <div className="card">
+                        <EmptyState
+                            compact
+                            title={searchTerm ? 'No student matches your search' : 'No students in this class'}
+                        />
                     </div>
+                ) : (
+                    <>
+                        {/* Phones: one card per student */}
+                        <ul className="md:hidden space-y-3">
+                            {currentStudents.map(student => {
+                                const sid = student.student_id || student.id;
+                                const isModified = !!modifiedStudents[sid] && Object.keys(modifiedStudents[sid]).length > 0;
+                                const isSaving = savingIds.has(sid);
+                                return (
+                                    <li key={sid} className={`rounded-xl border bg-white ${saveErrors[sid] ? 'border-red-300' : isModified ? 'border-amber-300' : 'border-slate-200'}`}>
+                                        <div className="flex items-center gap-3 px-4 pt-3">
+                                            <StudentAvatar src={student.photo} name={student.name} size="sm" />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-semibold text-slate-900 break-words">{student.name}</p>
+                                                <p className="text-sm text-slate-500">Admission number {student.admission_no || student.admNo}</p>
+                                            </div>
+                                        </div>
+                                        <div className="px-4 py-3 space-y-3">
+                                            {activeCat.columns.map(col => (
+                                                <div key={col.key}>
+                                                    <p className="text-xs font-medium text-slate-600 mb-1">{col.label}</p>
+                                                    {fieldInput(student, sid, col, isSaving, true)}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {(isModified || isSaving || saveErrors[sid] || saveSuccess.has(sid)) && (
+                                            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-4 py-2.5">
+                                                {rowStatus(sid, isModified, isSaving)}
+                                            </div>
+                                        )}
+                                    </li>
+                                );
+                            })}
+                        </ul>
 
-                    {/* Pagination Bar - like second image */}
-                    {totalStudents > 0 && (
-                        <div className="border-t border-slate-200 bg-white px-6 py-3 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
-                            {/* Left: Record info */}
-                            <span className="text-sm text-slate-500">
-                                Showing {totalStudents === 0 ? 0 : indexOfFirstStudent + 1} to{' '}
-                                {indexOfLastStudent} of {totalStudents} records
-                            </span>
+                        {/* Wide screens: one row per student */}
+                        <div className="hidden md:block card overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full text-sm">
+                                    <thead>
+                                        <tr>
+                                            <th className="px-4 py-2.5 text-left whitespace-nowrap">No.</th>
+                                            <th className="px-4 py-2.5 text-left whitespace-nowrap">Student</th>
+                                            {activeCat.columns.map(col => (
+                                                <th key={col.key} className="px-4 py-2.5 text-left whitespace-nowrap">{col.label}</th>
+                                            ))}
+                                            <th className="px-4 py-2.5 text-left w-28 whitespace-nowrap"><span className="sr-only">Save</span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {currentStudents.map((student, idx) => {
+                                            const sid = student.student_id || student.id;
+                                            const isModified = !!modifiedStudents[sid] && Object.keys(modifiedStudents[sid]).length > 0;
+                                            const isSaving = savingIds.has(sid);
+                                            return (
+                                                <tr
+                                                    key={sid}
+                                                    className={saveErrors[sid] ? 'bg-red-50' : saveSuccess.has(sid) ? 'bg-emerald-50' : isModified ? 'bg-amber-50/60' : ''}
+                                                >
+                                                    <td className="px-4 py-2 text-slate-500 whitespace-nowrap">{indexOfFirstStudent + idx + 1}</td>
+                                                    <td className="px-4 py-2 whitespace-nowrap">
+                                                        <div className="flex items-center gap-3">
+                                                            <StudentAvatar src={student.photo} name={student.name} size="sm" />
+                                                            <div>
+                                                                <p className="font-semibold text-slate-900">{student.name}</p>
+                                                                <p className="text-xs text-slate-500 font-mono">{student.admission_no || student.admNo}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    {activeCat.columns.map(col => (
+                                                        <td key={col.key} className="px-2 py-2">{fieldInput(student, sid, col, isSaving, false)}</td>
+                                                    ))}
+                                                    <td className="px-4 py-2">
+                                                        <div className="flex flex-col gap-1 items-stretch max-w-[140px]">
+                                                            {rowStatus(sid, isModified, isSaving)}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
+                )}
 
-                            {/* Right: Pagination controls */}
-                            {totalPages > 1 && (
-                                <div className="flex items-center gap-1">
-                                    {/* Previous */}
-                                    <button
-                                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                        disabled={currentPage === 1}
-                                        className={`btn btn-sm border ${currentPage === 1 ? 'text-slate-300 border-slate-200 cursor-not-allowed bg-white' : 'text-slate-600 border-slate-300 hover:bg-slate-100 bg-white cursor-pointer' }`}
-                                    >
-                                        Previous
-                                    </button>
-
-                                    {/* Page Numbers */}
+                {/* Pages */}
+                {totalStudents > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <span className="text-sm text-slate-500">
+                            Showing {indexOfFirstStudent + 1}–{indexOfLastStudent} of {totalStudents}
+                        </span>
+                        {totalPages > 1 && (
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={currentPage === 1}
+                                    className="btn-secondary btn-sm min-h-[40px]"
+                                >
+                                    Previous
+                                </button>
+                                <span className="sm:hidden px-2 text-sm text-slate-600">Page {currentPage} of {totalPages}</span>
+                                <span className="hidden sm:flex items-center gap-1">
                                     {getPageNumbers().map((page, index) => (
                                         <React.Fragment key={index}>
                                             {page === '...' ? (
-                                                <span className="px-2 py-1.5 text-sm text-slate-400">...</span>
+                                                <span className="px-2 text-sm text-slate-400">…</span>
                                             ) : (
                                                 <button
+                                                    type="button"
                                                     onClick={() => setCurrentPage(page as number)}
-                                                    className={`btn btn-sm min-w-[34px] border ${currentPage === page ? 'bg-brand-600 text-brand-contrast border-brand-600 font-semibold' : 'text-slate-600 border-slate-300 hover:bg-slate-100 bg-white' }`}
+                                                    aria-current={currentPage === page ? 'page' : undefined}
+                                                    className={`btn btn-sm min-w-[36px] border ${currentPage === page ? 'bg-brand-600 text-brand-contrast border-brand-600 font-semibold' : 'text-slate-600 border-slate-300 hover:bg-slate-100 bg-white'}`}
                                                 >
                                                     {page}
                                                 </button>
                                             )}
                                         </React.Fragment>
                                     ))}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                    disabled={currentPage === totalPages}
+                                    className="btn-secondary btn-sm min-h-[40px]"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
 
-                                    {/* Next */}
-                                    <button
-                                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                        disabled={currentPage === totalPages}
-                                        className={`btn btn-sm border ${currentPage === totalPages ? 'text-slate-300 border-slate-200 cursor-not-allowed bg-white' : 'text-slate-600 border-slate-300 hover:bg-slate-100 bg-white cursor-pointer' }`}
-                                    >
-                                        Next
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
+                <ActionBar note={changedIds.length > 0 ? `${changedIds.length} student${changedIds.length === 1 ? '' : 's'} changed, not saved yet` : 'No changes yet'}>
+                    <Button variant="secondary" size="lg" onClick={onBack}>Done</Button>
+                    <Button variant="success" size="lg" disabled={changedIds.length === 0} loading={savingAny} onClick={saveAllChanged}>
+                        Save {changedIds.length > 0 ? `${changedIds.length} ` : ''}changed
+                    </Button>
+                </ActionBar>
             </div>
         </div>
     );

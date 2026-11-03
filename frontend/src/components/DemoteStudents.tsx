@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Student } from '../types';
+import { ArrowRight } from 'lucide-react';
 import { notify, confirmDialog } from './ui/feedback';
-import { LoadingState, EmptyState } from './ui';
+import { Steps, ActionBar, Button, Field, Alert } from './ui';
+import { JobPage, JobIntro, ChoiceSummary, DoneCard, StudentPickList, studentsCount } from './student-jobs/common';
 
 interface DemoteStudentsProps {
     onBack?: () => void;
 }
 
+const STEPS = ['Choose years', 'Choose students', 'Check and move back', 'Done'];
+
 const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
+    const [step, setStep] = useState(0);
+    const [result, setResult] = useState<{ count: number; from: string; to: string; errors: string[] } | null>(null);
     const [sourceYear, setSourceYear] = useState('');
     const [restoreYear, setRestoreYear] = useState('');
     const [years, setYears] = useState<string[]>([]);
@@ -79,7 +85,7 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
             })
             .catch(err => {
                 console.error(err);
-                notify('Failed to load students: ' + (err.response?.data?.error || err.message));
+                notify.error('Could not load students: ' + (err.response?.data?.error || err.message));
             })
             .finally(() => setLoading(false));
     }, [sourceYear]);
@@ -106,46 +112,24 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
         );
     });
 
-    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.checked) {
-            setSelectedIds(filtered.map(s => s.student_id!).filter(Boolean));
-        } else {
-            setSelectedIds([]);
-        }
-    };
-
-    const toggleOne = (id: number) => {
-        setSelectedIds(prev =>
-            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-        );
-    };
-
     const handleDemote = async () => {
-        if (!sourceYear) return notify('Select the year to demote FROM.');
-        if (!restoreYear) return notify('Select the year to demote BACK TO.');
-        if (sourceYear === restoreYear) return notify('Both years cannot be the same.');
-        if (selectedIds.length === 0) return notify('Select at least one student to demote.');
+        if (!sourceYear) return notify.warning('Choose the year to move students out of.');
+        if (!restoreYear) return notify.warning('Choose the year to move students back to.');
+        if (sourceYear === restoreYear) return notify.warning('The two years must be different.');
+        if (selectedIds.length === 0) return notify.warning('Choose at least one student.');
 
         // Validate direction: sourceYear must be AFTER restoreYear
         if (getStartYear(sourceYear) <= getStartYear(restoreYear)) {
-            return notify(
-                `Invalid direction!\n\n` +
-                `"Demote FROM" (${sourceYear}) must be a LATER year than "Demote TO" (${restoreYear}).\n\n` +
-                `Example: Demote FROM 2027-2028 → TO 2026-2027`
+            return notify.warning(
+                `"Move out of" (${sourceYear}) must be a later year than "Move back to" (${restoreYear}). ` +
+                `Example: move out of 2027-2028, back to 2026-2027.`
             );
         }
 
         const confirmed = await confirmDialog(
-            `⚠️ DEMOTION CONFIRMATION\n\n` +
-            `You are about to demote ${selectedIds.length} student(s):\n` +
-            `  From: ${sourceYear}  →  Back to: ${restoreYear}\n\n` +
-            `What will happen:\n` +
-            `• Students will be moved from ${sourceYear} back to ${restoreYear}\n` +
-            `• Fee structures in ${sourceYear} will be deactivated\n` +
-            `• Collected payments are PRESERVED (audit trail)\n` +
-            `• Attendance & marks remain in history\n\n` +
-            `This reverses a mistaken promotion.\n` +
-            `Are you sure?`
+            `Move ${studentsCount(selectedIds.length)} from ${sourceYear} back to ${restoreYear}?\n\n` +
+            `Their fees for ${sourceYear} will be turned off. Payments already collected, attendance and marks are kept.`,
+            { title: 'Undo promotion?', confirmText: `Move back ${studentsCount(selectedIds.length)}`, tone: 'danger' }
         );
         if (!confirmed) return;
 
@@ -158,16 +142,14 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
             });
 
             const { success_count, errors } = res.data;
-            let msg = `✅ ${success_count} student(s) successfully demoted from ${sourceYear} back to ${restoreYear}.`;
-            if (errors?.length) {
-                msg += `\n\n⚠️ Warnings / Errors:\n${errors.slice(0, 5).join('\n')}`;
-            }
-            notify(msg);
+            notify.success(`${studentsCount(success_count ?? 0)} moved back to ${restoreYear}`);
+            setResult({ count: success_count ?? 0, from: sourceYear, to: restoreYear, errors: errors || [] });
+            setStep(3);
             setSelectedIds([]);
             setPromotedStudents(prev => prev.filter(s => !selectedIds.includes(s.student_id!)));
         } catch (err: any) {
             const msg = err.response?.data?.error || err.message;
-            notify('❌ Demotion failed: ' + msg);
+            notify.error('Could not move students back: ' + msg);
         } finally {
             setProcessing(false);
         }
@@ -175,217 +157,171 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
 
     const previousYears = getPreviousYears();
 
+    const selectedStudents = promotedStudents.filter(s => selectedIds.includes(s.student_id!));
+    const pickItems = filtered
+        .filter(s => s.student_id)
+        .map(s => ({
+            id: s.student_id as number,
+            title: `${s.first_name || s.name} ${s.last_name || ''}`.trim(),
+            subtitle: [`Admission number ${s.admNo || '—'}`, `Class ${s.class}${s.section ? `-${s.section}` : ''}`, s.branch].filter(Boolean).join(' · '),
+        }));
+
+    const backButton = onBack && (
+        <Button variant="secondary" size="lg" onClick={onBack}>Back to students</Button>
+    );
+
+    /* ------------------------------------------------------------ Step 1: years */
+    if (step === 0) {
+        return (
+            <JobPage>
+                <Steps steps={STEPS} current={0} />
+                <JobIntro>
+                    Use this only to undo a promotion made by mistake. Students go back to the earlier year.
+                    Payments already collected, attendance and marks are kept.
+                </JobIntro>
+                <div className="card">
+                    <div className="card-body grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field
+                            label="Move students out of year"
+                            htmlFor="dm-from"
+                            hint="The year they were promoted into by mistake"
+                        >
+                            <select
+                                id="dm-from"
+                                value={sourceYear}
+                                onChange={e => { setSourceYear(e.target.value); setRestoreYear(''); }}
+                                className="input"
+                            >
+                                <option value="">Choose a year</option>
+                                {sortedYears.map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
+                        </Field>
+                        <Field
+                            label="Move them back to year"
+                            htmlFor="dm-to"
+                            hint={sourceYear ? `Only years before ${sourceYear} are shown` : 'Choose the first year before this'}
+                            error={sourceYear && previousYears.length === 0 ? `There is no year before ${sourceYear}` : null}
+                        >
+                            <select
+                                id="dm-to"
+                                value={restoreYear}
+                                onChange={e => setRestoreYear(e.target.value)}
+                                className="input"
+                                disabled={!sourceYear}
+                            >
+                                <option value="">Choose a year</option>
+                                {previousYears.map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
+                        </Field>
+                    </div>
+                    {sourceYear && restoreYear && (
+                        <div className="card-body pt-0">
+                            <div className="rounded-lg bg-slate-50 px-3 py-2.5 text-sm text-slate-700 flex flex-wrap items-center gap-2">
+                                <span className="badge-danger">{sourceYear}</span>
+                                <ArrowRight className="w-4 h-4 text-slate-500" />
+                                <span className="badge-success">{restoreYear}</span>
+                                <span>Students will go back to {restoreYear}</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <ActionBar note={!sourceYear ? 'Choose the year to move out of first' : !restoreYear ? 'Choose the year to move back to' : undefined}>
+                    {backButton}
+                    <Button size="lg" disabled={!sourceYear || !restoreYear} onClick={() => setStep(1)}>Show students</Button>
+                </ActionBar>
+            </JobPage>
+        );
+    }
+
+    /* ------------------------------------------------------------ Done */
+    if (step === 3 && result) {
+        return (
+            <JobPage>
+                <Steps steps={STEPS} current={3} />
+                <DoneCard title="Promotion undone">
+                    <p>{studentsCount(result.count)} moved from {result.from} back to {result.to}.</p>
+                </DoneCard>
+                {result.errors.length > 0 && (
+                    <Alert tone="warning" title={`${result.errors.length} problem${result.errors.length === 1 ? '' : 's'}`}>
+                        <ul className="list-disc pl-4 space-y-0.5">
+                            {result.errors.map((e, i) => <li key={i}>{e}</li>)}
+                        </ul>
+                    </Alert>
+                )}
+                <ActionBar>
+                    {backButton}
+                    <Button size="lg" onClick={() => { setResult(null); setStep(1); }}>Move back more students</Button>
+                </ActionBar>
+            </JobPage>
+        );
+    }
+
+    /* ------------------------------------------------------------ Step 2: students */
+    if (step === 1) {
+        return (
+            <JobPage>
+                <Steps steps={STEPS} current={1} onJump={i => setStep(i)} />
+                <ChoiceSummary title={`From ${sourceYear} back to ${restoreYear || '—'}`} detail="Students now in the later year" onChange={() => setStep(0)} />
+                <StudentPickList
+                    items={pickItems}
+                    selected={selectedIds}
+                    onChange={setSelectedIds}
+                    loading={loading}
+                    search={search}
+                    onSearch={setSearch}
+                    emptyTitle={promotedStudents.length === 0 ? `No students are in ${sourceYear}` : 'No student matches your search'}
+                />
+                <ActionBar note={selectedIds.length === 0 ? 'Tap the students to move back' : `${studentsCount(selectedIds.length)} chosen`}>
+                    <Button variant="secondary" size="lg" onClick={() => setStep(0)}>Back</Button>
+                    <Button size="lg" disabled={selectedIds.length === 0} onClick={() => setStep(2)}>Next</Button>
+                </ActionBar>
+            </JobPage>
+        );
+    }
+
+    /* ------------------------------------------------------------ Step 3: check */
     return (
-        <div className="p-4 sm:p-6 min-h-full bg-surface-muted">
-            {/* ── Header ── */}
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <div>
-                    <h2 className="text-base font-semibold text-slate-900">De-promote Students</h2>
-                    <p className="text-sm text-slate-500 mt-0.5">
-                        Correction tool — reverses a mistaken promotion. Financial records are preserved.
+        <JobPage>
+            <Steps steps={STEPS} current={2} onJump={i => setStep(i)} />
+            <div className="card">
+                <div className="card-body">
+                    <p className="text-sm text-slate-500">Please check</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900 flex flex-wrap items-center gap-2">
+                        Move {studentsCount(selectedIds.length)} from {sourceYear}
+                        <ArrowRight className="w-5 h-5 text-brand-600" />
+                        {restoreYear}
                     </p>
-                </div>
-                {onBack && (
-                    <button onClick={onBack} className="btn-secondary btn-sm">
-                        ← Back
-                    </button>
-                )}
-            </div>
-
-            {/* ── ERP Info Banner ── */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-sm text-amber-800 flex gap-2">
-                <span className="text-lg">ℹ️</span>
-                <div>
-                    <strong>ERP Rule — No Financial Data is Deleted:</strong> De-promotion deactivates fee
-                    structures in the promoted year and moves the student back to the previous year.
-                    All collected payments, attendance, and marks remain for audit.
+                    <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200 max-h-64 overflow-y-auto">
+                        {selectedStudents.map(s => (
+                            <li key={s.student_id} className="px-3 py-2 text-sm">
+                                <span className="font-medium text-slate-900">{s.first_name || s.name} {s.last_name || ''}</span>
+                                <span className="text-slate-500"> · {s.admNo} · Class {s.class}{s.section ? `-${s.section}` : ''}</span>
+                            </li>
+                        ))}
+                    </ul>
                 </div>
             </div>
-
-            {/* ── Year Selectors ── */}
-            <div className="card p-4 mb-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* STEP 1: The LATER year (where students were wrongly promoted TO) */}
-                    <div>
-                        <label className="block text-sm font-semibold text-red-700 mb-1">
-                            ① Demote FROM (Current Year — Students Are Here Now)
-                        </label>
-                        <select
-                            value={sourceYear}
-                            onChange={e => { setSourceYear(e.target.value); setRestoreYear(''); }}
-                            className="input border-red-300 bg-red-50"
-                        >
-                            <option value="">— Select Year —</option>
-                            {sortedYears.map(y => <option key={y} value={y}>{y}</option>)}
-                        </select>
-                        <p className="text-xs text-red-500 mt-1">
-                            e.g., <strong>2027-2028</strong> — the year students were mistakenly promoted to
-                        </p>
-                    </div>
-
-                    {/* STEP 2: The EARLIER year (where students should go back) */}
-                    <div>
-                        <label className="block text-sm font-semibold text-emerald-700 mb-1">
-                            ② Demote BACK TO (Previous Year — Send Them Back Here)
-                        </label>
-                        <select
-                            value={restoreYear}
-                            onChange={e => setRestoreYear(e.target.value)}
-                            className="input border-emerald-300 bg-emerald-50"
-                            disabled={!sourceYear}
-                        >
-                            <option value="">— Select Year —</option>
-                            {previousYears.map(y => (
-                                <option key={y} value={y}>{y}</option>
-                            ))}
-                        </select>
-                        <p className="text-xs text-emerald-600 mt-1">
-                            {sourceYear
-                                ? <>Only shows years <strong>before</strong> {sourceYear}</>
-                                : 'Select "Demote FROM" year first'
-                            }
-                        </p>
-                        {sourceYear && previousYears.length === 0 && (
-                            <p className="text-xs text-orange-600 mt-1 font-medium">
-                                ⚠️ No previous years found before {sourceYear}
-                            </p>
-                        )}
-                    </div>
-                </div>
-
-                {sourceYear && restoreYear && (
-                    <div className="mt-3 p-3 bg-slate-100 rounded-lg text-center">
-                        <div className="text-sm font-medium text-slate-700 flex items-center justify-center gap-3 flex-wrap">
-                            <span className="bg-red-100 text-red-700 px-3 py-1 rounded font-bold">{sourceYear}</span>
-                            <span className="text-red-500 font-bold text-lg">→</span>
-                            <span className="text-slate-500 font-semibold">DEMOTE BACK TO</span>
-                            <span className="text-emerald-500 font-bold text-lg">→</span>
-                            <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded font-bold">{restoreYear}</span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                            Students currently in {sourceYear} will be moved back to {restoreYear}
-                        </p>
-                    </div>
-                )}
-            </div>
-
-            {/* ── Student Table ── */}
-            {sourceYear && (
-                <div className="card overflow-hidden">
-                    <div className="p-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-red-50">
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-red-700">
-                                🔍 Students currently in <strong>{sourceYear}</strong>
-                            </span>
-                            <span className="badge-danger">
-                                {promotedStudents.length} found
-                            </span>
-                        </div>
-                        <input
-                            placeholder="Search by name or adm no..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className="input w-full sm:w-56"
-                        />
-                    </div>
-
-                    <div className="overflow-auto max-h-[50vh]">
-                        {loading ? (
-                            <LoadingState label="Loading students..." />
-                        ) : filtered.length === 0 ? (
-                            <EmptyState
-                                compact
-                                title={promotedStudents.length === 0
-                                    ? `No students found currently in ${sourceYear}.`
-                                    : 'No students match your search.'
-                                }
-                            />
-                        ) : (
-                            <table className="w-full text-sm border-collapse">
-                                <thead className="sticky top-0 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    <tr>
-                                        <th className="p-2 border text-center w-10">
-                                            <input
-                                                type="checkbox"
-                                                //checked={filtered.length > 0 && selectedIds.length === filtered.length}
-                                                checked={filtered.length > 0 && filtered.every(s => selectedIds.includes(s.student_id!))}
-                                                onChange={handleSelectAll}
-                                            />
-                                        </th>
-                                        <th className="p-2 border text-left">Adm No</th>
-                                        <th className="p-2 border text-left">Student Name</th>
-                                        <th className="p-2 border text-left">Class</th>
-                                        <th className="p-2 border text-left">Section</th>
-                                        <th className="p-2 border text-left">Branch</th>
-                                        <th className="p-2 border text-center">Current Year</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filtered.map(s => (
-                                        <tr
-                                            key={s.student_id}
-                                            className={`hover:bg-red-50 cursor-pointer ${selectedIds.includes(s.student_id!) ? 'bg-red-50' : ''}`}
-                                            onClick={() => toggleOne(s.student_id!)}
-                                        >
-                                            <td className="p-2 border text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedIds.includes(s.student_id!)}
-                                                    onChange={() => toggleOne(s.student_id!)}
-                                                    onClick={e => e.stopPropagation()}
-                                                />
-                                            </td>
-                                            <td className="p-2 border font-mono text-xs">{s.admNo}</td>
-                                            <td className="p-2 border font-medium">
-                                                {s.first_name || s.name} {s.last_name || ''}
-                                            </td>
-                                            <td className="p-2 border">{s.class}</td>
-                                            <td className="p-2 border">{s.section}</td>
-                                            <td className="p-2 border text-slate-500">{s.branch}</td>
-                                            <td className="p-2 border text-center">
-                                                <span className="badge-brand">
-                                                    {sourceYear}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
-                    </div>
-
-                    {/* Footer action */}
-                    <div className="p-3 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
-                        <span className="text-sm text-slate-600">
-                            {selectedIds.length} student(s) selected
-                        </span>
-                        <button
-                            onClick={handleDemote}
-                            disabled={selectedIds.length === 0 || !restoreYear || processing}
-                            className={`btn ${selectedIds.length > 0 && restoreYear && !processing ? 'bg-red-600 text-white hover:bg-red-700 shadow-sm' : 'bg-slate-200 text-slate-400 cursor-not-allowed' }`}
-                        >
-                            {processing
-                                ? '⏳ Processing...'
-                                : `⬇ Demote ${selectedIds.length > 0 ? `(${selectedIds.length})` : ''} back to ${restoreYear || '...'}`
-                            }
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {!sourceYear && (
-                <div className="card text-center p-12 text-slate-500">
-                    <div className="text-5xl mb-3">📋</div>
-                    <p className="text-base">
-                        Select the <strong>Demote FROM</strong> year to see students currently there.
-                    </p>
-                    <p className="text-sm mt-2">
-                        Example: Students were promoted from <strong>2026-2027</strong> → <strong>2027-2028</strong><br />
-                        To reverse: Select <strong>2027-2028</strong> as "Demote FROM" → <strong>2026-2027</strong> as "Demote BACK TO"
-                    </p>
-                </div>
-            )}
-        </div>
+            <Alert tone="warning" title="What will happen">
+                <ul className="list-disc pl-4 space-y-0.5">
+                    <li>Students go back to {restoreYear}.</li>
+                    <li>Their fees for {sourceYear} are turned off.</li>
+                    <li>Payments already collected are kept.</li>
+                    <li>Attendance and marks are kept.</li>
+                </ul>
+            </Alert>
+            <ActionBar note={!restoreYear ? 'Choose the year to move back to first' : undefined}>
+                <Button variant="secondary" size="lg" onClick={() => setStep(1)}>Back</Button>
+                <Button
+                    variant="danger"
+                    size="lg"
+                    onClick={handleDemote}
+                    disabled={selectedIds.length === 0 || !restoreYear || processing}
+                    loading={processing}
+                >
+                    Move back {studentsCount(selectedIds.length)}
+                </Button>
+            </ActionBar>
+        </JobPage>
     );
 };
 
