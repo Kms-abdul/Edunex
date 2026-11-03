@@ -5,9 +5,11 @@ import api from '../../../api';
 
 interface Props {
     profile: StaffProfileData;
+    /** Opens the staff edit form on the Salary tab; button hidden when not provided */
+    onEdit?: () => void;
 }
 
-export const StaffSalaryTab: React.FC<Props> = ({ profile }) => {
+export const StaffSalaryTab: React.FC<Props> = ({ profile, onEdit }) => {
     const [salary, setSalary] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -32,7 +34,7 @@ export const StaffSalaryTab: React.FC<Props> = ({ profile }) => {
             <div>
                 <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
                     <h3 className="text-base font-semibold text-slate-900">Current Salary</h3>
-                    <button type="button" className="btn-ghost btn-sm text-brand-600">Edit Salary Details</button>
+                    {onEdit && <button type="button" onClick={onEdit} className="btn-ghost btn-sm text-brand-600">Edit Salary Details</button>}
                 </div>
                 {salary ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

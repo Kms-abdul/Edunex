@@ -14,9 +14,11 @@ interface Props {
     staffId: number;
     onClose: () => void;
     onSuccess: () => void;
+    /** Tab to open first, e.g. 'bank', 'salary' or 'login' */
+    initialTab?: string;
 }
 
-export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSuccess }) => {
+export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSuccess, initialTab }) => {
     const { user, hasPermission } = useAuth();
 
     const allowedBranches = (user?.allowed_branches ?? []).map((b) => ({
@@ -26,12 +28,12 @@ export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSucces
     }));
 
     // Permissions
-    const showBankTab = hasPermission('hr.hr.staff-bank', 'write') || hasPermission('hr.hr.staff-payroll', 'write');
+    const showBankTab = hasPermission('hr.hr.staff-bank-details', 'write') || hasPermission('hr.hr.staff-payroll', 'write');
     const showSalaryTab = hasPermission('hr.hr.staff-payroll', 'write');
-    const showDocumentsTab = hasPermission('hr.hr.staff-documents', 'write') || true;
-    const showLoginTab = hasPermission('hr.hr.staff-login', 'write') || true;
+    const showDocumentsTab = hasPermission('hr.hr.staff-documents', 'write');
+    const showLoginTab = hasPermission('hr.hr.staff-login', 'write');
 
-    const [activeTab, setActiveTab] = useState('personal');
+    const [activeTab, setActiveTab] = useState(initialTab || 'personal');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);

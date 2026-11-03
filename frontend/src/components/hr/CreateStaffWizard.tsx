@@ -25,9 +25,9 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
     const isSingleBranch = allowedBranches.length <= 1;
 
     // Permissions
-    const showBankTab = hasPermission('hr.hr.staff-bank', 'write') || hasPermission('hr.hr.staff-payroll', 'write');
+    const showBankTab = hasPermission('hr.hr.staff-bank-details', 'write') || hasPermission('hr.hr.staff-payroll', 'write');
     const showSalaryTab = hasPermission('hr.hr.staff-payroll', 'write');
-    const showLoginTab = hasPermission('hr.hr.staff-login', 'write') || true;
+    const showLoginTab = hasPermission('hr.hr.staff-login', 'write');
 
     const [activeTab, setActiveTab] = useState('personal');
     const [loading, setLoading] = useState(false);

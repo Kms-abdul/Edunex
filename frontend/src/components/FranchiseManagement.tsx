@@ -21,8 +21,10 @@ interface Location {
 interface BranchForm { branch_name: string; branch_code: string; location_code: string; }
 
 const FranchiseManagement: React.FC = () => {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const isSuperAdmin = canWrite(user, 'system.franchise.franchise-management');
+  // Matches the backend guard on POST /api/branches
+  const canAddBranch = isSuperAdmin || hasPermission('setup.school-setup.setup-school', 'write');
 
   const [activeTab, setActiveTab] = useState<'schools' | 'locations'>('schools');
   const [schools, setSchools] = useState<School[]>([]);
@@ -449,6 +451,7 @@ const FranchiseManagement: React.FC = () => {
                   <div className="p-5">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-sm font-semibold text-slate-700">Branches</h3>
+                      {canAddBranch && (
                       <button onClick={() => { setActiveBranchSchoolId(school.id); setBranchForm({ branch_name: '', branch_code: '', location_code: '' }); setMsg(null); }}
                         className="btn-ghost btn-sm text-brand-600 hover:text-brand-700 hover:bg-brand-50">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -456,6 +459,7 @@ const FranchiseManagement: React.FC = () => {
                         </svg>
                         Add Branch
                       </button>
+                      )}
                     </div>
 
                     {/* Inline Add Branch Form */}

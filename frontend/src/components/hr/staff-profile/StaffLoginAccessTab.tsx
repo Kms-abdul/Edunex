@@ -4,15 +4,19 @@ import { Badge } from '../../ui';
 
 interface Props {
     profile: StaffProfileData;
+    /** Opens User Management, where admins set a new password; hidden when not provided */
+    onResetPassword?: () => void;
+    /** Opens the staff edit form on the Login & Access tab; hidden when not provided */
+    onChangeRole?: () => void;
 }
 
-export const StaffLoginAccessTab: React.FC<Props> = ({ profile }) => {
+export const StaffLoginAccessTab: React.FC<Props> = ({ profile, onResetPassword, onChangeRole }) => {
     return (
         <div className="space-y-8 max-w-3xl">
             <div>
                 <div className="flex flex-wrap gap-2 justify-between items-center border-b border-slate-200 pb-2 mb-4">
                     <h3 className="text-base font-semibold text-slate-900">Login Account</h3>
-                    <button type="button" className="btn-ghost btn-sm text-brand-600">Reset Password</button>
+                    {onResetPassword && <button type="button" onClick={onResetPassword} className="btn-ghost btn-sm text-brand-600">Reset Password</button>}
                 </div>
                 <div className="bg-slate-50 border border-slate-100 rounded-lg p-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
@@ -43,7 +47,7 @@ export const StaffLoginAccessTab: React.FC<Props> = ({ profile }) => {
             <div>
                 <div className="flex flex-wrap gap-2 justify-between items-center border-b border-slate-200 pb-2 mb-4">
                     <h3 className="text-base font-semibold text-slate-900">System Role</h3>
-                    <button type="button" className="btn-ghost btn-sm text-brand-600">Change Role</button>
+                    {onChangeRole && <button type="button" onClick={onChangeRole} className="btn-ghost btn-sm text-brand-600">Change Role</button>}
                 </div>
                 <div className="bg-slate-50 border border-slate-100 rounded-lg p-5">
                     <div className="mb-4">

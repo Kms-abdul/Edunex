@@ -5,9 +5,11 @@ import api from '../../../api';
 
 interface Props {
     profile: StaffProfileData;
+    /** Opens the staff edit form on the Bank tab; button hidden when not provided */
+    onEdit?: () => void;
 }
 
-export const StaffBankStatutoryTab: React.FC<Props> = ({ profile }) => {
+export const StaffBankStatutoryTab: React.FC<Props> = ({ profile, onEdit }) => {
     const [account, setAccount] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -34,7 +36,7 @@ export const StaffBankStatutoryTab: React.FC<Props> = ({ profile }) => {
             <div>
                 <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
                     <h3 className="text-base font-semibold text-slate-900">Bank Account</h3>
-                    <button type="button" className="btn-ghost btn-sm text-brand-600">Edit Bank Details</button>
+                    {onEdit && <button type="button" onClick={onEdit} className="btn-ghost btn-sm text-brand-600">Edit Bank Details</button>}
                 </div>
                 {account ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -77,7 +79,7 @@ export const StaffBankStatutoryTab: React.FC<Props> = ({ profile }) => {
             <div>
                 <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
                     <h3 className="text-base font-semibold text-slate-900">Statutory Information</h3>
-                    <button type="button" className="btn-ghost btn-sm text-brand-600">Edit Statutory Info</button>
+                    {onEdit && <button type="button" onClick={onEdit} className="btn-ghost btn-sm text-brand-600">Edit Statutory Info</button>}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>

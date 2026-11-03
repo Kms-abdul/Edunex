@@ -55,13 +55,14 @@ interface StaffProfileProps {
     navigateTo?: (page: Page) => void;
 }
 
-const StaffProfile: React.FC<StaffProfileProps> = ({ staffId, onBack, navigateTo: _navigateTo }) => {
+const StaffProfile: React.FC<StaffProfileProps> = ({ staffId, onBack, navigateTo }) => {
     const { hasPermission } = useAuth();
     const [profile, setProfile] = useState<StaffProfileData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('overview');
     const [isEditing, setIsEditing] = useState(false);
+    const [editTab, setEditTab] = useState<string | undefined>(undefined);
 
     const fetchProfile = async () => {
         setLoading(true);
@@ -114,16 +115,21 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ staffId, onBack, navigateTo
         { id: 'overview', label: 'Overview' },
         { id: 'personal', label: 'Personal' },
         { id: 'employment', label: 'Employment' },
-        ...(hasPermission('hr.hr.staff-bank', 'read') || hasPermission('hr.hr.staff-payroll', 'read') ? [{ id: 'bank', label: 'Bank & Statutory' }] : []),
+        ...(hasPermission('hr.hr.staff-bank-details', 'read') || hasPermission('hr.hr.staff-payroll', 'read') ? [{ id: 'bank', label: 'Bank & Statutory' }] : []),
         ...(hasPermission('hr.hr.staff-payroll', 'read') ? [{ id: 'salary', label: 'Salary & Payroll' }] : []),
-        ...(hasPermission('hr.hr.staff-documents', 'read') || true ? [{ id: 'documents', label: 'Documents' }] : []),
-        ...(hasPermission('hr.hr.staff-login', 'read') || true ? [{ id: 'login', label: 'Login & Access' }] : []),
+        ...(hasPermission('hr.hr.staff-documents', 'read') ? [{ id: 'documents', label: 'Documents' }] : []),
+        ...(hasPermission('hr.hr.staff-login', 'read') ? [{ id: 'login', label: 'Login & Access' }] : []),
     ];
+
+    const canEditProfile = hasPermission('hr.hr.staff-update', 'write') || hasPermission('hr.hr.staff-master', 'write');
+    const openEditor = (tab?: string) => { setEditTab(tab); setIsEditing(true); };
+    const editHandler = (tab: string, allowed: boolean) => (canEditProfile && allowed ? () => openEditor(tab) : undefined);
 
     if (isEditing && profile) {
         return (
             <UpdateStaffDetails
                 staffId={profile.id}
+                initialTab={editTab}
                 onClose={() => setIsEditing(false)}
                 onSuccess={() => {
                     setIsEditing(false);
@@ -141,7 +147,7 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ staffId, onBack, navigateTo
                     <div className="absolute top-4 right-6 flex gap-3">
                         {(hasPermission('hr.hr.staff-update', 'write') || hasPermission('hr.hr.staff-master', 'write')) && (
                             <button
-                                onClick={() => setIsEditing(true)}
+                                onClick={() => openEditor()}
                                 className="text-sm font-semibold text-white bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-lg transition"
                             >
                                 Edit Profile
@@ -210,10 +216,16 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ staffId, onBack, navigateTo
                 {activeTab === 'overview' && <StaffOverviewTab profile={profile} />}
                 {activeTab === 'personal' && <StaffPersonalTab profile={profile} />}
                 {activeTab === 'employment' && <StaffEmploymentTab profile={profile} />}
-                {activeTab === 'bank' && <StaffBankStatutoryTab profile={profile} />}
-                {activeTab === 'salary' && <StaffSalaryTab profile={profile} />}
+                {activeTab === 'bank' && <StaffBankStatutoryTab profile={profile} onEdit={editHandler('bank', hasPermission('hr.hr.staff-bank-details', 'write') || hasPermission('hr.hr.staff-payroll', 'write'))} />}
+                {activeTab === 'salary' && <StaffSalaryTab profile={profile} onEdit={editHandler('salary', hasPermission('hr.hr.staff-payroll', 'write'))} />}
                 {activeTab === 'documents' && <StaffDocumentsTab profile={profile} />}
-                {activeTab === 'login' && <StaffLoginAccessTab profile={profile} />}
+                {activeTab === 'login' && (
+                    <StaffLoginAccessTab
+                        profile={profile}
+                        onChangeRole={editHandler('login', hasPermission('hr.hr.staff-login', 'write'))}
+                        onResetPassword={navigateTo && hasPermission('system.users.management', 'write') ? () => navigateTo('user-management') : undefined}
+                    />
+                )}
             </div>
         </div>
     );
