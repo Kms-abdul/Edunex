@@ -1,9 +1,23 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import api from "../api";
-import { Save, FileDown } from "lucide-react";
+import { FileDown, RotateCcw, CheckCircle2 } from "lucide-react";
 import * as XLSX from 'xlsx';
-import { notify } from './ui/feedback';
-import { PageHeader, Alert, Badge } from './ui';
+import { notify, confirmDialog } from './ui/feedback';
+import { PageHeader, Alert, Steps, ActionBar, Field, Button, LoadingState, EmptyState } from './ui';
+import { markProblem, hasMark } from './marks/markCheck';
+
+const LAST_CHOICE_KEY = 'edunex.marksEntry.lastChoice';
+const STEPS = ['Choose exam', 'Enter marks', 'Saved'];
+
+/** Last class / section / exam / subject used, so the teacher does not pick them again. */
+const readLastChoice = (): { classId?: string; section?: string; testId?: string; subjectId?: string } => {
+    try {
+        const raw = localStorage.getItem(LAST_CHOICE_KEY);
+        return raw ? JSON.parse(raw) || {} : {};
+    } catch {
+        return {};
+    }
+};
 
 
  
@@ -17,23 +31,32 @@ interface StudentMarkEntry {
     grade?: string; // Display only
 }
 
-interface MarksEntryProps { }
+interface MarksEntryProps {
+    /** Called by "Back to all exam tasks" on the finished screen. */
+    onDone?: () => void;
+}
 
-const MarksEntry: React.FC<MarksEntryProps> = () => {
+const MarksEntry: React.FC<MarksEntryProps> = ({ onDone }) => {
+    const [lastChoice] = useState(readLastChoice);
+    // 0 = choose exam, 1 = enter marks, 2 = saved
+    const [step, setStep] = useState(0);
+    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const saveButtonRef = useRef<HTMLButtonElement | null>(null);
+
     // --- State ---
     const [academicYear, setAcademicYear] = useState<string>("");
     const [branches, setBranches] = useState<any[]>([]);
     const [selectedBranch, setSelectedBranch] = useState<string>("");
     const [classes, setClasses] = useState<any[]>([]);
-    const [selectedClass, setSelectedClass] = useState<string>("");
+    const [selectedClass, setSelectedClass] = useState<string>(lastChoice.classId || "");
     const [sections, setSections] = useState<string[]>([]);
-    const [selectedSection, setSelectedSection] = useState<string>("");
+    const [selectedSection, setSelectedSection] = useState<string>(lastChoice.section || "");
 
     const [tests, setTests] = useState<any[]>([]);
-    const [selectedTestId, setSelectedTestId] = useState<string>("");
+    const [selectedTestId, setSelectedTestId] = useState<string>(lastChoice.testId || "");
 
     const [subjects, setSubjects] = useState<any[]>([]);
-    const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
+    const [selectedSubjectId, setSelectedSubjectId] = useState<string>(lastChoice.subjectId || "");
 
     const [students, setStudents] = useState<StudentMarkEntry[]>([]);
     const [subjectTotalMarks, setSubjectTotalMarks] = useState<number>(0);
@@ -136,7 +159,7 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
     // --- Fetch Marks Grid ---
     const handleGetMarks = () => {
         if (!selectedTestId || !selectedSubjectId) {
-            setMessage({ type: 'error', text: "Please select Test and Subject" });
+            setMessage({ type: 'error', text: "Choose the exam and the subject first." });
             return;
         }
 
@@ -160,10 +183,11 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
                 setSubjectTotalMarks(res.data.subject_total_marks);
                 setGradingScale(res.data.grading_scale);
                 setActiveClassTestId(res.data.class_test_id); // Store for save
+                setStep(1);
             })
             .catch(err => {
                 console.error(err);
-                setMessage({ type: 'error', text: err.response?.data?.error || "Failed to load marks" });
+                setMessage({ type: 'error', text: err.response?.data?.error || "Could not load the students. Please try again." });
             })
             .finally(() => setLoading(false));
     };
@@ -173,7 +197,8 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
     const handleInputChange = (studentId: number, value: string) => {
         setStudents(prev => prev.map(s => {
             if (s.student_id !== studentId) return s;
-            return { ...s, marks_obtained: value };
+            // Typing replaces "Absent"; the blur logic below decides the final value as before.
+            return { ...s, marks_obtained: value, is_absent: false };
         }));
     };
 
@@ -206,7 +231,7 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
                         }
 
                         if (num > subjectTotalMarks) {
-                            notify(`Marks cannot exceed ${subjectTotalMarks}`);
+                            notify.error(`Marks can't be more than ${subjectTotalMarks}. Please type again.`);
                             val = ''; // Clear only if out of bounds
                         } else {
                             val = String(num); // Set normalized integer string
@@ -236,7 +261,7 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
     const handleSave = () => {
         if (students.length === 0) return;
         if (!activeClassTestId) {
-            setMessage({ type: 'error', text: "Internal Error: Missing Class Test ID. Please reload data." });
+            setMessage({ type: 'error', text: "Something went wrong. Go back and tap Show students again." });
             return;
         }
 
@@ -257,12 +282,12 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
 
         api.post(`/marks/entry/subject`, payload)
             .then(() => {
-                setMessage({ type: 'success', text: "Marks saved successfully!" });
-                // Optional: reload data to verify?
+                notify.success("Marks saved");
+                setStep(2);
             })
             .catch(err => {
                 console.error(err);
-                setMessage({ type: 'error', text: err.response?.data?.error || "Failed to save marks" });
+                setMessage({ type: 'error', text: err.response?.data?.error || "Could not save the marks. Please try again." });
             })
             .finally(() => setSaving(false));
     };
@@ -274,7 +299,7 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
 
     const handleDownloadExcel = () => {
         if (students.length === 0) {
-            setMessage({ type: 'error', text: "No data to download." });
+            setMessage({ type: 'error', text: "There is nothing to download yet." });
             return;
         }
 
@@ -307,191 +332,351 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
         XLSX.writeFile(workbook, fileName);
     };
 
-    // Note: I missed `activeClassTestId` state in the component. 
-    // I will fix this in the next edit or complete it now.
-    // I will write the full component now including that state.
+    // ------------------------------------------------------------------
+    // UI helpers (no data rules here — they only move the screen along)
+    // ------------------------------------------------------------------
+
+    // Remember the last choice on this device
+    useEffect(() => {
+        try {
+            localStorage.setItem(LAST_CHOICE_KEY, JSON.stringify({
+                classId: selectedClass,
+                section: selectedSection,
+                testId: selectedTestId,
+                subjectId: selectedSubjectId,
+            }));
+        } catch { /* storage may be blocked; nothing to do */ }
+    }, [selectedClass, selectedSection, selectedTestId, selectedSubjectId]);
+
+    const changeClass = (value: string) => {
+        setSelectedClass(value);
+        setSelectedSection("");
+        setSelectedTestId("");
+        setSelectedSubjectId("");
+        setMessage(null);
+    };
+    const changeTest = (value: string) => {
+        setSelectedTestId(value);
+        setSelectedSubjectId("");
+        setMessage(null);
+    };
+
+    const classObj = classes.find(c => String(c.id) === String(selectedClass));
+    const testObj = tests.find(t => String(t.test_id) === String(selectedTestId));
+    const subjectIndex = subjects.findIndex(s => String(s.id) === String(selectedSubjectId));
+    const subjectObj = subjectIndex >= 0 ? subjects[subjectIndex] : undefined;
+    const nextSubject = subjectIndex >= 0 ? subjects[subjectIndex + 1] : undefined;
+
+    const chooseNote = !academicYear
+        ? "No school year is chosen. Choose one at the top of the screen."
+        : !classObj ? "Choose a class first."
+        : !testObj ? "Choose the exam."
+        : !subjectObj ? "Choose the subject."
+        : null;
+
+    const enteredCount = students.filter(s => hasMark(s.marks_obtained, s.is_absent)).length;
+    const missingCount = students.length - enteredCount;
+    const examLabel = [
+        classObj?.class_name,
+        selectedSection ? `Section ${selectedSection}` : null,
+        testObj?.test_name,
+        subjectObj?.subject_name,
+    ].filter(Boolean).join(' · ');
+
+    const toggleAbsent = (studentId: number) => {
+        setStudents(prev => prev.map(s => {
+            if (s.student_id !== studentId) return s;
+            // Same result as typing "AB" (or clearing it) in the marks box
+            return s.is_absent
+                ? { ...s, marks_obtained: '', is_absent: false, grade: '' }
+                : { ...s, marks_obtained: 'AB', is_absent: true, grade: '' };
+        }));
+    };
+
+    // Enter moves to the next student's box (fast keyboard entry on a computer)
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const next = inputRefs.current[index + 1];
+        if (next) {
+            next.focus();
+            next.select();
+        } else {
+            e.currentTarget.blur();
+            saveButtonRef.current?.focus();
+        }
+    };
+
+    const handleUndo = async () => {
+        const ok = await confirmDialog("Throw away the marks you changed and load the saved marks again?", {
+            title: "Undo my changes",
+            confirmText: "Yes, undo",
+            cancelText: "No, keep them",
+            tone: 'warning',
+        });
+        if (ok) handleCancel();
+    };
+
+    const goToStep = (n: number) => {
+        setMessage(null);
+        setStep(n);
+    };
+
+    const goToNextSubject = () => {
+        setSelectedSubjectId(nextSubject ? String(nextSubject.id) : "");
+        setStudents([]);
+        goToStep(0);
+    };
+
+    const messageAlert = message && (
+        <Alert tone={message.type === 'error' ? 'error' : 'success'} className="mb-4" onClose={() => setMessage(null)}>
+            {message.text}
+        </Alert>
+    );
 
     return (
-        <div>
-            <PageHeader title="Enter Subject Marks" />
+        <div className="max-w-3xl">
+            <PageHeader title="Enter marks for one subject" className="mb-4" />
+            <Steps steps={STEPS} current={step} onJump={step < 2 ? goToStep : undefined} className="mb-5" />
 
-            {/* Filters */}
-            <div className="card grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6 p-4">
-                {/* Branch */}
-                <div>
-                    <label className="label">Branch</label>
-                    <select
-                        value={selectedBranch}
-                        onChange={e => setSelectedBranch(e.target.value)}
-                        className="input mt-1"
-                        disabled={branches.length <= 1}
-                    >
-                        {branches.map(b => <option key={b.branch_code} value={b.branch_code}>{b.branch_name}</option>)}
-                    </select>
-                </div>
+            {/* ---------------- Step 1: Choose exam ---------------- */}
+            {step === 0 && (
+                <>
+                    {messageAlert}
+                    <div className="card p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Branch" htmlFor="me-branch">
+                            <select
+                                id="me-branch"
+                                value={selectedBranch}
+                                onChange={e => setSelectedBranch(e.target.value)}
+                                className="input"
+                                disabled={branches.length <= 1}
+                            >
+                                {branches.map(b => <option key={b.branch_code} value={b.branch_code}>{b.branch_name}</option>)}
+                            </select>
+                        </Field>
 
-                {/* Class */}
-                <div>
-                    <label className="label">Class</label>
-                    <select
-                        value={selectedClass}
-                        onChange={e => setSelectedClass(e.target.value)}
-                        className="input mt-1"
-                    >
-                        <option value="">Select Class</option>
-                        {classes.map(c => <option key={c.id} value={c.id}>{c.class_name}</option>)}
-                    </select>
-                </div>
+                        <Field label="Class" htmlFor="me-class">
+                            <select id="me-class" value={selectedClass} onChange={e => changeClass(e.target.value)} className="input">
+                                <option value="">Choose class</option>
+                                {classes.map(c => <option key={c.id} value={c.id}>{c.class_name}</option>)}
+                            </select>
+                        </Field>
 
-                {/* Section */}
-                <div>
-                    <label className="label">Section</label>
-                    <select
-                        value={selectedSection}
-                        onChange={e => setSelectedSection(e.target.value)}
-                        className="input mt-1"
-                    >
-                        <option value="">Select Section</option>
-                        {sections.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                </div>
+                        <Field label="Section" htmlFor="me-section">
+                            <select
+                                id="me-section"
+                                value={selectedSection}
+                                onChange={e => setSelectedSection(e.target.value)}
+                                className="input"
+                                disabled={!classObj}
+                            >
+                                <option value="">Choose section</option>
+                                {sections.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </Field>
 
-                {/* Test */}
-                <div>
-                    <label className="label">Test</label>
-                    <select
-                        value={selectedTestId}
-                        onChange={e => setSelectedTestId(e.target.value)}
-                        className="input mt-1"
-                    >
-                        <option value="">Select Test</option>
-                        {tests.map(t => <option key={t.test_id} value={t.test_id}>{t.test_name}</option>)}
-                        {/* Note: t.test_id here is the generic ID, not class_test.id */}
-                    </select>
-                </div>
+                        <Field label="Exam" htmlFor="me-test">
+                            <select
+                                id="me-test"
+                                value={selectedTestId}
+                                onChange={e => changeTest(e.target.value)}
+                                className="input"
+                                disabled={!classObj}
+                            >
+                                <option value="">Choose exam</option>
+                                {tests.map(t => <option key={t.test_id} value={t.test_id}>{t.test_name}</option>)}
+                                {/* Note: t.test_id here is the generic ID, not class_test.id */}
+                            </select>
+                        </Field>
 
-                {/* Subject */}
-                <div>
-                    <label className="label">Subject</label>
-                    <select
-                        value={selectedSubjectId}
-                        onChange={e => setSelectedSubjectId(e.target.value)}
-                        className="input mt-1"
-                    >
-                        <option value="">Select Subject</option>
-                        {subjects.map(s => <option key={s.id} value={s.id}>{s.subject_name}</option>)}
-                    </select>
-                </div>
-            </div>
+                        <Field
+                            label="Subject"
+                            htmlFor="me-subject"
+                            className="sm:col-span-2"
+                            hint={testObj && subjects.length === 0 ? "This exam has no subjects yet." : undefined}
+                        >
+                            <select
+                                id="me-subject"
+                                value={selectedSubjectId}
+                                onChange={e => { setSelectedSubjectId(e.target.value); setMessage(null); }}
+                                className="input"
+                                disabled={!testObj}
+                            >
+                                <option value="">Choose subject</option>
+                                {subjects.map(s => <option key={s.id} value={s.id}>{s.subject_name}</option>)}
+                            </select>
+                        </Field>
+                    </div>
 
-            <div className="mb-4">
-                <button
-                    type="button"
-                    onClick={handleGetMarks}
-                    disabled={loading || !selectedTestId || !selectedSubjectId}
-                    className="btn-primary"
-                >
-                    {loading ? "Loading..." : "Get Marks"}
-                </button>
-            </div>
-
-            {/* Message */}
-            {message && (
-                <Alert tone={message.type === 'error' ? 'error' : 'success'} className="mb-4">
-                    {message.text}
-                </Alert>
+                    <ActionBar note={chooseNote}>
+                        <Button
+                            onClick={handleGetMarks}
+                            loading={loading}
+                            disabled={!!chooseNote || !selectedTestId || !selectedSubjectId}
+                        >
+                            {loading ? "Loading students…" : "Show students"}
+                        </Button>
+                    </ActionBar>
+                </>
             )}
 
-            {/* Grid */}
-            {students.length > 0 && (
-                <div className="card overflow-hidden">
-                    <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-2 justify-between items-center">
-                        <span className="text-base font-semibold text-slate-900">
-                            Max Marks: {subjectTotalMarks}
-                        </span>
-                        <div className="text-sm text-slate-500">
-                            Valid inputs: 0-{subjectTotalMarks}, "AB" (Absent)
+            {/* ---------------- Step 2: Enter marks ---------------- */}
+            {step === 1 && (
+                <>
+                    {messageAlert}
+
+                    <div className="card p-4 mb-4">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <p className="font-semibold text-slate-900 break-words">{examLabel}</p>
+                                <p className="text-sm text-slate-600 mt-0.5">Marks are out of {subjectTotalMarks}</p>
+                            </div>
+                            <button type="button" className="btn-ghost btn-sm flex-shrink-0" onClick={() => goToStep(0)}>
+                                Change
+                            </button>
                         </div>
+                        {students.length > 0 && (
+                            <div className="mt-3">
+                                <p className="text-sm font-medium text-slate-800" aria-live="polite">
+                                    {enteredCount} of {students.length} entered
+                                </p>
+                                <div className="mt-1.5 h-2 rounded-full bg-slate-100 overflow-hidden">
+                                    <div
+                                        className="h-full bg-brand-600 transition-all"
+                                        style={{ width: `${students.length ? (enteredCount / students.length) * 100 : 0}%` }}
+                                    />
+                                </div>
+                                <p className="hidden md:block text-xs text-slate-500 mt-2">
+                                    Tip: press Enter to go to the next student. You can also type AB for absent.
+                                </p>
+                            </div>
+                        )}
                     </div>
 
-                    <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200">
-                        <thead className="bg-slate-50 text-slate-600">
-                            <tr>
-                                <th className="px-6 py-3 text-left">S.No</th>
-                                <th className="px-6 py-3 text-left">Roll No</th>
-                                <th className="px-6 py-3 text-left">Admission No</th>
-                                <th className="px-6 py-3 text-left">Student Name</th>
-                                <th className="px-6 py-3 text-left">Marks</th>
-                                <th className="px-6 py-3 text-left">Grade</th>
-                                <th className="px-6 py-3 text-left">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-slate-100">
-                            {students.map((student, index) => (
-                                <tr key={student.student_id}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{index + 1}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{student.roll_number}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{student.admission_no}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{student.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <input
-                                            type="text"
-                                            value={student.is_absent ? 'AB' : (student.marks_obtained !== null && student.marks_obtained !== undefined ? String(student.marks_obtained).split('.')[0] : '')}
-                                            onChange={(e) => handleInputChange(student.student_id, e.target.value)}
-                                            onBlur={() => handleInputBlur(student.student_id)}
-                                            className={`input w-24 ${student.is_absent ? 'bg-red-50 border-red-300 text-red-700 font-bold' : ''}`}
-                                            placeholder="-"
-                                        />
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-bold">
-                                        {student.grade || '-'}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        {student.is_absent ? (
-                                            <Badge tone="danger">Absent</Badge>
-                                        ) : (student.marks_obtained !== '' && student.marks_obtained !== null && student.marks_obtained !== undefined) ? (
-                                            <Badge tone="success">Present</Badge>
-                                        ) : (
-                                            <span className="text-slate-400">-</span>
+                    {loading ? (
+                        <div className="card"><LoadingState label="Loading students…" /></div>
+                    ) : students.length === 0 ? (
+                        <div className="card">
+                            <EmptyState
+                                title="No students found"
+                                description="No students are linked to this class, exam and subject."
+                            />
+                        </div>
+                    ) : (
+                        <ul className="card divide-y divide-slate-100 overflow-hidden">
+                            {students.map((student, index) => {
+                                const shown = student.is_absent
+                                    ? 'AB'
+                                    : (student.marks_obtained !== null && student.marks_obtained !== undefined ? String(student.marks_obtained).split('.')[0] : '');
+                                const problem = student.is_absent ? null : markProblem(student.marks_obtained, subjectTotalMarks);
+                                const inputId = `me-mark-${student.student_id}`;
+                                return (
+                                    <li key={student.student_id} className={`px-4 py-3 ${problem ? 'bg-red-50/60' : ''}`}>
+                                        <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2">
+                                            <div className="w-11 flex-shrink-0 text-center">
+                                                <div className="text-[11px] text-slate-500 leading-none">Roll</div>
+                                                <div className="font-semibold text-slate-900">{student.roll_number || '–'}</div>
+                                            </div>
+                                            <label htmlFor={inputId} className="min-w-0 flex-1">
+                                                <span className="block font-medium text-slate-900 truncate">{student.name}</span>
+                                                <span className="block text-xs text-slate-500">
+                                                    Admission number {student.admission_no}
+                                                    {student.grade ? ` · Grade ${student.grade}` : ''}
+                                                </span>
+                                            </label>
+                                            <div className="w-full sm:w-auto flex items-center gap-2">
+                                                <input
+                                                    id={inputId}
+                                                    ref={el => { inputRefs.current[index] = el; }}
+                                                    type="text"
+                                                    inputMode="decimal"
+                                                    enterKeyHint={index < students.length - 1 ? 'next' : 'done'}
+                                                    autoComplete="off"
+                                                    value={shown}
+                                                    onChange={(e) => handleInputChange(student.student_id, e.target.value)}
+                                                    onBlur={() => handleInputBlur(student.student_id)}
+                                                    onKeyDown={(e) => handleKeyDown(e, index)}
+                                                    aria-invalid={!!problem}
+                                                    aria-describedby={problem ? `${inputId}-err` : undefined}
+                                                    className={`input min-h-[44px] flex-1 sm:flex-none sm:w-24 text-center text-base font-semibold
+                                                        ${student.is_absent ? 'bg-red-50 border-red-300 text-red-700' : ''}
+                                                        ${problem ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                                                    placeholder="–"
+                                                />
+                                                <span className="text-sm text-slate-500 whitespace-nowrap">out of {subjectTotalMarks}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleAbsent(student.student_id)}
+                                                    aria-pressed={student.is_absent}
+                                                    className={`min-h-[44px] px-3 rounded-lg border text-sm font-medium whitespace-nowrap transition-colors
+                                                        ${student.is_absent
+                                                            ? 'bg-red-600 border-red-600 text-white'
+                                                            : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+                                                >
+                                                    Absent
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {problem && (
+                                            <p id={`${inputId}-err`} role="alert" className="mt-1.5 text-sm text-red-700 sm:pl-14">
+                                                {problem}
+                                            </p>
                                         )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
 
-                    <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-end gap-2">
-                        <button
-                            type="button"
-                            onClick={handleCancel}
-                            disabled={saving}
-                            className="btn-secondary"
-                        >
-                            Cancel
-                        </button>
+                    {students.length > 0 && (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                            <button type="button" onClick={handleDownloadExcel} disabled={saving} className="btn-secondary btn-sm">
+                                <FileDown size={16} /> Download Excel
+                            </button>
+                            <button type="button" onClick={handleUndo} disabled={saving || loading} className="btn-ghost btn-sm">
+                                <RotateCcw size={16} /> Undo my changes
+                            </button>
+                        </div>
+                    )}
 
-
-                        <button
-                            type="button"
-                            onClick={handleDownloadExcel}
-                            disabled={saving || students.length === 0}
-                            className="btn-soft"
-                        >
-                            <FileDown size={18} />
-                            Download Excel
-                        </button>
-
-                        <button
-                            type="button"
+                    <ActionBar
+                        note={students.length === 0
+                            ? "There are no students to save."
+                            : missingCount > 0
+                                ? `${missingCount} ${missingCount === 1 ? 'student has' : 'students have'} no marks yet. You can still save.`
+                                : "All students have marks."}
+                    >
+                        <Button variant="secondary" onClick={() => goToStep(0)} disabled={saving}>Back</Button>
+                        <Button
+                            ref={saveButtonRef}
+                            variant="success"
                             onClick={handleSave}
-                            disabled={saving}
-                            className="btn-success"
+                            loading={saving}
+                            disabled={students.length === 0 || loading}
                         >
-                            <Save size={18} />
-                            {saving ? "Saving..." : "Save Marks"}
-                        </button>
+                            {saving ? "Saving…" : "Save marks"}
+                        </Button>
+                    </ActionBar>
+                </>
+            )}
+
+            {/* ---------------- Step 3: Saved ---------------- */}
+            {step === 2 && (
+                <div className="card p-6 text-center">
+                    <div className="mx-auto w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+                        <CheckCircle2 className="w-8 h-8" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-slate-900">Marks saved</h2>
+                    <p className="text-sm text-slate-600 mt-1 break-words">{examLabel}</p>
+                    <p className="text-sm text-slate-600">{enteredCount} of {students.length} students have marks.</p>
+
+                    <div className="mt-6 flex flex-col sm:flex-row sm:justify-center gap-2">
+                        <Button onClick={goToNextSubject}>
+                            {nextSubject ? `Next subject: ${nextSubject.subject_name}` : "Choose another subject"}
+                        </Button>
+                        <Button variant="secondary" onClick={() => goToStep(1)}>Change these marks</Button>
+                        {onDone && <Button variant="ghost" onClick={onDone}>Back to all exam tasks</Button>}
                     </div>
                 </div>
             )}

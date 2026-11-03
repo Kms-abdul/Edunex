@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { GraduationCap, ChevronDown, ArrowLeft, MousePointerClick } from "lucide-react";
-import PageHeader from "./ui/PageHeader";
+import { GraduationCap, ChevronRight, ArrowLeft } from "lucide-react";
+import { PageHeader, EmptyState } from "./ui";
 import { useAuth } from "../contexts/AuthContext";
 import SubjectMaster from "./SubjectMaster";
 import ClassSubjectAssignment from "./ClassSubjectAssignment";
@@ -37,53 +37,40 @@ type AcademicView =
     | "STUDENT_REPORT_CARD"
     | "SET_EXAM_ATTENDANCE";
 
-interface DropdownItem {
+interface MenuItem {
     label: string;
-    onClick?: () => void;
-    disabled?: boolean;
+    hint: string;
+    view: AcademicView;
 }
 
-interface DropdownProps {
+interface MenuGroup {
     title: string;
-    items: DropdownItem[];
+    items: MenuItem[];
 }
 
-// --- Reusable Dropdown ---
-const NavDropdown: React.FC<DropdownProps> = ({ title, items }) => {
-    const [isOpen, setIsOpen] = useState(false);
-
-    return (
-        <div
-            className="relative"
-            onMouseEnter={() => setIsOpen(true)}
-            onMouseLeave={() => setIsOpen(false)}
-        >
-            <button className={`btn-secondary ${isOpen ? "border-brand-300 bg-brand-50/60 text-slate-900" : ""}`}>
-                {title} <ChevronDown size={14} className={`text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
-            </button>
-
-            {isOpen && (
-                <div className="absolute right-0 z-50 w-64 pt-1.5">
-                <div className="card shadow-pop py-1.5 animate-scale-in origin-top">
-                    {items.map((item, idx) => (
-                        <button
-                            key={idx}
-                            onClick={item.disabled ? undefined : item.onClick}
-                            disabled={item.disabled}
-                            className={`menu-item ${item.disabled ? "text-slate-400 cursor-not-allowed hover:bg-transparent hover:text-slate-400" : ""}`}
-                        >
-                            {item.label}
-                            {item.disabled && (
-                                <span className="ml-2 text-xs">(Coming soon)</span>
-                            )}
-                        </button>
-                    ))}
-                </div>
-                </div>
-            )}
-        </div>
-    );
-};
+// --- Tap-friendly task list (works the same with a finger or a mouse) ---
+const TaskGroup: React.FC<{ group: MenuGroup; onOpen: (v: AcademicView) => void }> = ({ group, onOpen }) => (
+    <section className="card overflow-hidden">
+        <h2 className="px-4 pt-4 pb-2 text-base font-semibold text-slate-900">{group.title}</h2>
+        <ul className="divide-y divide-slate-100">
+            {group.items.map(item => (
+                <li key={item.view}>
+                    <button
+                        type="button"
+                        onClick={() => onOpen(item.view)}
+                        className="w-full min-h-[56px] flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 active:bg-slate-100 focus:outline-none focus-visible:bg-brand-50"
+                    >
+                        <span className="min-w-0 flex-1">
+                            <span className="block text-[15px] font-medium text-slate-900">{item.label}</span>
+                            <span className="block text-sm text-slate-500">{item.hint}</span>
+                        </span>
+                        <ChevronRight className="w-5 h-5 text-slate-400 flex-shrink-0" aria-hidden="true" />
+                    </button>
+                </li>
+            ))}
+        </ul>
+    </section>
+);
 
 // --- Main ERP Component ---
 const Academics: React.FC = () => {
@@ -106,115 +93,94 @@ const Academics: React.FC = () => {
     const canExamAttendance = hasPermission('attendance.attendance.set-exam-attendance', 'read');
     const canReportCard = hasPermission('home.dashboard.student-report-card', 'read');
 
-    const enterMarksItems = [
-        ...(canMarksEntry ? [{ label: "Subject Wise", onClick: () => setView("MARKS_ENTRY_SUBJECT") }] : []),
-        ...(canMarksEntryAll ? [{ label: "Enter All Subject Marks", onClick: () => setView("MARKS_ENTRY_ALL_SUBJECTS") }] : []),
-        ...(canMarksUpload ? [{ label: "Upload Exam Marks", onClick: () => setView("MARKS_ENTRY_UPLOAD") }] : []),
-    ];
-
-    const academicActionItems = [
-        ...(canClassSubjects ? [{ label: "Assign Class Subjects", onClick: () => setView("ASSIGN_SUBJECTS") }] : []),
-        ...(canStudentSubjects ? [{ label: "Assign Student Subjects", onClick: () => setView("ASSIGN_STUDENT_SUBJECTS") }] : []),
-        ...(canSubjectTests ? [{ label: "Assign Subject Tests", onClick: () => setView("ASSIGN_SUBJECT_TESTS") }] : []),
-        ...(canStudentTests ? [{ label: "Assign Test to Students", onClick: () => setView("ASSIGN_STUDENT_TESTS") }] : []),
-        ...(canExamAttendance ? [{ label: "Set Exam Attendance", onClick: () => setView("SET_EXAM_ATTENDANCE") }] : []),
-    ];
-
-    const mastersItems = [
-        ...(canSubjectMaster ? [{ label: "Subjects", onClick: () => setView("SUBJECTS") }] : []),
-        // ...(canTimetable ? [{ label: "Timetable", onClick: () => setView("TIMETABLE") }] : []),
-        ...(canTestType ? [{ label: "Create Test", onClick: () => setView("CREATE_TEST") }] : []),
-        ...(canClassTest ? [{ label: "Add Exam", onClick: () => setView("ADD_EXAM") }] : []),
-        ...(canGrading ? [{ label: "Grading", onClick: () => setView("GRADING") }] : []),
-    ];
-
-    const reportsItems = [
-        ...(canReportCard ? [{ label: "Student Report Card", onClick: () => setView("STUDENT_REPORT_CARD") }] : []),
-    ];
+    // Same permission checks as before; only the way the list is shown has changed.
+    const groups: MenuGroup[] = [
+        {
+            title: "Marks",
+            items: [
+                ...(canMarksEntry ? [{ label: "Enter marks for one subject", hint: "One exam, one subject, the whole class", view: "MARKS_ENTRY_SUBJECT" as AcademicView }] : []),
+                ...(canMarksEntryAll ? [{ label: "Enter marks for all subjects", hint: "Each student's marks in every subject", view: "MARKS_ENTRY_ALL_SUBJECTS" as AcademicView }] : []),
+                ...(canMarksUpload ? [{ label: "Upload marks from Excel", hint: "Fill marks in a sheet, then upload it", view: "MARKS_ENTRY_UPLOAD" as AcademicView }] : []),
+            ],
+        },
+        {
+            title: "Exams",
+            items: [
+                ...(canClassTest ? [{ label: "Add an exam to classes", hint: "Choose which exams each class writes", view: "ADD_EXAM" as AcademicView }] : []),
+                ...(canTestType ? [{ label: "Exam names", hint: "Create exam names like Unit test 1", view: "CREATE_TEST" as AcademicView }] : []),
+                ...(canSubjectTests ? [{ label: "Subjects in each exam", hint: "Choose the subjects for an exam", view: "ASSIGN_SUBJECT_TESTS" as AcademicView }] : []),
+                ...(canStudentTests ? [{ label: "Students in each exam", hint: "Choose which students write an exam", view: "ASSIGN_STUDENT_TESTS" as AcademicView }] : []),
+                ...(canExamAttendance ? [{ label: "Exam attendance", hint: "Choose which months count for attendance", view: "SET_EXAM_ATTENDANCE" as AcademicView }] : []),
+                ...(canGrading ? [{ label: "Grades", hint: "Marks needed for each grade (A, B, C…)", view: "GRADING" as AcademicView }] : []),
+            ],
+        },
+        {
+            title: "Subjects",
+            items: [
+                ...(canSubjectMaster ? [{ label: "Subject list", hint: "Add or change subjects", view: "SUBJECTS" as AcademicView }] : []),
+                // ...(canTimetable ? [{ label: "Timetable", hint: "", view: "TIMETABLE" }] : []),
+                ...(canClassSubjects ? [{ label: "Subjects for a class", hint: "Choose the subjects each class studies", view: "ASSIGN_SUBJECTS" as AcademicView }] : []),
+                ...(canStudentSubjects ? [{ label: "Subjects for students", hint: "Choose optional subjects for each student", view: "ASSIGN_STUDENT_SUBJECTS" as AcademicView }] : []),
+            ],
+        },
+        {
+            title: "Report cards",
+            items: [
+                ...(canReportCard ? [{ label: "Student report card", hint: "See and print a student's report card", view: "STUDENT_REPORT_CARD" as AcademicView }] : []),
+            ],
+        },
+    ].filter(g => g.items.length > 0);
 
     return (
         <div className="min-h-full bg-surface-muted flex flex-col">
-            <div className="flex-1 flex flex-col">
-                <div className="flex-1 flex flex-col">
-
-                    {/* Header - Only show if NO sub-view is selected (HOME) */}
-                    {view === "HOME" && (
-                        <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-5">
-                            <PageHeader
-                                eyebrow="Academics"
-                                title="Academics Management"
-                                subtitle="Marks entry, academic actions, masters and reports."
-                                icon={<GraduationCap className="w-6 h-6" />}
-                                className="mb-5"
-                                actions={(
-                            <div className="flex gap-2 flex-wrap">
-                                {enterMarksItems.length > 0 && (
-                                    <NavDropdown title="Enter Marks" items={enterMarksItems} />
-                                )}
-                                {academicActionItems.length > 0 && (
-                                    <NavDropdown title="Academic Actions" items={academicActionItems} />
-                                )}
-                                {mastersItems.length > 0 && (
-                                    <NavDropdown title="Masters" items={mastersItems} />
-                                )}
-                                {reportsItems.length > 0 && (
-                                    <NavDropdown title="Reports" items={reportsItems} />
-                                )}
-                            </div>
-                                )}
+            {view === "HOME" ? (
+                <div className="flex-1 p-4 sm:p-6">
+                    <PageHeader
+                        eyebrow="Academics"
+                        title="Exams and marks"
+                        subtitle="What do you want to do?"
+                        icon={<GraduationCap className="w-6 h-6" />}
+                        className="mb-5"
+                    />
+                    {groups.length === 0 ? (
+                        <div className="card">
+                            <EmptyState
+                                title="Nothing to show"
+                                description="You do not have access to any exam tasks. Ask your school admin if you need it."
                             />
                         </div>
+                    ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start max-w-5xl">
+                            {groups.map(g => <TaskGroup key={g.title} group={g} onOpen={setView} />)}
+                        </div>
                     )}
-
-                    {/* Content Area */}
-                    <div className={`flex-1 bg-surface-muted ${view === 'ADD_EXAM' ? 'p-2' : 'p-4 sm:p-6'}`}>
-
-                        {view !== "HOME" && (
-                            <button
-                                onClick={() => setView("HOME")}
-                                className="no-print mb-4 btn-secondary btn-sm"
-                            >
-                                <ArrowLeft className="w-3.5 h-3.5" /> Back to Menu
-                            </button>
-                        )}
-
-                        {view === "HOME" && (
-                            <div className="card flex flex-col items-center justify-center text-center h-full py-20 px-6">
-                                <div className="w-16 h-16 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mb-4">
-                                    <MousePointerClick className="w-8 h-8" />
-                                </div>
-                                <h3 className="text-lg font-semibold text-slate-900">Choose an academic action</h3>
-                                <p className="text-sm text-slate-500 mt-1 max-w-md">Select an action from the menu above to manage academic data.</p>
-                            </div>
-                        )}
-
-                        {view === "SUBJECTS" && <SubjectMaster />}
-                        {view === "ASSIGN_SUBJECTS" && <ClassSubjectAssignment />}
-                        {view === "ASSIGN_STUDENT_SUBJECTS" && <AssignStudentSubjects />}
-                        {view === "ASSIGN_SUBJECT_TESTS" && <AssignSubjectTests />}
-                        {view === "ASSIGN_STUDENT_TESTS" && <AssignStudentTests />}
-                        {view === "CREATE_TEST" && <TestTypeManager />}
-                        {view === "ADD_EXAM" && <ClassTestAssignment />}
-                        {view === "GRADING" && <GradeScaleManager />}
-                        {view === "MARKS_ENTRY_SUBJECT" && <MarksEntry />}
-                        {view === "MARKS_ENTRY_UPLOAD" && <MarksUpload />}
-                        {view === "STUDENT_REPORT_CARD" && <StudentReportCard />}
-                        {view === "SET_EXAM_ATTENDANCE" && <SetExamAttendance />}
-                        {/* {view === "TIMETABLE" && <Timetable />} */}
-                        {view === "MARKS_ENTRY_ALL_SUBJECTS" && <MarksEntryAllSubjects />}
-
-
-
-
-                        {!["HOME", "SUBJECTS", "ASSIGN_SUBJECTS", "ASSIGN_STUDENT_SUBJECTS"].includes(view) && (
-                            <div className="text-gray-500">
-                                {/*This module will be enabled soon.*/}
-                            </div>
-                        )}
-                    </div>
-
                 </div>
-            </div>
+            ) : (
+                <div className={`flex-1 ${view === 'ADD_EXAM' ? 'p-2' : 'p-4 sm:p-6'}`}>
+                    <button
+                        type="button"
+                        onClick={() => setView("HOME")}
+                        className="no-print mb-4 inline-flex items-center gap-1.5 min-h-[44px] px-1 text-sm font-medium text-brand-700 hover:text-brand-800"
+                    >
+                        <ArrowLeft className="w-4 h-4" aria-hidden="true" /> All exam tasks
+                    </button>
+
+                    {view === "SUBJECTS" && <SubjectMaster />}
+                    {view === "ASSIGN_SUBJECTS" && <ClassSubjectAssignment />}
+                    {view === "ASSIGN_STUDENT_SUBJECTS" && <AssignStudentSubjects />}
+                    {view === "ASSIGN_SUBJECT_TESTS" && <AssignSubjectTests />}
+                    {view === "ASSIGN_STUDENT_TESTS" && <AssignStudentTests />}
+                    {view === "CREATE_TEST" && <TestTypeManager />}
+                    {view === "ADD_EXAM" && <ClassTestAssignment />}
+                    {view === "GRADING" && <GradeScaleManager />}
+                    {view === "MARKS_ENTRY_SUBJECT" && <MarksEntry onDone={() => setView("HOME")} />}
+                    {view === "MARKS_ENTRY_UPLOAD" && <MarksUpload />}
+                    {view === "STUDENT_REPORT_CARD" && <StudentReportCard />}
+                    {view === "SET_EXAM_ATTENDANCE" && <SetExamAttendance />}
+                    {/* {view === "TIMETABLE" && <Timetable />} */}
+                    {view === "MARKS_ENTRY_ALL_SUBJECTS" && <MarksEntryAllSubjects />}
+                </div>
+            )}
         </div>
     );
 };

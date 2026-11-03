@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
 import api from "../api";
-import { Save, Edit, FileDown } from "lucide-react";
+import { Save, Edit, FileDown, Check } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { notify } from './ui/feedback';
-import { PageHeader, Alert } from './ui';
+import { PageHeader, Alert, Steps, ActionBar, Field, Button, LoadingState } from './ui';
+import { markProblem } from './marks/markCheck';
+
+const STEPS = ['Choose exam', 'Enter marks'];
 
 // --- Types ---
 interface Student {
@@ -62,6 +65,9 @@ const MarksEntryAllSubjects: React.FC = () => {
     const [editingRows, setEditingRows] = useState<Set<number>>(new Set()); // Per-row editing
     const [rowSaving, setRowSaving] = useState<Set<number>>(new Set()); // Per-row saving
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    // 0 = choose exam, 1 = enter marks
+    const [step, setStep] = useState(0);
+    const [savingAll, setSavingAll] = useState(false);
 
     // --- Init ---
     useEffect(() => {
@@ -161,7 +167,7 @@ const MarksEntryAllSubjects: React.FC = () => {
     // --- Fetch Data (Students + Marks) ---
     const handleGetData = async () => {
         if (!selectedTestId || subjects.length === 0) {
-            setMessage({ type: 'error', text: "Please select a test with subjects." });
+            setMessage({ type: 'error', text: "Choose an exam that has subjects." });
             return;
         }
 
@@ -185,7 +191,7 @@ const MarksEntryAllSubjects: React.FC = () => {
             });
             const studentsList = studentsRes.data.students || studentsRes.data || [];
             if (studentsList.length === 0) {
-                setMessage({ type: 'error', text: "No students found." });
+                setMessage({ type: 'error', text: "No students found in this class." });
                 setLoading(false);
                 return;
             }
@@ -247,10 +253,11 @@ const MarksEntryAllSubjects: React.FC = () => {
             setMarksData(newMarksData);
             setSubjectClassTestIds(newSubjectClassTestIds);
             setSubjectMaxMarks(newSubjectMaxMarks);
+            setStep(1);
 
         } catch (err: any) {
             console.error(err);
-            setMessage({ type: 'error', text: "Failed to load data. Please check connection." });
+            setMessage({ type: 'error', text: "Could not load the students. Check your internet and try again." });
         } finally {
             setLoading(false);
         }
@@ -341,25 +348,28 @@ const MarksEntryAllSubjects: React.FC = () => {
                         student_id: studentId,
                         value: val
                     }],
-                    user_id: 1
                 });
             });
 
             await Promise.all(promises);
 
-            // Success
-            const newEditing = new Set(editingRows);
-            newEditing.delete(studentId);
-            setEditingRows(newEditing);
+            // Success (functional update so several rows can be saved at once)
+            setEditingRows(prev => {
+                const next = new Set(prev);
+                next.delete(studentId);
+                return next;
+            });
 
             // Use toast or small checkmark? For now, nothing blocking, maybe just remove edit mode.
         } catch (err) {
             console.error("Save failed for student " + studentId, err);
-            notify("Failed to save marks for this student. Please check inputs.");
+            notify.error("Could not save marks for this student. Please check the marks and try again.");
         } finally {
-            const newSaving = new Set(rowSaving);
-            newSaving.delete(studentId);
-            setRowSaving(newSaving);
+            setRowSaving(prev => {
+                const next = new Set(prev);
+                next.delete(studentId);
+                return next;
+            });
         }
     };
 
@@ -387,219 +397,326 @@ const MarksEntryAllSubjects: React.FC = () => {
         XLSX.writeFile(wb, "Marks_Export.xlsx");
     };
 
+    // ------------------------------------------------------------------
+    // UI helpers (screen flow only — saving still goes through handleSaveRow)
+    // ------------------------------------------------------------------
+    const visibleSubjects = subjects.filter(s => selectedSubjectIds.includes(s.id));
+    const classObj = classes.find(c => String(c.id) === String(selectedClass));
+    const testObj = tests.find(t => String(t.test_id) === String(selectedTestId));
+
+    const chooseNote = !academicYear
+        ? "No school year is chosen. Choose one at the top of the screen."
+        : !classObj ? "Choose a class first."
+        : !selectedTestId ? "Choose the exam."
+        : selectedSubjectIds.length === 0 ? "Choose at least one subject."
+        : null;
+
+    const toggleSubject = (id: number) => {
+        setSelectedSubjectIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const openRows = Array.from(editingRows);
+    const handleSaveAllOpen = async () => {
+        setSavingAll(true);
+        try {
+            await Promise.all(openRows.map(id => handleSaveRow(id)));
+        } finally {
+            setSavingAll(false);
+        }
+    };
+
+    const studentId = (student: Student) => student.student_id || (student as any).id;
+
+    /** One marks box. Used by both the phone cards and the desktop table. */
+    const renderMarkInput = (sId: number, subj: Subject, isRowEditing: boolean, wide = false) => {
+        const cellData = marksData[sId]?.[subj.id];
+        const val = cellData?.value || "";
+        const isAbsent = cellData?.is_absent || false;
+        // If check failed (cellData undefined), student doesn't have this subject allocated in backend
+        const isAssigned = cellData !== undefined;
+        const problem = isAssigned && !isAbsent ? markProblem(val, subjectMaxMarks[subj.id]) : null;
+        return (
+            <>
+                <input
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    value={!isAssigned ? "" : val}
+                    disabled={!isRowEditing || !isAssigned}
+                    onChange={(e) => handleMarkChange(sId, subj.id, e.target.value)}
+                    onBlur={() => handleMarkBlur(sId, subj.id)}
+                    placeholder={!isAssigned ? "–" : ""}
+                    aria-label={`${subj.subject_name} marks`}
+                    aria-invalid={!!problem}
+                    title={!isAssigned ? "This student does not take this subject" : problem || undefined}
+                    className={`input min-h-[44px] text-center ${wide ? 'w-full' : 'w-16'}
+                        ${isAbsent ? 'bg-red-50 text-red-600 font-bold border-red-300' : ''}
+                        ${problem ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                />
+                {wide && problem && <p className="mt-1 text-xs text-red-700">{problem}</p>}
+            </>
+        );
+    };
+
+    const renderRowButton = (sId: number, isRowEditing: boolean, isRowSaving: boolean, full = false) =>
+        !isRowEditing ? (
+            <button type="button" onClick={() => handleEditRow(sId)} className={`btn-soft min-h-[44px] ${full ? 'w-full' : 'btn-sm'}`}>
+                <Edit size={14} /> Edit
+            </button>
+        ) : (
+            <button
+                type="button"
+                onClick={() => handleSaveRow(sId)}
+                disabled={isRowSaving}
+                className={`btn-success min-h-[44px] ${full ? 'w-full' : 'btn-sm'}`}
+            >
+                {isRowSaving ? 'Saving…' : <><Save size={14} /> Save</>}
+            </button>
+        );
+
+    const messageAlert = message && (
+        <Alert tone={message.type === 'error' ? 'error' : 'success'} className="mb-4" onClose={() => setMessage(null)}>
+            {message.text}
+        </Alert>
+    );
+
     return (
         <div>
-            <PageHeader title="Enter All Subject Marks" />
+            <PageHeader title="Enter marks for all subjects" className="mb-4" />
+            <Steps steps={STEPS} current={step} onJump={() => setStep(0)} className="mb-5 max-w-3xl" />
 
-            {/* --- FILTERS --- */}
-            <div className="card p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-                {/* Class */}
-                <div>
-                    <label className="label">Class</label>
-                    <select
-                        value={selectedClass}
-                        onChange={e => setSelectedClass(e.target.value)}
-                        className="input mt-1"
-                    >
-                        <option value="">Select Class</option>
-                        {classes.map(c => <option key={c.id} value={c.id}>{c.class_name}</option>)}
-                    </select>
-                </div>
+            {/* ---------------- Step 1: Choose exam ---------------- */}
+            {step === 0 && (
+                <div className="max-w-3xl">
+                    {messageAlert}
+                    <div className="card p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Class" htmlFor="mas-class">
+                            <select
+                                id="mas-class"
+                                value={selectedClass}
+                                onChange={e => setSelectedClass(e.target.value)}
+                                className="input"
+                            >
+                                <option value="">Choose class</option>
+                                {classes.map(c => <option key={c.id} value={c.id}>{c.class_name}</option>)}
+                            </select>
+                        </Field>
 
-                {/* Section */}
-                <div>
-                    <label className="label">Section</label>
-                    <select
-                        value={selectedSection}
-                        onChange={e => setSelectedSection(e.target.value)}
-                        className="input mt-1"
-                    >
-                        <option value="">Select Section</option>
-                        {sections.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                </div>
+                        <Field label="Section" htmlFor="mas-section">
+                            <select
+                                id="mas-section"
+                                value={selectedSection}
+                                onChange={e => setSelectedSection(e.target.value)}
+                                className="input"
+                            >
+                                <option value="">Choose section</option>
+                                {sections.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </Field>
 
-                {/* Subject Type */}
-                <div>
-                    <label className="label">Subject Type</label>
-                    <select
-                        value={selectedSubjectType}
-                        onChange={e => setSelectedSubjectType(e.target.value)}
-                        className="input mt-1"
-                    >
-                        <option value="All">All Types</option>
-                        <option value="Academic">Academic</option>
-                        <option value="Deeniyath">Deeniyath</option>
-                        {/* Dynamic types? Maybe in future */}
-                    </select>
-                </div>
+                        <Field label="Exam" htmlFor="mas-test">
+                            <select
+                                id="mas-test"
+                                value={selectedTestId}
+                                onChange={e => setSelectedTestId(e.target.value)}
+                                className="input"
+                            >
+                                <option value="">Choose exam</option>
+                                {tests.map(t => <option key={t.test_id} value={t.test_id}>{t.test_name}</option>)}
+                            </select>
+                        </Field>
 
-                {/* Exam Type / Test */}
-                <div>
-                    <label className="label">Exam Type</label>
-                    <select
-                        value={selectedTestId}
-                        onChange={e => setSelectedTestId(e.target.value)}
-                        className="input mt-1"
-                    >
-                        <option value="">Select Exam</option>
-                        {tests.map(t => <option key={t.test_id} value={t.test_id}>{t.test_name}</option>)}
-                    </select>
-                </div>
+                        <Field label="Kind of subject" htmlFor="mas-type">
+                            <select
+                                id="mas-type"
+                                value={selectedSubjectType}
+                                onChange={e => setSelectedSubjectType(e.target.value)}
+                                className="input"
+                            >
+                                <option value="All">All subjects</option>
+                                <option value="Academic">Academic subjects</option>
+                                <option value="Deeniyath">Deeniyath subjects</option>
+                                {/* Dynamic types? Maybe in future */}
+                            </select>
+                        </Field>
 
-                {/* Select Subjects (Multiple) */}
-                <div>
-                    <label className="label">Select Subjects</label>
-                    <div className="relative group">
-                        <button className="btn-secondary mt-1 block w-full text-left overflow-hidden text-ellipsis">
-                            {selectedSubjectIds.length === filteredSubjects.length && filteredSubjects.length > 0 ? `All ${selectedSubjectType === 'All' ? '' : selectedSubjectType} Subjects` : `${selectedSubjectIds.length} Selected`}
-                        </button>
-                        {/* Simple Dropdown for Multi-select */}
-                        <div className="absolute hidden group-hover:block z-10 w-full bg-white border border-slate-200 rounded-lg shadow-pop max-h-60 overflow-y-auto p-2">
-                            {filteredSubjects.map(s => (
-                                <label key={s.id} className="flex items-center space-x-2 p-1 rounded hover:bg-slate-50 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedSubjectIds.includes(s.id)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setSelectedSubjectIds(prev => [...prev, s.id]);
-                                            } else {
-                                                setSelectedSubjectIds(prev => prev.filter(id => id !== s.id));
-                                            }
-                                        }}
-                                        className="rounded accent-brand-600"
-                                    />
-                                    <span className="text-sm text-slate-700">{s.subject_name}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            <div className="mb-6 flex justify-end">
-                <button
-                    onClick={handleGetData}
-                    disabled={loading || !selectedTestId}
-                    className="btn-primary"
-                >
-                    {loading ? "Loading..." : "GET Button"}
-                </button>
-            </div>
-
-            {/* --- MESSAGE --- */}
-            {message && (
-                <Alert tone={message.type === 'error' ? 'error' : 'success'} className="mb-4">
-                    {message.text}
-                </Alert>
-            )}
-
-            {/* --- TABLE --- */}
-            {students.length > 0 && (
-                <div className="card overflow-hidden">
-                    <div className="card-header bg-slate-50">
-                        <div className="text-base font-semibold text-slate-900">Student Marks</div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-slate-200">
-                            <thead className="bg-slate-50 text-slate-600">
-                                <tr>
-                                    <th className="px-4 py-3 text-left sticky left-0 z-10 bg-slate-50">S.no</th>
-                                    <th className="px-4 py-3 text-left sticky left-12 z-10 bg-slate-50">Student Name</th>
-                                    <th className="px-4 py-3 text-left">Roll No</th>
-                                    <th className="px-4 py-3 text-left">Adm No</th>
-
-                                    {/* Subject Columns */}
-                                    {subjects.filter(s => selectedSubjectIds.includes(s.id)).map(s => {
-                                        const max = subjectMaxMarks[s.id];
+                        {/* Subjects: tap to add or remove (no hover needed) */}
+                        <div className="sm:col-span-2">
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                                <span className="block text-sm font-medium text-slate-800">
+                                    Subjects to show ({selectedSubjectIds.length} of {filteredSubjects.length})
+                                </span>
+                                {filteredSubjects.length > 0 && (
+                                    <div className="flex gap-1">
+                                        <button type="button" className="btn-ghost btn-sm" onClick={() => setSelectedSubjectIds(filteredSubjects.map(s => s.id))}>
+                                            All
+                                        </button>
+                                        <button type="button" className="btn-ghost btn-sm" onClick={() => setSelectedSubjectIds([])}>
+                                            None
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            {filteredSubjects.length === 0 ? (
+                                <p className="text-sm text-slate-500">
+                                    {selectedTestId ? "This exam has no subjects of this kind." : "Choose an exam to see its subjects."}
+                                </p>
+                            ) : (
+                                <div className="flex flex-wrap gap-2">
+                                    {filteredSubjects.map(s => {
+                                        const on = selectedSubjectIds.includes(s.id);
                                         return (
-                                            <th key={s.id} className="px-4 py-3 text-center min-w-[100px]">
-                                                {s.subject_name} ({max !== undefined ? max : '-'})
-                                            </th>
+                                            <button
+                                                key={s.id}
+                                                type="button"
+                                                onClick={() => toggleSubject(s.id)}
+                                                aria-pressed={on}
+                                                className={`min-h-[44px] inline-flex items-center gap-1.5 px-3 rounded-full border text-sm font-medium transition-colors
+                                                    ${on ? 'bg-brand-600 border-brand-600 text-white' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+                                            >
+                                                {on && <Check size={14} aria-hidden="true" />}
+                                                {s.subject_name}
+                                            </button>
                                         );
                                     })}
-
-                                    <th className="px-4 py-3 text-left">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-slate-100">
-                                {students.map((student, idx) => {
-                                    const sId = student.student_id || (student as any).id;
-                                    const isRowEditing = editingRows.has(sId);
-                                    const isRowSaving = rowSaving.has(sId);
-
-                                    return (
-                                        <tr key={sId}>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500 sticky left-0 bg-white">{idx + 1}</td>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-900 sticky left-12 bg-white">{student.name}</td>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500">{student.roll_number}</td>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500">{student.admission_no}</td>
-
-                                            {/* Marks Cells */}
-                                            {subjects.filter(s => selectedSubjectIds.includes(s.id)).map(s => {
-                                                const cellData = marksData[sId]?.[s.id];
-                                                const val = cellData?.value || "";
-                                                const isAbsent = cellData?.is_absent || false;
-
-                                                // If check failed (cellData undefined), student doesn't have this subject allocated in backend
-                                                const isAssigned = cellData !== undefined;
-
-                                                return (
-                                                    <td key={s.id} className="px-2 py-2 text-center">
-                                                        <div className="flex justify-center">
-                                                            <input
-                                                                type="text"
-                                                                value={!isAssigned ? "" : val}
-                                                                disabled={!isRowEditing || !isAssigned}
-                                                                onChange={(e) => handleMarkChange(sId, s.id, e.target.value)}
-                                                                onBlur={() => handleMarkBlur(sId, s.id)}
-                                                                placeholder={!isAssigned ? "-" : ""}
-                                                                className={`input w-16 text-center ${isAbsent ? 'bg-red-50 text-red-600 font-bold border-red-300' : ''}`}
-                                                            />
-                                                        </div>
-                                                    </td>
-                                                );
-                                            })}
-
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
-                                                {!isRowEditing ? (
-                                                    <button
-                                                        onClick={() => handleEditRow(sId)}
-                                                        className="btn-soft btn-sm"
-                                                    >
-                                                        <Edit size={14} /> Edit
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => handleSaveRow(sId)}
-                                                        disabled={isRowSaving}
-                                                        className="btn-success btn-sm"
-                                                    >
-                                                        {isRowSaving ? '...' : <><Save size={14} /> Save</>}
-                                                    </button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                                </div>
+                            )}
+                        </div>
                     </div>
+
+                    <ActionBar note={chooseNote}>
+                        <Button onClick={handleGetData} loading={loading} disabled={!!chooseNote || !selectedTestId}>
+                            {loading ? "Loading students…" : "Show students"}
+                        </Button>
+                    </ActionBar>
                 </div>
             )}
-            {/* --- DOWNLOAD BUTTON --- */}
-            {students.length > 0 && (
-                <div className="mt-4 flex justify-end">
-                    <button
-                        onClick={handleDownload}
-                        className="btn-success"
+
+            {/* ---------------- Step 2: Enter marks ---------------- */}
+            {step === 1 && (
+                <>
+                    <div className="max-w-3xl">{messageAlert}</div>
+
+                    <div className="card p-4 mb-4 flex items-start justify-between gap-3 max-w-3xl">
+                        <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 break-words">
+                                {[classObj?.class_name, selectedSection ? `Section ${selectedSection}` : null, testObj?.test_name].filter(Boolean).join(' · ')}
+                            </p>
+                            <p className="text-sm text-slate-600 mt-0.5">
+                                Tap <strong>Edit</strong> on a student, type the marks, then tap <strong>Save</strong>. Type AB if the student was absent.
+                            </p>
+                        </div>
+                        <button type="button" className="btn-ghost btn-sm flex-shrink-0" onClick={() => setStep(0)}>Change</button>
+                    </div>
+
+                    {loading ? (
+                        <div className="card"><LoadingState label="Loading students…" /></div>
+                    ) : (
+                        <>
+                            {/* Phones: one card per student */}
+                            <ul className="md:hidden space-y-3">
+                                {students.map((student) => {
+                                    const sId = studentId(student);
+                                    const isRowEditing = editingRows.has(sId);
+                                    const isRowSaving = rowSaving.has(sId);
+                                    return (
+                                        <li key={sId} className={`card p-4 ${isRowEditing ? 'ring-2 ring-brand-200' : ''}`}>
+                                            <div className="flex items-baseline justify-between gap-2">
+                                                <p className="font-medium text-slate-900 min-w-0 truncate">{student.name}</p>
+                                                <span className="text-sm text-slate-500 flex-shrink-0">Roll {student.roll_number || '–'}</span>
+                                            </div>
+                                            <p className="text-xs text-slate-500">Admission number {student.admission_no}</p>
+                                            <div className="mt-3 grid grid-cols-2 gap-3">
+                                                {visibleSubjects.map(s => (
+                                                    <div key={s.id} className="min-w-0">
+                                                        <span className="block text-xs text-slate-600 mb-1 truncate">
+                                                            {s.subject_name}{subjectMaxMarks[s.id] !== undefined ? ` (out of ${subjectMaxMarks[s.id]})` : ''}
+                                                        </span>
+                                                        {renderMarkInput(sId, s, isRowEditing, true)}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="mt-3">{renderRowButton(sId, isRowEditing, isRowSaving, true)}</div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+
+                            {/* Desktop: table */}
+                            <div className="hidden md:block card overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-slate-200">
+                                        <thead className="bg-slate-50 text-slate-600 text-sm">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left sticky left-0 z-10 bg-slate-50">No.</th>
+                                                <th className="px-4 py-3 text-left sticky left-12 z-10 bg-slate-50">Student name</th>
+                                                <th className="px-4 py-3 text-left">Roll No.</th>
+                                                <th className="px-4 py-3 text-left">Admission No.</th>
+                                                {visibleSubjects.map(s => {
+                                                    const max = subjectMaxMarks[s.id];
+                                                    return (
+                                                        <th key={s.id} className="px-4 py-3 text-center min-w-[100px]">
+                                                            {s.subject_name}
+                                                            <span className="block text-xs font-normal text-slate-500">out of {max !== undefined ? max : '–'}</span>
+                                                        </th>
+                                                    );
+                                                })}
+                                                <th className="px-4 py-3 text-left"><span className="sr-only">Edit or save</span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-slate-100">
+                                            {students.map((student, idx) => {
+                                                const sId = studentId(student);
+                                                const isRowEditing = editingRows.has(sId);
+                                                const isRowSaving = rowSaving.has(sId);
+                                                return (
+                                                    <tr key={sId} className={isRowEditing ? 'bg-brand-50/40' : ''}>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500 sticky left-0 bg-white">{idx + 1}</td>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900 sticky left-12 bg-white">{student.name}</td>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500">{student.roll_number}</td>
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500">{student.admission_no}</td>
+                                                        {visibleSubjects.map(s => (
+                                                            <td key={s.id} className="px-2 py-2 text-center">
+                                                                <div className="flex justify-center">{renderMarkInput(sId, s, isRowEditing)}</div>
+                                                            </td>
+                                                        ))}
+                                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-500">
+                                                            {renderRowButton(sId, isRowEditing, isRowSaving)}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {students.length > 0 && (
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <button type="button" onClick={handleDownload} className="btn-secondary btn-sm">
+                                        <FileDown size={16} /> Download Excel
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    <ActionBar
+                        note={openRows.length === 0
+                            ? "Tap Edit on a student to change marks."
+                            : `${openRows.length} ${openRows.length === 1 ? 'student is' : 'students are'} open for editing. Save to keep the marks.`}
                     >
-                        <FileDown size={16} /> Download Excel
-                    </button>
-                </div>
+                        <Button variant="secondary" onClick={() => setStep(0)} disabled={savingAll}>Back</Button>
+                        <Button
+                            variant="success"
+                            onClick={handleSaveAllOpen}
+                            loading={savingAll}
+                            disabled={openRows.length === 0}
+                        >
+                            {openRows.length > 1 ? `Save marks (${openRows.length} students)` : "Save marks"}
+                        </Button>
+                    </ActionBar>
+                </>
             )}
         </div>
     );
