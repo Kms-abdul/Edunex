@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
-import { Alert, LoadingState, EmptyState, Badge } from './ui';
+import { Alert, Badge, DataList, Field } from './ui';
+import type { Column } from './ui';
+import { NeedSchool, MasterTop, FormCard, EditButton, scrollToForm, plain } from './hr-setup/MasterParts';
+
+const blankForm = {
+    device_code: '', device_name: '', device_model: '', manufacturer: '', serial_number: '',
+    ip_address: '', port: 5005, communication_type: 'TCP', communication_password: '',
+    sync_mode: 'AUTO', sync_interval_minutes: 5, timezone: 'Asia/Kolkata', status: 'ACTIVE'
+};
 
 interface BiometricDevice {
     id: number;
@@ -30,6 +38,7 @@ export const BiometricDevices: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [showForm, setShowForm] = useState(false);
     const currentSchoolId = localStorage.getItem('currentSchoolId');
     const branchId = localStorage.getItem('currentBranchId');
 
@@ -71,10 +80,10 @@ export const BiometricDevices: React.FC = () => {
         try {
             if (editingId) {
                 await api.put(`/biometric/devices/${editingId}`, form);
-                setMsg({ type: 'success', text: 'Device updated successfully' });
+                setMsg({ type: 'success', text: 'Machine saved' });
             } else {
                 await api.post('/biometric/devices', { ...form, branch_id: branchId });
-                setMsg({ type: 'success', text: 'Device created successfully' });
+                setMsg({ type: 'success', text: 'Machine added' });
             }
             setForm({
                 device_code: '', device_name: '', device_model: '', manufacturer: '', serial_number: '',
@@ -82,6 +91,7 @@ export const BiometricDevices: React.FC = () => {
                 sync_mode: 'AUTO', sync_interval_minutes: 5, timezone: 'Asia/Kolkata', status: 'ACTIVE'
             });
             setEditingId(null);
+            setShowForm(false);
             fetchDevices();
         } catch (e: any) {
             setMsg({ type: 'error', text: e.response?.data?.error || `Failed to ${editingId ? 'update' : 'create'} device` });
@@ -105,153 +115,117 @@ export const BiometricDevices: React.FC = () => {
             timezone: d.timezone || 'Asia/Kolkata',
             status: d.status || 'ACTIVE'
         });
+        setMsg(null);
+        setShowForm(true);
+        scrollToForm('device-form');
     };
 
+    const openAdd = () => {
+        setEditingId(null);
+        setForm(blankForm);
+        setMsg(null);
+        setShowForm(true);
+        scrollToForm('device-form');
+    };
+    const closeForm = () => { setEditingId(null); setForm(blankForm); setShowForm(false); };
+
     if (!currentSchoolId || currentSchoolId === 'all') {
-        return (
-            <div className="card p-6 text-center">
-                <h2 className="text-base font-semibold text-slate-900 mb-2">Biometric Devices</h2>
-                <p className="text-slate-500 text-sm">Please select a specific school from the top navigation to view and manage devices.</p>
-            </div>
-        );
+        return <NeedSchool what="attendance machines" />;
     }
 
+    const columns: Column<BiometricDevice>[] = [
+        { key: 'device_name', header: 'Machine', primary: true, render: d => <span className="font-medium text-slate-900">{d.device_name}</span> },
+        { key: 'device_code', header: 'Code', secondary: true, render: d => <>{d.device_code}{d.serial_number ? ` · Serial no. ${d.serial_number}` : ''}</> },
+        { key: 'network', header: 'Network', render: d => <><div>{d.ip_address}:{d.port}</div><div className="text-xs text-slate-500">{d.communication_type}</div></> },
+        { key: 'sync', header: 'Sync', render: d => <><div>{plain(d.sync_mode)} (every {d.sync_interval_minutes} min)</div><div className="text-xs text-slate-500">Last: {d.last_successful_sync || 'Never'}</div></> },
+        { key: 'health', header: 'Last seen', render: d => <><div className="text-xs">{d.last_seen || '-'}</div><div className="text-xs text-slate-500">Waiting punches: {d.pending_punches || 0}</div></> },
+        { key: 'status', header: 'Status', render: d => <Badge tone={d.status === 'ACTIVE' ? 'success' : 'danger'}>{plain(d.status)}</Badge> },
+        { key: 'actions', header: '', align: 'right', hideOnMobile: true, render: d => <EditButton onClick={() => handleEdit(d)} /> },
+    ];
+
     return (
-        <div className="card p-6">
-            <h2 className="text-base font-semibold text-slate-900 mb-4">Biometric Devices</h2>
-            
+        <div className="space-y-4">
+            <MasterTop
+                intro="Fingerprint / face attendance machines at this branch. Staff punches come from these machines."
+                addLabel={showForm && !editingId ? undefined : 'Add machine'}
+                onAdd={openAdd}
+                count={devices.length}
+                countLabel={devices.length === 1 ? 'machine' : 'machines'}
+            />
+
             {msg && (
-                <Alert tone={msg.type} className="mb-4" onClose={() => setMsg(null)}>
+                <Alert tone={msg.type} onClose={() => setMsg(null)}>
                     {msg.text}
                 </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <div>
-                    <label className="label">Device Code *</label>
-                    <input type="text" value={form.device_code} onChange={e => setForm({...form, device_code: e.target.value})} required className="input" disabled={!!editingId} />
-                </div>
-                <div>
-                    <label className="label">Device Name *</label>
-                    <input type="text" value={form.device_name} onChange={e => setForm({...form, device_name: e.target.value})} required className="input" />
-                </div>
-                <div>
-                    <label className="label">Serial Number</label>
-                    <input type="text" value={form.serial_number} onChange={e => setForm({...form, serial_number: e.target.value})} className="input" />
-                </div>
-                <div>
-                    <label className="label">Comm Type</label>
-                    <select value={form.communication_type} onChange={e => setForm({...form, communication_type: e.target.value})} className="input">
-                        <option value="TCP">TCP/IP (Listener)</option>
-                        <option value="HTTP">HTTP/API (Push)</option>
-                        <option value="ADMS">ADMS</option>
-                        <option value="SDK">SDK/Polling</option>
-                    </select>
-                </div>
-                <div>
-                    <label className="label">IP Address</label>
-                    <input type="text" value={form.ip_address} onChange={e => setForm({...form, ip_address: e.target.value})} className="input" />
-                </div>
-                <div>
-                    <label className="label">Port</label>
-                    <input type="number" value={form.port} onChange={e => setForm({...form, port: parseInt(e.target.value)})} className="input" />
-                </div>
-                <div>
-                    <label className="label">Comm Password</label>
-                    <input type="text" value={form.communication_password} onChange={e => setForm({...form, communication_password: e.target.value})} className="input" />
-                </div>
-                <div>
-                    <label className="label">Sync Mode</label>
-                    <select value={form.sync_mode} onChange={e => setForm({...form, sync_mode: e.target.value})} className="input">
-                        <option value="AUTO">Auto</option>
-                        <option value="MANUAL">Manual</option>
-                    </select>
-                </div>
-                <div>
-                    <label className="label">Sync Interval (Mins)</label>
-                    <input type="number" value={form.sync_interval_minutes} onChange={e => setForm({...form, sync_interval_minutes: parseInt(e.target.value)})} className="input" />
-                </div>
-                <div>
-                    <label className="label">Status</label>
-                    <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="input">
-                        <option value="ACTIVE">Active</option>
-                        <option value="INACTIVE">Inactive</option>
-                        <option value="MAINTENANCE">Maintenance</option>
-                    </select>
-                </div>
-                <div className="sm:col-span-2 lg:col-span-4 flex justify-end items-end gap-2 mt-2">
-                    {editingId && (
-                        <button type="button" onClick={() => {
-                            setEditingId(null);
-                            setForm({
-                                device_code: '', device_name: '', device_model: '', manufacturer: '', serial_number: '',
-                                ip_address: '', port: 5005, communication_type: 'TCP', communication_password: '',
-                                sync_mode: 'AUTO', sync_interval_minutes: 5, timezone: 'Asia/Kolkata', status: 'ACTIVE'
-                            });
-                        }} className="btn-secondary">
-                            Cancel
-                        </button>
-                    )}
-                    <button type="submit" className="btn-primary">
-                        {editingId ? 'Update Device' : 'Add Device'}
-                    </button>
-                </div>
-            </form>
+            {showForm && (
+                <FormCard
+                    id="device-form"
+                    title={editingId ? 'Change machine' : 'New machine'}
+                    onSubmit={handleSubmit}
+                    onCancel={closeForm}
+                    saveLabel="Save machine"
+                >
+                    <Field label="Machine name" required>
+                        <input type="text" value={form.device_name} onChange={e => setForm({...form, device_name: e.target.value})} required className="input" placeholder="e.g. Main gate" />
+                    </Field>
+                    <Field label="Machine code" required hint={editingId ? 'The code cannot be changed.' : undefined}>
+                        <input type="text" value={form.device_code} onChange={e => setForm({...form, device_code: e.target.value})} required className="input" disabled={!!editingId} />
+                    </Field>
+                    <Field label="Serial number (optional)">
+                        <input type="text" value={form.serial_number} onChange={e => setForm({...form, serial_number: e.target.value})} className="input" />
+                    </Field>
+                    <Field label="Status">
+                        <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="input">
+                            <option value="ACTIVE">Active</option>
+                            <option value="INACTIVE">Inactive</option>
+                            <option value="MAINTENANCE">Under repair</option>
+                        </select>
+                    </Field>
 
-            {loading ? (
-                <LoadingState label="Loading devices…" />
-            ) : (
-                <div className="overflow-x-auto rounded-lg border border-slate-200">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            <tr className="border-b border-slate-200">
-                                <th className="py-3 px-4">Code / Name</th>
-                                <th className="py-3 px-4">Network Info</th>
-                                <th className="py-3 px-4">Sync Info</th>
-                                <th className="py-3 px-4">Health</th>
-                                <th className="py-3 px-4">Status</th>
-                                <th className="py-3 px-4 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {devices.length === 0 ? (
-                                <tr>
-                                    <td colSpan={6}><EmptyState compact title="No devices found" description="Register a biometric device using the form above." /></td>
-                                </tr>
-                            ) : (
-                                devices.map(d => (
-                                    <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                        <td className="py-3 px-4">
-                                            <div className="font-medium text-sm text-slate-800">{d.device_name}</div>
-                                            <div className="text-xs text-slate-500">{d.device_code} {d.serial_number ? `| SN: ${d.serial_number}` : ''}</div>
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <div className="text-sm text-slate-700">{d.ip_address}:{d.port}</div>
-                                            <div className="text-xs text-slate-500">{d.communication_type}</div>
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <div className="text-sm text-slate-700">{d.sync_mode} (Every {d.sync_interval_minutes}m)</div>
-                                            <div className="text-xs text-slate-500">Last: {d.last_successful_sync || 'Never'}</div>
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <div className="text-xs text-slate-700">Last Seen: {d.last_seen || '-'}</div>
-                                            <div className="text-xs text-slate-700">Pending: {d.pending_punches || 0}</div>
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <Badge tone={d.status === 'ACTIVE' ? 'success' : 'danger'}>
-                                                {d.status}
-                                            </Badge>
-                                        </td>
-                                        <td className="py-3 px-4 text-right">
-                                            <button onClick={() => handleEdit(d)} className="btn-ghost btn-sm text-brand-600">Edit</button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                    <div className="sm:col-span-2 border-t border-slate-100 pt-4">
+                        <p className="text-sm font-semibold text-slate-900">Connection settings</p>
+                        <p className="text-xs text-slate-500">Ask the person who set up the machine if you are not sure.</p>
+                    </div>
+                    <Field label="How it connects">
+                        <select value={form.communication_type} onChange={e => setForm({...form, communication_type: e.target.value})} className="input">
+                            <option value="TCP">TCP/IP (Listener)</option>
+                            <option value="HTTP">HTTP/API (Push)</option>
+                            <option value="ADMS">ADMS</option>
+                            <option value="SDK">SDK/Polling</option>
+                        </select>
+                    </Field>
+                    <Field label="IP address">
+                        <input type="text" inputMode="decimal" value={form.ip_address} onChange={e => setForm({...form, ip_address: e.target.value})} className="input" placeholder="e.g. 192.168.1.20" />
+                    </Field>
+                    <Field label="Port">
+                        <input type="number" inputMode="numeric" value={form.port} onChange={e => setForm({...form, port: parseInt(e.target.value)})} className="input" />
+                    </Field>
+                    <Field label="Machine password (optional)">
+                        <input type="text" value={form.communication_password} onChange={e => setForm({...form, communication_password: e.target.value})} className="input" />
+                    </Field>
+                    <Field label="Sync">
+                        <select value={form.sync_mode} onChange={e => setForm({...form, sync_mode: e.target.value})} className="input">
+                            <option value="AUTO">Automatic</option>
+                            <option value="MANUAL">By hand</option>
+                        </select>
+                    </Field>
+                    <Field label="Sync every (minutes)">
+                        <input type="number" inputMode="numeric" value={form.sync_interval_minutes} onChange={e => setForm({...form, sync_interval_minutes: parseInt(e.target.value)})} className="input" />
+                    </Field>
+                </FormCard>
             )}
+
+            <DataList
+                columns={columns}
+                rows={devices}
+                rowKey={d => d.id}
+                loading={loading}
+                emptyTitle="No machines yet"
+                emptyHint={'Tap \u201cAdd machine\u201d to add your first attendance machine.'}
+                mobileActions={d => <EditButton onClick={() => handleEdit(d)} />}
+            />
         </div>
     );
 };

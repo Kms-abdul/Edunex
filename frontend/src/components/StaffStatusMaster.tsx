@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
-import { Alert, LoadingState, EmptyState, Badge } from './ui';
+import { Alert, Badge, DataList, Field } from './ui';
+import type { Column } from './ui';
+import { NeedSchool, MasterTop, FormCard, EditButton, scrollToForm } from './hr-setup/MasterParts';
 
 interface StaffStatus {
     id: number;
@@ -67,16 +69,17 @@ export const StaffStatusMaster: React.FC = () => {
             };
             if (editingId) {
                 await api.put(`/hr/staff-statuses/${editingId}`, payload);
-                setMsg({ type: 'success', text: `Status "${form.status_name}" updated.` });
+                setMsg({ type: 'success', text: `Work status "${form.status_name}" saved.` });
             } else {
                 await api.post('/hr/staff-statuses', payload);
-                setMsg({ type: 'success', text: `Status "${form.status_name}" created.` });
+                setMsg({ type: 'success', text: `Work status "${form.status_name}" added.` });
             }
             setForm(blank);
+            setEditingId(null);
             setShowForm(false);
             fetchData();
         } catch (e: any) {
-            setMsg({ type: 'error', text: e.response?.data?.error || 'Failed to create status.' });
+            setMsg({ type: 'error', text: e.response?.data?.error || 'Could not save the work status. Please try again.' });
         } finally {
             setSaving(false);
         }
@@ -91,192 +94,132 @@ export const StaffStatusMaster: React.FC = () => {
             display_order: s.display_order || 0,
             is_active: s.is_active
         });
+        setMsg(null);
         setShowForm(true);
-        window.scrollTo(0, 0);
+        scrollToForm('status-form');
     };
+
+    const openAdd = () => {
+        setEditingId(null);
+        setForm(blank);
+        setMsg(null);
+        setShowForm(true);
+        scrollToForm('status-form');
+    };
+    const closeForm = () => { setEditingId(null); setForm(blank); setShowForm(false); };
 
     const currentSchoolId = localStorage.getItem('currentSchoolId');
     if (!currentSchoolId || currentSchoolId === 'all') {
-        return (
-            <div className="card p-6 text-center mt-6">
-                <h2 className="text-base font-semibold text-slate-900 mb-2">Staff Status Master</h2>
-                <p className="text-slate-500 text-sm">Please select a specific school from the top navigation to view and manage staff statuses.</p>
-            </div>
-        );
+        return <NeedSchool what="work statuses" />;
     }
 
-    return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h2 className="text-base font-semibold text-slate-900">Staff Status Master</h2>
-                    <p className="text-sm text-slate-500 mt-0.5">
-                        Employment statuses — Active, Probation, Notice Period, etc.
-                    </p>
-                </div>
-                {canWrite && (
-                    <button
-                        id="btn-add-status"
-                        onClick={() => { setShowForm(!showForm); setMsg(null); }}
-                        className="btn-primary"
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showForm ? "M6 18L18 6M6 6l12 12" : "M12 4v16m8-8H4"} />
-                        </svg>
-                        {showForm ? 'Cancel' : 'Add Status'}
-                    </button>
-                )}
-            </div>
+    const columns: Column<StaffStatus>[] = [
+        { key: 'status_name', header: 'Work status', primary: true, render: s => <span className="font-medium text-slate-900">{s.status_name}</span> },
+        { key: 'description', header: 'Note', secondary: true, render: s => s.description || '—' },
+        {
+            key: 'status_code', header: 'Code', render: s => (
+                <span className={`font-mono text-xs px-2 py-1 rounded font-semibold ${statusBadgeColor[s.status_code] ?? 'bg-slate-100 text-slate-600'}`}>
+                    {s.status_code}
+                </span>
+            ),
+        },
+        {
+            key: 'status_type', header: 'Can log in?', render: s => (
+                <Badge tone={s.status_type === 'ACTIVE' ? 'brand' : 'warning'}>
+                    {s.status_type === 'ACTIVE' ? 'Yes, can log in' : 'No, login blocked'}
+                </Badge>
+            ),
+        },
+        { key: 'display_order', header: 'Order in lists', hideOnMobile: true },
+        { key: 'is_active', header: 'In use', render: s => <Badge tone={s.is_active ? 'success' : 'neutral'}>{s.is_active ? 'Active' : 'Inactive'}</Badge> },
+        ...(canWrite ? [{ key: 'actions', header: '', align: 'right' as const, hideOnMobile: true, render: (s: StaffStatus) => <EditButton onClick={() => handleEdit(s)} /> }] : []),
+    ];
 
-            {/* Message */}
+    return (
+        <div className="space-y-4">
+            <MasterTop
+                intro="Work statuses like Working, On probation, Notice period or Left. They also decide if the person can log in."
+                addLabel={canWrite && !(showForm && !editingId) ? 'Add work status' : undefined}
+                onAdd={canWrite ? openAdd : undefined}
+                count={list.length}
+                countLabel={list.length === 1 ? 'status' : 'statuses'}
+            />
+
             {msg && (
                 <Alert tone={msg.type} onClose={() => setMsg(null)}>
                     {msg.text}
                 </Alert>
             )}
 
-            {/* Form */}
             {showForm && canWrite && (
-                <div className="card p-6">
-                    <h3 className="text-base font-semibold text-slate-900 mb-5">New Employment Status</h3>
-                    <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                            <label className="label">
-                                Status Code <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="status-code"
-                                className="input font-mono uppercase"
-                                placeholder="e.g. NOTICE_PERIOD"
-                                value={form.status_code}
-                                onChange={e => setForm({ ...form, status_code: e.target.value })}
-                                required
-                                maxLength={30}
-                            />
-                            <p className="text-xs text-slate-400 mt-1">Use UPPER_SNAKE_CASE. Spaces auto-converted to underscores.</p>
-                        </div>
-                        <div>
-                            <label className="label">
-                                Status Name <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="status-name"
-                                className="input"
-                                placeholder="e.g. Notice Period"
-                                value={form.status_name}
-                                onChange={e => setForm({ ...form, status_name: e.target.value })}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="label">Description</label>
-                            <input
-                                className="input"
-                                placeholder="Optional description"
-                                value={form.description}
-                                onChange={e => setForm({ ...form, description: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label className="label">Display Order</label>
-                            <input
-                                type="number"
-                                className="input"
-                                value={form.display_order}
-                                onChange={e => setForm({ ...form, display_order: Number(e.target.value) })}
-                                min={0}
-                            />
-                        </div>
-                        <div className="sm:col-span-2 lg:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-4">
-                            <div>
-                                <label className="label">Status Type</label>
-                                <select
-                                    className="input"
-                                    value={form.status_type}
-                                    onChange={e => setForm({ ...form, status_type: e.target.value as 'ACTIVE' | 'INACTIVE' })}
-                                >
-                                    <option value="ACTIVE">Active (Credentials Work)</option>
-                                    <option value="INACTIVE">Inactive (Credentials Disabled)</option>
-                                </select>
-                            </div>
-                            <div className="flex flex-wrap justify-end gap-3 items-end">
-                                <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">
-                                    Cancel
-                                </button>
-                                <button
-                                    id="btn-save-status"
-                                    type="submit"
-                                    disabled={saving}
-                                    className="btn-primary"
-                                >
-                                    {saving ? 'Saving…' : editingId ? 'Update Status' : 'Save Status'}
-                                </button>
-                                {editingId && (
-                                    <button type="button" onClick={() => { setEditingId(null); setForm(blank); setShowForm(false); }} className="btn-secondary ml-2">Cancel</button>
-                                )}
-                            </div>
-                        </div>
-                    </form>
-                </div>
+                <FormCard
+                    id="status-form"
+                    title={editingId ? 'Change work status' : 'New work status'}
+                    onSubmit={handleSubmit}
+                    onCancel={closeForm}
+                    saveLabel="Save work status"
+                    saving={saving}
+                >
+                    <Field label="Name" required>
+                        <input
+                            id="status-name"
+                            className="input"
+                            placeholder="e.g. Notice period"
+                            value={form.status_name}
+                            onChange={e => setForm({ ...form, status_name: e.target.value })}
+                            required
+                        />
+                    </Field>
+                    <Field label="Short code" required hint="Spaces become _ automatically, for example NOTICE_PERIOD.">
+                        <input
+                            id="status-code"
+                            className="input font-mono uppercase"
+                            placeholder="e.g. NOTICE_PERIOD"
+                            value={form.status_code}
+                            onChange={e => setForm({ ...form, status_code: e.target.value })}
+                            required
+                            maxLength={30}
+                        />
+                    </Field>
+                    <Field label="Can staff with this status log in?" className="sm:col-span-2">
+                        <select
+                            className="input"
+                            value={form.status_type}
+                            onChange={e => setForm({ ...form, status_type: e.target.value as 'ACTIVE' | 'INACTIVE' })}
+                        >
+                            <option value="ACTIVE">Yes, they can log in</option>
+                            <option value="INACTIVE">No, block their login</option>
+                        </select>
+                    </Field>
+                    <Field label="Note (optional)">
+                        <input
+                            className="input"
+                            value={form.description}
+                            onChange={e => setForm({ ...form, description: e.target.value })}
+                        />
+                    </Field>
+                    <Field label="Order in lists" hint="Smaller numbers show first.">
+                        <input
+                            type="number"
+                            inputMode="numeric"
+                            className="input"
+                            value={form.display_order}
+                            onChange={e => setForm({ ...form, display_order: Number(e.target.value) })}
+                            min={0}
+                        />
+                    </Field>
+                </FormCard>
             )}
 
-            {/* Table */}
-            <div className="card overflow-hidden">
-                <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        <tr>
-                            <th className="px-4 py-3">#</th>
-                            <th className="px-4 py-3">Code</th>
-                            <th className="px-4 py-3">Status Name</th>
-                            <th className="px-4 py-3">Description</th>
-                            <th className="px-4 py-3">Order</th>
-                            <th className="px-4 py-3">Type</th>
-                            <th className="px-4 py-3">Active</th>
-                            {canWrite && <th className="px-4 py-3">Actions</th>}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {list.map((s) => (
-                            <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                                <td className="px-4 py-3 text-slate-400 text-xs">{s.id}</td>
-                                <td className="px-4 py-3">
-                                    <span className={`font-mono text-xs px-2 py-1 rounded font-semibold ${statusBadgeColor[s.status_code] ?? 'bg-slate-100 text-slate-600'}`}>
-                                        {s.status_code}
-                                    </span>
-                                </td>
-                                <td className="px-4 py-3 font-semibold text-slate-800">{s.status_name}</td>
-                                <td className="px-4 py-3 text-slate-500 text-xs">{s.description ?? '—'}</td>
-                                <td className="px-4 py-3 text-slate-500">{s.display_order}</td>
-                                <td className="px-4 py-3">
-                                    <Badge tone={s.status_type === 'ACTIVE' ? 'brand' : 'warning'}>
-                                        {s.status_type}
-                                    </Badge>
-                                </td>
-                                <td className="px-4 py-3">
-                                    <Badge tone={s.is_active ? 'success' : 'neutral'}>
-                                        {s.is_active ? 'Active' : 'Inactive'}
-                                    </Badge>
-                                </td>
-                                {canWrite && (
-                                    <td className="px-4 py-3">
-                                        <button onClick={() => handleEdit(s)} className="btn-ghost btn-sm text-brand-600">Edit</button>
-                                    </td>
-                                )}
-                            </tr>
-                        ))}
-                        {list.length === 0 && (
-                            <tr>
-                                <td colSpan={canWrite ? 8 : 7}>
-                                    {loading ? <LoadingState label="Loading statuses…" /> : <EmptyState compact title="No statuses found" />}
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-                </div>
-            </div>
+            <DataList
+                columns={columns}
+                rows={list}
+                rowKey={s => s.id}
+                loading={loading}
+                emptyTitle="No work statuses yet"
+                emptyHint={canWrite ? 'Tap \u201cAdd work status\u201d to make the first one.' : undefined}
+                mobileActions={canWrite ? s => <EditButton onClick={() => handleEdit(s)} /> : undefined}
+            />
         </div>
     );
 };

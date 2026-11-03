@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StaffProfileData } from '../../StaffProfile';
 import { LoadingState, EmptyState } from '../../ui';
+import { InfoSection, InfoGrid, InfoItem, SectionAction, plainWord, yesNo } from '../../hr-setup/InfoParts';
 import api from '../../../api';
 
 interface Props {
@@ -32,92 +33,41 @@ export const StaffBankStatutoryTab: React.FC<Props> = ({ profile, onEdit }) => {
     if (loading) return <LoadingState label="Loading bank details…" />;
 
     return (
-        <div className="space-y-8">
-            <div>
-                <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
-                    <h3 className="text-base font-semibold text-slate-900">Bank Account</h3>
-                    {onEdit && <button type="button" onClick={onEdit} className="btn-ghost btn-sm text-brand-600">Edit Bank Details</button>}
-                </div>
+        <div className="space-y-4">
+            <InfoSection
+                title="Bank account"
+                action={onEdit && <SectionAction onClick={onEdit}>Change bank details</SectionAction>}
+            >
                 {account ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="label">Account Holder Name</label>
-                            <p className="font-semibold text-slate-800 uppercase">{account.account_holder_name}</p>
-                        </div>
-                        <div>
-                            <label className="label">Bank Name</label>
-                            <p className="font-semibold text-slate-800 uppercase">{account.bank_name}</p>
-                        </div>
-                        <div>
-                            <label className="label">Branch Name</label>
-                            <p className="font-semibold text-slate-800 uppercase">{account.branch_name || '-'}</p>
-                        </div>
-                        <div>
-                            <label className="label">Account Number</label>
-                            <p className="font-mono font-semibold text-slate-800 uppercase">
-                                {account.account_number ? '••••' + account.account_number.slice(-4) : '-'}
-                            </p>
-                        </div>
-                        <div>
-                            <label className="label">IFSC Code</label>
-                            <p className="font-semibold text-slate-800 uppercase">{account.ifsc_code}</p>
-                        </div>
-                        <div>
-                            <label className="label">Account Type</label>
-                            <p className="font-semibold text-slate-800 uppercase">{account.account_type}</p>
-                        </div>
-                        <div>
-                            <label className="label">UPI ID</label>
-                            <p className="font-semibold text-slate-800">{account.upi_id || '-'}</p>
-                        </div>
-                    </div>
+                    <InfoGrid>
+                        <InfoItem label="Name on the account" value={account.account_holder_name} />
+                        <InfoItem label="Bank name" value={account.bank_name} />
+                        <InfoItem label="Bank branch" value={account.branch_name} />
+                        <InfoItem label="Account number" value={account.account_number ? '••••' + account.account_number.slice(-4) : ''} mono />
+                        <InfoItem label="IFSC code" value={account.ifsc_code} mono />
+                        <InfoItem label="Account type" value={plainWord(account.account_type)} />
+                        <InfoItem label="UPI ID" value={account.upi_id} />
+                    </InfoGrid>
                 ) : (
-                    <EmptyState compact title="No bank account details configured" />
+                    <EmptyState compact title="No bank account added yet" />
                 )}
-            </div>
+            </InfoSection>
 
-            <div>
-                <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
-                    <h3 className="text-base font-semibold text-slate-900">Statutory Information</h3>
-                    {onEdit && <button type="button" onClick={onEdit} className="btn-ghost btn-sm text-brand-600">Edit Statutory Info</button>}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="label">PAN Number</label>
-                        <p className="font-mono font-semibold text-slate-800 uppercase">{account?.pan_number || '-'}</p>
-                    </div>
-                    <div>
-                        <label className="label">Aadhaar Number</label>
-                        <p className="font-mono font-semibold text-slate-800">
-                            {account?.aadhaar_number ? '•••• •••• ' + account.aadhaar_number.slice(-4) : '-'}
-                        </p>
-                    </div>
-                    <div>
-                        <label className="label">UAN Number</label>
-                        <p className="font-semibold text-slate-800 uppercase">{profile.uan_no || '-'}</p>
-                    </div>
-                    <div>
-                        <label className="label">PF Applicable</label>
-                        <p className="font-semibold text-slate-800">{account?.pf_applicable ? 'Yes' : 'No'}</p>
-                    </div>
-                    <div>
-                        <label className="label">ESI Number</label>
-                        <p className="font-semibold text-slate-800 uppercase">{account?.esi_number || '-'}</p>
-                    </div>
-                    <div>
-                        <label className="label">ESI Applicable</label>
-                        <p className="font-semibold text-slate-800">{account?.esi_applicable ? 'Yes' : 'No'}</p>
-                    </div>
-                    <div>
-                        <label className="label">PT Applicable</label>
-                        <p className="font-semibold text-slate-800">{account?.pt_applicable ? 'Yes' : 'No'}</p>
-                    </div>
-                    <div>
-                        <label className="label">TDS Applicable</label>
-                        <p className="font-semibold text-slate-800">{account?.tds_applicable ? 'Yes' : 'No'}</p>
-                    </div>
-                </div>
-            </div>
+            <InfoSection
+                title="Tax and PF details"
+                action={onEdit && <SectionAction onClick={onEdit}>Change tax and PF details</SectionAction>}
+            >
+                <InfoGrid>
+                    <InfoItem label="PAN number" value={account?.pan_number} mono />
+                    <InfoItem label="Aadhaar number" value={account?.aadhaar_number ? '•••• •••• ' + account.aadhaar_number.slice(-4) : ''} mono />
+                    <InfoItem label="UAN number" value={profile.uan_no} mono />
+                    <InfoItem label="PF deducted?" value={yesNo(account?.pf_applicable)} />
+                    <InfoItem label="ESI number" value={account?.esi_number} mono />
+                    <InfoItem label="ESI deducted?" value={yesNo(account?.esi_applicable)} />
+                    <InfoItem label="Professional tax deducted?" value={yesNo(account?.pt_applicable)} />
+                    <InfoItem label="TDS (income tax) deducted?" value={yesNo(account?.tds_applicable)} />
+                </InfoGrid>
+            </InfoSection>
         </div>
     );
 };

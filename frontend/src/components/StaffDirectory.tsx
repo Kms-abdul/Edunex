@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import StaffProfile from './StaffProfile';
-import { EyeIcon } from './icons';
-import { LoadingState, EmptyState } from './ui';
+import { Eye } from 'lucide-react';
+import { Alert, Button } from './ui';
+import StaffListView from './hr-setup/StaffListView';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,24 +36,10 @@ interface SelectOption {
     [key: string]: any;
 }
 
-// ─── Status badge helper ──────────────────────────────────────────────────────
-
-const statusColor: Record<string, string> = {
-    ACTIVE: 'bg-emerald-100 text-emerald-800',
-    PROBATION: 'bg-amber-100 text-amber-800',
-    NOTICE_PERIOD: 'bg-orange-100 text-orange-800',
-    SUSPENDED: 'bg-red-100 text-red-800',
-    RESIGNED: 'bg-slate-100 text-slate-600',
-    TERMINATED: 'bg-red-200 text-red-900',
-    RETIRED: 'bg-purple-100 text-purple-800',
-};
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function StaffDirectory() {
-    const { user, hasPermission } = useAuth();
-
-    const canWrite = hasPermission('hr.hr.staff-master', 'write');
+    const { user } = useAuth();
 
     // ── Available branches for scoping
     // SuperAdmin/Admin see all from allowed_branches; branch-level user sees only their branch
@@ -337,244 +324,47 @@ export default function StaffDirectory() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+                Find a staff member by name, code or mobile number. Tap a person to open their profile.
+            </p>
 
-            {/* ── Page header ──────────────────────────────────────────────── */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h2 className="text-base font-semibold text-slate-900">Search for Staff</h2>
-                    <p className="text-sm text-slate-500 mt-0.5">
-                        {staffList.length} staff member{staffList.length !== 1 ? 's' : ''} registered
-                    </p>
-                </div>
-            </div>
-
-            {/* ── Result banner ─────────────────────────────────────────────── */}
+            {/* ── Result banner (from the unfinished inline form) ───────────── */}
             {result && (
-                <div className={`rounded-xl border p-4 ${result.success ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                <Alert tone={result.success ? 'success' : 'error'} title={result.success ? result.message : undefined} onClose={() => setResult(null)}>
                     {result.success ? (
-                        <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="font-semibold text-emerald-800 text-sm">{result.message}</p>
-                                <div className="mt-2 flex flex-wrap gap-3">
-                                    {result.staff_code && (
-                                        <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 text-xs font-mono font-bold px-3 py-1.5 rounded-lg">
-                                            🪪 Staff Code: {result.staff_code}
-                                        </span>
-                                    )}
-                                    {result.employee_id && (
-                                        <span className="inline-flex items-center gap-1.5 bg-brand-100 text-brand-800 text-xs font-mono font-bold px-3 py-1.5 rounded-lg">
-                                            🔑 Employee ID: {result.employee_id}
-                                        </span>
-                                    )}
-                                    {result.staff_code && (
-                                        <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 text-xs font-semibold px-3 py-1.5 rounded-lg">
-                                            🔐 Temporary password = Staff Code (must change on first login)
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
+                        <div className="mt-1 space-y-0.5">
+                            {result.staff_code && <p>Staff code: <span className="font-mono font-semibold">{result.staff_code}</span></p>}
+                            {result.employee_id && <p>Employee ID: <span className="font-mono font-semibold">{result.employee_id}</span></p>}
+                            {result.staff_code && <p>First password is the staff code. They must change it at first login.</p>}
                         </div>
-                    ) : (
-                        <p className="text-red-800 text-sm font-medium">{result.message}</p>
-                    )}
-                </div>
+                    ) : result.message}
+                </Alert>
             )}
 
-            {/* ── Add Staff Form ────────────────────────────────────────────── */}
-            {/* ── Filters and List (Hidden when editing/adding) ──────────────── */}
-            <div className="card p-4 flex flex-wrap items-end gap-3">
-                {/* Branch Dropdown */}
-                {!isSingleBranch && (
-                    <div className="w-full sm:w-48">
-                        <label className="label">Branch</label>
-                        <select
-                            className="input"
-                            value={searchBranchId}
-                            onChange={(e) => setSearchBranchId(e.target.value)}
-                        >
-                            <option value="">-All Branches-</option>
-                            {allowedBranches.map((b) => (
-                                <option key={b.branch_id} value={b.branch_id}>
-                                    {b.branch_name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+            <StaffListView
+                rows={filteredStaff}
+                loading={loading}
+                onSearch={fetchData}
+                filters={{
+                    branchId: searchBranchId, setBranchId: setSearchBranchId,
+                    deptId: searchDeptId, setDeptId: setSearchDeptId,
+                    status: searchStatus, setStatus: setSearchStatus,
+                    searchBy, setSearchBy,
+                    query: searchQuery, setQuery: setSearchQuery,
+                }}
+                departments={departments}
+                branches={allowedBranches}
+                showBranchFilter={!isSingleBranch}
+                showSchool
+                onRowClick={st => setViewingStaffId(st.id)}
+                actions={st => (
+                    <Button variant="soft" size="sm" icon={<Eye className="w-3.5 h-3.5" />} onClick={() => setViewingStaffId(st.id)}>
+                        Open profile
+                    </Button>
                 )}
-
-                {/* Department Dropdown */}
-                <div className="w-full sm:w-48">
-                    <label className="label">Department</label>
-                    <select
-                        className="input"
-                        value={searchDeptId}
-                        onChange={(e) => setSearchDeptId(e.target.value)}
-                    >
-                        <option value="">All Departments</option>
-                        {departments.map((d) => (
-                            <option key={d.id} value={d.id}>{d.label}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Status Dropdown */}
-                <div className="w-full sm:w-40">
-                    <label className="label">Status</label>
-                    <select
-                        className="input"
-                        value={searchStatus}
-                        onChange={(e) => setSearchStatus(e.target.value)}
-                    >
-                        <option value="">All</option>
-                        <option value="ACTIVE">Active</option>
-                        <option value="INACTIVE">Inactive</option>
-                    </select>
-                </div>
-
-                {/* Search By Dropdown */}
-                <div className="w-full sm:w-40">
-                    <label className="label">Search By</label>
-                    <select
-                        className="input"
-                        value={searchBy}
-                        onChange={(e) => setSearchBy(e.target.value)}
-                    >
-                        <option value="staff_code">Staff Code</option>
-                        <option value="employee_id">Employee ID</option>
-                        <option value="biometric_id">Biometric ID</option>
-                        <option value="first_name">Staff Name</option>
-                        <option value="mobile">Mobile</option>
-                        <option value="email">Email</option>
-                    </select>
-                </div>
-
-                {/* Search Input */}
-                <div className="flex-1 min-w-[200px] w-full sm:w-auto">
-                    <label className="label">Search Query</label>
-                    <input
-                        type="text"
-                        placeholder="Search..."
-                        className="input"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && fetchData()}
-                    />
-                </div>
-
-                {/* Search Button */}
-                <div>
-                    <button
-                        onClick={fetchData}
-                        className="btn-primary"
-                    >
-                        Search
-                    </button>
-                </div>
-            </div>
-            <div>
-                <span className="text-sm text-slate-500">
-                    {loading ? 'Loading…' : `${filteredStaff.length} result${filteredStaff.length !== 1 ? 's' : ''}`}
-                </span>
-            </div>
-
-            {/* ── Staff Table ───────────────────────────────────────────────── */}
-            <div className="card overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            <tr>
-                                <th className="px-4 py-3">Employee</th>
-                                <th className="px-4 py-3">Category</th>
-                                <th className="px-4 py-3">Department / Designation</th>
-                                <th className="px-4 py-3">Type</th>
-                                <th className="px-4 py-3">School & Branch</th>
-                                <th className="px-4 py-3">Status</th>
-                                <th className="px-4 py-3">Contact</th>
-                                {canWrite && <th className="px-4 py-3 text-right">Actions</th>}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {filteredStaff.map((st) => (
-                                <tr key={st.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                                                <span className="text-emerald-700 font-bold text-sm">
-                                                    {st.first_name?.[0] ?? '?'}
-                                                </span>
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold text-slate-800">{st.display_name}</p>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    <span className="font-mono text-xs text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                                                        {st.staff_code}
-                                                    </span>
-                                                    {st.employee_id && (
-                                                        <span className="font-mono text-xs text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
-                                                            ID: {st.employee_id}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span className="badge-brand">
-                                            {st.staff_category_name ?? '—'}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <p className="font-medium text-slate-700">{st.department_name ?? '—'}</p>
-                                        <p className="text-xs text-slate-400">{st.designation_name ?? ''}</p>
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-600 text-xs capitalize">
-                                        {st.employment_type?.toLowerCase().replace('_', ' ') ?? '—'}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <p className="font-medium text-slate-700">{st.school_name ?? '—'}</p>
-                                        <p className="text-xs text-slate-400">{st.branch_name ?? '—'}</p>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span className={`badge ${statusColor[st.staff_status_name?.toUpperCase() ?? st.employment_status] ?? 'bg-slate-100 text-slate-600'}`}>
-                                            {st.staff_status_name ?? st.employment_status}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-500 text-xs">
-                                        <p>{st.mobile ?? '—'}</p>
-                                        <p className="truncate max-w-[140px]">{st.email ?? ''}</p>
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <button
-                                                onClick={() => setViewingStaffId(st.id)}
-                                                className="btn-icon text-brand-600 hover:text-brand-700 hover:bg-brand-50"
-                                                title="View Profile"
-                                            >
-                                                <EyeIcon className="w-5 h-5" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {filteredStaff.length === 0 && (
-                                <tr>
-                                    <td colSpan={canWrite ? 8 : 7}>
-                                        {loading
-                                            ? <LoadingState label="Loading staff…" />
-                                            : <EmptyState compact title="No staff found" description="Try changing the filters or search query." />}
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                emptyHint="Try a different name or change the filters."
+            />
         </div>
     );
 };

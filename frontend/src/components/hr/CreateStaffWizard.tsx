@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api';
 import { useAuth } from '../../contexts/AuthContext';
-import { Alert, Spinner } from '../ui';
+import { Alert, Spinner, Steps, ActionBar, Button, Field } from '../ui';
+import { PersonalFields, EmploymentFields, BankFields, SalaryFields, ReviewRow, labelOf } from '../hr-setup/StaffFormSections';
 
 interface CreateStaffWizardProps {
     onClose: () => void;
@@ -100,7 +101,7 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
                 setRoles((rolesRes.data?.roles || []).map((r: any) => ({ id: r.id, label: r.name || r.role_name })));
             } catch (err) {
                 console.error(err);
-                setError('Failed to load master data');
+                setError('Could not load the lists (departments, job titles…). Please check the internet and try again.');
             } finally {
                 setLoading(false);
             }
@@ -114,7 +115,7 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
 
     const handleSubmit = async () => {
         if (!form.first_name || !form.joining_date || !form.department_id || !form.designation_id || !form.staff_status_id || !form.branch_id) {
-            setError('Please fill all mandatory fields (First Name, Joining Date, Department, Designation, Status, Branch) in Personal & Employment.');
+            setError('Please fill in first name, branch, joining date, department, job title and work status.');
             setActiveTab('employment');
             return;
         }
@@ -158,306 +159,165 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
     };
 
     const tabs = [
-        { id: 'personal', label: '1. Personal' },
-        { id: 'employment', label: '2. Employment' },
-        ...(showBankTab ? [{ id: 'bank', label: '3. Bank & Statutory' }] : []),
-        ...(showSalaryTab ? [{ id: 'salary', label: '4. Salary & Payroll' }] : []),
-        ...(showLoginTab ? [{ id: 'login', label: '5. Login & Access' }] : []),
+        { id: 'personal', label: 'About the person' },
+        { id: 'employment', label: 'Job details' },
+        ...(showBankTab ? [{ id: 'bank', label: 'Bank and tax' }] : []),
+        ...(showSalaryTab ? [{ id: 'salary', label: 'Salary' }] : []),
+        ...(showLoginTab ? [{ id: 'login', label: 'Login' }] : []),
+        { id: 'review', label: 'Check and save' },
     ];
+    const stepIndex = Math.max(0, tabs.findIndex(t => t.id === activeTab));
+    const isLast = stepIndex === tabs.length - 1;
+    const goTo = (i: number) => {
+        setActiveTab(tabs[i].id);
+        document.getElementById('create-staff-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const set = (patch: Record<string, any>) => setForm({ ...form, ...patch });
+    const setBank = (patch: Record<string, any>) => setBankForm({ ...bankForm, ...patch });
+    const setSalary = (patch: Record<string, any>) => setSalaryForm({ ...salaryForm, ...patch });
+
+    // What is still missing on the current step (same rules as handleSubmit)
+    const missing: string[] = [];
+    if (activeTab === 'personal' && !form.first_name) missing.push('first name');
+    if (activeTab === 'employment') {
+        if (!form.branch_id) missing.push('branch');
+        if (!form.joining_date) missing.push('joining date');
+        if (!form.department_id) missing.push('department');
+        if (!form.designation_id) missing.push('job title');
+        if (!form.staff_status_id) missing.push('work status');
+    }
+    const canGoNext = missing.length === 0;
+
+    const fullName = [form.first_name, form.middle_name, form.last_name].filter(Boolean).join(' ');
+    const branchName = allowedBranches.find(b => String(b.branch_id) === String(form.branch_id))?.branch_name || '';
+    const typeLabel: Record<string, string> = { PERMANENT: 'Permanent', CONTRACT: 'Contract', PROBATION: 'Probation', INTERN: 'Intern' };
 
     return (
-        <div className="card overflow-hidden mb-6 max-w-6xl mx-auto">
+        <div id="create-staff-top" className="card mb-6 max-w-4xl mx-auto scroll-mt-4">
             <div className="card-header">
-                <div className="flex items-center gap-2">
-                    <h2 className="text-base font-semibold text-slate-900">Create New Staff</h2>
-                    {loading && <span className="inline-flex items-center gap-1.5 text-xs text-slate-500"><Spinner size="sm" /> Loading options…</span>}
+                <div className="min-w-0 flex-1">
+                    <Steps steps={tabs.map(t => t.label)} current={stepIndex} onJump={goTo} />
                 </div>
-                <button type="button" aria-label="Close" onClick={onClose} className="btn-icon">✕</button>
+                <button type="button" aria-label="Close" onClick={onClose} className="btn-icon self-start">✕</button>
             </div>
 
-            <div className="flex border-b border-slate-200 overflow-x-auto hide-scrollbar">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.id}
-                        className={`whitespace-nowrap px-6 py-3.5 text-sm font-semibold text-center border-b-2 transition-colors ${activeTab === tab.id ? 'border-brand-600 text-brand-700 bg-brand-50' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}
-                        onClick={() => setActiveTab(tab.id)}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+            <div className="card-body">
+                {loading && <p className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-500"><Spinner size="sm" /> Loading lists…</p>}
+                {error && <Alert tone="error" className="mb-4" onClose={() => setError(null)}>{error}</Alert>}
 
-            <div className="p-6 md:p-8">
-                {error && <Alert tone="error" className="mb-6" onClose={() => setError(null)}>{error}</Alert>}
+                {activeTab === 'personal' && <PersonalFields form={form} set={set} />}
 
-                {/* Tab: Personal */}
-                {activeTab === 'personal' && (
-                    <div className="space-y-8">
-                        <div>
-                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Personal Information</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                <div>
-                                    <label className="label">First Name *</label>
-                                    <input type="text" className="input uppercase"
-                                        value={form.first_name} onChange={e => setForm({...form, first_name: e.target.value.toUpperCase()})} />
-                                </div>
-                                <div>
-                                    <label className="label">Middle Name</label>
-                                    <input type="text" className="input uppercase"
-                                        value={form.middle_name} onChange={e => setForm({...form, middle_name: e.target.value.toUpperCase()})} />
-                                </div>
-                                <div>
-                                    <label className="label">Last Name</label>
-                                    <input type="text" className="input uppercase"
-                                        value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value.toUpperCase()})} />
-                                </div>
-                                <div>
-                                    <label className="label">Gender *</label>
-                                    <select className="input"
-                                        value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}>
-                                        <option value="MALE">Male</option>
-                                        <option value="FEMALE">Female</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="label">Date of Birth</label>
-                                    <input type="date" className="input"
-                                        value={form.date_of_birth} onChange={e => setForm({...form, date_of_birth: e.target.value})} />
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Contact & Address</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="label">Mobile Number</label>
-                                    <input type="text" className="input"
-                                        value={form.mobile} onChange={e => setForm({...form, mobile: e.target.value})} />
-                                </div>
-                                <div>
-                                    <label className="label">Email Address</label>
-                                    <input type="email" className="input"
-                                        value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="label">Address</label>
-                                    <input type="text" className="input"
-                                        value={form.address} onChange={e => setForm({...form, address: e.target.value})} />
-                                </div>
-                                <div>
-                                    <label className="label">City</label>
-                                    <input type="text" className="input"
-                                        value={form.city} onChange={e => setForm({...form, city: e.target.value})} />
-                                </div>
-                                <div>
-                                    <label className="label">State</label>
-                                    <input type="text" className="input"
-                                        value={form.state} onChange={e => setForm({...form, state: e.target.value})} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Tab: Employment */}
                 {activeTab === 'employment' && (
-                    <div className="space-y-8">
-                        <div>
-                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Employment Information</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                <div>
-                                    <label className="label">Branch *</label>
-                                    <select className="input"
-                                        value={form.branch_id} onChange={e => setForm({...form, branch_id: e.target.value})}>
-                                        <option value="">Select Branch</option>
-                                        {allowedBranches.map(b => <option key={b.branch_id} value={b.branch_id}>{b.branch_name}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="label">Joining Date *</label>
-                                    <input type="date" className="input"
-                                        value={form.joining_date} onChange={e => setForm({...form, joining_date: e.target.value})} />
-                                </div>
-                                <div>
-                                    <label className="label">Employment Type *</label>
-                                    <select className="input"
-                                        value={form.employment_type} onChange={e => setForm({...form, employment_type: e.target.value})}>
-                                        <option value="PERMANENT">Permanent</option>
-                                        <option value="CONTRACT">Contract</option>
-                                        <option value="PROBATION">Probation</option>
-                                        <option value="INTERN">Intern</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="label">Department *</label>
-                                    <select className="input"
-                                        value={form.department_id} onChange={e => setForm({...form, department_id: e.target.value})}>
-                                        <option value="">Select Department</option>
-                                        {departments.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="label">Designation *</label>
-                                    <select className="input"
-                                        value={form.designation_id} onChange={e => setForm({...form, designation_id: e.target.value})} disabled={!form.department_id}>
-                                        <option value="">Select Designation</option>
-                                        {filteredDesignations.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="label">Staff Category *</label>
-                                    <select className="input"
-                                        value={form.staff_category_id} onChange={e => setForm({...form, staff_category_id: e.target.value})}>
-                                        <option value="">Select Category</option>
-                                        {categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="label">Status *</label>
-                                    <select className="input"
-                                        value={form.staff_status_id} onChange={e => setForm({...form, staff_status_id: e.target.value})}>
-                                        <option value="">Select Status</option>
-                                        {statuses.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="label">Default Shift</label>
-                                    <select className="input"
-                                        value={form.default_shift_id} onChange={e => setForm({...form, default_shift_id: e.target.value})}>
-                                        <option value="">Select Shift</option>
-                                        {shifts.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="label">Reporting Manager</label>
-                                    <select className="input"
-                                        value={form.reporting_manager_id} onChange={e => setForm({...form, reporting_manager_id: e.target.value})}>
-                                        <option value="">Select Manager</option>
-                                        {managers.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <EmploymentFields
+                        form={form}
+                        set={set}
+                        branches={allowedBranches}
+                        departments={departments}
+                        designations={filteredDesignations}
+                        categories={categories}
+                        statuses={statuses}
+                        shifts={shifts}
+                        managers={managers}
+                    />
                 )}
 
-                {/* Tab: Bank & Statutory */}
-                {activeTab === 'bank' && showBankTab && (
-                    <div className="space-y-8">
-                        <div>
-                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Bank Details</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                <div>
-                                    <label className="label">Account Number</label>
-                                    <input type="text" className="input"
-                                        value={bankForm.account_number} onChange={e => setBankForm({...bankForm, account_number: e.target.value})} />
-                                </div>
-                                <div>
-                                    <label className="label">IFSC Code</label>
-                                    <input type="text" className="input uppercase"
-                                        value={bankForm.ifsc_code} onChange={e => setBankForm({...bankForm, ifsc_code: e.target.value.toUpperCase()})} />
-                                </div>
-                                <div>
-                                    <label className="label">Bank Name</label>
-                                    <input type="text" className="input"
-                                        value={bankForm.bank_name} onChange={e => setBankForm({...bankForm, bank_name: e.target.value})} />
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Statutory Details</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                <div>
-                                    <label className="label">PAN Number</label>
-                                    <input type="text" className="input uppercase"
-                                        value={bankForm.pan_number} onChange={e => setBankForm({...bankForm, pan_number: e.target.value.toUpperCase()})} />
-                                </div>
-                                <div>
-                                    <label className="label">Aadhaar Number</label>
-                                    <input type="text" className="input"
-                                        value={bankForm.aadhaar_number} onChange={e => setBankForm({...bankForm, aadhaar_number: e.target.value})} />
-                                </div>
-                                <div>
-                                    <label className="label">UAN / PF Number</label>
-                                    <input type="text" className="input"
-                                        value={bankForm.pf_number} onChange={e => setBankForm({...bankForm, pf_number: e.target.value})} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                {activeTab === 'bank' && showBankTab && <BankFields bankForm={bankForm} set={setBank} />}
 
-                {/* Tab: Salary & Payroll */}
-                {activeTab === 'salary' && showSalaryTab && (
-                    <div className="space-y-8">
-                        <div>
-                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Salary Details</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                <div>
-                                    <label className="label">Basic Salary</label>
-                                    <input type="number" className="input"
-                                        value={salaryForm.basic_salary} onChange={e => setSalaryForm({...salaryForm, basic_salary: e.target.value})} />
-                                </div>
-                                <div>
-                                    <label className="label">Gross Salary</label>
-                                    <input type="number" className="input"
-                                        value={salaryForm.gross_salary} onChange={e => setSalaryForm({...salaryForm, gross_salary: e.target.value})} />
-                                </div>
-                                <div>
-                                    <label className="label">Effective From</label>
-                                    <input type="date" className="input"
-                                        value={salaryForm.effective_from} onChange={e => setSalaryForm({...salaryForm, effective_from: e.target.value})} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                {activeTab === 'salary' && showSalaryTab && <SalaryFields salaryForm={salaryForm} set={setSalary} />}
 
-                {/* Tab: Login & Access */}
                 {activeTab === 'login' && showLoginTab && (
-                    <div className="space-y-8">
-                        <Alert tone="info" title="Note">
-                            A login account is generated automatically using the Staff Code as both username and password. The user will be forced to change their password on first login.
+                    <div className="space-y-4">
+                        <Alert tone="info" title="A login is made automatically">
+                            The username and the first password are both the staff code. They must change the password the first time they log in.
                         </Alert>
-                        <div>
-                            <label className="label">Assign Initial Role</label>
-                            <select className="input max-w-md"
+                        <Field label="What can they do in the app? (role, optional)">
+                            <select className="input sm:max-w-md"
                                 value={roleId} onChange={e => setRoleId(e.target.value)}>
-                                <option value="">Select Role (Optional)</option>
+                                <option value="">Choose a role (optional)</option>
                                 {roles.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                             </select>
-                        </div>
+                        </Field>
                     </div>
                 )}
 
-                {/* Footer Controls */}
-                <div className="flex flex-wrap gap-3 justify-between pt-8 mt-8 border-t border-slate-200">
-                    <button type="button" onClick={onClose} disabled={saving} className="btn-ghost">
-                        Cancel
-                    </button>
-                    <div className="flex flex-wrap gap-3">
-                        {tabs.findIndex(t => t.id === activeTab) < tabs.length - 1 && (
-                            <button 
-                                type="button"
-                                onClick={() => setActiveTab(tabs[tabs.findIndex(t => t.id === activeTab) + 1].id)} 
-                                className="btn-secondary"
-                            >
-                                Next Step →
-                            </button>
+                {activeTab === 'review' && (
+                    <div className="space-y-4">
+                        <p className="text-sm text-slate-600">
+                            Please check the details. Tap <span className="font-medium">Change</span> to fix anything.
+                        </p>
+                        <ReviewBlock title="About the person" onEdit={() => setActiveTab('personal')}>
+                            <ReviewRow label="Name" value={fullName} />
+                            <ReviewRow label="Gender" value={form.gender === 'FEMALE' ? 'Female' : 'Male'} />
+                            <ReviewRow label="Date of birth" value={form.date_of_birth} />
+                            <ReviewRow label="Mobile" value={form.mobile} />
+                            <ReviewRow label="Email" value={form.email} />
+                        </ReviewBlock>
+                        <ReviewBlock title="Job details" onEdit={() => setActiveTab('employment')}>
+                            <ReviewRow label="Branch" value={branchName} />
+                            <ReviewRow label="Joining date" value={form.joining_date} />
+                            <ReviewRow label="Type of job" value={typeLabel[form.employment_type] || form.employment_type} />
+                            <ReviewRow label="Department" value={labelOf(departments, form.department_id)} />
+                            <ReviewRow label="Job title" value={labelOf(designations, form.designation_id)} />
+                            <ReviewRow label="Staff type" value={labelOf(categories, form.staff_category_id)} />
+                            <ReviewRow label="Work status" value={labelOf(statuses, form.staff_status_id)} />
+                            <ReviewRow label="Shift" value={labelOf(shifts, form.default_shift_id)} />
+                            <ReviewRow label="Reports to" value={labelOf(managers, form.reporting_manager_id)} />
+                        </ReviewBlock>
+                        {showBankTab && (
+                            <ReviewBlock title="Bank and tax" onEdit={() => setActiveTab('bank')}>
+                                <ReviewRow label="Account number" value={bankForm.account_number} />
+                                <ReviewRow label="IFSC code" value={bankForm.ifsc_code} />
+                                <ReviewRow label="Bank name" value={bankForm.bank_name} />
+                                <ReviewRow label="PAN" value={bankForm.pan_number} />
+                            </ReviewBlock>
                         )}
-                        <button 
-                            type="button"
-                            onClick={handleSubmit} 
-                            disabled={saving}
-                            className="btn-primary"
-                        >
-                            {saving ? 'Creating Staff...' : 'Save & Create Staff'}
-                        </button>
+                        {showSalaryTab && (
+                            <ReviewBlock title="Salary" onEdit={() => setActiveTab('salary')}>
+                                <ReviewRow label="Basic salary" value={salaryForm.basic_salary ? `₹${salaryForm.basic_salary}` : ''} />
+                                <ReviewRow label="Gross salary" value={salaryForm.gross_salary ? `₹${salaryForm.gross_salary}` : ''} />
+                                <ReviewRow label="Starts from" value={salaryForm.effective_from} />
+                            </ReviewBlock>
+                        )}
+                        {showLoginTab && (
+                            <ReviewBlock title="Login" onEdit={() => setActiveTab('login')}>
+                                <ReviewRow label="Role" value={labelOf(roles, roleId) || 'No role chosen'} />
+                            </ReviewBlock>
+                        )}
                     </div>
-                </div>
+                )}
+
+                <ActionBar
+                    note={!canGoNext
+                        ? `Please fill in: ${missing.join(', ')}.`
+                        : isLast ? 'A staff code and login are made when you save.' : undefined}
+                >
+                    <Button variant="secondary" disabled={saving} onClick={() => (stepIndex === 0 ? onClose() : goTo(stepIndex - 1))}>
+                        {stepIndex === 0 ? 'Cancel' : 'Back'}
+                    </Button>
+                    {isLast ? (
+                        <Button onClick={handleSubmit} loading={saving}>
+                            {saving ? 'Saving…' : 'Create staff'}
+                        </Button>
+                    ) : (
+                        <Button onClick={() => goTo(stepIndex + 1)} disabled={!canGoNext}>
+                            Next
+                        </Button>
+                    )}
+                </ActionBar>
             </div>
         </div>
     );
 };
+
+const ReviewBlock: React.FC<{ title: string; onEdit: () => void; children: React.ReactNode }> = ({ title, onEdit, children }) => (
+    <section className="rounded-xl border border-slate-200">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-2.5">
+            <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+            <button type="button" onClick={onEdit} className="btn-ghost btn-sm text-brand-700">Change</button>
+        </div>
+        <dl className="px-4 py-1">{children}</dl>
+    </section>
+);
 
 export default CreateStaffWizard;

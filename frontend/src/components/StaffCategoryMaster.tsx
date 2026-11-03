@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
-import { Alert, LoadingState, EmptyState, Badge } from './ui';
+import { Alert, Badge, DataList, Field } from './ui';
+import type { Column } from './ui';
+import { NeedSchool, MasterTop, FormCard, EditButton, scrollToForm } from './hr-setup/MasterParts';
 
 interface Category {
     id: number;
@@ -56,16 +58,17 @@ export const StaffCategoryMaster: React.FC = () => {
             };
             if (editingId) {
                 await api.put(`/hr/staff-categories/${editingId}`, payload);
-                setMsg({ type: 'success', text: `Category "${form.category_name}" updated.` });
+                setMsg({ type: 'success', text: `Staff type "${form.category_name}" saved.` });
             } else {
                 await api.post('/hr/staff-categories', payload);
-                setMsg({ type: 'success', text: `Category "${form.category_name}" created.` });
+                setMsg({ type: 'success', text: `Staff type "${form.category_name}" added.` });
             }
             setForm(blank);
+            setEditingId(null);
             setShowForm(false);
             fetchData();
         } catch (e: any) {
-            setMsg({ type: 'error', text: e.response?.data?.error || 'Failed to create category.' });
+            setMsg({ type: 'error', text: e.response?.data?.error || 'Could not save the staff type. Please try again.' });
         } finally {
             setSaving(false);
         }
@@ -80,174 +83,110 @@ export const StaffCategoryMaster: React.FC = () => {
             display_order: c.display_order || 0,
             is_active: c.is_active
         });
+        setMsg(null);
         setShowForm(true);
-        window.scrollTo(0, 0);
+        scrollToForm('category-form');
     };
+
+    const openAdd = () => {
+        setEditingId(null);
+        setForm(blank);
+        setMsg(null);
+        setShowForm(true);
+        scrollToForm('category-form');
+    };
+    const closeForm = () => { setEditingId(null); setForm(blank); setShowForm(false); };
 
     const currentSchoolId = localStorage.getItem('currentSchoolId');
     if (!currentSchoolId || currentSchoolId === 'all') {
-        return (
-            <div className="card p-6 text-center mt-6">
-                <h2 className="text-base font-semibold text-slate-900 mb-2">Staff Categories</h2>
-                <p className="text-slate-500 text-sm">Please select a specific school from the top navigation to view and manage staff categories.</p>
-            </div>
-        );
+        return <NeedSchool what="staff types" />;
     }
 
-    return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h2 className="text-base font-semibold text-slate-900">Staff Categories</h2>
-                    <p className="text-sm text-slate-500 mt-0.5">
-                        HR classification types — Teaching, Non-Teaching, Menial, etc.
-                    </p>
-                </div>
-                {canWrite && (
-                    <button
-                        id="btn-add-category"
-                        onClick={() => { setShowForm(!showForm); setMsg(null); }}
-                        className="btn-primary"
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showForm ? "M6 18L18 6M6 6l12 12" : "M12 4v16m8-8H4"} />
-                        </svg>
-                        {showForm ? 'Cancel' : 'Add Category'}
-                    </button>
-                )}
-            </div>
+    const columns: Column<Category>[] = [
+        { key: 'category_name', header: 'Staff type', primary: true, render: c => <span className="font-medium text-slate-900">{c.category_name}</span> },
+        { key: 'description', header: 'Note', secondary: true, render: c => c.description || '—' },
+        { key: 'category_code', header: 'Code', render: c => <span className="font-mono text-xs">{c.category_code}</span> },
+        { key: 'display_order', header: 'Order in lists', hideOnMobile: true },
+        { key: 'is_active', header: 'Status', render: c => <Badge tone={c.is_active ? 'success' : 'neutral'}>{c.is_active ? 'Active' : 'Inactive'}</Badge> },
+        ...(canWrite ? [{ key: 'actions', header: '', align: 'right' as const, hideOnMobile: true, render: (c: Category) => <EditButton onClick={() => handleEdit(c)} /> }] : []),
+    ];
 
-            {/* Message */}
+    return (
+        <div className="space-y-4">
+            <MasterTop
+                intro="Staff types (categories) like Teaching, Non-teaching or Support staff."
+                addLabel={canWrite && !(showForm && !editingId) ? 'Add staff type' : undefined}
+                onAdd={canWrite ? openAdd : undefined}
+                count={list.length}
+                countLabel={list.length === 1 ? 'staff type' : 'staff types'}
+            />
+
             {msg && (
                 <Alert tone={msg.type} onClose={() => setMsg(null)}>
                     {msg.text}
                 </Alert>
             )}
 
-            {/* Form */}
             {showForm && canWrite && (
-                <div className="card p-6">
-                    <h3 className="text-base font-semibold text-slate-900 mb-5">New Staff Category</h3>
-                    <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                            <label className="label">
-                                Category Code <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="cat-code"
-                                className="input font-mono uppercase"
-                                placeholder="e.g. TEACH"
-                                value={form.category_code}
-                                onChange={e => setForm({ ...form, category_code: e.target.value })}
-                                required
-                                maxLength={20}
-                                disabled={!!editingId}
-                            />
-                            <p className="text-xs text-slate-400 mt-1">Short unique code. Stored as uppercase.</p>
-                        </div>
-                        <div>
-                            <label className="label">
-                                Category Name <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="cat-name"
-                                className="input"
-                                placeholder="e.g. Teaching"
-                                value={form.category_name}
-                                onChange={e => setForm({ ...form, category_name: e.target.value })}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="label">Description</label>
-                            <input
-                                className="input"
-                                placeholder="Optional description"
-                                value={form.description}
-                                onChange={e => setForm({ ...form, description: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label className="label">Display Order</label>
-                            <input
-                                type="number"
-                                className="input"
-                                value={form.display_order}
-                                onChange={e => setForm({ ...form, display_order: Number(e.target.value) })}
-                                min={0}
-                            />
-                        </div>
-                        <div className="sm:col-span-2 lg:col-span-4 flex justify-end gap-3 pt-2 border-t border-slate-100">
-                            <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">
-                                Cancel
-                            </button>
-                            <button
-                                id="btn-save-category"
-                                type="submit"
-                                disabled={saving}
-                                className="btn-primary"
-                            >
-                                {saving ? 'Saving…' : editingId ? 'Update Category' : 'Save Category'}
-                            </button>
-                            {editingId && (
-                                <button type="button" onClick={() => { setEditingId(null); setForm(blank); setShowForm(false); }} className="btn-secondary ml-2">Cancel</button>
-                            )}
-                        </div>
-                    </form>
-                </div>
+                <FormCard
+                    id="category-form"
+                    title={editingId ? 'Change staff type' : 'New staff type'}
+                    onSubmit={handleSubmit}
+                    onCancel={closeForm}
+                    saveLabel="Save staff type"
+                    saving={saving}
+                >
+                    <Field label="Name" required>
+                        <input
+                            id="cat-name"
+                            className="input"
+                            placeholder="e.g. Teaching"
+                            value={form.category_name}
+                            onChange={e => setForm({ ...form, category_name: e.target.value })}
+                            required
+                        />
+                    </Field>
+                    <Field label="Short code" required hint={editingId ? 'The code cannot be changed.' : 'Up to 20 letters, for example TEACH.'}>
+                        <input
+                            id="cat-code"
+                            className="input font-mono uppercase"
+                            placeholder="e.g. TEACH"
+                            value={form.category_code}
+                            onChange={e => setForm({ ...form, category_code: e.target.value })}
+                            required
+                            maxLength={20}
+                            disabled={!!editingId}
+                        />
+                    </Field>
+                    <Field label="Note (optional)">
+                        <input
+                            className="input"
+                            value={form.description}
+                            onChange={e => setForm({ ...form, description: e.target.value })}
+                        />
+                    </Field>
+                    <Field label="Order in lists" hint="Smaller numbers show first.">
+                        <input
+                            type="number"
+                            inputMode="numeric"
+                            className="input"
+                            value={form.display_order}
+                            onChange={e => setForm({ ...form, display_order: Number(e.target.value) })}
+                            min={0}
+                        />
+                    </Field>
+                </FormCard>
             )}
 
-            {/* Table */}
-            <div className="card overflow-hidden">
-                <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        <tr>
-                            <th className="px-4 py-3">#</th>
-                            <th className="px-4 py-3">Code</th>
-                            <th className="px-4 py-3">Name</th>
-                            <th className="px-4 py-3">Description</th>
-                            <th className="px-4 py-3">Order</th>
-                            <th className="px-4 py-3">Status</th>
-                            {canWrite && <th className="px-4 py-3">Actions</th>}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {list.map((c) => (
-                            <tr key={c.id} className="hover:bg-slate-50 transition-colors">
-                                <td className="px-4 py-3 text-slate-400 text-xs">{c.id}</td>
-                                <td className="px-4 py-3">
-                                    <span className="font-mono text-xs bg-brand-50 text-brand-700 px-2 py-1 rounded font-semibold">
-                                        {c.category_code}
-                                    </span>
-                                </td>
-                                <td className="px-4 py-3 font-semibold text-slate-800">{c.category_name}</td>
-                                <td className="px-4 py-3 text-slate-500 text-xs">{c.description ?? '—'}</td>
-                                <td className="px-4 py-3 text-slate-500">{c.display_order}</td>
-                                <td className="px-4 py-3">
-                                    <Badge tone={c.is_active ? 'success' : 'neutral'}>
-                                        {c.is_active ? 'Active' : 'Inactive'}
-                                    </Badge>
-                                </td>
-                                {canWrite && (
-                                    <td className="px-4 py-3">
-                                        <button onClick={() => handleEdit(c)} className="btn-ghost btn-sm text-brand-600">Edit</button>
-                                    </td>
-                                )}
-                            </tr>
-                        ))}
-                        {list.length === 0 && (
-                            <tr>
-                                <td colSpan={canWrite ? 7 : 6}>
-                                    {loading ? <LoadingState label="Loading categories…" /> : <EmptyState compact title="No categories found" />}
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-                </div>
-            </div>
+            <DataList
+                columns={columns}
+                rows={list}
+                rowKey={c => c.id}
+                loading={loading}
+                emptyTitle="No staff types yet"
+                emptyHint={canWrite ? 'Tap \u201cAdd staff type\u201d to make the first one.' : undefined}
+                mobileActions={canWrite ? c => <EditButton onClick={() => handleEdit(c)} /> : undefined}
+            />
         </div>
     );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StaffProfileData } from '../../StaffProfile';
 import { LoadingState, EmptyState } from '../../ui';
+import { InfoSection, InfoGrid, InfoItem, SectionAction, plainWord, shortDate, yesNo } from '../../hr-setup/InfoParts';
 import api from '../../../api';
 
 interface Props {
@@ -30,77 +31,38 @@ export const StaffSalaryTab: React.FC<Props> = ({ profile, onEdit }) => {
     if (loading) return <LoadingState label="Loading salary details…" />;
 
     return (
-        <div className="space-y-8">
-            <div>
-                <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
-                    <h3 className="text-base font-semibold text-slate-900">Current Salary</h3>
-                    {onEdit && <button type="button" onClick={onEdit} className="btn-ghost btn-sm text-brand-600">Edit Salary Details</button>}
-                </div>
+        <div className="space-y-4">
+            <InfoSection
+                title="Salary now"
+                action={onEdit && <SectionAction onClick={onEdit}>Change salary</SectionAction>}
+            >
                 {salary ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="label">Salary Type</label>
-                            <p className="font-semibold text-slate-800 uppercase">{salary.salary_type}</p>
-                        </div>
-                        <div>
-                            <label className="label">Basic Salary</label>
-                            <p className="font-semibold text-slate-800">₹ {salary.basic_salary?.toLocaleString() || '-'}</p>
-                        </div>
-                        <div>
-                            <label className="label">Gross Salary</label>
-                            <p className="font-semibold text-slate-800">₹ {salary.gross_salary?.toLocaleString() || '-'}</p>
-                        </div>
-                        <div>
-                            <label className="label">Payment Mode</label>
-                            <p className="font-semibold text-slate-800 uppercase">{salary.payment_mode}</p>
-                        </div>
-                        <div>
-                            <label className="label">Effective From</label>
-                            <p className="font-semibold text-slate-800">
-                                {salary.effective_from ? new Date(salary.effective_from).toLocaleDateString('en-GB') : '-'}
-                            </p>
-                        </div>
-                        <div>
-                            <label className="label">Payroll Status</label>
-                            <p className="font-semibold text-slate-800 uppercase">{salary.payroll_status}</p>
-                        </div>
-                    </div>
+                    <InfoGrid>
+                        <InfoItem label="Basic salary" value={`₹ ${salary.basic_salary?.toLocaleString() || '-'}`} />
+                        <InfoItem label="Gross salary (total)" value={`₹ ${salary.gross_salary?.toLocaleString() || '-'}`} />
+                        <InfoItem label="Paid" value={plainWord(salary.salary_type)} />
+                        <InfoItem label="Paid by" value={plainWord(salary.payment_mode)} />
+                        <InfoItem label="From date" value={shortDate(salary.effective_from)} />
+                        <InfoItem label="Payroll status" value={plainWord(salary.payroll_status)} />
+                    </InfoGrid>
                 ) : (
-                    <EmptyState compact title="No salary details configured" />
+                    <EmptyState compact title="No salary added yet" />
                 )}
-            </div>
+            </InfoSection>
 
-            <div>
-                <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
-                    <h3 className="text-base font-semibold text-slate-900">Payroll Configuration</h3>
-                </div>
+            <InfoSection title="Other pay settings">
                 {salary ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="label">Gratuity Applicable</label>
-                            <p className="font-semibold text-slate-800">{salary.gratuity_applicable ? 'Yes' : 'No'}</p>
-                        </div>
-                        <div>
-                            <label className="label">Bonus Applicable</label>
-                            <p className="font-semibold text-slate-800">{salary.bonus_applicable ? 'Yes' : 'No'}</p>
-                        </div>
-                        <div>
-                            <label className="label">Overtime Applicable</label>
-                            <p className="font-semibold text-slate-800">{salary.overtime_applicable ? 'Yes' : 'No'}</p>
-                        </div>
-                        <div>
-                            <label className="label">Notice Period (Days)</label>
-                            <p className="font-semibold text-slate-800">{salary.notice_period_days || '-'}</p>
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className="label">Remarks</label>
-                            <p className="font-semibold text-slate-800">{salary.payroll_remarks || '-'}</p>
-                        </div>
-                    </div>
+                    <InfoGrid>
+                        <InfoItem label="Gratuity?" value={yesNo(salary.gratuity_applicable)} />
+                        <InfoItem label="Bonus?" value={yesNo(salary.bonus_applicable)} />
+                        <InfoItem label="Overtime pay?" value={yesNo(salary.overtime_applicable)} />
+                        <InfoItem label="Notice period (days)" value={salary.notice_period_days || ''} />
+                        <InfoItem label="Note" value={salary.payroll_remarks} wide />
+                    </InfoGrid>
                 ) : (
-                    <p className="text-sm text-slate-500 py-4">-</p>
+                    <p className="text-sm text-slate-500">—</p>
                 )}
-            </div>
+            </InfoSection>
         </div>
     );
 };

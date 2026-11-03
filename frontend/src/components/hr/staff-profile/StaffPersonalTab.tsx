@@ -1,5 +1,6 @@
 import React from 'react';
 import { StaffProfileData } from '../../StaffProfile';
+import { InfoSection, InfoGrid, InfoItem, plainWord, shortDate } from '../../hr-setup/InfoParts';
 
 interface Props {
     profile: StaffProfileData;
@@ -7,48 +8,27 @@ interface Props {
 
 export const StaffPersonalTab: React.FC<Props> = ({ profile }) => {
     return (
-        <div className="space-y-6">
-            <h3 className="text-base font-semibold text-slate-900 border-b border-slate-200 pb-2">Personal Information</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                <div>
-                    <label className="label">First Name</label>
-                    <p className="font-semibold text-slate-800 uppercase">{profile.first_name}</p>
-                </div>
-                <div>
-                    <label className="label">Last Name</label>
-                    <p className="font-semibold text-slate-800 uppercase">{profile.last_name || '-'}</p>
-                </div>
-                <div>
-                    <label className="label">Gender</label>
-                    <p className="font-semibold text-slate-800 capitalize">{profile.gender.toLowerCase()}</p>
-                </div>
-                <div>
-                    <label className="label">Date of Birth</label>
-                    <p className="font-semibold text-slate-800">
-                        {profile.date_of_birth ? new Date(profile.date_of_birth).toLocaleDateString('en-GB') : '-'}
-                    </p>
-                </div>
-                <div>
-                    <label className="label">Blood Group</label>
-                    <p className="font-semibold text-slate-800">{profile.blood_group || '-'}</p>
-                </div>
-                <div>
-                    <label className="label">Nationality</label>
-                    <p className="font-semibold text-slate-800">{profile.nationality || '-'}</p>
-                </div>
-            </div>
+        <div className="space-y-4">
+            <InfoSection title="About the person">
+                <InfoGrid>
+                    <InfoItem label="First name" value={profile.first_name} />
+                    <InfoItem label="Last name" value={profile.last_name} />
+                    <InfoItem label="Gender" value={plainWord(profile.gender)} />
+                    <InfoItem label="Date of birth" value={shortDate(profile.date_of_birth)} />
+                    <InfoItem label="Blood group" value={profile.blood_group} />
+                    <InfoItem label="Nationality" value={profile.nationality} />
+                </InfoGrid>
+            </InfoSection>
 
-            <h3 className="text-base font-semibold text-slate-900 border-b border-slate-200 pb-2 mt-8">Contact Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label className="label">Mobile</label>
-                    <p className="font-semibold text-slate-800">{profile.mobile || '-'}</p>
-                </div>
-                <div>
-                    <label className="label">Email</label>
-                    <p className="font-semibold text-slate-800">{profile.email || '-'}</p>
-                </div>
-            </div>
+            <InfoSection title="Contact">
+                <InfoGrid>
+                    <InfoItem
+                        label="Mobile number"
+                        value={profile.mobile ? <a href={`tel:${String(profile.mobile).replace(/[^\d+]/g, '')}`} className="text-brand-700 hover:underline">{profile.mobile}</a> : ''}
+                    />
+                    <InfoItem label="Email" value={profile.email} />
+                </InfoGrid>
+            </InfoSection>
         </div>
     );
 };

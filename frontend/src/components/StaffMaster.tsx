@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import StaffProfile from './StaffProfile';
-import { EyeIcon, PencilIcon } from './icons';
+import { Eye, Pencil, UserPlus } from 'lucide-react';
 import CreateStaffWizard from './hr/CreateStaffWizard';
 import { UpdateStaffDetails } from './hr/UpdateStaffDetails';
-import { LoadingState, EmptyState } from './ui';
+import { Alert, Button, notify } from './ui';
+import StaffListView from './hr-setup/StaffListView';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,18 +35,6 @@ interface SelectOption {
     label: string;
     [key: string]: any;
 }
-
-// ─── Status badge helper ──────────────────────────────────────────────────────
-
-const statusColor: Record<string, string> = {
-    ACTIVE: 'bg-emerald-100 text-emerald-800',
-    PROBATION: 'bg-amber-100 text-amber-800',
-    NOTICE_PERIOD: 'bg-orange-100 text-orange-800',
-    SUSPENDED: 'bg-red-100 text-red-800',
-    RESIGNED: 'bg-slate-100 text-slate-600',
-    TERMINATED: 'bg-red-200 text-red-900',
-    RETIRED: 'bg-purple-100 text-purple-800',
-};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -228,82 +217,60 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
 
     if (editingStaffId) {
         return (
-            <div className="max-w-7xl mx-auto px-4 py-8">
-                <UpdateStaffDetails
-                    staffId={editingStaffId}
-                    onClose={() => setEditingStaffId(null)}
-                    onSuccess={() => { setEditingStaffId(null); fetchData(); }}
-                />
-            </div>
+            <UpdateStaffDetails
+                staffId={editingStaffId}
+                onClose={() => setEditingStaffId(null)}
+                onSuccess={() => { setEditingStaffId(null); fetchData(); notify.success('Staff details saved'); }}
+            />
         );
     }
 
     // ── Filtered list ─────────────────────────────────────────────────────────
     const filteredStaff = staffList;
 
+    const canView = mode !== 'update';
+    const canEditRow = mode !== 'profile' && canWrite;
+    const intro = mode === 'profile'
+        ? 'Find a staff member and tap them to see their full profile.'
+        : mode === 'update'
+            ? 'Find a staff member and tap them to change their details.'
+            : 'All staff of this school. Add new staff, or tap a person to see their profile.';
+
     // ── JSX ───────────────────────────────────────────────────────────────────
     return (
-        <div className="space-y-6">
-
-            {/* ── Page header ──────────────────────────────────────────────── */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h2 className="text-base font-semibold text-slate-900">
-                        {mode === 'profile' ? 'Staff Profile' : mode === 'update' ? 'Staff Update' : 'Staff Master'}
-                    </h2>
-                    <p className="text-sm text-slate-500 mt-0.5">
-                        {staffList.length} staff member{staffList.length !== 1 ? 's' : ''} registered
-                    </p>
+        <div className="space-y-4">
+            {!showForm && (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <p className="text-sm text-slate-600">{intro}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                            {staffList.length} staff member{staffList.length !== 1 ? 's' : ''} saved
+                        </p>
+                    </div>
+                    {canWrite && mode === 'master' && (
+                        <Button
+                            id="btn-add-staff"
+                            icon={<UserPlus className="w-4 h-4" />}
+                            onClick={() => { setShowForm(true); setForm(blankForm); setResult(null); }}
+                            className="w-full sm:w-auto"
+                        >
+                            Add staff
+                        </Button>
+                    )}
                 </div>
-                {canWrite && mode === 'master' && (
-                    <button
-                        onClick={() => { setShowForm(!showForm); setForm(blankForm); setResult(null); }}
-                        className="btn-success"
-                        id="btn-add-staff"
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showForm ? "M6 18L18 6M6 6l12 12" : "M12 4v16m8-8H4"} />
-                        </svg>
-                        {showForm ? 'Cancel' : 'Add Staff'}
-                    </button>
-                )}
-            </div>
+            )}
 
             {/* ── Result banner ─────────────────────────────────────────────── */}
             {result && (
-                <div className={`rounded-xl border p-4 ${result.success ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                <Alert tone={result.success ? 'success' : 'error'} title={result.success ? result.message : undefined} onClose={() => setResult(null)}>
                     {result.success ? (
-                        <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                                <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p className="font-semibold text-emerald-800 text-sm">{result.message}</p>
-                                <div className="mt-2 flex flex-wrap gap-3">
-                                    {result.staff_code && (
-                                        <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 text-xs font-mono font-bold px-3 py-1.5 rounded-lg">
-                                            🪪 Staff Code: {result.staff_code}
-                                        </span>
-                                    )}
-                                    {result.employee_id && (
-                                        <span className="inline-flex items-center gap-1.5 bg-brand-100 text-brand-800 text-xs font-mono font-bold px-3 py-1.5 rounded-lg">
-                                            🔑 Employee ID: {result.employee_id}
-                                        </span>
-                                    )}
-                                    {result.staff_code && !result.isUpdate && (
-                                        <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 text-xs font-semibold px-3 py-1.5 rounded-lg">
-                                            🔐 Temporary password = Staff Code (must change on first login)
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
+                        <div className="mt-1 space-y-0.5">
+                            {result.staff_code && <p>Staff code: <span className="font-mono font-semibold">{result.staff_code}</span></p>}
+                            {result.employee_id && <p>Employee ID: <span className="font-mono font-semibold">{result.employee_id}</span></p>}
+                            {result.staff_code && !result.isUpdate && <p>First password is the staff code. They must change it at first login.</p>}
                         </div>
-                    ) : (
-                        <p className="text-red-800 text-sm font-medium">{result.message}</p>
-                    )}
-                </div>
+                    ) : result.message}
+                </Alert>
             )}
 
             {/* ── Add Staff Wizard ─────────────────────────────────────────── */}
@@ -314,206 +281,44 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
                         setShowForm(false);
                         setViewingStaffId(staffId);
                         fetchData();
+                        notify.success('Staff member added. Their profile is open now.');
                     }}
                 />
             )}
-            {/* ── Filters and List (Hidden when editing/adding) ──────────────── */}
+
+            {/* ── Search and list (hidden while adding) ───────────────────── */}
             {!showForm && (
-                <>
-                    <div className="card p-4 flex flex-wrap items-end gap-3">
-                        {/* Branch Dropdown */}
-                        {!isSingleBranch && (
-                            <div className="w-full sm:w-48">
-                                <label className="label">Branch</label>
-                                <select
-                                    className="input"
-                                    value={searchBranchId}
-                                    onChange={(e) => setSearchBranchId(e.target.value)}
-                                >
-                                    <option value="">-All Branches-</option>
-                                    {allowedBranches.map((b) => (
-                                        <option key={b.branch_id} value={b.branch_id}>
-                                            {b.branch_name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-
-                        {/* Department Dropdown */}
-                        <div className="w-full sm:w-48">
-                            <label className="label">Department</label>
-                            <select
-                                className="input"
-                                value={searchDeptId}
-                                onChange={(e) => setSearchDeptId(e.target.value)}
-                            >
-                                <option value="">All Departments</option>
-                                {departments.map((d) => (
-                                    <option key={d.id} value={d.id}>{d.label}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Status Dropdown */}
-                        <div className="w-full sm:w-40">
-                            <label className="label">Status</label>
-                            <select
-                                className="input"
-                                value={searchStatus}
-                                onChange={(e) => setSearchStatus(e.target.value)}
-                            >
-                                <option value="">All</option>
-                                <option value="ACTIVE">Active</option>
-                                <option value="INACTIVE">Inactive</option>
-                            </select>
-                        </div>
-
-                        {/* Search By Dropdown */}
-                        <div className="w-full sm:w-40">
-                            <label className="label">Search By</label>
-                            <select
-                                className="input"
-                                value={searchBy}
-                                onChange={(e) => setSearchBy(e.target.value)}
-                            >
-                                <option value="staff_code">Staff Code</option>
-                                <option value="employee_id">Employee ID</option>
-                                <option value="biometric_id">Biometric ID</option>
-                                <option value="first_name">Staff Name</option>
-                                <option value="mobile">Mobile</option>
-                                <option value="email">Email</option>
-                            </select>
-                        </div>
-
-                        {/* Search Input */}
-                        <div className="flex-1 min-w-[200px] w-full sm:w-auto">
-                            <label className="label">Search Query</label>
-                            <input
-                                type="text"
-                                placeholder="Search..."
-                                className="input"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && fetchData()}
-                            />
-                        </div>
-
-                        {/* Search Button */}
-                        <div>
-                            <button
-                                onClick={fetchData}
-                                className="btn-primary"
-                            >
-                                Search
-                            </button>
-                        </div>
-                    </div>
-                    <div>
-                        <span className="text-sm text-slate-500">
-                            {loading ? 'Loading…' : `${filteredStaff.length} result${filteredStaff.length !== 1 ? 's' : ''}`}
-                        </span>
-                    </div>
-
-                    {/* ── Staff Table ───────────────────────────────────────────────── */}
-                    <div className="card overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    <tr>
-                                        <th className="px-4 py-3">Employee</th>
-                                        <th className="px-4 py-3">Category</th>
-                                        <th className="px-4 py-3">Department / Designation</th>
-                                        <th className="px-4 py-3">Type</th>
-                                        <th className="px-4 py-3">Status</th>
-                                        <th className="px-4 py-3">Contact</th>
-                                        <th className="px-4 py-3 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {filteredStaff.map((st) => (
-                                        <tr key={st.id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                                                        <span className="text-emerald-700 font-bold text-sm">
-                                                            {st.first_name?.[0] ?? '?'}
-                                                        </span>
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-semibold text-slate-800">{st.display_name}</p>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className="font-mono text-xs text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                                                                {st.staff_code}
-                                                            </span>
-                                                            {st.employee_id && (
-                                                                <span className="font-mono text-xs text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
-                                                                    ID: {st.employee_id}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className="badge-brand">
-                                                    {st.staff_category_name ?? '—'}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <p className="font-medium text-slate-700">{st.department_name ?? '—'}</p>
-                                                <p className="text-xs text-slate-400">{st.designation_name ?? ''}</p>
-                                            </td>
-                                            <td className="px-4 py-3 text-slate-600 text-xs capitalize">
-                                                {st.employment_type?.toLowerCase().replace('_', ' ') ?? '—'}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className={`badge ${statusColor[st.staff_status_name?.toUpperCase() ?? st.employment_status] ?? 'bg-slate-100 text-slate-600'}`}>
-                                                    {st.staff_status_name ?? st.employment_status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-slate-500 text-xs">
-                                                <p>{st.mobile ?? '—'}</p>
-                                                <p className="truncate max-w-[140px]">{st.email ?? ''}</p>
-                                            </td>
-                                            <td className="px-4 py-3 text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    {mode !== 'update' && (
-                                                        <button
-                                                            onClick={() => setViewingStaffId(st.id)}
-                                                            className="btn-icon text-brand-600 hover:text-brand-700 hover:bg-brand-50"
-                                                            title="View Profile"
-                                                        >
-                                                            <EyeIcon className="w-5 h-5" />
-                                                        </button>
-                                                    )}
-                                                    {mode !== 'profile' && canWrite && (
-                                                        <button
-                                                            onClick={() => setEditingStaffId(st.id)}
-                                                            className="btn-icon text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                                                            title="Edit Profile"
-                                                        >
-                                                            <PencilIcon className="w-5 h-5" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {filteredStaff.length === 0 && (
-                                        <tr>
-                                            <td colSpan={7}>
-                                                {loading
-                                                    ? <LoadingState label="Loading staff…" />
-                                                    : <EmptyState compact title="No staff found" description={canWrite && mode === 'master' ? 'Add your first staff member above.' : undefined} />}
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </>
+                <StaffListView
+                    rows={filteredStaff}
+                    loading={loading}
+                    onSearch={fetchData}
+                    filters={{
+                        branchId: searchBranchId, setBranchId: setSearchBranchId,
+                        deptId: searchDeptId, setDeptId: setSearchDeptId,
+                        status: searchStatus, setStatus: setSearchStatus,
+                        searchBy, setSearchBy,
+                        query: searchQuery, setQuery: setSearchQuery,
+                    }}
+                    departments={departments}
+                    branches={allowedBranches}
+                    showBranchFilter={!isSingleBranch}
+                    onRowClick={canView ? st => setViewingStaffId(st.id) : canEditRow ? st => setEditingStaffId(st.id) : undefined}
+                    actions={(canView || canEditRow) ? st => (
+                        <>
+                            {canView && (
+                                <Button variant="secondary" size="sm" icon={<Eye className="w-3.5 h-3.5" />} onClick={() => setViewingStaffId(st.id)}>
+                                    Profile
+                                </Button>
+                            )}
+                            {canEditRow && (
+                                <Button variant="soft" size="sm" icon={<Pencil className="w-3.5 h-3.5" />} onClick={() => setEditingStaffId(st.id)}>
+                                    Change details
+                                </Button>
+                            )}
+                        </>
+                    ) : undefined}
+                    emptyHint={canWrite && mode === 'master' ? 'Tap \u201cAdd staff\u201d to add your first staff member.' : 'Try a different name or change the filters.'}
+                />
             )}
         </div>
     );

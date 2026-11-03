@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
-import { Alert, LoadingState, EmptyState, Badge } from './ui';
+import { Alert, Badge, DataList, Field } from './ui';
+import type { Column } from './ui';
+import { NeedSchool, MasterTop, FormCard, EditButton, scrollToForm, plain } from './hr-setup/MasterParts';
 
 interface Shift {
     id: number;
@@ -18,6 +20,7 @@ export const ShiftMaster: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [showForm, setShowForm] = useState(false);
 
     const [form, setForm] = useState({
         shift_code: '',
@@ -52,13 +55,14 @@ export const ShiftMaster: React.FC = () => {
         try {
             if (editingId) {
                 await api.put(`/hr/shifts/${editingId}`, form);
-                setMsg({ type: 'success', text: 'Shift updated successfully' });
+                setMsg({ type: 'success', text: 'Shift saved' });
             } else {
                 await api.post('/hr/shifts', form);
-                setMsg({ type: 'success', text: 'Shift created successfully' });
+                setMsg({ type: 'success', text: 'Shift added' });
             }
             setForm({ shift_code: '', shift_name: '', start_time: '', end_time: '', grace_in_minutes: 0, grace_out_minutes: 0, status: 'ACTIVE' });
             setEditingId(null);
+            setShowForm(false);
             fetchShifts();
         } catch (e: any) {
             setMsg({ type: 'error', text: e.response?.data?.error || `Failed to ${editingId ? 'update' : 'create'} shift` });
@@ -76,92 +80,89 @@ export const ShiftMaster: React.FC = () => {
             grace_out_minutes: s.grace_out_minutes || 0,
             status: s.status || 'ACTIVE'
         });
+        setMsg(null);
+        setShowForm(true);
+        scrollToForm('shift-form');
     };
+
+    const blankForm = { shift_code: '', shift_name: '', start_time: '', end_time: '', grace_in_minutes: 0, grace_out_minutes: 0, status: 'ACTIVE' };
+    const openAdd = () => {
+        setEditingId(null);
+        setForm(blankForm);
+        setMsg(null);
+        setShowForm(true);
+        scrollToForm('shift-form');
+    };
+    const closeForm = () => { setEditingId(null); setForm(blankForm); setShowForm(false); };
 
     const currentSchoolId = localStorage.getItem('currentSchoolId');
     if (!currentSchoolId || currentSchoolId === 'all') {
-        return (
-            <div className="card p-6 text-center">
-                <h2 className="text-base font-semibold text-slate-900 mb-2">Shift Master</h2>
-                <p className="text-slate-500 text-sm">Please select a specific school from the top navigation to view and manage shifts.</p>
-            </div>
-        );
+        return <NeedSchool what="work timings" />;
     }
 
+    const columns: Column<Shift>[] = [
+        { key: 'shift_name', header: 'Shift', primary: true, render: s => <span className="font-medium text-slate-900">{s.shift_name}</span> },
+        { key: 'timings', header: 'Timings', secondary: true, render: s => `${s.start_time} to ${s.end_time}` },
+        { key: 'shift_code', header: 'Code' },
+        { key: 'grace', header: 'Late / early allowed', render: s => `${s.grace_in_minutes || 0} min / ${s.grace_out_minutes || 0} min` },
+        { key: 'status', header: 'Status', render: s => <Badge tone={s.status === 'ACTIVE' ? 'success' : 'danger'}>{plain(s.status)}</Badge> },
+        { key: 'actions', header: '', align: 'right', hideOnMobile: true, render: s => <EditButton onClick={() => handleEdit(s)} /> },
+    ];
+
     return (
-        <div className="card p-6">
-            <h2 className="text-base font-semibold text-slate-900 mb-4">Shift Master</h2>
-            
+        <div className="space-y-4">
+            <MasterTop
+                intro="Shifts are the work timings for staff. They are used to mark staff late or early."
+                addLabel={showForm && !editingId ? undefined : 'Add shift'}
+                onAdd={openAdd}
+                count={shifts.length}
+                countLabel={shifts.length === 1 ? 'shift' : 'shifts'}
+            />
+
             {msg && (
-                <Alert tone={msg.type} className="mb-4" onClose={() => setMsg(null)}>
+                <Alert tone={msg.type} onClose={() => setMsg(null)}>
                     {msg.text}
                 </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <div>
-                    <label className="label">Code *</label>
-                    <input type="text" required value={form.shift_code} onChange={e => setForm({...form, shift_code: e.target.value})} disabled={!!editingId} className="input" />
-                </div>
-                <div>
-                    <label className="label">Name *</label>
-                    <input type="text" required value={form.shift_name} onChange={e => setForm({...form, shift_name: e.target.value})} className="input" />
-                </div>
-                <div>
-                    <label className="label">Start Time *</label>
-                    <input type="time" required value={form.start_time} onChange={e => setForm({...form, start_time: e.target.value})} className="input" />
-                </div>
-                <div>
-                    <label className="label">End Time *</label>
-                    <input type="time" required value={form.end_time} onChange={e => setForm({...form, end_time: e.target.value})} className="input" />
-                </div>
-                <div>
-                    <label className="label">Grace In (mins)</label>
-                    <input type="number" value={form.grace_in_minutes} onChange={e => setForm({...form, grace_in_minutes: Number(e.target.value)})} className="input" />
-                </div>
-                <div>
-                    <label className="label">Grace Out (mins)</label>
-                    <input type="number" value={form.grace_out_minutes} onChange={e => setForm({...form, grace_out_minutes: Number(e.target.value)})} className="input" />
-                </div>
-                <div className="sm:col-span-2 lg:col-span-4 flex gap-2">
-                    <button type="submit" className="btn-primary">{editingId ? 'Update' : 'Save'} Shift</button>
-                    {editingId && (
-                        <button type="button" onClick={() => { setEditingId(null); setForm({ shift_code: '', shift_name: '', start_time: '', end_time: '', grace_in_minutes: 0, grace_out_minutes: 0, status: 'ACTIVE' }); }} className="btn-secondary">Cancel</button>
-                    )}
-                </div>
-            </form>
+            {showForm && (
+                <FormCard
+                    id="shift-form"
+                    title={editingId ? 'Change shift' : 'New shift'}
+                    onSubmit={handleSubmit}
+                    onCancel={closeForm}
+                    saveLabel="Save shift"
+                >
+                    <Field label="Shift name" required>
+                        <input type="text" required value={form.shift_name} onChange={e => setForm({...form, shift_name: e.target.value})} className="input" placeholder="e.g. Morning" />
+                    </Field>
+                    <Field label="Code" required hint={editingId ? 'The code cannot be changed.' : 'A short code, for example MOR.'}>
+                        <input type="text" required value={form.shift_code} onChange={e => setForm({...form, shift_code: e.target.value})} disabled={!!editingId} className="input" />
+                    </Field>
+                    <Field label="Start time" required>
+                        <input type="time" required value={form.start_time} onChange={e => setForm({...form, start_time: e.target.value})} className="input" />
+                    </Field>
+                    <Field label="End time" required>
+                        <input type="time" required value={form.end_time} onChange={e => setForm({...form, end_time: e.target.value})} className="input" />
+                    </Field>
+                    <Field label="Late allowed (minutes)" hint="Coming in this many minutes late is still on time.">
+                        <input type="number" inputMode="numeric" value={form.grace_in_minutes} onChange={e => setForm({...form, grace_in_minutes: Number(e.target.value)})} className="input" />
+                    </Field>
+                    <Field label="Early leave allowed (minutes)" hint="Leaving this many minutes early is still fine.">
+                        <input type="number" inputMode="numeric" value={form.grace_out_minutes} onChange={e => setForm({...form, grace_out_minutes: Number(e.target.value)})} className="input" />
+                    </Field>
+                </FormCard>
+            )}
 
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        <tr>
-                            <th className="px-3 py-2.5 border-b border-slate-200">Code</th>
-                            <th className="px-3 py-2.5 border-b border-slate-200">Name</th>
-                            <th className="px-3 py-2.5 border-b border-slate-200">Timings</th>
-                            <th className="px-3 py-2.5 border-b border-slate-200">Status</th>
-                            <th className="px-3 py-2.5 border-b border-slate-200">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {loading ? <tr><td colSpan={5}><LoadingState label="Loading shifts…" /></td></tr> :
-                            shifts.length === 0 ? <tr><td colSpan={5}><EmptyState compact title="No shifts yet" description="Add a shift using the form above." /></td></tr> :
-                            shifts.map(s => (
-                                <tr key={s.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                                    <td className="px-3 py-2.5">{s.shift_code}</td>
-                                    <td className="px-3 py-2.5">{s.shift_name}</td>
-                                    <td className="px-3 py-2.5">{s.start_time} - {s.end_time}</td>
-                                    <td className="px-3 py-2.5">
-                                        <Badge tone={s.status === 'ACTIVE' ? 'success' : 'danger'}>{s.status}</Badge>
-                                    </td>
-                                    <td className="px-3 py-2.5">
-                                        <button onClick={() => handleEdit(s)} className="btn-ghost btn-sm text-brand-600">Edit</button>
-                                    </td>
-                                </tr>
-                            ))
-                        }
-                    </tbody>
-                </table>
-            </div>
+            <DataList
+                columns={columns}
+                rows={shifts}
+                rowKey={s => s.id}
+                loading={loading}
+                emptyTitle="No shifts yet"
+                emptyHint={'Tap \u201cAdd shift\u201d to make the first one.'}
+                mobileActions={s => <EditButton onClick={() => handleEdit(s)} />}
+            />
         </div>
     );
 };

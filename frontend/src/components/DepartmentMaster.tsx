@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
-import { Alert, LoadingState, EmptyState, Badge } from './ui';
+import { Alert, Badge, DataList, Field } from './ui';
+import type { Column } from './ui';
+import { NeedSchool, MasterTop, FormCard, EditButton, scrollToForm, plain } from './hr-setup/MasterParts';
 
 interface Department {
     id: number;
@@ -17,6 +19,7 @@ export const DepartmentMaster: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [showForm, setShowForm] = useState(false);
     const { hasPermission } = useAuth();
     const canEdit = hasPermission('hr.hr.departments', 'write');
 
@@ -57,8 +60,8 @@ export const DepartmentMaster: React.FC = () => {
             display_order: d.display_order || 0,
             status: d.status || 'ACTIVE'
         });
-        // The app scrolls inside the main panel, not the window
-        document.getElementById('department-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setShowForm(true);
+        scrollToForm('department-form');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -71,85 +74,81 @@ export const DepartmentMaster: React.FC = () => {
             }
             setForm({ department_code: '', department_name: '', description: '', display_order: 0, status: 'ACTIVE' });
             setEditingId(null);
+            setShowForm(false);
             fetchData();
-            setMsg({ type: 'success', text: editingId ? 'Department updated successfully' : 'Department created successfully' });
+            setMsg({ type: 'success', text: editingId ? 'Department saved' : 'Department added' });
         } catch (e: any) {
             setMsg({ type: 'error', text: e.response?.data?.error || `Failed to ${editingId ? 'update' : 'create'} department` });
         }
     };
 
+    const blankForm = { department_code: '', department_name: '', description: '', display_order: 0, status: 'ACTIVE' };
+    const openAdd = () => {
+        setEditingId(null);
+        setForm(blankForm);
+        setMsg(null);
+        setShowForm(true);
+        scrollToForm('department-form');
+    };
+    const closeForm = () => { setEditingId(null); setForm(blankForm); setShowForm(false); };
+
     const currentSchoolId = localStorage.getItem('currentSchoolId');
     if (!currentSchoolId || currentSchoolId === 'all') {
-        return (
-            <div className="card p-6 text-center">
-                <h2 className="text-base font-semibold text-slate-900 mb-2">Department Master</h2>
-                <p className="text-slate-500 text-sm">Please select a specific school from the top navigation to view and manage departments.</p>
-            </div>
-        );
+        return <NeedSchool what="departments" />;
     }
 
+    const columns: Column<Department>[] = [
+        { key: 'department_name', header: 'Name', primary: true, render: d => <span className="font-medium text-slate-900">{d.department_name}</span> },
+        { key: 'department_code', header: 'Code', secondary: true, render: d => <span className="text-slate-600">Code {d.department_code}</span> },
+        { key: 'status', header: 'Status', render: d => <Badge tone={d.status === 'ACTIVE' ? 'success' : 'danger'}>{plain(d.status)}</Badge> },
+        ...(canEdit ? [{ key: 'actions', header: '', align: 'right' as const, hideOnMobile: true, render: (d: Department) => <EditButton onClick={() => handleEdit(d)} /> }] : []),
+    ];
+
     return (
-        <div className="card p-6">
-            <h2 className="text-base font-semibold text-slate-900 mb-4">Department Master</h2>
+        <div className="space-y-4">
+            <MasterTop
+                intro="Departments group your staff, for example Teaching, Office or Transport."
+                addLabel={showForm && !editingId ? undefined : 'Add department'}
+                onAdd={openAdd}
+                count={departments.length}
+                countLabel={departments.length === 1 ? 'department' : 'departments'}
+            />
 
             {msg && (
-                <Alert tone={msg.type} className="mb-4" onClose={() => setMsg(null)}>
+                <Alert tone={msg.type} onClose={() => setMsg(null)}>
                     {msg.text}
                 </Alert>
             )}
 
-            <form id="department-form" onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                <div>
-                    <label className="label">Code *</label>
-                    <input type="text" required value={form.department_code} onChange={e => setForm({ ...form, department_code: e.target.value.replace(/\D/g, '').replace(/^0+/, '') })} disabled={!!editingId} className="input" />
-                </div>
-                <div>
-                    <label className="label">Name *</label>
-                    <input type="text" required value={form.department_name} onChange={e => setForm({ ...form, department_name: e.target.value })} className="input" />
-                </div>
-                <div className="md:col-span-2">
-                    <label className="label">Description</label>
-                    <input type="text" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="input" />
-                </div>
-                <div className="flex gap-2">
-                    <button type="submit" className="btn-primary">{editingId ? 'Update' : 'Save'} Department</button>
-                    {editingId && (
-                        <button type="button" onClick={() => { setEditingId(null); setForm({ department_code: '', department_name: '', description: '', display_order: 0, status: 'ACTIVE' }); }} className="btn-secondary">Cancel</button>
-                    )}
-                </div>
-            </form>
+            {showForm && (
+                <FormCard
+                    id="department-form"
+                    title={editingId ? 'Change department' : 'New department'}
+                    onSubmit={handleSubmit}
+                    onCancel={closeForm}
+                    saveLabel="Save department"
+                >
+                    <Field label="Department number" required hint={editingId ? 'The number cannot be changed.' : 'Numbers only, for example 1, 2, 3.'}>
+                        <input type="text" inputMode="numeric" required value={form.department_code} onChange={e => setForm({ ...form, department_code: e.target.value.replace(/\D/g, '').replace(/^0+/, '') })} disabled={!!editingId} className="input" />
+                    </Field>
+                    <Field label="Department name" required>
+                        <input type="text" required value={form.department_name} onChange={e => setForm({ ...form, department_name: e.target.value })} className="input" placeholder="e.g. Teaching" />
+                    </Field>
+                    <Field label="Note (optional)" className="sm:col-span-2">
+                        <input type="text" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="input" />
+                    </Field>
+                </FormCard>
+            )}
 
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        <tr>
-                            <th className="px-3 py-2.5 border-b border-slate-200">Code</th>
-                            <th className="px-3 py-2.5 border-b border-slate-200">Name</th>
-                            <th className="px-3 py-2.5 border-b border-slate-200">Status</th>
-                            {canEdit && <th className="px-3 py-2.5 border-b border-slate-200 text-right">Actions</th>}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {loading ? <tr><td colSpan={canEdit ? 4 : 3}><LoadingState label="Loading departments…" /></td></tr> :
-                            departments.length === 0 ? <tr><td colSpan={canEdit ? 4 : 3}><EmptyState compact title="No departments yet" description="Add a department using the form above." /></td></tr> :
-                            departments.map(d => (
-                                <tr key={d.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                                    <td className="px-3 py-2.5">{d.department_code}</td>
-                                    <td className="px-3 py-2.5">{d.department_name}</td>
-                                    <td className="px-3 py-2.5">
-                                        <Badge tone={d.status === 'ACTIVE' ? 'success' : 'danger'}>{d.status}</Badge>
-                                    </td>
-                                    {canEdit && (
-                                        <td className="px-3 py-2.5 text-right">
-                                            <button type="button" onClick={() => handleEdit(d)} className="btn-ghost btn-sm">Edit</button>
-                                        </td>
-                                    )}
-                                </tr>
-                            ))
-                        }
-                    </tbody>
-                </table>
-            </div>
+            <DataList
+                columns={columns}
+                rows={departments}
+                rowKey={d => d.id}
+                loading={loading}
+                emptyTitle="No departments yet"
+                emptyHint={'Tap \u201cAdd department\u201d to make the first one.'}
+                mobileActions={canEdit ? d => <EditButton onClick={() => handleEdit(d)} /> : undefined}
+            />
         </div>
     );
 };

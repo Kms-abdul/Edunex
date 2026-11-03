@@ -1,5 +1,6 @@
 import React from 'react';
 import { StaffProfileData } from '../../StaffProfile';
+import { InfoSection, InfoGrid, InfoItem, plainWord, shortDate } from '../../hr-setup/InfoParts';
 
 interface Props {
     profile: StaffProfileData;
@@ -7,60 +8,26 @@ interface Props {
 
 export const StaffEmploymentTab: React.FC<Props> = ({ profile }) => {
     return (
-        <div className="space-y-8">
-            <div>
-                <h3 className="text-base font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Organization</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="label">Branch</label>
-                        <p className="font-semibold text-slate-800">{profile.branch_name || '-'}</p>
-                    </div>
-                    <div>
-                        <label className="label">Staff Code</label>
-                        <p className="font-semibold text-slate-800 uppercase">{profile.staff_code}</p>
-                    </div>
-                    <div>
-                        <label className="label">Employee ID</label>
-                        <p className="font-semibold text-slate-800 uppercase">{profile.employee_id || '-'}</p>
-                    </div>
-                    <div>
-                        <label className="label">Biometric ID</label>
-                        <p className="font-semibold text-slate-800 uppercase">{profile.biometric_id || '-'}</p>
-                    </div>
-                </div>
-            </div>
+        <div className="space-y-4">
+            <InfoSection title="Job">
+                <InfoGrid>
+                    <InfoItem label="Department" value={profile.department_name} />
+                    <InfoItem label="Job title" value={profile.designation_name} />
+                    <InfoItem label="Joining date" value={shortDate(profile.joining_date)} />
+                    <InfoItem label="Type of job" value={plainWord(profile.employment_type)} />
+                    <InfoItem label="Staff type" value={profile.staff_category_name} />
+                    <InfoItem label="Work status" value={profile.staff_status_name || plainWord(profile.employment_status)} />
+                </InfoGrid>
+            </InfoSection>
 
-            <div>
-                <h3 className="text-base font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Job Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="label">Department</label>
-                        <p className="font-semibold text-slate-800 uppercase">{profile.department_name || '-'}</p>
-                    </div>
-                    <div>
-                        <label className="label">Designation</label>
-                        <p className="font-semibold text-slate-800 uppercase">{profile.designation_name || '-'}</p>
-                    </div>
-                    <div>
-                        <label className="label">Joining Date</label>
-                        <p className="font-semibold text-slate-800">
-                            {profile.joining_date ? new Date(profile.joining_date).toLocaleDateString('en-GB') : '-'}
-                        </p>
-                    </div>
-                    <div>
-                        <label className="label">Employment Type</label>
-                        <p className="font-semibold text-slate-800 uppercase">{profile.employment_type || '-'}</p>
-                    </div>
-                    <div>
-                        <label className="label">Staff Category</label>
-                        <p className="font-semibold text-slate-800 uppercase">{profile.staff_category_name || '-'}</p>
-                    </div>
-                    <div>
-                        <label className="label">Status</label>
-                        <p className="font-semibold text-slate-800 uppercase">{profile.staff_status_name || profile.employment_status}</p>
-                    </div>
-                </div>
-            </div>
+            <InfoSection title="Branch and ID numbers">
+                <InfoGrid>
+                    <InfoItem label="Branch" value={profile.branch_name} />
+                    <InfoItem label="Staff code" value={profile.staff_code} mono />
+                    <InfoItem label="Employee ID" value={profile.employee_id} mono />
+                    <InfoItem label="Attendance machine ID" value={profile.biometric_id} mono />
+                </InfoGrid>
+            </InfoSection>
         </div>
     );
 };
