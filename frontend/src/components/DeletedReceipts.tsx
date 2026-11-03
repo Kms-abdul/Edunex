@@ -3,6 +3,7 @@ import api from '../api';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { notify } from './ui/feedback';
 
 const DeletedReceiptsReport: React.FC = () => {
     const [receipts, setReceipts] = useState<any[]>([]);
@@ -33,7 +34,7 @@ const DeletedReceiptsReport: React.FC = () => {
     );
 
     const exportToExcel = () => {
-        if (filteredReceipts.length === 0) return alert('No data to export');
+        if (filteredReceipts.length === 0) return notify('No data to export');
         const data = filteredReceipts.map((r, idx) => ({
             'S.No': idx + 1,
             'Student Name': r.student_name,
@@ -55,7 +56,7 @@ const DeletedReceiptsReport: React.FC = () => {
     };
 
     const exportToPDF = () => {
-        if (filteredReceipts.length === 0) return alert('No data to export');
+        if (filteredReceipts.length === 0) return notify('No data to export');
         const doc = new jsPDF("l", "mm", "a4");
         doc.setFontSize(16);
         doc.text("Deleted Receipts Report", 14, 15);

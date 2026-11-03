@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api, { remittanceApi } from '../api';
 import PageHeader from './ui/PageHeader';
+import { notify } from './ui/feedback';
 
 interface DenominationRow {
   denomination: number;
@@ -314,7 +315,7 @@ const RemittanceDeposit: React.FC = () => {
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
     } catch (e) {
-      alert('Failed to download deposit slip attachment. File may not exist.');
+      notify('Failed to download deposit slip attachment. File may not exist.');
     }
   };
 

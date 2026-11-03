@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import api from "../api";
 import { Save, Edit, FileDown } from "lucide-react";
 import * as XLSX from 'xlsx';
+import { notify } from './ui/feedback';
 
 // --- Types ---
 interface Student {
@@ -353,7 +354,7 @@ const MarksEntryAllSubjects: React.FC = () => {
             // Use toast or small checkmark? For now, nothing blocking, maybe just remove edit mode.
         } catch (err) {
             console.error("Save failed for student " + studentId, err);
-            alert("Failed to save marks for this student. Please check inputs.");
+            notify("Failed to save marks for this student. Please check inputs.");
         } finally {
             const newSaving = new Set(rowSaving);
             newSaving.delete(studentId);

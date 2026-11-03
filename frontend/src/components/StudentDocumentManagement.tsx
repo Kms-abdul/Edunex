@@ -11,6 +11,7 @@ import api from '../api';
 import { auth } from '../api';
 import { Student } from '../types';
 import axios from 'axios';
+import { notify } from './ui/feedback';
 
 interface DocumentType {
     id: number;
@@ -230,7 +231,7 @@ const StudentDocumentManagement: React.FC = () => {
             link.click();
             link.parentNode?.removeChild(link);
         } catch {
-            alert('Failed to download document. It might have been removed.');
+            notify('Failed to download document. It might have been removed.');
         }
     };
 

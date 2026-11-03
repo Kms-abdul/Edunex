@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api";
+import { notify } from './ui/feedback';
 
 interface Student {
     student_id: number;
@@ -150,7 +151,7 @@ const AssignStudentSubjects: React.FC = () => {
 
         } catch (e) {
             console.error("Failed to fetch assignment data", e);
-            alert("Error fetching data");
+            notify("Error fetching data");
         } finally {
             setLoading(false);
         }
@@ -235,13 +236,13 @@ const AssignStudentSubjects: React.FC = () => {
                 data: payloadData
             });
 
-            alert("Saved successfully!");
+            notify("Saved successfully!");
             // Refresh to sync
             fetchData();
 
         } catch (e) {
             console.error("Save failed", e);
-            alert("Failed to save assignments.");
+            notify("Failed to save assignments.");
         } finally {
             setSaving(false);
         }

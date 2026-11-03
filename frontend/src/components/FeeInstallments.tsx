@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import { canWrite } from '../utils/permissions';
+import { notify, confirmDialog } from './ui/feedback';
 
 interface FeeType {
     id: number;
@@ -305,7 +306,7 @@ const FeeInstallments: React.FC = () => {
     // ── Bulk Generate ───────────────────────────────────────────────────────────
     const generateBulkInstallments = async () => {
         if (!bulkConfig.fee_type_id) {
-            alert('Please select a Fee Type');
+            notify('Please select a Fee Type');
             return;
         }
 
@@ -352,12 +353,12 @@ const FeeInstallments: React.FC = () => {
 
         try {
             await api.post('/installment-schedule', newInstallments);
-            alert(`Successfully generated ${count} installments!`);
+            notify(`Successfully generated ${count} installments!`);
             fetchInstallments();
             setBulkMode(false);
         } catch (error) {
             console.error('Error generating bulk installments:', error);
-            alert('Failed to generate installments');
+            notify('Failed to generate installments');
         }
     };
 
@@ -366,7 +367,7 @@ const FeeInstallments: React.FC = () => {
         e.preventDefault();
 
         if (!formData.title || !formData.start_date || !formData.end_date || !formData.last_pay_date) {
-            alert('Please fill all required fields');
+            notify('Please fill all required fields');
             return;
         }
 
@@ -383,16 +384,16 @@ const FeeInstallments: React.FC = () => {
         try {
             if (editingId) {
                 await api.put(`/installment-schedule/${editingId}`, payload);
-                alert('Installment updated successfully!');
+                notify('Installment updated successfully!');
             } else {
                 await api.post('/installment-schedule', payload);
-                alert('Installment created successfully!');
+                notify('Installment created successfully!');
             }
             fetchInstallments();
             handleReset();
         } catch (error) {
             console.error('Error saving installment:', error);
-            alert('Failed to save installment');
+            notify('Failed to save installment');
         }
     };
 
@@ -415,14 +416,14 @@ const FeeInstallments: React.FC = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Are you sure you want to delete this installment?')) return;
+        if (!await confirmDialog('Are you sure you want to delete this installment?')) return;
         try {
             await api.delete(`/installment-schedule/${id}`);
-            alert('Installment deleted successfully!');
+            notify('Installment deleted successfully!');
             fetchInstallments();
         } catch (error) {
             console.error('Error deleting installment:', error);
-            alert('Failed to delete installment');
+            notify('Failed to delete installment');
         }
     };
 
@@ -453,14 +454,14 @@ const FeeInstallments: React.FC = () => {
 
     const handleCopy = async () => {
         if (copyTargets.size === 0) {
-            alert('Please select at least one branch to copy to.');
+            notify('Please select at least one branch to copy to.');
             return;
         }
         if (!selectedCopyFeeTypeId) {
-            alert('Please select a Fee Type to copy installments for.');
+            notify('Please select a Fee Type to copy installments for.');
             return;
         }
-        if (!confirm(`Are you sure you want to copy installments for the selected fee type to ${copyTargets.size} branches?`)) return;
+        if (!await confirmDialog(`Are you sure you want to copy installments for the selected fee type to ${copyTargets.size} branches?`)) return;
 
         setCopying(true);
         try {
@@ -470,13 +471,13 @@ const FeeInstallments: React.FC = () => {
                 source_fee_type_id: selectedCopyFeeTypeId,
                 academic_year: localStorage.getItem('academicYear') || ''
             });
-            alert('Installments copied successfully!');
+            notify('Installments copied successfully!');
             setCopyTargets(new Set());
             setSelectedCopyFeeTypeId('');
             setIsCopyDropdownOpen(false);
         } catch (error: any) {
             console.error('Copy failed', error);
-            alert(error.response?.data?.error || 'Failed to copy installments.');
+            notify(error.response?.data?.error || 'Failed to copy installments.');
         } finally {
             setCopying(false);
         }
@@ -811,7 +812,7 @@ const FeeInstallments: React.FC = () => {
                                                 const val = parseInt(e.target.value);
                                                 if (isNaN(val)) return;
                                                 if (val > 12) {
-                                                    alert('Number of installments cannot exceed 12');
+                                                    notify('Number of installments cannot exceed 12');
                                                     setBulkConfig(prev => ({ ...prev, count: 12 }));
                                                     return;
                                                 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { ArrowBackIcon } from './icons';
+import { notify, confirmDialog } from './ui/feedback';
 
 interface ChangeSectionProps {
     onBack?: () => void;
@@ -80,7 +81,7 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
             .then(res => setSourceStudents(res.data.students || []))
             .catch(err => {
                 console.error(err);
-                alert("Error fetching students: " + (err.response?.data?.error || err.message));
+                notify("Error fetching students: " + (err.response?.data?.error || err.message));
             })
             .finally(() => setLoadingSource(false));
     }, [academicYear, sourceClass, sourceSection, sourceSearch]);
@@ -103,11 +104,11 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
     };
 
     const handleChangeSection = async () => {
-        if (selectedStudentIds.length === 0) return alert("Select students to change section");
-        if (!targetSection) return alert("Select target section");
-        if (sourceSection === targetSection) return alert("Source and Target section cannot be same");
+        if (selectedStudentIds.length === 0) return notify("Select students to change section");
+        if (!targetSection) return notify("Select target section");
+        if (sourceSection === targetSection) return notify("Source and Target section cannot be same");
 
-        if (!confirm(`Change section for ${selectedStudentIds.length} students to ${sourceClass} - ${targetSection}?`)) return;
+        if (!await confirmDialog(`Change section for ${selectedStudentIds.length} students to ${sourceClass} - ${targetSection}?`)) return;
 
         setProcessing(true);
         try {
@@ -118,7 +119,7 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
             }, {
                 headers: { 'X-Academic-Year': academicYear }
             });
-            alert("Sections changed successfully!");
+            notify("Sections changed successfully!");
 
             // Refresh source students
             setSourceStudents(prev =>
@@ -129,7 +130,7 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
 
         } catch (error: any) {
             console.error(error);
-            alert("Failed to change sections: " + (error.response?.data?.error || error.message));
+            notify("Failed to change sections: " + (error.response?.data?.error || error.message));
         } finally {
             setProcessing(false);
         }

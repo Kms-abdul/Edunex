@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
+import { notify, confirmDialog } from './ui/feedback';
 
 interface FeeType {
     id: number;
@@ -161,11 +162,11 @@ const ConcessionMaster: React.FC = () => {
 
     const handleCopyConcessions = async () => {
         if (copyTargets.size === 0) {
-            alert("Please select at least one branch to copy to.");
+            notify("Please select at least one branch to copy to.");
             return;
         }
 
-        if (!confirm(`Are you sure you want to copy all concessions to ${copyTargets.size} branches? Duplicates will be skipped.`)) {
+        if (!await confirmDialog(`Are you sure you want to copy all concessions to ${copyTargets.size} branches? Duplicates will be skipped.`)) {
             return;
         }
 
@@ -177,12 +178,12 @@ const ConcessionMaster: React.FC = () => {
                 target_branch_ids: Array.from(copyTargets),
                 academic_year: academicYear
             });
-            alert("Concessions copied successfully!");
+            notify("Concessions copied successfully!");
             setCopyTargets(new Set());
             setIsCopyDropdownOpen(false);
         } catch (error: any) {
             console.error("Copy failed", error);
-            alert(error.response?.data?.error || "Failed to copy concessions.");
+            notify(error.response?.data?.error || "Failed to copy concessions.");
         } finally {
             setCopying(false);
         }
@@ -236,7 +237,7 @@ const ConcessionMaster: React.FC = () => {
     };
 
     const handleDelete = async (title: string, year: string) => {
-        if (!window.confirm(`Are you sure you want to delete "${title}" for ${year}?`)) return;
+        if (!await confirmDialog(`Are you sure you want to delete "${title}" for ${year}?`)) return;
 
         try {
 
@@ -245,13 +246,13 @@ const ConcessionMaster: React.FC = () => {
             fetchConcessions();
         } catch (error: any) {
             console.error("Error deleting concession:", error);
-            alert("Student record exist for this concession,Cannot delete");
+            notify("Student record exist for this concession,Cannot delete");
         }
     };
 
     const handleSave = async () => {
         if (!title || !academicYear) {
-            alert("Please fill Title and Academic Year");
+            notify("Please fill Title and Academic Year");
             return;
         }
 

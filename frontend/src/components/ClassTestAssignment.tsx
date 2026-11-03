@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import api from "../api";
 import { AlertTriangle } from "lucide-react";
+import { notify, confirmDialog } from './ui/feedback';
 
 interface ClassItem {
     id: number;
@@ -304,7 +305,7 @@ const ClassTestAssignment: React.FC = () => {
                 const item = assignmentMap.get(key);
                 if (item && item.status) {
                     if (orders.has(item.test_order)) {
-                        alert(`Duplicate order number ${item.test_order} in Class ${cls.name}. Please fix before saving.`);
+                        notify(`Duplicate order number ${item.test_order} in Class ${cls.name}. Please fix before saving.`);
                         setSaving(false);
                         return;
                     }
@@ -342,11 +343,11 @@ const ClassTestAssignment: React.FC = () => {
 
         try {
             await Promise.all(promises);
-            alert("Assignments saved successfully");
+            notify("Assignments saved successfully");
             fetchMatrix(); // Refresh
         } catch (e: any) {
             console.error("Save error", e);
-            alert("Error saving: " + (e.response?.data?.error || e.message));
+            notify("Error saving: " + (e.response?.data?.error || e.message));
         } finally {
             setSaving(false);
         }
@@ -360,8 +361,8 @@ const ClassTestAssignment: React.FC = () => {
     });
 
     const handleCopy = async () => {
-        if (copyTargets.size === 0) return alert("Select target branches");
-        if (!confirm(`Copy assignments to ${copyTargets.size} branches?`)) return;
+        if (copyTargets.size === 0) return notify("Select target branches");
+        if (!await confirmDialog(`Copy assignments to ${copyTargets.size} branches?`)) return;
 
         setCopying(true);
         try {
@@ -376,11 +377,11 @@ const ClassTestAssignment: React.FC = () => {
                     academic_year: selectedYear
                 });
             }
-            alert("Copy successful");
+            notify("Copy successful");
             setIsCopyDropdownOpen(false);
             setCopyTargets(new Set());
         } catch (e: any) {
-            alert("Copy failed: " + e.message);
+            notify("Copy failed: " + e.message);
         } finally {
             setCopying(false);
         }

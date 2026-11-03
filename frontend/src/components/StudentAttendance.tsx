@@ -5,6 +5,7 @@ import { Student } from '../types';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import api from '../api';
+import { notify, confirmDialog } from './ui/feedback';
 
 const getNormalizedBranch = (): string => {
     const b = localStorage.getItem('currentBranch') || 'All';
@@ -146,7 +147,7 @@ const TakeAttendanceForm: React.FC = () => {
 
     const handleGetStudents = async () => {
         if (!selectedClass) {
-            alert("Please select a class");
+            notify("Please select a class");
             return;
         }
         setLoading(true);
@@ -204,7 +205,7 @@ const TakeAttendanceForm: React.FC = () => {
 
         } catch (error) {
             console.error("Error fetching students:", error);
-            alert("Failed to fetch students");
+            notify("Failed to fetch students");
         } finally {
             setLoading(false);
         }
@@ -245,7 +246,7 @@ const TakeAttendanceForm: React.FC = () => {
 
     // const handleSendSms = async () => {
     //     if (smsSelected.size === 0) return;
-    //     if (!window.confirm(`Send SMS to parents of ${smsSelected.size} student(s)?`)) return;
+    //     if (!await confirmDialog(`Send SMS to parents of ${smsSelected.size} student(s)?`)) return;
     //     setSendingSms(true);
     //     setSmsResult(null);
     //     try {
@@ -256,7 +257,7 @@ const TakeAttendanceForm: React.FC = () => {
     //         setSmsResult(res.data);
     //         setSmsSelected(new Set());
     //     } catch (err: any) {
-    //         alert(`SMS error: ${err.response?.data?.error || err.message}`);
+    //         notify(`SMS error: ${err.response?.data?.error || err.message}`);
     //     } finally {
     //         setSendingSms(false);
     //     }
@@ -275,11 +276,11 @@ const TakeAttendanceForm: React.FC = () => {
             };
 
             await api.post('/attendance', payload);
-            alert("Attendance saved successfully!");
+            notify("Attendance saved successfully!");
             handleGetStudents();
         } catch (error) {
             console.error("Error saving attendance:", error);
-            alert("Failed to save attendance");
+            notify("Failed to save attendance");
         } finally {
             setLoading(false);
         }
@@ -428,7 +429,7 @@ const TakeAttendanceForm: React.FC = () => {
                                                                     checked={attendance[student.student_id!] === opt.val}
                                                                     onChange={() => {
                                                                         if ((student as any).is_locked) {
-                                                                            alert("This student record is locked for this academic year.");
+                                                                            notify("This student record is locked for this academic year.");
                                                                         } else {
                                                                             handleStatusChange(student.student_id!, opt.val);
                                                                         }
@@ -516,7 +517,7 @@ const RegisterViewTab: React.FC = () => {
 
     const handleGetReport = async () => {
         if (!selectedClass) {
-            alert("Please select a class");
+            notify("Please select a class");
             return;
         }
         setLoading(true);
@@ -549,7 +550,7 @@ const RegisterViewTab: React.FC = () => {
             }
         } catch (error) {
             console.error("Error fetching report:", error);
-            alert("Failed to fetch report");
+            notify("Failed to fetch report");
         } finally {
             setLoading(false);
         }
@@ -877,7 +878,7 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
 
     const handleGetStudents = async () => {
         if (!selectedClass) {
-            alert("Please select a class");
+            notify("Please select a class");
             return;
         }
         setLoading(true);
@@ -926,7 +927,7 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
 
         } catch (error) {
             console.error("Error fetching data:", error);
-            alert("Failed to fetch data");
+            notify("Failed to fetch data");
         } finally {
             setLoading(false);
         }
@@ -940,7 +941,7 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
 
         // Block toggling on holiday/weekoff dates
         if (blockedDates[dateStr]) {
-            alert(`Cannot mark attendance: ${blockedDates[dateStr]}`);
+            notify(`Cannot mark attendance: ${blockedDates[dateStr]}`);
             return;
         }
 
@@ -959,14 +960,14 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
         }));
     };
 
-    const handleReset = () => {
-        if (window.confirm("Are you sure you want to discard all unsaved changes?")) {
+    const handleReset = async () => {
+        if (await confirmDialog("Are you sure you want to discard all unsaved changes?")) {
             setAttendanceData({ ...originalData });
         }
     };
 
     const handleDownloadTemplate = async () => {
-        if (!selectedClass) return alert("Select a class first");
+        if (!selectedClass) return notify("Select a class first");
 
         try {
             const globalBranch = getNormalizedBranch();
@@ -998,7 +999,7 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
 
         } catch (error) {
             console.error("Download failed", error);
-            alert("Failed to download template");
+            notify("Failed to download template");
         }
     };
 
@@ -1016,11 +1017,11 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
             await api.post('/attendance/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            alert("Upload Successful!");
+            notify("Upload Successful!");
             handleGetStudents(); // Refresh data
         } catch (error: any) {
             console.error("Upload failed", error);
-            alert(`Upload failed: ${error.response?.data?.error || error.message}`);
+            notify(`Upload failed: ${error.response?.data?.error || error.message}`);
         } finally {
             setLoading(false);
             // Reset input
@@ -1060,7 +1061,7 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
 
             // Fallback: If attendanceList is empty, do nothing
             if (attendanceList.length === 0) {
-                alert("No changes allowed to save.");
+                notify("No changes allowed to save.");
                 setSaving(false);
                 return;
             }
@@ -1079,9 +1080,9 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                 if (res.data.stats.skipped > 0 && res.data.stats.skip_details) {
                     msg += `\nReasons: ${res.data.stats.skip_details.join(", ")}`;
                 }
-                alert(msg);
+                notify(msg);
             } else {
-                alert("Monthly attendance saved successfully!");
+                notify("Monthly attendance saved successfully!");
             }
 
             handleGetStudents(); // Refresh data
@@ -1089,9 +1090,9 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
         } catch (error: any) {
             console.error("Error saving attendance:", error);
             if (error.response && error.response.data) {
-                alert(`Failed to save attendance: ${JSON.stringify(error.response.data)}`);
+                notify(`Failed to save attendance: ${JSON.stringify(error.response.data)}`);
             } else {
-                alert(`Failed to save attendance: ${error.message}`);
+                notify(`Failed to save attendance: ${error.message}`);
             }
         } finally {
             setSaving(false);
@@ -1341,7 +1342,7 @@ const AbsentReport: React.FC = () => {
 
     // const handleSendSms = async () => {
     //     if (smsSelected.size === 0) return;
-    //     if (!window.confirm(`Send SMS to parents of ${smsSelected.size} student(s)?`)) return;
+    //     if (!await confirmDialog(`Send SMS to parents of ${smsSelected.size} student(s)?`)) return;
     //     setSendingSms(true);
     //     setSmsResult(null);
     //     try {
@@ -1352,7 +1353,7 @@ const AbsentReport: React.FC = () => {
     //         setSmsResult(res.data);
     //         setSmsSelected(new Set());
     //     } catch (err: any) {
-    //         alert(`SMS error: ${err.response?.data?.error || err.message}`);
+    //         notify(`SMS error: ${err.response?.data?.error || err.message}`);
     //     } finally {
     //         setSendingSms(false);
     //     }
@@ -1388,7 +1389,7 @@ const AbsentReport: React.FC = () => {
 
     const handleSearchStudent = async () => {
         if (!searchQuery) {
-            alert("Please enter a search term");
+            notify("Please enter a search term");
             return;
         }
         setLoading(true);
@@ -1398,7 +1399,7 @@ const AbsentReport: React.FC = () => {
             const res = await api.get('/students', { params: { search: searchQuery, branch: branchParam } });
             const students = res.data.students || [];
             if (students.length === 0) {
-                alert("No students found");
+                notify("No students found");
                 setSearchResults([]);
             } else if (students.length === 1) {
                 setSearchResults([]);
@@ -1409,7 +1410,7 @@ const AbsentReport: React.FC = () => {
             }
         } catch (error) {
             console.error("Error searching students:", error);
-            alert("Failed to search students");
+            notify("Failed to search students");
         } finally {
             setLoading(false);
         }
@@ -1436,7 +1437,7 @@ const AbsentReport: React.FC = () => {
             setResults(records);
         } catch (error) {
             console.error("Error fetching report:", error);
-            alert("Failed to fetch report");
+            notify("Failed to fetch report");
         } finally {
             setLoading(false);
         }
@@ -1468,7 +1469,7 @@ const AbsentReport: React.FC = () => {
             // setSmsResult(null);
         } catch (error) {
             console.error("Error fetching report:", error);
-            alert("Failed to fetch report");
+            notify("Failed to fetch report");
         } finally {
             setLoading(false);
         }
@@ -1547,7 +1548,7 @@ const AbsentReport: React.FC = () => {
                                         <button
                                             onClick={async () => {
                                                 if (!selectedClass) {
-                                                    alert("Please select a class");
+                                                    notify("Please select a class");
                                                     return;
                                                 }
                                                 setLoading(true);
@@ -1561,7 +1562,7 @@ const AbsentReport: React.FC = () => {
                                                     setSelectedStudent(null);
                                                 } catch (e) {
                                                     console.error(e);
-                                                    alert("Error fetching students");
+                                                    notify("Error fetching students");
                                                 } finally {
                                                     setLoading(false);
                                                 }

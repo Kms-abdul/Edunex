@@ -3,6 +3,7 @@ import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { OnlineClassItem } from '../types';
 import PageHeader from './ui/PageHeader';
+import { notify, confirmDialog } from './ui/feedback';
 
 // start_datetime is stored as a plain wall-clock string (e.g. "2026-09-01T12:55:00")
 // representing the time in the class's own `timezone` field — not the viewer's.
@@ -65,7 +66,7 @@ const OnlineClass: React.FC = () => {
   };
 
   const handleGoogleDisconnect = async () => {
-    if (!window.confirm("Disconnect your Google account? You won't be able to schedule new Google Meet classes until you reconnect.")) return;
+    if (!await confirmDialog("Disconnect your Google account? You won't be able to schedule new Google Meet classes until you reconnect.")) return;
     try {
       await api.delete('/online-classes/google/disconnect');
       setGoogleStatus({ connected: false });
@@ -856,7 +857,7 @@ const CancelClassModal: React.FC<CancelClassModalProps> = ({ classItem, onClose,
     try {
       const res = await api.post(`/online-classes/${classItem.id}/cancel`, { reason: reason.trim() || undefined });
       if (res.data?.warning) {
-        window.alert(res.data.warning);
+        notify(res.data.warning);
       }
       onCancelled();
     } catch (e: any) {
@@ -1090,7 +1091,7 @@ const ZoomSettingsModal: React.FC<ZoomSettingsModalProps> = ({ onClose }) => {
   };
 
   const handleDeactivate = async (row: ZoomCredentialRow) => {
-    if (!window.confirm(`Deactivate the Zoom configuration for ${row.default_host_email}? Classes relying on it will stop being schedulable until a new one is set up.`)) {
+    if (!await confirmDialog(`Deactivate the Zoom configuration for ${row.default_host_email}? Classes relying on it will stop being schedulable until a new one is set up.`)) {
       return;
     }
     setDeletingId(row.id);

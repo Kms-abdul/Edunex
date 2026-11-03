@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../api";
 import { Copy, Save } from "lucide-react";
 import CopySubjectTestModal from "./CopySubjectTestModal";
+import { notify } from './ui/feedback';
 
 interface SubjectRow {
     subject_id: number;
@@ -118,7 +119,7 @@ export default function AssignSubjectTests() {
             setTestMaxMarks(res.data.test_max_marks || 0);
         } catch (err: any) {
             console.error(err);
-            alert(err.response?.data?.error || "Failed to load subjects");
+            notify(err.response?.data?.error || "Failed to load subjects");
         } finally {
             setLoading(false);
         }
@@ -127,7 +128,7 @@ export default function AssignSubjectTests() {
     const handleSave = async () => {
         // Validation handled by backend regarding if class/branch/test selected
         if (!filters.academic_year_id || !filters.branch_id || !filters.class_id || !filters.test_id) {
-            alert("Please select all filters first.");
+            notify("Please select all filters first.");
             return;
         }
 
@@ -136,13 +137,13 @@ export default function AssignSubjectTests() {
         const totalMarks = assignedSubjects.reduce((sum, s) => sum + (s.max_marks || 0), 0);
 
         if (totalMarks > testMaxMarks) {
-            alert(`Total Subject Marks (${totalMarks}) cannot exceed Test Max Marks (${testMaxMarks})`);
+            notify(`Total Subject Marks (${totalMarks}) cannot exceed Test Max Marks (${testMaxMarks})`);
             return;
         }
 
         const orders = assignedSubjects.map(s => s.subject_order).filter(o => o !== null);
         if (new Set(orders).size !== orders.length) {
-            alert("Subject Orders must be unique");
+            notify("Subject Orders must be unique");
             return;
         }
 
@@ -159,14 +160,14 @@ export default function AssignSubjectTests() {
 
         try {
             const res = await api.post("/class-test-subjects/", payload);
-            alert("Assignments saved successfully");
+            notify("Assignments saved successfully");
 
             // If backend created a new ID, update state
             if (res.data.class_test_id) {
                 setClassTestId(res.data.class_test_id);
             }
         } catch (err: any) {
-            alert(err.response?.data?.error || "Save failed");
+            notify(err.response?.data?.error || "Save failed");
         } finally {
             setSaving(false);
         }

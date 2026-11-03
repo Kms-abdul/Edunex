@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { remittanceApi } from '../api';
 import { API_URL } from '../config';
 import PageHeader from './ui/PageHeader';
+import { notify } from './ui/feedback';
 
 const RemittanceApprovals: React.FC = () => {
   const [branches, setBranches] = useState<any[]>([]);
@@ -86,7 +87,7 @@ const RemittanceApprovals: React.FC = () => {
       setRejectionRemarks('');
       fetchRemittances();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Error updating status');
+      notify(err.response?.data?.error || 'Error updating status');
     }
   };
 
@@ -111,7 +112,7 @@ const RemittanceApprovals: React.FC = () => {
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
     } catch (e) {
-      alert('Failed to view attachment. The file may have been moved or unassigned.');
+      notify('Failed to view attachment. The file may have been moved or unassigned.');
     }
   };
 

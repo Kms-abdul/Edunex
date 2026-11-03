@@ -4,6 +4,7 @@ import { PrinterIcon } from './icons';
 import FeeReceipt from './FeeReceipt';
 import { Page } from '../App';
 import { useAuth } from '../contexts/AuthContext';
+import { notify } from './ui/feedback';
 
 // Removed monthOrder in favor of Sr based dynamic grouping
 
@@ -266,7 +267,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
             setShowHistory(true);
         } catch (error) {
             console.error("Error fetching payment history:", error);
-            alert("Failed to fetch payment history.");
+            notify("Failed to fetch payment history.");
         }
     };
 
@@ -386,7 +387,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
         const exists = installments.some(i => i.fee_type_id === feeTypeId);
         if (exists) return;
 
-        alert("This fee type is not assigned to the student.");
+        notify("This fee type is not assigned to the student.");
     };
     useEffect(() => {
         const fetchConcessions = async () => {
@@ -587,7 +588,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
         setAppliedConcession(totalDiscount);
 
         if (skippedItems.length > 0) {
-            alert(
+            notify(
                 `Concession was NOT applied to the following installments because the Payment Date (${paymentDate}) is after the Due Date:\n\n- ${skippedItems.join('\n- ')}`
             );
         }
@@ -713,13 +714,13 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
 
     const handleTakeFee = async () => {
         if (!selectedStudent || selectedItems.length === 0) {
-            alert('Please select a student and at least one installment to pay.');
+            notify('Please select a student and at least one installment to pay.');
             return;
         }
 
         const totalToPay = totalPaying;
         if (totalToPay <= 0 && appliedConcession <= 0) {
-            alert('Please enter a paying amount greater than 0.');
+            notify('Please enter a paying amount greater than 0.');
             return;
         }
 
@@ -740,7 +741,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
             );
 
             if (activeAllocations.length === 0) {
-                alert('Please enter a paying amount greater than 0.');
+                notify('Please enter a paying amount greater than 0.');
                 return;
             }
 
@@ -851,7 +852,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
             setInstallments(instResponse.data.installments || []);
         } catch (error: any) {
             console.error('Error recording payment:', error);
-            alert(error.response?.data?.error || "Failed to record payment");
+            notify(error.response?.data?.error || "Failed to record payment");
         }
     };
 

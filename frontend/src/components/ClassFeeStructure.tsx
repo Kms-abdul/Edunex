@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
+import { notify, confirmDialog } from './ui/feedback';
 
 interface FeeType {
     id: number;
@@ -233,7 +234,7 @@ const ClassFeeStructure: React.FC = () => {
 
     const addFeeToStructure = async (feeTypeId: number, totalAmount: number, isNewAdmission: boolean) => {
         if (isAllBranchesMode) {
-            alert('Please select a specific branch to add fee structures.');
+            notify('Please select a specific branch to add fee structures.');
             return;
         }
 
@@ -243,7 +244,7 @@ const ClassFeeStructure: React.FC = () => {
         // Check for duplicates
         const currentFees = isNewAdmission ? newAdmissionFees : existingStudentFees;
         if (currentFees.some(f => f.fee_type_id === feeTypeId)) {
-            alert(`Fee type "${feeType.fee_type}" already exists in the list.`);
+            notify(`Fee type "${feeType.fee_type}" already exists in the list.`);
             return;
         }
 
@@ -272,12 +273,12 @@ const ClassFeeStructure: React.FC = () => {
                         month_order: inst.installment_no
                     }));
                 } else {
-                    alert('Installments not created for this fee type. Please configure installments first.');
+                    notify('Installments not created for this fee type. Please configure installments first.');
                     return;
                 }
             } catch (error) {
                 console.error('Error fetching installments:', error);
-                alert('Error fetching installment schedule. Please try again.');
+                notify('Error fetching installment schedule. Please try again.');
                 return;
             }
         }
@@ -303,7 +304,7 @@ const ClassFeeStructure: React.FC = () => {
 
         // If the fee has an ID, it's saved in the database - delete it via API
         if (feeToRemove.id) {
-            const confirmDelete = window.confirm(
+            const confirmDelete = await confirmDialog(
                 `Are you sure you want to delete this fee structure? This will also remove it from all students in this class.`
             );
 
@@ -311,10 +312,10 @@ const ClassFeeStructure: React.FC = () => {
 
             try {
                 await api.delete(`/class-fee-structure/${feeToRemove.id}`);
-                alert('Fee structure deleted successfully from database and student records!');
+                notify('Fee structure deleted successfully from database and student records!');
             } catch (error: any) {
                 console.error('Error deleting fee structure:', error);
-                alert(`Error: ${error.response?.data?.error || 'Failed to delete fee structure'}`);
+                notify(`Error: ${error.response?.data?.error || 'Failed to delete fee structure'}`);
                 return; // Don't remove from UI if API call failed
             }
         }
@@ -382,14 +383,14 @@ const ClassFeeStructure: React.FC = () => {
 
     const saveFeeStructure = async () => {
         if (isAllBranchesMode) {
-            alert(
+            notify(
                 'Class Fee Structure cannot be created at All Branches level. Please select a specific branch.'
             );
             return;
         }
 
         if (!selectedClass || !academicYear) {
-            alert('Please select class and academic year');
+            notify('Please select class and academic year');
             return;
         }
 
@@ -425,12 +426,12 @@ const ClassFeeStructure: React.FC = () => {
 
         try {
             await api.post('/class-fee-structure', payload);
-            alert('Fee structure saved successfully!');
+            notify('Fee structure saved successfully!');
             resetForm();
         } catch (error: any) {
             console.error('Error saving fee structure:', error);
             const errorMessage = error.response?.data?.error || 'Failed to save fee structure';
-            alert(`Error: ${errorMessage}`);
+            notify(`Error: ${errorMessage}`);
         }
     };
 
@@ -454,16 +455,16 @@ const ClassFeeStructure: React.FC = () => {
 
     const handleCopy = async () => {
         if (copyTargets.size === 0) {
-            alert("Please select at least one branch to copy to.");
+            notify("Please select at least one branch to copy to.");
             return;
         }
 
         if (!selectedClass) {
-            alert("Please select a class first.");
+            notify("Please select a class first.");
             return;
         }
 
-        if (!confirm(`Are you sure you want to copy fee structure for ${selectedClass} to ${copyTargets.size} branches?\n(Merge Mode: Only missing fee types will be added)`)) {
+        if (!await confirmDialog(`Are you sure you want to copy fee structure for ${selectedClass} to ${copyTargets.size} branches?\n(Merge Mode: Only missing fee types will be added)`)) {
             return;
         }
 
@@ -475,12 +476,12 @@ const ClassFeeStructure: React.FC = () => {
                 academic_year: academicYear,
                 class: selectedClass
             });
-            alert("Fee structure copied successfully!");
+            notify("Fee structure copied successfully!");
             setCopyTargets(new Set()); // Reset selections
             setIsCopyDropdownOpen(false);
         } catch (error: any) {
             console.error("Copy failed", error);
-            alert(error.response?.data?.error || "Failed to copy fee structure.");
+            notify(error.response?.data?.error || "Failed to copy fee structure.");
         } finally {
             setCopying(false);
         }

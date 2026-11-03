@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Pencil, Plus, ToggleLeft, ToggleRight, X, Save } from 'lucide-react';
 import api from '../api';
+import { notify } from './ui/feedback';
 
 interface TestType {
     id: number;
@@ -87,7 +88,7 @@ const TestTypeManager: React.FC = () => {
             console.error("Failed to fetch test types", error);
             const msg = error.response?.data?.error || error.message || "Unknown error";
             const status = error.response?.status ? ` (${error.response.status})` : "";
-            alert(`Failed to fetch test types${status}: ${msg}. Check console for details.`);
+            notify(`Failed to fetch test types${status}: ${msg}. Check console for details.`);
         } finally {
             setLoading(false);
         }
@@ -115,7 +116,7 @@ const TestTypeManager: React.FC = () => {
         } catch (error: any) {
             console.error("Save error:", error);
             const msg = error.response?.data?.error || error.message || "Failed to save";
-            alert(`Error: ${msg}`);
+            notify(`Error: ${msg}`);
         }
     };
 

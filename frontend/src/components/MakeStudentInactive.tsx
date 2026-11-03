@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
+import { confirmDialog } from './ui/feedback';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -162,7 +163,7 @@ const MakeStudentInactive: React.FC = () => {
             setMessage({ type: 'error', text: 'Please enter an inactivation date.' });
             return;
         }
-        if (!window.confirm(`Are you sure you want to make ${student.name} inactive?`)) return;
+        if (!await confirmDialog(`Are you sure you want to make ${student.name} inactive?`)) return;
 
         setSubmitting(true);
         setMessage(null);
@@ -193,7 +194,7 @@ const MakeStudentInactive: React.FC = () => {
     // ── Nullify Fee Structure ──────────────────────────────────────────────────
     const handleNullify = async () => {
         if (!student) return;
-        if (!window.confirm('This will zero out all unpaid fee installments. Continue?')) return;
+        if (!await confirmDialog('This will zero out all unpaid fee installments. Continue?')) return;
 
         setNullifying(true);
         setMessage(null);

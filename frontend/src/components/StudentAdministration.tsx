@@ -16,6 +16,7 @@ import UpdateStudentDetails from './UpdateStudentDetails';
 import ChangeSection from './ChangeSection';
 import { Student } from '../types';
 import api from '../api';
+import { notify, confirmDialog } from './ui/feedback';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -395,39 +396,39 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
         };
 
         const handleActivate = async (s: any) => {
-            if (window.confirm(`Are you sure you want to Activate ${s.name}?`)) {
+            if (await confirmDialog(`Are you sure you want to Activate ${s.name}?`)) {
                 try {
                     await api.put(`/students/${s.student_id || s.id}`, { status: 'Active' });
-                    alert("Student Activated successfully");
+                    notify("Student Activated successfully");
                     loadStudents();
                 } catch (e) {
                     console.error(e);
-                    alert("Failed to activate student");
+                    notify("Failed to activate student");
                 }
             }
         };
 
         // Confirm Delete
         const confirmDelete = async () => {
-            if (!password) return alert("Please enter password");
+            if (!password) return notify("Please enter password");
 
             try {
                 const verifyRes = await api.post('/verify-current-password', { password });
                 if (verifyRes.data.success) {
                     const id = studentToDelete.student_id || studentToDelete.id;
                     await api.delete(`/students/${id}`);
-                    alert("Student marked as Inactive successfully");
+                    notify("Student marked as Inactive successfully");
                     setPasswordModalOpen(false);
                     loadStudents();
                 } else {
-                    alert("Invalid Password");
+                    notify("Invalid Password");
                 }
             } catch (error: any) {
                 console.error(error);
                 if (error.response && error.response.data && error.response.data.error) {
-                    alert(error.response.data.error);
+                    notify(error.response.data.error);
                 } else {
-                    alert("Error deleting student");
+                    notify("Error deleting student");
                 }
             }
         };
@@ -589,7 +590,7 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                                                     <button
                                                         onClick={() => {
                                                             if (s.is_locked) {
-                                                                alert("This student record is locked for this academic year and cannot be edited.");
+                                                                notify("This student record is locked for this academic year and cannot be edited.");
                                                             } else {
                                                                 onEdit(s);
                                                             }
@@ -608,7 +609,7 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                                                         <button
                                                             onClick={() => {
                                                                 if (s.is_locked) {
-                                                                    alert("This student record is locked for this academic year and cannot be deactivated.");
+                                                                    notify("This student record is locked for this academic year and cannot be deactivated.");
                                                                 } else {
                                                                     handleDeleteClick(s);
                                                                 }

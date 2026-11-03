@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Page } from '../App';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
+import { notify, confirmDialog } from './ui/feedback';
 
 interface SmsCenterProps {
     navigateTo: (page: Page) => void;
@@ -151,7 +152,7 @@ const SmsReportsTab: React.FC = () => {
             setTotalPages(d.total_pages || 1);
             setPage(p);
         } catch (e: any) {
-            alert(`Failed to load report: ${e.response?.data?.error || e.message}`);
+            notify(`Failed to load report: ${e.response?.data?.error || e.message}`);
         } finally {
             setLoading(false);
         }
@@ -557,12 +558,12 @@ const TemplatesTab: React.FC = () => {
 
     const toggleActive = async (t: SmsTemplateRow) => {
         const action = t.is_active ? 'Deactivate' : 'Activate';
-        if (!window.confirm(`${action} template "${t.name}"?`)) return;
+        if (!await confirmDialog(`${action} template "${t.name}"?`)) return;
         try {
             await api.patch(`/sms/templates/${t.id}/active`, { is_active: !t.is_active });
             await load();
         } catch (e: any) {
-            alert(e.response?.data?.error || e.message);
+            notify(e.response?.data?.error || e.message);
         }
     };
 
@@ -573,7 +574,7 @@ const TemplatesTab: React.FC = () => {
             const res = await api.get(`/sms/templates/${t.id}/history`);
             setHistory(res.data || []);
         } catch (e: any) {
-            alert(e.response?.data?.error || e.message);
+            notify(e.response?.data?.error || e.message);
             setHistoryFor(null);
         }
     };
@@ -966,7 +967,7 @@ const AccountCard: React.FC<{
         if (!form.auth_key.trim())          { setError('Auth key / account ID is required.'); return; }
         if (!account?.has_token && !form.auth_token.trim()) { setError('Auth token / password is required for a new account.'); return; }
         if (!form.default_sender_id.trim()) { setError('Sender ID is required.'); return; }
-        if (!window.confirm(`Save ${title}?`)) return;
+        if (!await confirmDialog(`Save ${title}?`)) return;
         setSaving(true);
         try {
             await onSave(form);
@@ -1113,7 +1114,7 @@ const AccountTab: React.FC = () => {
         const label = source === 'SCHOOL' ? 'the school account'
                     : source === 'OWN'    ? 'its own account'
                     : 'no account (SMS will NOT be sent)';
-        if (!window.confirm(`Set ${data.branch.name} to use ${label}?`)) return;
+        if (!await confirmDialog(`Set ${data.branch.name} to use ${label}?`)) return;
         setSwitching(true);
         setNotice('');
         setError('');
@@ -1287,7 +1288,7 @@ const FeeReceiptCard: React.FC = () => {
         const event_id = which === 'common' ? commonEvent : branchEvent;
         if (mode === 'ON' && !event_id) { setError('Please choose a Fee receipt event.'); return; }
         const label = which === 'common' ? 'the common fee receipt setting' : `fee receipt for ${data?.branch?.name}`;
-        if (!window.confirm(`Save ${label}?`)) return;
+        if (!await confirmDialog(`Save ${label}?`)) return;
         setSaving(which);
         try {
             const res = await api.put(`/sms/fee-receipt-settings/${which}`, { mode, event_id: event_id || null });
@@ -1496,12 +1497,12 @@ const EventsTab: React.FC = () => {
 
     const toggleActive = async (ev: SmsEventRow) => {
         const action = ev.is_active ? 'Deactivate' : 'Activate';
-        if (!window.confirm(`${action} event "${ev.name}"?`)) return;
+        if (!await confirmDialog(`${action} event "${ev.name}"?`)) return;
         try {
             await api.patch(`/sms/events/${ev.id}/active`, { is_active: !ev.is_active });
             await load();
         } catch (e: any) {
-            alert(e.response?.data?.error || e.message);
+            notify(e.response?.data?.error || e.message);
         }
     };
 
@@ -1512,7 +1513,7 @@ const EventsTab: React.FC = () => {
             const res = await api.get(`/sms/events/${ev.id}/history`);
             setHistory(res.data || []);
         } catch (e: any) {
-            alert(e.response?.data?.error || e.message);
+            notify(e.response?.data?.error || e.message);
             setHistoryFor(null);
         }
     };
@@ -1923,7 +1924,7 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
 
     const handleSend = async () => {
         if (!preview) return;
-        if (!window.confirm(`Send "${event?.name}" SMS to ${preview.count} parent(s)?`)) return;
+        if (!await confirmDialog(`Send "${event?.name}" SMS to ${preview.count} parent(s)?`)) return;
         setBusy(true);
         setError('');
         try {

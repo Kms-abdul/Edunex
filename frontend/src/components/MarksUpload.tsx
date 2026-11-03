@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import api from "../api";
 import { Upload, FileDown, AlertCircle } from "lucide-react";
 import * as XLSX from 'xlsx';
+import { notify } from './ui/feedback';
 
 interface MarksUploadProps { }
 
@@ -225,7 +226,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
                 }
 
                 if (errors.length > 0) {
-                    alert("Issues found in Excel:\n" + errors.slice(0, 10).join("\n"));
+                    notify("Issues found in Excel:\n" + errors.slice(0, 10).join("\n"));
                     setSaving(false);
                     return;
                 }

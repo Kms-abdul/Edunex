@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import api from "../api";
 import { UserIcon } from "./icons";
+import { notify } from './ui/feedback';
 
 // --- Constants & Styles ---
 const INPUT_STYLE = "input";
@@ -943,7 +944,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
         !formData.FatherPhone ||
         !formData.Motherfirstname)
     ) {
-      alert("Fill required fields");
+      notify("Fill required fields");
       return;
     }
 
@@ -961,15 +962,15 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
         if (pendingDocuments.length > 0) {
           try {
             await uploadPendingDocuments(studentId);
-            alert("Student created and documents uploaded successfully!");
+            notify("Student created and documents uploaded successfully!");
           } catch (uploadError: any) {
             console.error('Document upload error:', uploadError);
-            alert(
+            notify(
               `Student created successfully, but document upload failed: ${uploadError.message}`
             );
           }
         } else {
-          alert("Student created successfully!");
+          notify("Student created successfully!");
         }
 
         if (onSave) onSave(res.data, exit);
@@ -977,7 +978,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
       } else if (mode === "edit") {
         const id = studentData?.student_id || studentData?.id;
         if (!id) {
-          alert("Error: Student ID is missing for update.");
+          notify("Error: Student ID is missing for update.");
           return;
         }
 
@@ -986,15 +987,15 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
         if (pendingDocuments.length > 0) {
           try {
             await uploadPendingDocuments(id);
-            alert("Student updated and documents uploaded successfully!");
+            notify("Student updated and documents uploaded successfully!");
           } catch (uploadError: any) {
             console.error('Document upload error:', uploadError);
-            alert(
+            notify(
               `Student updated successfully, but document upload failed: ${uploadError.message}`
             );
           }
         } else {
-          alert("Student updated successfully!");
+          notify("Student updated successfully!");
         }
 
         // 🔥 IMPORTANT: use backend response
@@ -1004,7 +1005,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
     } catch (error: any) {
       console.error("Error saving student:", error);
       const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || "Failed to save student";
-      alert(`Failed to save student: ${errorMsg}`);
+      notify(`Failed to save student: ${errorMsg}`);
     }
 
   };

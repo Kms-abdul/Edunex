@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { API_URL } from '../config';
+import { confirmDialog } from './ui/feedback';
 
 const PettyCashApproval: React.FC = () => {
     const globalYear = localStorage.getItem('academicYear') || '2026-2027';
@@ -60,7 +61,7 @@ const PettyCashApproval: React.FC = () => {
     }, [activeTab]);
 
     const handleApproval = async (id: number, type: 'expense' | 'fund', status: 'Approved' | 'Rejected') => {
-        if (!window.confirm(`Are you sure you want to mark this as ${status}?`)) return;
+        if (!await confirmDialog(`Are you sure you want to mark this as ${status}?`)) return;
         
         setLoading(true);
         setMessage('');

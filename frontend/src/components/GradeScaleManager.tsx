@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Edit, Trash2, Plus, Save, RotateCcw, AlertCircle, Check, X } from 'lucide-react';
+import { notify, confirmDialog } from './ui/feedback';
 
 interface GradeScaleDetail {
     id?: number;
@@ -206,15 +207,15 @@ const GradeScaleManager: React.FC = () => {
 
         // Basic Inline Validation
         if (!tempRowData.grade.trim()) {
-            alert("Grade cannot be empty");
+            notify("Grade cannot be empty");
             return;
         }
         if (Number(tempRowData.min_marks) > Number(tempRowData.max_marks)) {
-            alert("Min marks cannot be greater than Max marks");
+            notify("Min marks cannot be greater than Max marks");
             return;
         }
         if (Number(tempRowData.max_marks) > Number(totalMarks)) {
-            alert(`Max marks cannot exceed Total Marks (${totalMarks})`);
+            notify(`Max marks cannot exceed Total Marks (${totalMarks})`);
             return;
         }
 
@@ -332,7 +333,7 @@ const GradeScaleManager: React.FC = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this Grade Scale?")) return;
+        if (!await confirmDialog("Are you sure you want to delete this Grade Scale?")) return;
 
         setLoading(true);
         try {

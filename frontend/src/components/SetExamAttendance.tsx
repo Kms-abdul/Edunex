@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Save, CheckCircle, AlertCircle } from 'lucide-react';
 import api from '../api';
+import { notify } from './ui/feedback';
 
 interface TestType {
     id: number;
@@ -262,7 +263,7 @@ const SetExamAttendance: React.FC = () => {
             newSet.delete(key);
         } else {
             if (newSet.size >= 12) {
-                alert("You cannot select more than 12 months.");
+                notify("You cannot select more than 12 months.");
                 return;
             }
             newSet.add(key);

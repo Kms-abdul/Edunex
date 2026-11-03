@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { canWrite } from '../utils/permissions';
 import { useAuth } from '../contexts/AuthContext';
+import { confirmDialog } from './ui/feedback';
 
 interface SchoolOption { id: number; school_name: string; }
 interface BranchOption { id: number; branch_name: string; branch_code: string; school_id: number | null; }
@@ -219,7 +220,7 @@ const UserManagement: React.FC = () => {
 
   const handleToggleActive = async (u: UserRow) => {
     const action = u.is_active ? 'deactivate' : 'reactivate';
-    if (!window.confirm(`Are you sure you want to ${action} "${u.username}"?`)) return;
+    if (!await confirmDialog(`Are you sure you want to ${action} "${u.username}"?`)) return;
     try {
       if (u.is_active) {
         await api.delete(`/users/${u.user_id}`);

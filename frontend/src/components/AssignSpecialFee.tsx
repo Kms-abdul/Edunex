@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Page } from '../App';
+import { notify, confirmDialog } from './ui/feedback';
 
 interface Student {
     student_id: number;
@@ -220,11 +221,11 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
 
     const handleAssignFees = async () => {
         if (selectedStudentIds.length === 0) {
-            alert('Please select at least one student');
+            notify('Please select at least one student');
             return;
         }
         if (selectedFees.length === 0) {
-            alert('Please select at least one fee type');
+            notify('Please select at least one fee type');
             return;
         }
 
@@ -234,17 +235,17 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
                 const ft = feeTypes.find(t => t.id === f.fee_type_id);
                 return ft ? ft.fee_type : 'Unknown Fee';
             }).join(', ');
-            alert(`The following fees are already assigned in the Class Fee Structure and cannot be assigned again: ${feeNames}`);
+            notify(`The following fees are already assigned in the Class Fee Structure and cannot be assigned again: ${feeNames}`);
             return;
         }
 
         const invalidFees = selectedFees.filter(f => f.amount <= 0);
         if (invalidFees.length > 0) {
-            alert('Please enter valid amounts for all selected fees');
+            notify('Please enter valid amounts for all selected fees');
             return;
         }
 
-        if (!window.confirm(`Assign selected fees to ${selectedStudentIds.length} students?`)) {
+        if (!await confirmDialog(`Assign selected fees to ${selectedStudentIds.length} students?`)) {
             return;
         }
 
@@ -260,14 +261,14 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
             };
 
             const response = await api.post('/fees/assign-special', payload);
-            alert(`Success! ${response.data.assigned_count} fees assigned. ${response.data.skipped_count} skipped (duplicates).`);
+            notify(`Success! ${response.data.assigned_count} fees assigned. ${response.data.skipped_count} skipped (duplicates).`);
 
             setSelectedFees([]);
             setSelectedStudentIds([]);
 
         } catch (error: any) {
             console.error('Error assigning fees:', error);
-            alert(`Error: ${error.response?.data?.error || 'Failed to assign fees'}`);
+            notify(`Error: ${error.response?.data?.error || 'Failed to assign fees'}`);
         } finally {
             setAssigning(false);
         }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import api from "../api";
+import { notify, confirmDialog } from './ui/feedback';
 
 interface Subject {
     id: number;
@@ -84,7 +85,7 @@ const SubjectMaster: React.FC = () => {
         } catch (error: any) {
             console.error("Failed to add subject:", error);
             const errorMsg = error.response?.data?.error || error.message || "Failed to add subject. Please try again.";
-            alert(errorMsg);
+            notify(errorMsg);
         }
     };
 
@@ -100,7 +101,7 @@ const SubjectMaster: React.FC = () => {
             loadSubjects();
         } catch (error) {
             console.error("Failed to update subject:", error);
-            alert("Failed to update subject. Please try again.");
+            notify("Failed to update subject. Please try again.");
         }
     };
 
@@ -112,12 +113,12 @@ const SubjectMaster: React.FC = () => {
             loadSubjects();
         } catch (error) {
             console.error("Failed to update status:", error);
-            alert("Failed to update status.");
+            notify("Failed to update status.");
         }
     };
 
     const deleteSubject = async (id: number) => {
-        if (!window.confirm("Are you sure you want to delete this subject?")) return;
+        if (!await confirmDialog("Are you sure you want to delete this subject?")) return;
 
         try {
             await api.delete(`/academic/subjects/${id}`);
@@ -125,7 +126,7 @@ const SubjectMaster: React.FC = () => {
         } catch (error: any) {
             console.error("Failed to delete subject:", error);
             const errorMsg = error.response?.data?.error || error.message || "Failed to delete subject. Please try again.";
-            alert(errorMsg);
+            notify(errorMsg);
         }
     };
 
@@ -164,11 +165,11 @@ const SubjectMaster: React.FC = () => {
 
     const handleCopySubjects = async () => {
         if (copyTargets.size === 0) {
-            alert("Please select at least one branch to copy to.");
+            notify("Please select at least one branch to copy to.");
             return;
         }
 
-        if (!confirm(`Are you sure you want to copy subjects to ${copyTargets.size} branches?`)) return;
+        if (!await confirmDialog(`Are you sure you want to copy subjects to ${copyTargets.size} branches?`)) return;
 
         setCopying(true);
         try {
@@ -177,12 +178,12 @@ const SubjectMaster: React.FC = () => {
                 target_branch_ids: Array.from(copyTargets),
                 academic_year: academicYear
             });
-            alert("Subjects copied successfully!");
+            notify("Subjects copied successfully!");
             setCopyTargets(new Set());
             setIsCopyDropdownOpen(false);
         } catch (error: any) {
             console.error('Copy failed', error);
-            alert(error.response?.data?.error || "Failed to copy subjects.");
+            notify(error.response?.data?.error || "Failed to copy subjects.");
         } finally {
             setCopying(false);
         }

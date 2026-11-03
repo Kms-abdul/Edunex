@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
+import { notify, confirmDialog } from './ui/feedback';
 
 interface Branch {
     id: number;
@@ -106,7 +107,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
     const handleSaveOrder = async () => {
         if (!orderBranchId || orderBranchId === 'all') {
-            alert("Please select a valid branch");
+            notify("Please select a valid branch");
             return;
         }
         setSavingOrder(true);
@@ -115,13 +116,13 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                 branch_id: parseInt(orderBranchId),
                 class_ids: orderClasses.map(c => c.id)
             });
-            alert("Display order saved successfully!");
+            notify("Display order saved successfully!");
             setIsOrderModalOpen(false);
             fetchMasterClasses();
             fetchClassSummary();
         } catch (error: any) {
             console.error("Save order failed", error);
-            alert(error.response?.data?.error || "Failed to save order");
+            notify(error.response?.data?.error || "Failed to save order");
         } finally {
             setSavingOrder(false);
         }
@@ -247,11 +248,11 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
     const handleSaveClass = async () => {
         if (!newClassName.trim()) {
-            alert("Class Name is required");
+            notify("Class Name is required");
             return;
         }
         if (!selectedBranch) {
-            alert("Please select a branch");
+            notify("Please select a branch");
             return;
         }
 
@@ -261,7 +262,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
         })).filter(s => s.name && s.strength > 0);
 
         if (sectionsPayload.length === 0) {
-            alert("Please add at least one valid section with strength");
+            notify("Please add at least one valid section with strength");
             return;
         }
 
@@ -274,13 +275,13 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
         try {
             await api.post('/classes/create_with_sections', payload);
-            alert("Class saved successfully!");
+            notify("Class saved successfully!");
             handleReset();
             // Refresh summary with current selection
             fetchClassSummary();
         } catch (error: any) {
             console.error("Save failed", error);
-            alert(error.response?.data?.error || "Failed to save class");
+            notify(error.response?.data?.error || "Failed to save class");
         }
     };
 
@@ -321,16 +322,16 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
     const handleCopyBranchStructure = async () => {
         if (!selectedBranch || selectedBranch === 'all' || selectedBranch === '') {
-            alert("Please select a specific Source Branch first (not 'All').");
+            notify("Please select a specific Source Branch first (not 'All').");
             return;
         }
 
         if (copyTargets.size === 0) {
-            alert("Please select at least one target branch.");
+            notify("Please select at least one target branch.");
             return;
         }
 
-        if (!confirm(`Are you sure you want to copy ALL classes and sections from the current branch to ${copyTargets.size} other branches?`)) {
+        if (!await confirmDialog(`Are you sure you want to copy ALL classes and sections from the current branch to ${copyTargets.size} other branches?`)) {
             return;
         }
 
@@ -343,14 +344,14 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
             };
 
             const res = await api.post('/classes/copy_branch_structure', payload);
-            alert(`Copy Successful!\nCopied Sections: ${res.data.copied_sections}\nSkipped (Existing): ${res.data.skipped_sections}`);
+            notify(`Copy Successful!\nCopied Sections: ${res.data.copied_sections}\nSkipped (Existing): ${res.data.skipped_sections}`);
             setCopyTargets(new Set());
             setIsCopyDropdownOpen(false);
             // Refresh to show changes if we copied to a branch we might switch to? 
             // Doesn't affect current view much unless we switch.
         } catch (error: any) {
             console.error("Copy failed", error);
-            alert(error.response?.data?.error || "Failed to copy branch structure");
+            notify(error.response?.data?.error || "Failed to copy branch structure");
         } finally {
             setCopying(false);
         }

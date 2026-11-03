@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReceiptLogo from '../images/Receiptlogo.png';
 import api from '../api';
+import { notify } from './ui/feedback';
 
 interface FeeReceiptProps {
   onClose: () => void;
@@ -204,7 +205,7 @@ const FeeReceipt: React.FC<FeeReceiptProps> = ({ onClose, receiptData }) => {
 
     const printWindow = window.open('', '', 'height=800,width=800');
     if (!printWindow) {
-      alert('Could not open print window.');
+      notify('Could not open print window.');
       return;
     }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api";
+import { notify, confirmDialog } from './ui/feedback';
 
 interface CopySubjectTestModalProps {
     isOpen: boolean;
@@ -82,7 +83,7 @@ export default function CopySubjectTestModal({
             setOptions(data);
         } catch (err) {
             console.error("Failed to fetch copy targets", err);
-            alert("Failed to load target options");
+            notify("Failed to load target options");
         } finally {
             setLoading(false);
         }
@@ -97,11 +98,11 @@ export default function CopySubjectTestModal({
     const handleCopy = async () => {
         if (!sourceClassTestId) return;
         if (selectedTargets.length === 0) {
-            alert("Please select at least one target.");
+            notify("Please select at least one target.");
             return;
         }
 
-        if (!confirm(`Are you sure you want to copy assignments to ${selectedTargets.length} targets? Existing assignments will be overwritten.`)) {
+        if (!await confirmDialog(`Are you sure you want to copy assignments to ${selectedTargets.length} targets? Existing assignments will be overwritten.`)) {
             return;
         }
 
@@ -116,10 +117,10 @@ export default function CopySubjectTestModal({
                 current_class: currentClass,
                 current_test: currentTest
             });
-            alert("Copy successful!");
+            notify("Copy successful!");
             onClose();
         } catch (err: any) {
-            alert(err.response?.data?.error || "Copy failed");
+            notify(err.response?.data?.error || "Copy failed");
         } finally {
             setCopying(false);
         }

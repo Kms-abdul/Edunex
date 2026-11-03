@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
+import { notify, confirmDialog } from './ui/feedback';
 
 interface ConcessionItem {
     fee_type_id: number;
@@ -227,11 +228,11 @@ const StudentConcession: React.FC = () => {
 
     const handleAssign = async () => {
         if (!selectedStudentId || !selectedConcessionTitle || selectedInstallmentIds.length === 0) {
-            alert("Please select a student, a concession, and at least one installment.");
+            notify("Please select a student, a concession, and at least one installment.");
             return;
         }
 
-        if (!window.confirm(`Assign concession to ${selectedInstallmentIds.length} installments? This will update the fee records.`)) return;
+        if (!await confirmDialog(`Assign concession to ${selectedInstallmentIds.length} installments? This will update the fee records.`)) return;
 
         setLoading(true);
         try {

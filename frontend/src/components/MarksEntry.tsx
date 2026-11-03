@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import api from "../api";
 import { Save, FileDown } from "lucide-react";
 import * as XLSX from 'xlsx';
+import { notify } from './ui/feedback';
 
 
  
@@ -204,7 +205,7 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
                         }
 
                         if (num > subjectTotalMarks) {
-                            alert(`Marks cannot exceed ${subjectTotalMarks}`);
+                            notify(`Marks cannot exceed ${subjectTotalMarks}`);
                             val = ''; // Clear only if out of bounds
                         } else {
                             val = String(num); // Set normalized integer string

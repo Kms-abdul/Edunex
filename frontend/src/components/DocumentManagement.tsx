@@ -5,6 +5,7 @@ import { DocumentReportIcon, SetupIcon, SearchIcon, DownloadIcon, TrashIcon, Ref
 import api from '../api';
 import { auth } from '../api';
 import axios from 'axios';
+import { notify, confirmDialog } from './ui/feedback';
 
 type DocTab = 'dashboard' | 'add-category' | 'upload-documents' | 'student-doc-view';
 
@@ -118,12 +119,12 @@ const StudentDocumentView: React.FC = () => {
             link.click();
             link.parentNode?.removeChild(link);
         } catch {
-            alert('Download failed.');
+            notify('Download failed.');
         }
     };
 
     const handleDelete = async (docId: number, studentId: number) => {
-        if (!window.confirm('Delete this document?')) return;
+        if (!await confirmDialog('Delete this document?')) return;
         try {
             const token = auth.getToken();
             await axios.delete(`${API_URL}/documents/${docId}`, {
@@ -134,7 +135,7 @@ const StudentDocumentView: React.FC = () => {
                 [studentId]: (prev[studentId] || []).filter(d => d.id !== docId)
             }));
         } catch {
-            alert('Delete failed.');
+            notify('Delete failed.');
         }
     };
 

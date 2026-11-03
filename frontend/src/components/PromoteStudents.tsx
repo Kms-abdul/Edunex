@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Student } from '../types';
+import { notify, confirmDialog } from './ui/feedback';
 
 interface PromoteStudentsProps {
     onBack?: () => void;
@@ -112,7 +113,7 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
             .then(res => setSourceStudents(res.data.students || []))
             .catch(err => {
                 console.error(err);
-                alert("Error fetching source students: " + (err.response?.data?.error || err.message));
+                notify("Error fetching source students: " + (err.response?.data?.error || err.message));
             })
             .finally(() => setLoadingSource(false));
     }, [sourceYear, sourceClass, sourceSection, sourceSearch]);
@@ -159,11 +160,11 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
     };
 
     const handleUpgrade = async () => {
-        if (selectedStudentIds.length === 0) return alert("Select students to upgrade");
-        if (!targetYear || !targetClass) return alert("Select Target Year and Class");
-        if (sourceYear === targetYear) return alert("Source and Target Year cannot be same");
+        if (selectedStudentIds.length === 0) return notify("Select students to upgrade");
+        if (!targetYear || !targetClass) return notify("Select Target Year and Class");
+        if (sourceYear === targetYear) return notify("Source and Target Year cannot be same");
 
-        if (!confirm(`Promote ${selectedStudentIds.length} students to Class ${targetClass} (${targetYear})?`)) return;
+        if (!await confirmDialog(`Promote ${selectedStudentIds.length} students to Class ${targetClass} (${targetYear})?`)) return;
 
         setProcessing(true);
         try {
@@ -173,7 +174,7 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
                 target_class: targetClass,
                 target_section: targetSection
             });
-            alert("Students Promoted Successfully!");
+            notify("Students Promoted Successfully!");
             // Refresh
             setSourceStudents(prev =>
                 prev.filter(s => s.student_id === undefined || !selectedStudentIds.includes(s.student_id))
@@ -190,7 +191,7 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
 
         } catch (error) {
             console.error(error);
-            alert("Failed to promote students Please Check If students are already in targeted class and Academic Year");
+            notify("Failed to promote students Please Check If students are already in targeted class and Academic Year");
         } finally {
             setProcessing(false);
         }
@@ -253,7 +254,7 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
                                                         checked={s.student_id ? selectedStudentIds.includes(s.student_id) : false}
                                                         onChange={() => {
                                                             if (hasDue) {
-                                                                alert(`Cannot select student. Pending due: ₹${s.total_due}`);
+                                                                notify(`Cannot select student. Pending due: ₹${s.total_due}`);
                                                                 return;
                                                             }
                                                             handleSelectOne(s.student_id);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import { Save } from "lucide-react";
+import { notify } from './ui/feedback';
 
 const getNormalizedBranch = (): string => {
     const b = localStorage.getItem('currentBranch') || 'All';
@@ -105,7 +106,7 @@ export default function AssignStudentTests() {
 
     const handleSave = async () => {
         if (changes.length === 0) {
-            alert("No changes to save");
+            notify("No changes to save");
             return;
         }
         setSaving(true);
@@ -114,11 +115,11 @@ export default function AssignStudentTests() {
                 ...filters,
                 updates: changes
             });
-            alert("Saved successfully!");
+            notify("Saved successfully!");
             fetchMatrix(); // Reload to refresh state and clear changes
         } catch (e: any) {
             console.error(e);
-            alert("Failed to save: " + (e.response?.data?.error || "Unknown error"));
+            notify("Failed to save: " + (e.response?.data?.error || "Unknown error"));
         } finally {
             setSaving(false);
         }

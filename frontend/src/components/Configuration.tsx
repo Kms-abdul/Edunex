@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Page } from '../App';
 import { ChevronDown, Trash2, Edit2, Plus, RotateCcw, Calendar, Clock } from 'lucide-react';
 import api from '../api';
+import { confirmDialog } from './ui/feedback';
 
 interface ConfigurationProps {
     navigateTo?: (page: Page) => void;
@@ -204,7 +205,7 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
     };
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm('Are you sure you want to delete this weekoff rule?')) return;
+        if (!await confirmDialog('Are you sure you want to delete this weekoff rule?')) return;
         try {
             await api.delete(`/config/weekoff/${id}`);
             setMessage({ type: 'success', text: 'Rule deleted' });
@@ -495,7 +496,7 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
     };
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm('Are you sure you want to delete this holiday?')) return;
+        if (!await confirmDialog('Are you sure you want to delete this holiday?')) return;
         try {
             await api.delete(`/config/holiday/${id}`);
             setMessage({ type: 'success', text: 'Holiday deleted' });

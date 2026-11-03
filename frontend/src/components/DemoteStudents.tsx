@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Student } from '../types';
+import { notify, confirmDialog } from './ui/feedback';
 
 interface DemoteStudentsProps {
     onBack?: () => void;
@@ -77,7 +78,7 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
             })
             .catch(err => {
                 console.error(err);
-                alert('Failed to load students: ' + (err.response?.data?.error || err.message));
+                notify('Failed to load students: ' + (err.response?.data?.error || err.message));
             })
             .finally(() => setLoading(false));
     }, [sourceYear]);
@@ -119,21 +120,21 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
     };
 
     const handleDemote = async () => {
-        if (!sourceYear) return alert('Select the year to demote FROM.');
-        if (!restoreYear) return alert('Select the year to demote BACK TO.');
-        if (sourceYear === restoreYear) return alert('Both years cannot be the same.');
-        if (selectedIds.length === 0) return alert('Select at least one student to demote.');
+        if (!sourceYear) return notify('Select the year to demote FROM.');
+        if (!restoreYear) return notify('Select the year to demote BACK TO.');
+        if (sourceYear === restoreYear) return notify('Both years cannot be the same.');
+        if (selectedIds.length === 0) return notify('Select at least one student to demote.');
 
         // Validate direction: sourceYear must be AFTER restoreYear
         if (getStartYear(sourceYear) <= getStartYear(restoreYear)) {
-            return alert(
+            return notify(
                 `Invalid direction!\n\n` +
                 `"Demote FROM" (${sourceYear}) must be a LATER year than "Demote TO" (${restoreYear}).\n\n` +
                 `Example: Demote FROM 2027-2028 → TO 2026-2027`
             );
         }
 
-        const confirmed = window.confirm(
+        const confirmed = await confirmDialog(
             `⚠️ DEMOTION CONFIRMATION\n\n` +
             `You are about to demote ${selectedIds.length} student(s):\n` +
             `  From: ${sourceYear}  →  Back to: ${restoreYear}\n\n` +
@@ -160,12 +161,12 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
             if (errors?.length) {
                 msg += `\n\n⚠️ Warnings / Errors:\n${errors.slice(0, 5).join('\n')}`;
             }
-            alert(msg);
+            notify(msg);
             setSelectedIds([]);
             setPromotedStudents(prev => prev.filter(s => !selectedIds.includes(s.student_id!)));
         } catch (err: any) {
             const msg = err.response?.data?.error || err.message;
-            alert('❌ Demotion failed: ' + msg);
+            notify('❌ Demotion failed: ' + msg);
         } finally {
             setProcessing(false);
         }

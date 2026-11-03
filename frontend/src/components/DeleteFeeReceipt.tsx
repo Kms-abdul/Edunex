@@ -3,6 +3,7 @@ import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import FeeReceipt from './FeeReceipt';
 import { TrashIcon, PrinterIcon, RefreshIcon } from './icons';
+import { notify } from './ui/feedback';
 
 interface FeeItem {
     payment_id: number;
@@ -302,7 +303,7 @@ const DeleteFeeReceipt: React.FC = () => {
                 : selectedReasonOption;
 
         if (!finalReason) {
-            alert("Please provide a cancellation reason.");
+            notify("Please provide a cancellation reason.");
             return;
         }
 
@@ -317,7 +318,7 @@ const DeleteFeeReceipt: React.FC = () => {
             fetchReceipts();
         } catch (err: any) {
             console.error("Error cancelling receipt:", err);
-            alert(err.response?.data?.error || "Failed to cancel receipt.");
+            notify(err.response?.data?.error || "Failed to cancel receipt.");
         } finally {
             setIsCancelling(false);
         }
@@ -330,7 +331,7 @@ const DeleteFeeReceipt: React.FC = () => {
             const res = await api.get(`/reports/fees/receipt/${encodeURIComponent(receiptNo)}`);
             const payments = res.data.payments || [];
             if (payments.length === 0) {
-                alert("Receipt details not found.");
+                notify("Receipt details not found.");
                 return;
             }
 
@@ -387,7 +388,7 @@ const DeleteFeeReceipt: React.FC = () => {
             setReceiptDataForPrint(formatted);
         } catch (err: any) {
             console.error("Error loading receipt for print:", err);
-            alert(err.response?.data?.error || "Failed to load receipt details.");
+            notify(err.response?.data?.error || "Failed to load receipt details.");
         } finally {
             setLoadingReceiptData(false);
         }

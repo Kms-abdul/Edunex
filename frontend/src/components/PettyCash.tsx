@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { hasPermission } from '../utils/permissions';
+import { notify } from './ui/feedback';
 
 
 interface Ledger {
@@ -116,7 +117,7 @@ const PettyCash: React.FC = () => {
     e.preventDefault();
     try {
       await api.post('/petty-cash', formData);
-      alert('Transaction saved successfully');
+      notify('Transaction saved successfully');
       // Reset form
       setFormData({
         ...formData,
@@ -130,7 +131,7 @@ const PettyCash: React.FC = () => {
       });
       fetchTransactions();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to save transaction');
+      notify(err.response?.data?.message || 'Failed to save transaction');
     }
   };
 
@@ -138,12 +139,12 @@ const PettyCash: React.FC = () => {
     e.preventDefault();
     try {
       await api.post('/petty-cash/ledgers', newLedger);
-      alert('Ledger created successfully');
+      notify('Ledger created successfully');
       setShowLedgerModal(false);
       setNewLedger({ ledger_name: '', ledger_type: 'Indirect' });
       fetchLedgers();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to create ledger');
+      notify(err.response?.data?.message || 'Failed to create ledger');
     }
   };
 

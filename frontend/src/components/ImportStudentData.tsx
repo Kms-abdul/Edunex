@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import api from '../api';
 import { ImportIcon, DownloadIcon } from './icons';
+import { notify } from './ui/feedback';
 
 interface ImportStudentDataProps {
     onImportSuccess: () => void;
@@ -79,7 +80,7 @@ const ImportStudentData: React.FC<ImportStudentDataProps> = ({ onImportSuccess }
 
         } catch (error) {
             console.error("Error downloading template:", error);
-            alert("Failed to download template. Please check if backend is running.");
+            notify("Failed to download template. Please check if backend is running.");
         }
     };
 

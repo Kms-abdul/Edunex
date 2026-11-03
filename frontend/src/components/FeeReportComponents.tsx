@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { notify } from './ui/feedback';
 
 // Types 
 export interface Receipt {
@@ -791,7 +792,7 @@ export const DailyReport: React.FC<ReportProps> = ({ onViewReceipt, forcedStatus
         const end = new Date(endDate);
         const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
         if (diffDays > 365) {
-            alert("Date range cannot exceed 1 year.");
+            notify("Date range cannot exceed 1 year.");
             return;
         }
         try {
@@ -2418,7 +2419,7 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
     // Search students by name or admission no
     const handleSearch = async () => {
         if (!searchTerm.trim()) {
-            alert('Please enter a search term');
+            notify('Please enter a search term');
             return;
         }
         try {
@@ -2470,7 +2471,7 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
     // Open edit modal (admin only)
     const handleEditReceipt = (receipt: any) => {
         if (!isAdmin) {
-            alert('Only admin can edit receipt details');
+            notify('Only admin can edit receipt details');
             return;
         }
         setEditingReceipt(receipt);
@@ -2511,9 +2512,9 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
                 await handleSelectStudent(selectedStudent);
             }
             setEditingReceipt(null);
-            alert('Receipt updated successfully');
+            notify('Receipt updated successfully');
         } catch (err: any) {
-            alert(err.response?.data?.error || 'Failed to update receipt');
+            notify(err.response?.data?.error || 'Failed to update receipt');
         } finally {
             setSaving(false);
         }

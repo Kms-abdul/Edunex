@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
+import { notify } from './ui/feedback';
 
 const FeeConcessionReport: React.FC = () => {
     const [concessions, setConcessions] = useState<any[]>([]);
@@ -32,7 +33,7 @@ const FeeConcessionReport: React.FC = () => {
             const res = await api.get(`/reports/fees/concession-details/${student.student_id}`);
             setDetails(res.data.details || []);
         } catch (err: any) {
-            alert(err.response?.data?.error || 'Failed to load details');
+            notify(err.response?.data?.error || 'Failed to load details');
             setDetails([]);
         } finally {
             setLoadingDetails(false);

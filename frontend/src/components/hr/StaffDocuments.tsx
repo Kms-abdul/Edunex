@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../../api';
+import { notify } from '../ui/feedback';
 
 interface DocumentType {
     id: number;
@@ -242,7 +243,7 @@ export const StaffDocuments: React.FC<Props> = ({ staffId, mode }) => {
                                                         setTimeout(() => URL.revokeObjectURL(url), 10000);
                                                     } catch (err) {
                                                         console.error("Failed to download document:", err);
-                                                        alert("Failed to download document. Please try again.");
+                                                        notify("Failed to download document. Please try again.");
                                                     }
                                                 }}
                                                 className="text-brand-600 hover:text-brand-700 mr-4"

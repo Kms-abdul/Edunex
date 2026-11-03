@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { PencilIcon, TrashIcon, RefreshIcon } from './icons';
+import { notify, confirmDialog } from './ui/feedback';
 
 interface FeeInstallment {
     sr: number;
@@ -137,20 +138,20 @@ const UpdateStudentFeeStructure: React.FC = () => {
             });
             fetchInstallments();
             setEditingFee(null);
-            alert('Fee updated successfully');
+            notify('Fee updated successfully');
         } catch (error: any) {
-            alert(error.response?.data?.error || 'Failed to update fee');
+            notify(error.response?.data?.error || 'Failed to update fee');
         }
     };
 
     const handleDeleteFee = async (id: number) => {
-        if (!window.confirm('Are you sure you want to delete this fee?')) return;
+        if (!await confirmDialog('Are you sure you want to delete this fee?')) return;
         try {
             await api.delete(`/fees/student-fee/${id}`);
             fetchInstallments();
-            alert('Fee deleted successfully');
+            notify('Fee deleted successfully');
         } catch (error: any) {
-            alert(error.response?.data?.error || 'Failed to delete fee');
+            notify(error.response?.data?.error || 'Failed to delete fee');
         }
     };
 
@@ -165,9 +166,9 @@ const UpdateStudentFeeStructure: React.FC = () => {
             });
             fetchInstallments();
             setShowAddModal(false);
-            alert('Fee added successfully');
+            notify('Fee added successfully');
         } catch (error: any) {
-            alert(error.response?.data?.error || 'Failed to add fee');
+            notify(error.response?.data?.error || 'Failed to add fee');
         }
     };
 
@@ -182,9 +183,9 @@ const UpdateStudentFeeStructure: React.FC = () => {
             ));
             fetchInstallments();
             setShowAssignStandardModal(false);
-            alert('Standard fees assigned successfully');
+            notify('Standard fees assigned successfully');
         } catch (error: any) {
-            alert(error.response?.data?.error || 'Failed to assign standard fees');
+            notify(error.response?.data?.error || 'Failed to assign standard fees');
         }
     };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../api';
 import { canWrite } from '../utils/permissions';
 import { useAuth } from '../contexts/AuthContext';
+import { confirmDialog } from './ui/feedback';
 
 interface School {
   id: number; school_name: string; school_code: string | null;
@@ -134,7 +135,7 @@ const FranchiseManagement: React.FC = () => {
   };
 
   const handleDeleteSchool = async (id: number, name: string) => {
-    if (!window.confirm(`Deactivate school "${name}"?`)) return;
+    if (!await confirmDialog(`Deactivate school "${name}"?`)) return;
     try {
       await api.delete(`/schools/${id}`);
       fetchSchools();
@@ -180,7 +181,7 @@ const FranchiseManagement: React.FC = () => {
   };
 
   const handleDeleteBranch = async (branchId: number) => {
-    if (!window.confirm('Remove this branch?')) return;
+    if (!await confirmDialog('Remove this branch?')) return;
     try {
       await api.delete(`/branches/${branchId}`);
       fetchSchools();

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import FeeReceipt from './FeeReceipt';
 import api from '../api';
+import { notify } from './ui/feedback';
 
 const groupInstallments = (items: any[]) => {
     const installmentFees = items.filter(i => i.installment && i.installment !== "One-Time" && i.installment !== "None");
@@ -96,7 +97,7 @@ const AdjustFeeReport: React.FC = () => {
             const res = await api.get(`/reports/fees/receipt/${receiptNo}`);
             const payments = res.data.items || [];
             if (payments.length === 0) {
-                alert("No items found in this receipt.");
+                notify("No items found in this receipt.");
                 return;
             }
 
@@ -177,7 +178,7 @@ const AdjustFeeReport: React.FC = () => {
             setReceiptData(formattedData);
         } catch (err: any) {
             console.error(err);
-            alert(err.response?.data?.error || 'Failed to load receipt');
+            notify(err.response?.data?.error || 'Failed to load receipt');
         } finally {
             setLoadingReceipt(false);
         }

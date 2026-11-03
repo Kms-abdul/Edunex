@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import api from "../api";
 import { canWrite } from "../utils/permissions";
+import { notify, confirmDialog } from './ui/feedback';
 
 interface Option {
     id: number | string;
@@ -325,7 +326,7 @@ const ClassSubjectAssignment: React.FC = () => {
         });
 
         if (updates.length === 0) {
-            alert("No changes to save.");
+            notify("No changes to save.");
             setSaving(false);
             return;
         }
@@ -340,7 +341,7 @@ const ClassSubjectAssignment: React.FC = () => {
 
             // On success, update Initial to match Current
             setInitialAssignments(new Set(assignments));
-            alert("Assignments saved successfully!");
+            notify("Assignments saved successfully!");
         } catch (error: any) {
             console.error("Failed to save assignments", error);
             let alertMessage = "Failed to save assignments. Please check the console for details.";
@@ -358,7 +359,7 @@ const ClassSubjectAssignment: React.FC = () => {
                     alertMessage = error.response.data.error;
                 }
             }
-            alert(alertMessage);
+            notify(alertMessage);
             setAssignments(new Set(initialAssignments)); // Revert state to initial on save failure
         } finally {
             setSaving(false);
@@ -392,11 +393,11 @@ const ClassSubjectAssignment: React.FC = () => {
 
     const handleCopy = async () => {
         if (copyTargets.size === 0) {
-            alert("Please select at least one branch to copy to.");
+            notify("Please select at least one branch to copy to.");
             return;
         }
 
-        if (!confirm(`Are you sure you want to copy assignments to ${copyTargets.size} branches?\n(Merge Mode: Only missing assignments will be added)`)) {
+        if (!await confirmDialog(`Are you sure you want to copy assignments to ${copyTargets.size} branches?\n(Merge Mode: Only missing assignments will be added)`)) {
             return;
         }
 
@@ -407,12 +408,12 @@ const ClassSubjectAssignment: React.FC = () => {
                 target_branch_ids: Array.from(copyTargets),
                 academic_year_id: selectedYear
             });
-            alert("Assignments copied successfully!");
+            notify("Assignments copied successfully!");
             setCopyTargets(new Set()); // Reset selections
             setIsCopyDropdownOpen(false);
         } catch (error: any) {
             console.error("Copy failed", error);
-            alert(error.response?.data?.error || "Failed to copy assignments.");
+            notify(error.response?.data?.error || "Failed to copy assignments.");
         } finally {
             setCopying(false);
         }

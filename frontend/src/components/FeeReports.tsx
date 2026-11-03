@@ -11,6 +11,7 @@ import {
 } from './FeeReportComponents';
 import FeeReceipt from './FeeReceipt';
 import api from '../api';
+import { notify } from './ui/feedback';
 
 const FeeReports: React.FC = () => {
     const [activeTab, setActiveTab] = useState('today');
@@ -28,7 +29,7 @@ const FeeReports: React.FC = () => {
             const payments = res.data.items || [];
 
             if (payments.length === 0) {
-                alert("No items found in this receipt.");
+                notify("No items found in this receipt.");
                 return;
             }
 
@@ -122,7 +123,7 @@ const FeeReports: React.FC = () => {
             setReceiptData(formattedData);
         } catch (err: any) {
             console.error(err);
-            alert(err.response?.data?.error || 'Failed to load receipt');
+            notify(err.response?.data?.error || 'Failed to load receipt');
         } finally {
             setLoadingReceipt(false);
         }

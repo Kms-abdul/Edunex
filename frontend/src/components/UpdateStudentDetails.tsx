@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { SearchIcon, ArrowBackIcon, UserIcon } from './icons';
+import { notify } from './ui/feedback';
 
 interface UpdateStudentDetailsProps {
     onBack: () => void;
@@ -537,7 +538,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                                             <div
                                                                 className="text-xs text-red-600 max-w-[120px] text-center leading-tight cursor-pointer"
                                                                 title={saveErrors[sid]}
-                                                                onClick={() => alert(saveErrors[sid])}
+                                                                onClick={() => notify(saveErrors[sid])}
                                                             >
                                                                 ⚠️ Error
                                                             </div>

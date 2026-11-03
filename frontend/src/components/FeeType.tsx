@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import axios from "axios";
+import { notify, confirmDialog } from './ui/feedback';
 
 interface FeeType {
     id?: number;
@@ -129,10 +130,10 @@ const FeeTypeManagement: React.FC = () => {
 
             if (editingId) {
                 await api.put(`/fee-types/${editingId}`, payload);
-                alert("Fee Type updated successfully.");
+                notify("Fee Type updated successfully.");
             } else {
                 await api.post("/fee-types", payload);
-                alert("Fee Type created successfully.");
+                notify("Fee Type created successfully.");
             }
 
             resetForm();
@@ -152,7 +153,7 @@ const FeeTypeManagement: React.FC = () => {
                 errorMessage = error.message;
             }
 
-            alert(errorMessage);
+            notify(errorMessage);
         }
     };
     const handleEdit = (feeType: FeeType) => {
@@ -162,13 +163,13 @@ const FeeTypeManagement: React.FC = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (window.confirm('Are you sure you want to delete this fee type?')) {
+        if (await confirmDialog('Are you sure you want to delete this fee type?')) {
             try {
                 await api.delete(`/fee-types/${id}`);
                 fetchFeeTypes();
             } catch (error) {
                 console.error('Error deleting fee type:', error);
-                alert('Error deleting fee type. Please try again.');
+                notify('Error deleting fee type. Please try again.');
             }
         }
     };
@@ -202,11 +203,11 @@ const FeeTypeManagement: React.FC = () => {
 
     const handleCopy = async () => {
         if (copyTargets.size === 0) {
-            alert("Please select at least one branch to copy to.");
+            notify("Please select at least one branch to copy to.");
             return;
         }
 
-        if (!confirm(`Are you sure you want to copy Fee Types to ${copyTargets.size} branches?`)) {
+        if (!await confirmDialog(`Are you sure you want to copy Fee Types to ${copyTargets.size} branches?`)) {
             return;
         }
 
@@ -217,12 +218,12 @@ const FeeTypeManagement: React.FC = () => {
                 target_branch_ids: Array.from(copyTargets),
                 academic_year: localStorage.getItem('academicYear') || ''
             });
-            alert("Fee Types copied successfully!");
+            notify("Fee Types copied successfully!");
             setCopyTargets(new Set());
             setIsCopyDropdownOpen(false);
         } catch (error: any) {
             console.error("Copy failed", error);
-            alert(error.response?.data?.error || "Failed to copy fee types.");
+            notify(error.response?.data?.error || "Failed to copy fee types.");
         } finally {
             setCopying(false);
         }
