@@ -29,19 +29,39 @@ export const REQUIRED_FIELDS: Record<string, { step: number; message: string }> 
 };
 
 /** Same rule as before: a required value must not be empty. */
+const PHONE_FIELDS = new Set(['phone', 'FatherPhone', 'SecondaryPhone', 'SmsNo', 'GuardianContactNo']);
+const phoneDigits = (v: unknown) => String(v ?? '').replace(/^\+91\s?/, '').replace(/\D/g, '');
+
+/** A required value must not be empty; a phone number needs all 10 digits. */
 export const findErrors = (data: Record<string, any>): Record<string, string> => {
   const errors: Record<string, string> = {};
   Object.entries(REQUIRED_FIELDS).forEach(([name, rule]) => {
-    if (!data[name]) errors[name] = rule.message;
+    const value = data[name];
+    if (PHONE_FIELDS.has(name)) {
+      const digits = phoneDigits(value);
+      if (!digits) errors[name] = rule.message;
+      else if (digits.length !== 10) errors[name] = 'Enter all 10 digits of the phone number';
+    } else if (!value) {
+      errors[name] = rule.message;
+    }
+  });
+  // Optional phone numbers: if started, they must be complete
+  PHONE_FIELDS.forEach(name => {
+    if (errors[name] || REQUIRED_FIELDS[name]) return;
+    const digits = phoneDigits(data[name]);
+    if (digits && digits.length !== 10) errors[name] = 'Enter all 10 digits, or leave it empty';
   });
   return errors;
 };
 
+// Optional phone numbers live on the parents step
+const stepOf = (name: string) => REQUIRED_FIELDS[name]?.step ?? (PHONE_FIELDS.has(name) ? REQUIRED_FIELDS.FatherPhone.step : 0);
+
 export const errorsInStep = (errors: Record<string, string>, step: number) =>
-  Object.keys(errors).filter(name => REQUIRED_FIELDS[name]?.step === step);
+  Object.keys(errors).filter(name => stepOf(name) === step);
 
 export const firstStepWithError = (errors: Record<string, string>): number | null => {
-  const steps = Object.keys(errors).map(n => REQUIRED_FIELDS[n]?.step ?? 0);
+  const steps = Object.keys(errors).map(stepOf);
   return steps.length ? Math.min(...steps) : null;
 };
 

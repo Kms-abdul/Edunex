@@ -390,6 +390,10 @@ def update_student(current_user, student_id):
             'ChildId': 'ChildId',
             'PEN': 'PEN',
             'permanentCity': 'permanentCity',
+            'presentCity': 'presentCity',
+            'presentPin': 'presentPin',
+            'permanentAddress': 'permanentAddress',
+            'permanentPin': 'permanentPin',
             'previousSchoolName': 'previousSchoolName',
             'primaryIncomePerYear': 'primaryIncomePerYear',
             'secondaryIncomePerYear': 'secondaryIncomePerYear',
@@ -733,6 +737,10 @@ def create_student(current_user):
         s.ChildId = data.get("ChildId")
         s.PEN = data.get("PEN")
         s.permanentCity = data.get("permanentCity")
+        s.presentCity = data.get("presentCity")
+        s.presentPin = data.get("presentPin")
+        s.permanentAddress = data.get("permanentAddress")
+        s.permanentPin = data.get("permanentPin")
         s.previousSchoolName = data.get("previousSchoolName")
         
         if data.get("primaryIncomePerYear"):

@@ -239,6 +239,15 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
 
       mapped.admissionNo = studentData.admission_no ?? mapped.admissionNo;
       mapped.presentAddress = studentData.address ?? "";
+      mapped.presentCity = studentData.presentCity ?? "";
+      mapped.presentPin = studentData.presentPin ?? "";
+      mapped.permanentAddress = studentData.permanentAddress ?? "";
+      mapped.permanentCity_ui = studentData.permanentCity ?? "";
+      mapped.permanentPin = studentData.permanentPin ?? "";
+      mapped.isSameAddress = !!mapped.presentAddress
+        && mapped.permanentAddress === mapped.presentAddress
+        && mapped.permanentCity_ui === mapped.presentCity
+        && mapped.permanentPin === mapped.presentPin;
       mapped.class = studentData.class ?? studentData.clazz ?? "";
 
       // Explicit Mapping for Previous School Details
@@ -461,6 +470,11 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
         }));
         return;
       }
+      if (name === "permanentPin") {
+        const digits = value.replace(/\D/g, "").slice(0, 6);
+        setFormData((prev) => ({ ...prev, permanentPin: digits }));
+        return;
+      }
       if (name === "presentPin") {
         // Only digits, max 6
         const digits = value.replace(/\D/g, "").slice(0, 6);
@@ -506,8 +520,8 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
         // Limit to 10 digits
         digits = digits.slice(0, 10);
 
-        // Final value = "+91 " + digits
-        const finalValue = "+91 " + digits;
+        // Final value = "+91 " + digits; empty when no digits so a cleared phone counts as empty
+        const finalValue = digits ? "+91 " + digits : "";
 
 
         // Update state
@@ -521,13 +535,20 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
 
 
 
+      // Changing class: the old section belongs to the old class, so clear it
+      if (name === "class") {
+        setFormData((prev) => ({ ...prev, class: value, section: prev.class === value ? prev.section : "" }));
+        return;
+      }
+
       // Default input
       setFormData((prev) => ({
         ...prev,
         [name]: value,
       }));
     },
-    [isViewMode]
+    // branch/location lists are needed for the branch -> location auto-fill above
+    [isViewMode, branchOptions, locationOptions]
   );
 
 
@@ -791,7 +812,12 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
       SamagraId: formData.SamagraId,
       ChildId: formData.ChildId,
       PEN: formData.PEN,
-      permanentCity: formData.permanentCity_id,
+      // Address: permanent copies home address when "same as home" is ticked
+      presentCity: formData.presentCity || null,
+      presentPin: formData.presentPin || null,
+      permanentAddress: (formData.isSameAddress ? formData.presentAddress : formData.permanentAddress) || null,
+      permanentCity: (formData.isSameAddress ? formData.presentCity : formData.permanentCity_ui) || null,
+      permanentPin: (formData.isSameAddress ? formData.presentPin : formData.permanentPin) || null,
       previousSchoolName: formData.previousSchoolName,
       primaryIncomePerYear: formData.primaryIncomePerYear ? Number(formData.primaryIncomePerYear) : null,
       secondaryIncomePerYear: formData.secondaryIncomePerYear ? Number(formData.secondaryIncomePerYear) : null,
@@ -828,22 +854,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
   const handleSaveClick = async (exit: boolean) => {
     if (
       mode === "create" &&
-      (!formData.first_name ||
-        !formData.last_name ||
-        !formData.admission_date ||
-        !formData.AdmissionCategory ||
-        !formData.AdmissionClass ||
-        !formData.branch ||
-        !formData.academic_year ||
-        !formData.class ||
-        !formData.gender ||
-        !formData.dob ||
-        !formData.phone ||
-        !formData.Adharcardno ||
-        !formData.section ||
-        !formData.Fatherfirstname ||
-        !formData.FatherPhone ||
-        !formData.Motherfirstname)
+      firstStepWithError(findErrors(formData)) !== null
     ) {
       // Same check as always; now we also take the person to the first step with a problem.
       const firstBad = firstStepWithError(findErrors(formData));

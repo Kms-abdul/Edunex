@@ -329,6 +329,11 @@ class Student(db.Model, AuditMixin):
     ChildId = db.Column(db.String(50))
     PEN = db.Column(db.String(50))
     permanentCity = db.Column(db.String(100))
+    # Address details collected on the admission form
+    presentCity = db.Column(db.String(100))
+    presentPin = db.Column(db.String(10))
+    permanentAddress = db.Column(db.Text)
+    permanentPin = db.Column(db.String(10))
     previousSchoolName = db.Column(db.String(200))
     primaryIncomePerYear = db.Column(db.Numeric(12, 2))
     secondaryIncomePerYear = db.Column(db.Numeric(12, 2))
