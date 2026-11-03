@@ -3,7 +3,10 @@ import { API_URL } from '../config';
 import { FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { notify } from './ui/feedback';
-import { EmptyState, LoadingState } from './ui';
+import { EmptyState, LoadingState, DataList, Field } from './ui';
+import type { Column } from './ui';
+import Filters from './cash/Filters';
+import StatTiles from './cash/StatTiles';
 
 interface LedgerRow {
     particulars: string;
@@ -123,93 +126,90 @@ const MonthWiseLedger: React.FC<MonthWiseLedgerProps> = ({ onMonthClick }) => {
         XLSX.writeFile(wb, `Month_Wise_Cash_Ledger_${String(branchName).replace(/\s+/g, '_')}_${academicYear}.xlsx`);
     };
 
-    return (
-        <div className="space-y-6">
-            <h2 className="page-title">
-                Month wise cash ledger
-            </h2>
-            <div className="card overflow-hidden">
-                <div className="card-header flex-wrap">
-                    <div className="flex items-center gap-2">
-                        <span className="text-base font-semibold text-slate-900">📅 Month wise cash ledger</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm text-slate-700">Branch:</span>
-                            <select
-                                className="input w-auto"
-                                value={selectedBranch}
-                                onChange={(e) => setSelectedBranch(e.target.value)}
-                            >
-                                {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
-                            </select>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm text-slate-700">FY:</span>
-                            {/* Follows the academic year selected in the header (Apr–Mar of that year) */}
-                            <span className="badge-brand text-xs" title="Change the academic year from the header">{academicYear}</span>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={handleExportExcel}
-                            disabled={loading || activeLedgerData.length === 0}
-                            className="btn-secondary btn-sm text-emerald-700"
-                        >
-                            <FileSpreadsheet size={16} /> Excel
-                        </button>
-                    </div>
-                </div>
+    const branchName = branches.find(b => String(b.id) === String(selectedBranch))?.branch_name || '';
+    const totalIn = activeLedgerData.reduce((s, r) => s + (r.is_opening ? 0 : r.debit), 0);
+    const totalOut = activeLedgerData.reduce((s, r) => s + (r.is_opening ? 0 : r.credit), 0);
+    const closing = activeLedgerData.length ? activeLedgerData[activeLedgerData.length - 1].cash_in_hand : 0;
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50">
-                            <tr>
-                                <th className="p-3 border">Particulars</th>
-                                <th className="p-3 border text-right">Debit (Allocated)</th>
-                                <th className="p-3 border text-right">Credit (Spent)</th>
-                                <th className="p-3 border text-right">Cash in hand</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {activeLedgerData.length === 0 && !loading && (
-                                <tr>
-                                    <td colSpan={4}><EmptyState compact title="No data available" description="No data available for the selected branch and FY." /></td>
-                                </tr>
-                            )}
-                            {loading && (
-                                <tr>
-                                    <td colSpan={4}><LoadingState label="Loading ledger data..." /></td>
-                                </tr>
-                            )}
-                            {activeLedgerData.map((row, idx) => (
-                                <tr key={idx} className={row.is_opening ? 'bg-brand-50 font-medium' : 'hover:bg-slate-50'}>
-                                    <td className="p-3 border">
-                                        {onMonthClick && !row.is_opening ? (
-                                            <button
-                                                className="text-brand-600 hover:text-brand-800 hover:underline font-medium"
-                                                onClick={() => onMonthClick(row.particulars)}
-                                            >
-                                                {row.particulars}
-                                            </button>
-                                        ) : (
-                                            row.particulars
-                                        )}
-                                    </td>
-                                    <td className="p-3 border text-right text-emerald-600">
-                                        {row.debit > 0 ? `₹ ${row.debit.toFixed(2)}` : '-'}
-                                    </td>
-                                    <td className="p-3 border text-right text-rose-600">
-                                        {row.credit > 0 ? `₹ ${row.credit.toFixed(2)}` : '-'}
-                                    </td>
-                                    <td className={`p-3 border text-right font-semibold ${row.cash_in_hand < 0 ? 'text-red-600' : 'text-brand-700'}`}>
-                                        ₹ {row.cash_in_hand.toFixed(2)}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+    const columns: Column<LedgerRow>[] = [
+        {
+            key: 'particulars', header: 'Month', primary: true,
+            render: row => onMonthClick && !row.is_opening ? (
+                <span className="text-brand-700 font-semibold">{row.particulars}</span>
+            ) : (
+                row.particulars
+            ),
+        },
+        { key: 'debit', header: 'Money given', align: 'right', render: row => <span className="text-emerald-700">{row.debit > 0 ? `₹ ${row.debit.toFixed(2)}` : '-'}</span> },
+        { key: 'credit', header: 'Money spent', align: 'right', render: row => <span className="text-rose-600">{row.credit > 0 ? `₹ ${row.credit.toFixed(2)}` : '-'}</span> },
+        {
+            key: 'cash_in_hand', header: 'Cash in hand', align: 'right',
+            render: row => <span className={`font-semibold ${row.cash_in_hand < 0 ? 'text-red-600' : 'text-brand-700'}`}>₹ {row.cash_in_hand.toFixed(2)}</span>,
+        },
+    ];
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-lg font-semibold text-slate-900">Petty cash by month</h2>
+                <p className="text-sm text-slate-500">
+                    Money given to the branch, money spent, and the cash left at the end of each month.
+                    {onMonthClick ? ' Tap a month to see its entries.' : ''}
+                </p>
             </div>
+
+            <Filters
+                summary={<>Showing {branchName || 'branch'} · Academic year {academicYear}</>}
+                collapsible={activeLedgerData.length > 0}
+                actions={
+                    <button
+                        type="button"
+                        onClick={handleExportExcel}
+                        disabled={loading || activeLedgerData.length === 0}
+                        className="btn-secondary text-emerald-700"
+                    >
+                        <FileSpreadsheet size={16} /> Download Excel
+                    </button>
+                }
+            >
+                <Field label="Branch" htmlFor="mwl-branch">
+                    <select
+                        id="mwl-branch"
+                        className="input min-h-[44px]"
+                        value={selectedBranch}
+                        onChange={(e) => setSelectedBranch(e.target.value)}
+                    >
+                        {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
+                    </select>
+                </Field>
+                <Field label="Academic year" hint="Change it from the top bar.">
+                    {/* Follows the academic year selected in the header (Apr–Mar of that year) */}
+                    <div className="min-h-[44px] flex items-center"><span className="badge-brand text-sm" title="Change the academic year from the header">{academicYear}</span></div>
+                </Field>
+            </Filters>
+
+            {!loading && activeLedgerData.length > 0 && (
+                <StatTiles
+                    tiles={[
+                        { label: 'Cash in hand now', value: `₹ ${closing.toFixed(2)}`, tone: closing < 0 ? 'danger' : 'brand', wide: true },
+                        { label: 'Money given', value: `₹ ${totalIn.toFixed(2)}`, tone: 'success' },
+                        { label: 'Money spent', value: `₹ ${totalOut.toFixed(2)}`, tone: 'danger' },
+                    ]}
+                />
+            )}
+
+            {loading ? (
+                <div className="card"><LoadingState label="Loading ledger…" /></div>
+            ) : activeLedgerData.length === 0 ? (
+                <div className="card"><EmptyState compact title="No data available" description="Nothing found for this branch and academic year." /></div>
+            ) : (
+                <DataList
+                    columns={columns}
+                    rows={activeLedgerData}
+                    rowKey={(_, i) => i}
+                    onRowClick={onMonthClick ? (row => { if (!row.is_opening) onMonthClick(row.particulars); }) : undefined}
+                />
+            )}
         </div>
     );
 };

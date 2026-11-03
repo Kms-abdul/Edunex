@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api, { remittanceApi } from '../api';
-import PageHeader from './ui/PageHeader';
+import { Building2, CheckCircle2, Landmark, Paperclip, Printer, RefreshCw, Upload } from 'lucide-react';
 import { notify } from './ui/feedback';
-import { Alert, EmptyState } from './ui';
+import { ActionBar, Alert, Badge, DataList, Field, Steps } from './ui';
+import type { Column } from './ui';
+import StatTiles from './cash/StatTiles';
+import SegmentTabs from './cash/SegmentTabs';
+import { shortDate } from './cash/format';
 
 interface DenominationRow {
   denomination: number;
@@ -11,6 +15,7 @@ interface DenominationRow {
 }
 
 const DEFAULT_DENOMINATIONS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
+const STEP_LABELS = ['How much cash?', 'Count the notes', 'Where is it going?', 'Check and save'];
 
 const RemittanceDeposit: React.FC = () => {
   const [branches, setBranches] = useState<any[]>([]);
@@ -59,6 +64,11 @@ const RemittanceDeposit: React.FC = () => {
   // Recent Submissions
   const [recentRemittances, setRecentRemittances] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'deposit' | 'history'>('deposit');
+
+  // Step flow for a new deposit, and the deposit just saved (for the success screen)
+  const [step, setStep] = useState(0);
+  const [done, setDone] = useState<any | null>(null);
+  const denomRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     fetchBranches();
@@ -255,7 +265,7 @@ const RemittanceDeposit: React.FC = () => {
       // Reload real-time position and history
       fetchCashPosition();
       fetchRecentRemittances();
-      setActiveTab('history');
+      setDone(fullRemittance);
 
       if (shouldPrint) {
         setPrintModalData(fullRemittance);
@@ -320,477 +330,379 @@ const RemittanceDeposit: React.FC = () => {
     }
   };
 
-  return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <PageHeader
-        icon={<span className="font-semibold">₹</span>}
-        title="Cash Remittance Deposit & Day Closing"
-        subtitle="Audit-Proof Financial Workflow • Direct Remittance to Corporate Office"
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="label !mb-0">Branch:</label>
-            <select
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              className="input !w-auto"
-            >
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.branch_name}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => { fetchCashPosition(); fetchRecentRemittances(); }}
-              className="btn-secondary btn-sm"
-              title="Refresh System Calculations"
-            >
-              Refresh
-            </button>
-          </div>
-        }
-      />
+  /* ------------------------------------------------------------ step helpers */
+  const branchName = branches.find((b: any) => b.id.toString() === selectedBranch)?.branch_name || cashPosition.branch_name || '';
+  const pendingCount = recentRemittances.filter(r => r.status === 'Pending').length;
+  const amountNote =
+    !selectedBranch ? 'Choose a branch first.'
+      : !businessDate ? 'Choose the date.'
+        : depositVal <= 0 ? 'Write how much cash you are depositing.'
+          : depositVal > cashPosition.cash_in_hand ? `You can deposit at most ₹${cashPosition.cash_in_hand.toLocaleString()} (the cash in hand).`
+            : '';
+  const notesNote = isDenomMatch
+    ? ''
+    : totalDenomValue < depositVal
+      ? `Notes counted so far: ₹${totalDenomValue.toLocaleString()}. Count ₹${(depositVal - totalDenomValue).toLocaleString()} more.`
+      : `Notes counted (₹${totalDenomValue.toLocaleString()}) are more than the deposit (₹${depositVal.toLocaleString()}).`;
+  const whereNote = depositType === 'Bank' && (!bankName.trim() || !accountNumber.trim() || !referenceNo.trim())
+    ? 'Fill in the bank name, account and slip number.'
+    : '';
+  const reviewLine = `Deposit ₹${depositVal.toLocaleString()} ${depositType === 'Bank' ? `in ${bankName || 'the bank'}` : 'with head office'} on ${shortDate(businessDate)}`;
+  const anyBlock = amountNote || notesNote || whereNote;
 
-      {message && (
+  const goToStep = (n: number) => { setMessage(null); setStep(n); };
+
+  const startAnother = () => {
+    setDone(null);
+    setMessage(null);
+    setStep(0);
+  };
+
+  const historyColumns: Column<any>[] = [
+    { key: 'deposit_amount', header: 'Amount', primary: true, render: rem => `₹${rem.deposit_amount.toLocaleString()}` },
+    { key: 'business_date', header: 'Date', secondary: true, render: rem => `${shortDate(rem.business_date)} · ${rem.remittance_no}` },
+    {
+      key: 'deposit_type', header: 'Where',
+      render: rem => (
+        <span>
+          {rem.deposit_type === 'Bank' ? 'Bank' : 'Head office'}
+          {rem.deposit_type === 'Bank' && rem.bank_name ? ` · ${rem.bank_name}${rem.account_number ? ` (••••${String(rem.account_number).slice(-4)})` : ''}` : ''}
+          {rem.reference_no ? <span className="block text-xs text-slate-500 break-words">Ref: {rem.reference_no}</span> : null}
+        </span>
+      ),
+    },
+    { key: 'remaining_cash', header: 'Cash left', align: 'right', render: rem => `₹${rem.remaining_cash.toLocaleString()}` },
+    {
+      key: 'status', header: 'Status',
+      render: rem => <Badge status={rem.status}>{rem.status === 'Approved' ? 'Approved' : rem.status === 'Rejected' ? 'Rejected' : 'Waiting for approval'}</Badge>,
+    },
+    {
+      key: 'actions', header: '', hideOnMobile: true, align: 'right',
+      render: rem => (
+        <span className="inline-flex gap-1.5 whitespace-nowrap">
+          {rem.attachment_path && (
+            <button onClick={() => handleDownloadAttachment(rem.id, rem.remittance_no)} className="btn-soft btn-sm">Slip</button>
+          )}
+          <button onClick={() => setPrintModalData(rem)} className="btn-secondary btn-sm">Print</button>
+        </span>
+      ),
+    },
+  ];
+
+  /* ------------------------------------------------------------ render steps */
+  const renderAmount = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field
+          label="How much cash are you depositing?"
+          htmlFor="dep-amount"
+          required
+          error={depositVal > cashPosition.cash_in_hand ? `More than the cash in hand (₹${cashPosition.cash_in_hand.toLocaleString()}).` : null}
+          hint={`Cash in hand now: ₹${(cashPosition.cash_in_hand || 0).toLocaleString()}`}
+        >
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
+            <input
+              id="dep-amount"
+              type="number"
+              inputMode="numeric"
+              step="1"
+              placeholder="0"
+              value={depositAmount}
+              onChange={(e) => setDepositAmount(e.target.value)}
+              className={`input min-h-[48px] pl-8 text-lg font-semibold ${depositVal > cashPosition.cash_in_hand ? '!border-rose-500 text-rose-700' : ''}`}
+            />
+          </div>
+        </Field>
+        <Field label="Date" htmlFor="dep-date" required>
+          <input id="dep-date" type="date" value={businessDate} onChange={(e) => setBusinessDate(e.target.value)} className="input min-h-[48px]" />
+        </Field>
+      </div>
+
+      {depositVal > 0 && (
+        <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
+          <span className="text-sm text-slate-700">Cash left after this deposit</span>
+          <span className={`text-lg font-semibold ${remainingCash < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+            ₹{isNaN(remainingCash) ? '0' : remainingCash.toLocaleString()}
+          </span>
+        </div>
+      )}
+
+      <ActionBar note={amountNote || undefined}>
+        <button type="button" className="btn-primary btn-lg" disabled={!!amountNote || loading} onClick={() => goToStep(1)}>
+          Next: count notes
+        </button>
+      </ActionBar>
+    </div>
+  );
+
+  const renderNotes = () => (
+    <div className="space-y-4">
+      <p className="text-sm text-slate-600">
+        Write how many of each note or coin you are depositing. The total must be exactly <span className="font-semibold text-slate-900">₹{depositVal.toLocaleString()}</span>.
+      </p>
+      <ul className="rounded-xl border border-slate-200 divide-y divide-slate-100">
+        {denominations.map((row, idx) => (
+          <li key={row.denomination} className="flex items-center gap-3 px-3 py-2">
+            <label htmlFor={`denom-${row.denomination}`} className="w-16 font-semibold text-slate-800">₹ {row.denomination}</label>
+            <span className="text-slate-400" aria-hidden="true">×</span>
+            <input
+              id={`denom-${row.denomination}`}
+              ref={el => { denomRefs.current[idx] = el; }}
+              type="number"
+              inputMode="numeric"
+              min="0"
+              placeholder="0"
+              value={row.quantity}
+              onChange={(e) => handleDenomChange(idx, e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  denomRefs.current[idx + 1]?.focus();
+                }
+              }}
+              enterKeyHint={idx === denominations.length - 1 ? 'done' : 'next'}
+              className="input !w-24 min-h-[44px] text-center font-semibold"
+            />
+            <span className="ml-auto font-semibold text-slate-900 tabular-nums">₹ {row.amount.toLocaleString()}</span>
+          </li>
+        ))}
+      </ul>
+      <div className={`flex items-center justify-between rounded-xl border px-4 py-3 ${isDenomMatch ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+        <span className="text-sm font-medium text-slate-800">{isDenomMatch ? 'Notes match the deposit' : 'Notes counted'}</span>
+        <span className={`text-xl font-semibold tabular-nums ${isDenomMatch ? 'text-emerald-700' : 'text-amber-800'}`}>
+          ₹ {totalDenomValue.toLocaleString()} <span className="text-sm font-normal text-slate-500">of ₹{depositVal.toLocaleString()}</span>
+        </span>
+      </div>
+      <ActionBar note={notesNote || undefined}>
+        <button type="button" className="btn-secondary btn-lg" onClick={() => goToStep(0)}>Back</button>
+        <button type="button" className="btn-primary btn-lg" disabled={!!notesNote} onClick={() => goToStep(2)}>
+          Next: where it goes
+        </button>
+      </ActionBar>
+    </div>
+  );
+
+  const renderWhere = () => (
+    <div className="space-y-4">
+      <Field label="Where is the cash going?">
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            { value: 'Corporate Office', label: 'Head office', icon: <Building2 className="w-5 h-5" /> },
+            { value: 'Bank', label: 'Bank', icon: <Landmark className="w-5 h-5" /> },
+          ] as const).map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              aria-pressed={depositType === opt.value}
+              onClick={() => setDepositType(opt.value)}
+              className={`min-h-[52px] rounded-xl border-2 px-3 font-semibold text-sm flex items-center justify-center gap-2 ${depositType === opt.value
+                ? 'border-brand-600 bg-brand-50 text-brand-800'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+            >
+              {opt.icon} {opt.label}
+            </button>
+          ))}
+        </div>
+      </Field>
+
+      {depositType === 'Bank' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Bank name" htmlFor="dep-bank" required>
+            <input id="dep-bank" type="text" placeholder="e.g. State Bank of India" value={bankName} onChange={(e) => setBankName(e.target.value)} className="input min-h-[44px]" />
+          </Field>
+          <Field label="Account number or name" htmlFor="dep-acc" required>
+            <input id="dep-acc" type="text" placeholder="e.g. A/C xxx1234" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className="input min-h-[44px]" />
+          </Field>
+          <Field label="Deposit slip number" htmlFor="dep-ref" required className="sm:col-span-2" hint="The number printed on the bank slip or challan.">
+            <input id="dep-ref" type="text" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} className="input min-h-[44px]" />
+          </Field>
+        </div>
+      ) : (
+        <Field label="Who is carrying the cash? (optional)" htmlFor="dep-ref" hint="Staff name or a reference number.">
+          <input id="dep-ref" type="text" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} className="input min-h-[44px]" />
+        </Field>
+      )}
+
+      <Field label={depositType === 'Bank' ? 'Photo of the bank slip (recommended)' : 'Photo of the proof (optional)'}>
+        <input
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg"
+          id="slip-upload"
+          onChange={(e) => setAttachment(e.target.files ? e.target.files[0] : null)}
+          className="hidden"
+        />
+        <label
+          htmlFor="slip-upload"
+          className="flex min-h-[52px] cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-3 text-sm font-medium text-brand-700 hover:bg-slate-100"
+        >
+          {attachment ? (
+            <span className="text-emerald-700 break-all"><Paperclip className="inline w-4 h-4" /> {attachment.name}</span>
+          ) : (
+            <><Upload className="w-4 h-4" /> Add photo or PDF</>
+          )}
+        </label>
+      </Field>
+
+      <Field label="Note (optional)" htmlFor="dep-note">
+        <textarea id="dep-note" rows={2} value={remarks} onChange={(e) => setRemarks(e.target.value)} className="input" />
+      </Field>
+
+      <ActionBar note={whereNote || undefined}>
+        <button type="button" className="btn-secondary btn-lg" onClick={() => goToStep(1)}>Back</button>
+        <button type="button" className="btn-primary btn-lg" disabled={!!whereNote} onClick={() => goToStep(3)}>
+          Next: check
+        </button>
+      </ActionBar>
+    </div>
+  );
+
+  const renderReview = () => (
+    <div className="space-y-4">
+      <Alert tone="info" title={reviewLine}>
+        From {branchName || 'this branch'}
+        {depositType === 'Bank' && accountNumber ? ` · Account ${accountNumber}` : ''}
+        {referenceNo ? ` · Ref ${referenceNo}` : ''}
+      </Alert>
+      <dl className="rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm">
+        <div className="flex justify-between gap-3 px-4 py-2.5"><dt className="text-slate-600">Cash in hand now</dt><dd className="font-medium">₹{cashPosition.cash_in_hand.toLocaleString()}</dd></div>
+        <div className="flex justify-between gap-3 px-4 py-2.5"><dt className="text-slate-600">Depositing</dt><dd className="font-semibold text-emerald-700">₹{depositVal.toLocaleString()}</dd></div>
+        <div className="flex justify-between gap-3 px-4 py-2.5"><dt className="text-slate-600">Cash left after</dt><dd className="font-medium">₹{remainingCash.toLocaleString()}</dd></div>
+        <div className="flex justify-between gap-3 px-4 py-2.5">
+          <dt className="text-slate-600">Notes</dt>
+          <dd className="text-right">{denominations.filter(d => parseInt(d.quantity, 10) > 0).map(d => `₹${d.denomination} × ${d.quantity}`).join(', ')}</dd>
+        </div>
+        {attachment && <div className="flex justify-between gap-3 px-4 py-2.5"><dt className="text-slate-600">Photo</dt><dd className="text-right break-all">{attachment.name}</dd></div>}
+        {remarks && <div className="flex justify-between gap-3 px-4 py-2.5"><dt className="text-slate-600">Note</dt><dd className="text-right break-words">{remarks}</dd></div>}
+      </dl>
+      <p className="text-sm text-slate-500">Head office will check and approve this deposit.</p>
+
+      <ActionBar note={anyBlock || reviewLine}>
+        <button type="button" className="btn-secondary btn-lg" onClick={() => goToStep(2)} disabled={submitting}>Back</button>
+        <button
+          type="button"
+          onClick={(e) => handleSubmit(e, false)}
+          disabled={submitting || loading || depositVal <= 0 || depositVal > cashPosition.cash_in_hand || !isDenomMatch}
+          className="btn-secondary btn-lg"
+        >
+          {submitting ? 'Saving…' : 'Save only'}
+        </button>
+        <button
+          type="button"
+          onClick={(e) => handleSubmit(e, true)}
+          disabled={submitting || loading || depositVal <= 0 || depositVal > cashPosition.cash_in_hand || !isDenomMatch}
+          className="btn-primary btn-lg"
+        >
+          <Printer className="w-4 h-4" /> {submitting ? 'Saving…' : 'Save and print'}
+        </button>
+      </ActionBar>
+    </div>
+  );
+
+  const renderDone = () => (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-6 text-center">
+        <CheckCircle2 className="w-14 h-14 text-emerald-600 mx-auto" />
+        <p className="mt-3 text-xl font-semibold text-slate-900">₹{(done?.deposit_amount || 0).toLocaleString()} deposit saved</p>
+        <p className="mt-1 text-sm text-slate-700">
+          {done?.remittance_no ? <>Number <span className="font-semibold">{done.remittance_no}</span> · </> : null}
+          Waiting for head office to approve.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <button type="button" className="btn-primary btn-lg sm:col-span-2" onClick={() => setPrintModalData(done)}>
+          <Printer className="w-4 h-4" /> Print receipt
+        </button>
+        <button type="button" className="btn-secondary btn-lg" onClick={startAnother}>Make another deposit</button>
+        <button type="button" className="btn-secondary btn-lg" onClick={() => { startAnother(); setActiveTab('history'); }}>See past deposits</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="max-w-5xl space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">Deposit cash</h2>
+        <p className="text-sm text-slate-500">Send the day's cash to the bank or head office.</p>
+      </div>
+
+      {message && !(done && message.type === 'success') && (
         <Alert tone={message.type === 'success' ? 'success' : 'error'} onClose={() => setMessage(null)}>
           {message.text}
         </Alert>
       )}
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200 gap-6 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('deposit')}
-          className={`py-3 px-1 font-semibold text-sm border-b-2 transition-all whitespace-nowrap ${activeTab === 'deposit'
-            ? 'border-brand-600 text-brand-600'
-            : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-        >
-          ➕ Create New Remittance Deposit
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`py-3 px-1 font-semibold text-sm border-b-2 transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'history'
-            ? 'border-brand-600 text-brand-600'
-            : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-        >
-          📜 Remittance History & Status
-          {recentRemittances.filter(r => r.status === 'Pending').length > 0 && (
-            <span className="badge-warning">
-              {recentRemittances.filter(r => r.status === 'Pending').length} Pending
-            </span>
-          )}
+      <div className="card p-4 flex flex-col sm:flex-row sm:items-end gap-3">
+        <Field label="Branch" htmlFor="dep-branch" className="flex-1">
+          <select id="dep-branch" value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)} className="input min-h-[44px]">
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>{b.branch_name}</option>
+            ))}
+          </select>
+        </Field>
+        <button onClick={() => { fetchCashPosition(); fetchRecentRemittances(); }} className="btn-secondary" title="Get the latest cash figures">
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </button>
       </div>
 
+      <StatTiles
+        tiles={[
+          {
+            label: 'Cash in hand now', value: `₹${(cashPosition.cash_in_hand || 0).toLocaleString()}`, tone: 'warning', wide: true,
+            hint: `Cash at start of day + today's cash fees${cashPosition.today_remitted > 0 ? ` − today's deposits (₹${cashPosition.today_remitted.toLocaleString()})` : ''}`,
+          },
+          { label: 'Cash at start of day', value: `₹${(cashPosition.opening_balance || 0).toLocaleString()}` },
+          { label: "Today's cash fees", value: `₹${(cashPosition.today_collection || 0).toLocaleString()}`, tone: 'brand' },
+        ]}
+      />
+
+      <SegmentTabs
+        value={activeTab}
+        onChange={setActiveTab}
+        options={[
+          { value: 'deposit', label: 'New deposit' },
+          { value: 'history', label: pendingCount > 0 ? `Past deposits · ${pendingCount} waiting` : 'Past deposits' },
+        ]}
+      />
+
       {activeTab === 'deposit' ? (
-        <div className="space-y-6">
-          {/* KPI Summary Cards (Audit Proof) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="card p-5 flex flex-col justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Opening Balance</span>
-              <div className="mt-3 flex items-baseline justify-between">
-                <span className="text-3xl font-extrabold text-slate-800">₹{(cashPosition.opening_balance || 0).toLocaleString()}</span>
-                <span className="badge-neutral">Yesterday Closing</span>
-              </div>
-              <p className="text-xs text-slate-500 mt-2">Yesterday's closing cash carry-forward</p>
-            </div>
-
-            <div className="card p-5 flex flex-col justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Today Collections</span>
-              <div className="mt-3 flex items-baseline justify-between">
-                <span className="text-3xl font-extrabold text-brand-600">₹{(cashPosition.today_collection || 0).toLocaleString()}</span>
-                <span className="badge-brand">Cash Fee</span>
-              </div>
-              <p className="text-xs text-slate-500 mt-2">Today's collection of fee in cash mode</p>
-            </div>
-
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-5 shadow-sm border border-amber-300 flex flex-col justify-between relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-bl shadow">
-                🔒 System Locked
-              </div>
-              <span className="text-xs font-black uppercase tracking-wider text-amber-800">Current Cash in Hand</span>
-              <div className="mt-3">
-                <span className="text-3xl font-black text-amber-900">₹{(cashPosition.cash_in_hand || 0).toLocaleString()}</span>
-              </div>
-              <p className="text-[11px] font-semibold text-amber-800 mt-2">
-                ⚠️ Cash in Hand = Opening Balance + Today Collection {cashPosition.today_remitted > 0 ? `(minus today's deposits ₹${cashPosition.today_remitted.toLocaleString()})` : ''}
-              </p>
-            </div>
-          </div>
-
-          {/* Form & Denomination Grid */}
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Column: Deposit Parameters */}
-            <div className="lg:col-span-6 card p-5 space-y-5 flex flex-col justify-between">
-              <div>
-                <h3 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-                  <span>🏦</span> Deposit Instructions & Details
-                </h3>
-
-                <div className="space-y-4 mt-4">
-                  <div>
-                    <label className="label">Business Date</label>
-                    <input
-                      type="date"
-                      value={businessDate}
-                      onChange={(e) => setBusinessDate(e.target.value)}
-                      className="input"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="label">
-                      Deposit Amount (₹) <span className="text-rose-600">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-2.5 text-slate-400 font-bold">₹</span>
-                      <input
-                        type="number"
-                        step="1"
-                        placeholder="0"
-                        value={depositAmount}
-                        onChange={(e) => setDepositAmount(e.target.value)}
-                        className={`w-full pl-8 pr-4 py-2.5 border rounded-lg shadow-sm font-black text-lg outline-none focus:ring-2 ${depositVal > cashPosition.cash_in_hand ? 'border-rose-500 text-rose-700 focus:ring-rose-500 bg-rose-50/50' : 'border-slate-300 text-slate-900 focus:ring-brand-500'
-                          }`}
-                        required
-                      />
-                    </div>
-                    {depositVal > cashPosition.cash_in_hand && (
-                      <p className="text-xs text-rose-600 font-semibold mt-1 flex items-center gap-1">
-                        ⚠️ Cannot deposit more than current system Cash in Hand (₹{cashPosition.cash_in_hand.toLocaleString()}).
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Remaining Cash Preview Banner */}
-                  <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-600 uppercase">Projected Remaining Cash:</span>
-                    <span className={`text-lg font-black ${remainingCash < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                      ₹{isNaN(remainingCash) ? '0' : remainingCash.toLocaleString()}
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="label">Deposit Destination Type</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setDepositType('Corporate Office')}
-                        className={`p-3 rounded-lg border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${depositType === 'Corporate Office'
-                          ? 'border-brand-600 bg-brand-50 text-brand-800 shadow-sm'
-                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                          }`}
-                      >
-                        <span>🏢</span> Corporate Office
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDepositType('Bank')}
-                        className={`p-3 rounded-lg border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${depositType === 'Bank'
-                          ? 'border-emerald-600 bg-emerald-50 text-emerald-800 shadow-sm'
-                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                          }`}
-                      >
-                        <span>🏦</span> Bank Deposit
-                      </button>
-                    </div>
-                  </div>
-
-                  {depositType === 'Bank' ? (
-                    <div className="space-y-4 bg-emerald-50/40 p-4 rounded-xl border border-emerald-200">
-                      <div className="text-xs font-extrabold text-emerald-800 uppercase flex items-center gap-1">
-                        <span>🏦</span> Bank Account Details
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="label">Bank Name <span className="text-rose-600">*</span></label>
-                          <input
-                            type="text"
-                            placeholder="e.g. State Bank of India, HDFC"
-                            value={bankName}
-                            onChange={(e) => setBankName(e.target.value)}
-                            className="input"
-                            required={depositType === 'Bank'}
-                          />
-                        </div>
-                        <div>
-                          <label className="label">Account Number / Name <span className="text-rose-600">*</span></label>
-                          <input
-                            type="text"
-                            placeholder="e.g. A/C xxx1234"
-                            value={accountNumber}
-                            onChange={(e) => setAccountNumber(e.target.value)}
-                            className="input"
-                            required={depositType === 'Bank'}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="label">Bank Deposit Slip / Challan Reference No <span className="text-rose-600">*</span></label>
-                        <input
-                          type="text"
-                          placeholder="Enter Bank Challan or Deposit Slip Ref Number..."
-                          value={referenceNo}
-                          onChange={(e) => setReferenceNo(e.target.value)}
-                          className="input"
-                          required={depositType === 'Bank'}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="label">Messenger Name / Reference Number</label>
-                      <input
-                        type="text"
-                        placeholder="Enter staff/messenger name carrying physical cash to Corporate Office..."
-                        value={referenceNo}
-                        onChange={(e) => setReferenceNo(e.target.value)}
-                        className="input"
-                      />
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="label">
-                      {depositType === 'Bank' ? 'Upload Bank Deposit Slip / Challan Photo (Recommended)' : 'Upload Deposit Voucher / Proof (Optional)'}
-                    </label>
-                    <div className="border-2 border-dashed border-slate-300 rounded-lg p-3 text-center bg-slate-50 hover:bg-slate-100 transition">
-                      <input
-                        type="file"
-                        accept=".pdf,.png,.jpg,.jpeg"
-                        id="slip-upload"
-                        onChange={(e) => setAttachment(e.target.files ? e.target.files[0] : null)}
-                        className="hidden"
-                      />
-                      <label htmlFor="slip-upload" className="cursor-pointer text-sm font-semibold text-brand-600 hover:text-brand-800 block">
-                        {attachment ? (
-                          <span className="text-emerald-700 font-bold flex items-center justify-center gap-2">
-                            📎 Selected: {attachment.name}
-                          </span>
-                        ) : (
-                          <span>📤 Click to Upload Deposit Proof (JPG / PNG / PDF)</span>
-                        )}
-                      </label>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="label">Remarks / Notes</label>
-                    <textarea
-                      rows={2}
-                      value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
-                      placeholder="Enter any optional notes or instructions..."
-                      className="input"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t mt-6 flex flex-col sm:flex-row gap-3">
-                <button
-                  type="button"
-                  onClick={(e) => handleSubmit(e, false)}
-                  disabled={submitting || loading || depositVal <= 0 || depositVal > cashPosition.cash_in_hand || !isDenomMatch}
-                  className="btn-secondary btn-lg flex-1"
-                >
-                  {submitting ? 'Submitting...' : '💾 Save Deposit Only'}
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => handleSubmit(e, true)}
-                  disabled={submitting || loading || depositVal <= 0 || depositVal > cashPosition.cash_in_hand || !isDenomMatch}
-                  className="btn-primary btn-lg flex-[1.5]"
-                >
-                  {submitting ? 'Submitting...' : '🖨️ Save & Print Receipt'}
-                </button>
-              </div>
-            </div>
-
-            {/* Right Column: Denomination Breakdown */}
-            <div className="lg:col-span-6 card p-5">
-              <h3 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-3 flex items-center justify-between">
-                <span className="flex items-center gap-2">💵 Currency Denomination Counter</span>
-                <span className={isDenomMatch && depositVal > 0 ? 'badge-success' : 'badge-warning'}>
-                  {isDenomMatch && depositVal > 0 ? '✓ Balanced' : '⚖ Requires Balance'}
-                </span>
-              </h3>
-
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold text-xs uppercase">
-                      <th className="py-2.5 px-3 text-left">Note / Coin</th>
-                      <th className="py-2.5 px-3 text-center">Quantity</th>
-                      <th className="py-2.5 px-3 text-right">Value (₹)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {denominations.map((row, idx) => (
-                      <tr key={row.denomination} className="hover:bg-slate-50/70">
-                        <td className="py-2 px-3 font-extrabold text-slate-800">
-                          ₹ {row.denomination}
-                        </td>
-                        <td className="py-2 px-3 text-center">
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            value={row.quantity}
-                            onChange={(e) => handleDenomChange(idx, e.target.value)}
-                            className="input !w-24 !py-1 text-center font-semibold"
-                          />
-                        </td>
-                        <td className="py-2 px-3 text-right font-bold text-slate-900">
-                          ₹ {row.amount.toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-slate-100 border-t-2 border-slate-300 font-black text-slate-900 text-base">
-                      <td colSpan={2} className="py-3 px-3 text-right">Total Denomination Value:</td>
-                      <td className={`py-3 px-3 text-right ${isDenomMatch ? 'text-emerald-700' : 'text-rose-600'}`}>
-                        ₹ {totalDenomValue.toLocaleString()}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          </form>
-
-          {/* Unremitted Cash Receipts Table (Audit View) — currently disabled; wrapper card removed so no empty box renders.
-          <div className="card p-6">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
-                <span>📋</span> Active Cash Fee Receipts Contributing to Balance ({cashPosition.unremitted_receipts.length})
-              </h3>
-              <span className="text-xs text-slate-500">Only physical cash fee receipts appear in this audit log.</span>
-            </div>
-
-            {cashPosition.unremitted_receipts.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 font-medium bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
-                No unremitted cash receipts found for this branch. All collected cash has been accounted for!
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 text-slate-600 font-semibold text-xs uppercase border-y border-slate-200">
-                      <th className="p-3">Receipt No</th>
-                      <th className="p-3">Student Name</th>
-                      <th className="p-3">Class</th>
-                      <th className="p-3">Payment Date</th>
-                      <th className="p-3 text-right">Amount (₹)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {cashPosition.unremitted_receipts.map((rec) => (
-                      <tr key={rec.payment_id} className="hover:bg-slate-50 font-medium">
-                        <td className="p-3 font-extrabold text-blue-600">{rec.receipt_no}</td>
-                        <td className="p-3 text-slate-800 font-semibold">{rec.student_name}</td>
-                        <td className="p-3 text-slate-600">{rec.class_name || 'N/A'}</td>
-                        <td className="p-3 text-slate-600">{rec.payment_date}</td>
-                        <td className="p-3 text-right font-extrabold text-slate-900">₹{rec.amount.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-          */}
+        <div className="card p-4 sm:p-5">
+          {done ? renderDone() : (
+            <>
+              <Steps steps={STEP_LABELS} current={step} onJump={goToStep} className="mb-5" />
+              {step === 0 && renderAmount()}
+              {step === 1 && renderNotes()}
+              {step === 2 && renderWhere()}
+              {step === 3 && renderReview()}
+            </>
+          )}
         </div>
       ) : (
-        /* History Tab */
-        <div className="card p-5 space-y-4">
-          <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-100 pb-3">
-            <h3 className="text-base font-semibold text-slate-900">Branch Remittance History</h3>
-            <button
-              onClick={() => fetchRecentRemittances()}
-              className="btn-soft btn-sm"
-            >
-              🔄 Refresh List
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <button onClick={() => fetchRecentRemittances()} className="btn-soft">
+              <RefreshCw className="w-4 h-4" /> Refresh list
             </button>
           </div>
-
-          {recentRemittances.length === 0 ? (
-            <EmptyState title="No cash remittances found" description="No cash remittances found for this branch." />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-600 font-semibold text-xs uppercase border-y border-slate-200">
-                    <th className="p-3">Remittance No</th>
-                    <th className="p-3">Type & Details</th>
-                    <th className="p-3">Business Date</th>
-                    <th className="p-3 text-right">Deposit Amount</th>
-                    <th className="p-3 text-right">Remaining Cash</th>
-                    <th className="p-3 text-center">Status</th>
-                    <th className="p-3 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {recentRemittances.map((rem) => (
-                    <tr key={rem.id} className="hover:bg-slate-50 transition">
-                      <td className="p-3 font-extrabold text-brand-700">{rem.remittance_no}</td>
-                      <td className="p-3 text-xs">
-                        <span className={`uppercase ${rem.deposit_type === 'Bank' ? 'badge-success' : 'badge-brand'}`}>
-                          {rem.deposit_type === 'Bank' ? '🏦 Bank' : '🏢 Corporate Office'}
-                        </span>
-                        {rem.deposit_type === 'Bank' && rem.bank_name && (
-                          <div className="text-[11px] text-slate-600 font-semibold mt-1">
-                            {rem.bank_name} {rem.account_number ? `(••••${String(rem.account_number).slice(-4)})` : ''}
-                          </div>
-                        )}
-                        {rem.reference_no && (
-                          <div className="text-[11px] text-slate-500 truncate max-w-[150px]" title={rem.reference_no}>
-                            Ref: {rem.reference_no}
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-3 text-slate-700">{rem.business_date}</td>
-                      <td className="p-3 text-right font-black text-slate-900">₹{rem.deposit_amount.toLocaleString()}</td>
-                      <td className="p-3 text-right text-slate-600">₹{rem.remaining_cash.toLocaleString()}</td>
-                      <td className="p-3 text-center">
-                        <span className={rem.status === 'Approved'
-                          ? 'badge-success'
-                          : rem.status === 'Rejected'
-                            ? 'badge-danger'
-                            : 'badge-warning'
-                          }>
-                          {rem.status === 'Approved' ? '✓ Approved' : rem.status === 'Rejected' ? '✕ Rejected' : '⌛ Pending HO Review'}
-                        </span>
-                      </td>
-                      <td className="p-3 text-center space-x-1.5 whitespace-nowrap">
-                        {rem.attachment_path && (
-                          <button
-                            onClick={() => handleDownloadAttachment(rem.id, rem.remittance_no)}
-                            className="btn-soft btn-sm"
-                            title="View / Download Deposit Slip"
-                          >
-                            📎 Slip
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setPrintModalData(rem)}
-                          className="btn-secondary btn-sm"
-                          title="Print Remittance Receipt"
-                        >
-                          🖨️ Print
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <DataList
+            columns={historyColumns}
+            rows={recentRemittances}
+            rowKey={(rem, i) => rem.id ?? i}
+            emptyTitle="No cash deposits yet"
+            emptyHint="No cash deposits found for this branch."
+            mobileActions={rem => (
+              <>
+                {rem.attachment_path && (
+                  <button onClick={() => handleDownloadAttachment(rem.id, rem.remittance_no)} className="btn-soft btn-sm flex-1">
+                    <Paperclip className="w-4 h-4" /> Slip
+                  </button>
+                )}
+                <button onClick={() => setPrintModalData(rem)} className="btn-secondary btn-sm flex-1">
+                  <Printer className="w-4 h-4" /> Print
+                </button>
+              </>
+            )}
+          />
         </div>
       )}
 

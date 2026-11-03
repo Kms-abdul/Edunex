@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { remittanceApi } from '../api';
 import { API_URL } from '../config';
-import PageHeader from './ui/PageHeader';
+import { Paperclip } from 'lucide-react';
 import { notify } from './ui/feedback';
-import { Alert, EmptyState, LoadingState } from './ui';
+import { Alert, EmptyState, LoadingState, Field } from './ui';
+import ApprovalCard from './cash/ApprovalCard';
+import Filters from './cash/Filters';
+import Sheet from './cash/Sheet';
+import SegmentTabs from './cash/SegmentTabs';
+import StatTiles from './cash/StatTiles';
+import { shortDate } from './cash/format';
 
 const RemittanceApprovals: React.FC = () => {
   const [branches, setBranches] = useState<any[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>('All');
-  const [statusFilter, setStatusFilter] = useState<string>('Pending');
+  const [statusFilter, setStatusFilter] = useState<'Pending' | 'Approved' | 'Rejected' | 'All'>('Pending');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
@@ -121,28 +127,19 @@ const RemittanceApprovals: React.FC = () => {
   const pendingAmount = remittances.filter(r => r.status === 'Pending').reduce((sum, r) => sum + r.deposit_amount, 0);
   const approvedAmount = remittances.filter(r => r.status === 'Approved').reduce((sum, r) => sum + r.deposit_amount, 0);
 
+  const statusLabel = (s: string) => (s === 'Approved' ? 'Approved' : s === 'Rejected' ? 'Rejected' : 'Waiting');
+  const branchLabel = selectedBranch === 'All' ? 'All branches' : branches.find(b => String(b.id) === String(selectedBranch))?.branch_name || 'Branch';
+  const dateLabel = startDate || endDate ? ` · ${startDate ? shortDate(startDate) : 'start'} to ${endDate ? shortDate(endDate) : 'today'}` : '';
+  const whereLine = (rem: any) => rem.deposit_type === 'Bank'
+    ? `Bank: ${rem.bank_name || 'N/A'} • ${rem.account_number || 'N/A'}${rem.reference_no ? ` · Ref: ${rem.reference_no}` : ''}`
+    : `Given to head office${rem.reference_no ? ` · ${rem.reference_no}` : ''}`;
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <PageHeader
-        title="Head Office Remittance Approvals"
-        subtitle="Audit Review & Authorization of Branch Daily Cash Deposits & Bank Slips"
-        actions={
-          <div className="flex items-center gap-2">
-            <span className="label !mb-0">Branch:</span>
-            <select
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              className="input !w-auto"
-            >
-              <option value="All">All Branches</option>
-              {branches.map(b => (
-                <option key={b.id} value={b.id}>{b.branch_name}</option>
-              ))}
-            </select>
-          </div>
-        }
-      />
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">Approve cash deposits</h2>
+        <p className="text-sm text-slate-500">Branches send their cash to the bank or head office. Check each deposit, then approve or reject it.</p>
+      </div>
 
       {message && (
         <Alert tone={message.type === 'success' ? 'success' : 'error'} onClose={() => setMessage(null)}>
@@ -150,329 +147,190 @@ const RemittanceApprovals: React.FC = () => {
         </Alert>
       )}
 
-      {/* KPI Stats Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="card p-4 flex items-center justify-between">
-          <div>
-            <span className="text-xs font-bold uppercase text-amber-700">Awaiting HO Review</span>
-            <div className="text-2xl font-black text-slate-900 mt-1">{pendingCount} <span className="text-sm font-medium text-slate-500">Vouchers</span></div>
-          </div>
-          <div className="p-3 bg-amber-100 text-amber-800 rounded-lg font-black text-xl">⌛</div>
-        </div>
+      <StatTiles
+        tiles={[
+          { label: 'Waiting', value: pendingCount, tone: 'warning' },
+          { label: 'Cash waiting', value: `₹${pendingAmount.toLocaleString()}`, tone: 'warning' },
+          { label: 'Cash approved', value: `₹${approvedAmount.toLocaleString()}`, tone: 'success', wide: true },
+        ]}
+      />
 
-        <div className="card p-4 flex items-center justify-between">
-          <div>
-            <span className="text-xs font-bold uppercase text-slate-500">Total Pending Cash</span>
-            <div className="text-2xl font-black text-amber-600 mt-1">₹{pendingAmount.toLocaleString()}</div>
-          </div>
-          <div className="p-3 bg-slate-100 text-slate-700 rounded-lg font-black text-xl">₹</div>
-        </div>
+      <SegmentTabs
+        value={statusFilter}
+        onChange={setStatusFilter}
+        options={[
+          { value: 'Pending', label: 'Waiting' },
+          { value: 'Approved', label: 'Approved' },
+          { value: 'Rejected', label: 'Rejected' },
+          { value: 'All', label: 'All' },
+        ]}
+      />
 
-        <div className="card p-4 flex items-center justify-between">
-          <div>
-            <span className="text-xs font-bold uppercase text-emerald-700">Total Authorized Cash</span>
-            <div className="text-2xl font-black text-emerald-700 mt-1">₹{approvedAmount.toLocaleString()}</div>
-          </div>
-          <div className="p-3 bg-emerald-100 text-emerald-800 rounded-lg font-black text-xl">✓</div>
-        </div>
-      </div>
+      <Filters
+        summary={<>{branchLabel}{dateLabel}</>}
+        collapsible
+        actions={(startDate || endDate) ? (
+          <button onClick={() => { setStartDate(''); setEndDate(''); }} className="btn-ghost text-rose-700">
+            Clear dates
+          </button>
+        ) : undefined}
+      >
+        <Field label="Branch" htmlFor="ra-branch">
+          <select id="ra-branch" value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)} className="input min-h-[44px]">
+            <option value="All">All Branches</option>
+            {branches.map(b => (
+              <option key={b.id} value={b.id}>{b.branch_name}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="From date" htmlFor="ra-from">
+          <input id="ra-from" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="input min-h-[44px]" />
+        </Field>
+        <Field label="To date" htmlFor="ra-to">
+          <input id="ra-to" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="input min-h-[44px]" />
+        </Field>
+      </Filters>
 
-      {/* Filter Toolbar */}
-      <div className="card p-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="label !mb-0 mr-1">Status:</span>
-          {['Pending', 'Approved', 'Rejected', 'All'].map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`btn-sm ${statusFilter === s ? 'btn-primary' : 'btn-secondary'}`}
-            >
-              {s === 'Pending' ? '⌛ Pending Review' : s === 'Approved' ? '✓ Approved' : s === 'Rejected' ? '✕ Rejected' : 'All Vouchers'}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
-          <span>Date Range:</span>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="input !w-auto"
-          />
-          <span>to</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="input !w-auto"
-          />
-          {(startDate || endDate) && (
-            <button
-              onClick={() => { setStartDate(''); setEndDate(''); }}
-              className="text-xs text-rose-600 underline hover:text-rose-800 ml-1 font-bold"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Main Approvals Table */}
-      <div className="card overflow-hidden">
-        {loading ? (
-          <LoadingState label="Loading branch cash remittances..." />
-        ) : remittances.length === 0 ? (
-          <EmptyState title="No remittances found" description="No remittances found matching your filters." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-slate-50 text-slate-600 font-semibold text-xs uppercase border-b border-slate-200">
-                  <th className="py-3 px-4">Remittance ID</th>
-                  <th className="py-3 px-4">Branch</th>
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Type & Details</th>
-                  <th className="py-3 px-4 text-right">System Hand Cash</th>
-                  <th className="py-3 px-4 text-right">Deposit Amount</th>
-                  <th className="py-3 px-4 text-center">Status</th>
-                  <th className="py-3 px-4 text-center">Deposit Slip</th>
-                  <th className="py-3 px-4 text-center">Audit Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {remittances.map((rem) => (
-                  <tr key={rem.id} className="hover:bg-slate-50 transition">
-                    <td className="py-3.5 px-4 font-black text-brand-700">{rem.remittance_no}</td>
-                    <td className="py-3.5 px-4 font-bold text-slate-800">{rem.branch_name}</td>
-                    <td className="py-3.5 px-4 text-slate-600">{rem.business_date}</td>
-                    <td className="py-3.5 px-4">
-                      {rem.deposit_type === 'Bank' ? (
-                        <div className="flex flex-col gap-0.5 text-xs">
-                          <span className="badge-success w-max">🏦 Bank Deposit</span>
-                          <span className="text-slate-600 font-semibold">{rem.bank_name || 'N/A'} • {rem.account_number || 'N/A'}</span>
-                          {rem.reference_no && <span className="text-slate-500 font-medium">Ref: {rem.reference_no}</span>}
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-0.5 text-xs">
-                          <span className="badge-brand w-max">🏢 Corporate Office</span>
-                          {rem.reference_no && <span className="text-slate-600 font-semibold">Slip: {rem.reference_no}</span>}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 text-right text-slate-500">₹{rem.cash_in_hand.toLocaleString()}</td>
-                    <td className="py-3.5 px-4 text-right font-black text-emerald-700 text-base">₹{rem.deposit_amount.toLocaleString()}</td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span className={rem.status === 'Approved' ? 'badge-success' : rem.status === 'Rejected' ? 'badge-danger' : 'badge-warning'}>
-                        {rem.status === 'Approved' ? '✓ Approved' : rem.status === 'Rejected' ? '✕ Rejected' : '⌛ Pending'}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      {rem.attachment_path ? (
-                        <button
-                          onClick={() => handleDownloadAttachment(rem.id, rem.remittance_no)}
-                          className="btn-soft btn-sm"
-                        >
-                          <span>📎 View Slip</span>
-                        </button>
-                      ) : (
-                        <span className="text-xs text-slate-400 italic font-medium">No Attachment</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => setSelectedItem(rem)}
-                        className="btn-primary btn-sm"
-                      >
-                        🔍 Inspect &amp; Review
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Detailed Review & Denomination Modal */}
-      {selectedItem && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="card shadow-pop max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="card-header !px-6">
-              <div>
-                <span className="page-eyebrow">Remittance Audit Voucher</span>
-                <h2 className="page-title">{selectedItem.remittance_no} &bull; {selectedItem.branch_name}</h2>
-              </div>
-              <button
-                onClick={() => { setSelectedItem(null); setShowRejectModal(false); }}
-                className="btn-icon"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-6">
-              {/* Top Financial Breakdown */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <div>
-                  <span className="text-[11px] uppercase text-slate-500 font-extrabold block">System Hand Cash</span>
-                  <span className="text-lg font-black text-slate-700">₹{selectedItem.cash_in_hand.toLocaleString()}</span>
-                </div>
-                <div>
-                  <span className="text-[11px] uppercase text-emerald-700 font-extrabold block">Deposit Amount</span>
-                  <span className="text-2xl font-black text-emerald-700">₹{selectedItem.deposit_amount.toLocaleString()}</span>
-                </div>
-                <div>
-                  <span className="text-[11px] uppercase text-slate-500 font-extrabold block">Remaining Balance</span>
-                  <span className="text-lg font-black text-slate-700">₹{selectedItem.remaining_cash.toLocaleString()}</span>
-                </div>
-              </div>
-
-              {/* Deposit Type & Details */}
-              <div className={`p-4 rounded-xl border flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between ${selectedItem.deposit_type === 'Bank' ? 'bg-emerald-50 border-emerald-200' : 'bg-brand-50 border-brand-200'}`}>
-                <div className="flex items-center gap-3">
-                  <div className={`text-4xl ${selectedItem.deposit_type === 'Bank' ? 'text-emerald-600' : 'text-brand-600'}`}>
-                    {selectedItem.deposit_type === 'Bank' ? '🏦' : '🏢'}
-                  </div>
-                  <div>
-                    <h3 className={`text-sm font-extrabold uppercase ${selectedItem.deposit_type === 'Bank' ? 'text-emerald-800' : 'text-brand-800'}`}>
-                      {selectedItem.deposit_type === 'Bank' ? 'Bank Deposit' : 'Corporate Office Deposit'}
-                    </h3>
-                    <p className="text-xs text-slate-600 font-semibold mt-1">
-                      {selectedItem.deposit_type === 'Bank' ? (
-                        <>
-                          <span className="block">Bank: {selectedItem.bank_name || 'N/A'}</span>
-                          <span className="block">Account: {selectedItem.account_number || 'N/A'}</span>
-                        </>
-                      ) : (
-                        <span>Direct cash handover to Corporate Office</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-[11px] uppercase text-slate-500 font-extrabold block">Reference / Slip No</span>
-                  <span className="text-base font-black text-slate-800">{selectedItem.reference_no || 'N/A'}</span>
-                </div>
-              </div>
-
-              {/* Denominations & Receipts Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Denominations */}
-                <div>
-                  <h4 className="text-sm font-extrabold text-slate-800 border-b pb-2 mb-2 flex items-center gap-1.5">
-                    <span>💵</span> Submitted Denomination Breakdown
-                  </h4>
-                  {selectedItem.denominations && selectedItem.denominations.length > 0 ? (
-                    <div className="overflow-x-auto rounded-lg border border-slate-200">
-                    <table className="w-full text-xs text-left">
-                      <thead className="bg-slate-50 font-semibold text-slate-600">
-                        <tr>
-                          <th className="p-2">Note</th>
-                          <th className="p-2 text-center">Qty</th>
-                          <th className="p-2 text-right">Amount (₹)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {selectedItem.denominations.map((d: any, i: number) => (
-                          <tr key={i} className="font-medium">
-                            <td className="p-2 font-bold">₹ {d.denomination}</td>
-                            <td className="p-2 text-center font-bold text-slate-800">{d.quantity}</td>
-                            <td className="p-2 text-right font-extrabold">₹ {(d.amount || (d.denomination * d.quantity)).toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-400 italic">No note breakdown entered.</p>
+      {loading ? (
+        <div className="card"><LoadingState label="Loading deposits…" /></div>
+      ) : remittances.length === 0 ? (
+        <div className="card"><EmptyState title="No deposits found" description="Nothing matches these filters." /></div>
+      ) : (
+        <ul className="space-y-2.5">
+          {remittances.map(rem => (
+            <ApprovalCard
+              key={rem.id}
+              title={<>{rem.branch_name} <span className="font-normal text-slate-500">· {rem.remittance_no}</span></>}
+              amount={<span className="text-emerald-700">₹{rem.deposit_amount.toLocaleString()}</span>}
+              details={[
+                `${shortDate(rem.business_date)} · ${whereLine(rem)}`,
+                `Cash in hand before: ₹${rem.cash_in_hand.toLocaleString()}`,
+              ]}
+              status={rem.status}
+              statusLabel={statusLabel(rem.status)}
+              canDecide={rem.status === 'Pending'}
+              askReason
+              reasonPlaceholder="For example: the notes do not match the deposit slip"
+              onApprove={() => handleStatusChange(rem.id, 'Approved')}
+              onReject={(reason) => handleStatusChange(rem.id, 'Rejected', reason)}
+              extra={
+                <>
+                  <button onClick={() => setSelectedItem(rem)} className="btn-secondary btn-sm">See details</button>
+                  {rem.attachment_path && (
+                    <button onClick={() => handleDownloadAttachment(rem.id, rem.remittance_no)} className="btn-soft btn-sm">
+                      <Paperclip className="w-4 h-4" /> View slip
+                    </button>
                   )}
-                </div>
+                </>
+              }
+            />
+          ))}
+        </ul>
+      )}
 
-                {/* Audit Details */}
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-extrabold text-slate-800 border-b pb-2 mb-2">
-                      📝 Cashier Remarks / Reference
-                    </h4>
-                    <p className="text-xs bg-slate-50 p-3 rounded-lg border text-slate-700 font-medium">
-                      {selectedItem.remarks || 'No notes provided by cashier.'}
-                    </p>
-                  </div>
+      {/* Details of one deposit */}
+      {selectedItem && (
+        <Sheet
+          size="lg"
+          title={<>{selectedItem.branch_name} · ₹{selectedItem.deposit_amount.toLocaleString()}</>}
+          subtitle={<>{selectedItem.remittance_no} · {shortDate(selectedItem.business_date)} · {statusLabel(selectedItem.status)}</>}
+          onClose={() => { setSelectedItem(null); setShowRejectModal(false); }}
+          footer={selectedItem.status === 'Pending' && !showRejectModal ? (
+            <>
+              <button onClick={() => setShowRejectModal(true)} className="btn-secondary btn-lg !text-red-700 !border-red-300 hover:!bg-red-50">
+                Reject
+              </button>
+              <button onClick={() => handleStatusChange(selectedItem.id, 'Approved')} className="btn-success btn-lg">
+                Approve ₹{selectedItem.deposit_amount.toLocaleString()}
+              </button>
+            </>
+          ) : undefined}
+        >
+          <div className="space-y-5">
+            <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+              <div><dt className="text-slate-500">Cash in hand before</dt><dd className="text-lg font-semibold text-slate-800">₹{selectedItem.cash_in_hand.toLocaleString()}</dd></div>
+              <div><dt className="text-emerald-700">Deposited</dt><dd className="text-xl font-semibold text-emerald-700">₹{selectedItem.deposit_amount.toLocaleString()}</dd></div>
+              <div><dt className="text-slate-500">Cash left</dt><dd className="text-lg font-semibold text-slate-800">₹{selectedItem.remaining_cash.toLocaleString()}</dd></div>
+            </dl>
 
-                  <div className="bg-slate-50 p-3 rounded-lg border text-xs space-y-1 font-semibold text-slate-600">
-                    <div className="flex justify-between">
-                      <span>Submitted By:</span>
-                      <span className="text-slate-900 font-extrabold">{selectedItem.created_by || 'Cashier'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Submission Date:</span>
-                      <span className="text-slate-900 font-extrabold">{selectedItem.created_at || selectedItem.business_date}</span>
-                    </div>
-                    {selectedItem.approved_by && (
-                      <div className="flex justify-between border-t pt-1 mt-1">
-                        <span>Reviewed By HO:</span>
-                        <span className="text-slate-900 font-extrabold">{selectedItem.approved_by} on {selectedItem.approved_at}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Toolbar */}
-              {selectedItem.status === 'Pending' ? (
-                showRejectModal ? (
-                  <div className="p-4 bg-rose-50 border border-rose-300 rounded-xl space-y-3">
-                    <h5 className="text-sm font-extrabold text-rose-900">Specify Rejection Reason &amp; Audit Note</h5>
-                    <textarea
-                      value={rejectionRemarks}
-                      onChange={(e) => setRejectionRemarks(e.target.value)}
-                      placeholder="e.g. Denomination mismatch with deposit slip image, or unreadable receipt attachment..."
-                      rows={2}
-                      className="input !border-red-300"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => setShowRejectModal(false)}
-                        className="btn-secondary btn-sm"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() => handleStatusChange(selectedItem.id, 'Rejected', rejectionRemarks)}
-                        className="btn-danger btn-sm"
-                      >
-                        Confirm Rejection
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="pt-4 border-t flex justify-end gap-4">
-                    <button
-                      onClick={() => setShowRejectModal(true)}
-                      className="btn-secondary !text-red-700 !border-red-300 hover:!bg-red-50"
-                    >
-                      ✕ Reject Deposit
-                    </button>
-                    <button
-                      onClick={() => handleStatusChange(selectedItem.id, 'Approved')}
-                      className="btn-success"
-                    >
-                      ✓ Authorize &amp; Approve Remittance
-                    </button>
-                  </div>
-                )
+            <div className={`rounded-xl border p-3 text-sm ${selectedItem.deposit_type === 'Bank' ? 'bg-emerald-50 border-emerald-200' : 'bg-brand-50 border-brand-200'}`}>
+              <p className="font-semibold text-slate-900">{selectedItem.deposit_type === 'Bank' ? 'Paid into the bank' : 'Given to head office'}</p>
+              {selectedItem.deposit_type === 'Bank' ? (
+                <>
+                  <p className="text-slate-700">Bank: {selectedItem.bank_name || 'N/A'}</p>
+                  <p className="text-slate-700">Account: {selectedItem.account_number || 'N/A'}</p>
+                </>
               ) : (
-                <div className="p-3 bg-slate-100 rounded-xl border text-center text-sm font-bold text-slate-600">
-                  This voucher has already been decided and marked as <span className="underline uppercase font-black">{selectedItem.status}</span>.
-                </div>
+                <p className="text-slate-700">Cash handed over directly to head office</p>
+              )}
+              <p className="text-slate-700">Slip or reference number: <span className="font-medium">{selectedItem.reference_no || 'N/A'}</span></p>
+              {selectedItem.attachment_path && (
+                <button onClick={() => handleDownloadAttachment(selectedItem.id, selectedItem.remittance_no)} className="btn-soft btn-sm mt-2">
+                  <Paperclip className="w-4 h-4" /> View slip
+                </button>
               )}
             </div>
+
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900 mb-2">Notes counted</h4>
+              {selectedItem.denominations && selectedItem.denominations.length > 0 ? (
+                <ul className="rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm">
+                  {selectedItem.denominations.map((d: any, i: number) => (
+                    <li key={i} className="flex justify-between gap-3 px-3 py-2">
+                      <span>₹ {d.denomination} × {d.quantity}</span>
+                      <span className="font-semibold tabular-nums">₹ {(d.amount || (d.denomination * d.quantity)).toLocaleString()}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-500">No note count entered.</p>
+              )}
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900 mb-1">Cashier's note</h4>
+              <p className="text-sm text-slate-700 whitespace-pre-wrap rounded-lg bg-slate-50 border border-slate-200 p-3">
+                {selectedItem.remarks || 'No note.'}
+              </p>
+            </div>
+
+            <dl className="text-sm space-y-1">
+              <div className="flex justify-between gap-3"><dt className="text-slate-500">Sent by</dt><dd className="font-medium text-right">{selectedItem.created_by || 'Cashier'}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-slate-500">Sent on</dt><dd className="font-medium text-right">{selectedItem.created_at || selectedItem.business_date}</dd></div>
+              {selectedItem.approved_by && (
+                <div className="flex justify-between gap-3"><dt className="text-slate-500">Checked by</dt><dd className="font-medium text-right">{selectedItem.approved_by} on {selectedItem.approved_at}</dd></div>
+              )}
+            </dl>
+
+            {selectedItem.status === 'Pending' ? (
+              showRejectModal && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
+                  <Field label="Why are you rejecting it?" htmlFor="ra-reason" hint="The branch will see this note.">
+                    <textarea
+                      id="ra-reason"
+                      value={rejectionRemarks}
+                      onChange={(e) => setRejectionRemarks(e.target.value)}
+                      placeholder="For example: the notes do not match the deposit slip"
+                      rows={2}
+                      autoFocus
+                      className="input"
+                    />
+                  </Field>
+                  <div className="flex gap-2 justify-end [&>*]:flex-1 sm:[&>*]:flex-none">
+                    <button onClick={() => setShowRejectModal(false)} className="btn-secondary">Cancel</button>
+                    <button onClick={() => handleStatusChange(selectedItem.id, 'Rejected', rejectionRemarks)} className="btn-danger">
+                      Reject deposit
+                    </button>
+                  </div>
+                </div>
+              )
+            ) : (
+              <Alert tone={selectedItem.status === 'Approved' ? 'success' : 'warning'}>
+                This deposit is already {selectedItem.status === 'Approved' ? 'approved' : 'rejected'}.
+              </Alert>
+            )}
           </div>
-        </div>
+        </Sheet>
       )}
     </div>
   );

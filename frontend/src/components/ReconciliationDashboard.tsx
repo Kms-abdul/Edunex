@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { API_URL } from '../config';
-import { FileSpreadsheet, RefreshCw, Calendar, ArrowLeft, Filter, Wallet, ArrowRight } from 'lucide-react';
+import { FileSpreadsheet, RefreshCw, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import PageHeader from './ui/PageHeader';
-import { Alert, EmptyState, LoadingState } from './ui';
+import { Alert, EmptyState, LoadingState, DataList, Field } from './ui';
+import type { Column } from './ui';
+import StatTiles from './cash/StatTiles';
+import SegmentTabs from './cash/SegmentTabs';
 
 interface MonthLedgerRow {
   particulars: string;
@@ -250,348 +252,166 @@ const ReconciliationDashboard: React.FC = () => {
     return ['All', ...activeMonths];
   }, [academicYear, monthData]);
 
+  const monthColumns: Column<MonthLedgerRow>[] = [
+    {
+      key: 'particulars', header: 'Month', primary: true,
+      render: row => row.is_opening
+        ? <span className="font-semibold text-slate-800">{row.particulars}</span>
+        : <span className="font-semibold text-brand-700">{row.particulars}</span>,
+    },
+    { key: 'debit', header: 'Cash fees collected', align: 'right', render: row => <span className="text-emerald-700">{formatCurrency(row.debit)}</span> },
+    { key: 'credit', header: 'Cash deposited', align: 'right', render: row => <span className="text-rose-700">{formatCurrency(row.credit)}</span> },
+    {
+      key: 'cash_in_hand', header: 'Cash in hand', align: 'right',
+      render: row => <span className={`font-semibold ${row.cash_in_hand < 0 ? 'text-rose-600' : 'text-brand-800'}`}>{formatBalance(row.cash_in_hand)}</span>,
+    },
+  ];
+
+  const detailColumns: Column<DetailLedgerRow>[] = [
+    { key: 'narration', header: 'Details', primary: true, render: row => row.narration || row.ledger_head || row.voucher_type },
+    {
+      key: 'date', header: 'Date', secondary: true,
+      render: row => `${row.date_formatted || row.date}${row.is_opening ? '' : ` · ${row.voucher_no}`}`,
+    },
+    {
+      key: 'voucher_type', header: 'Type',
+      render: row => (
+        <span className={row.is_opening ? 'badge-warning' : row.voucher_type === 'Fee Receipt' ? 'badge-success' : 'badge-danger'}>
+          {row.voucher_type}
+        </span>
+      ),
+    },
+    { key: 'ledger_head', header: 'Fee type / head', render: row => row.ledger_head || '-', hideOnMobile: true },
+    { key: 'debit', header: 'Money in', align: 'right', render: row => <span className="text-emerald-700">{row.debit > 0 ? formatCurrency(row.debit) : '-'}</span> },
+    { key: 'credit', header: 'Money out', align: 'right', render: row => <span className="text-rose-700">{row.credit > 0 ? formatCurrency(row.credit) : '-'}</span> },
+    {
+      key: 'cash_in_hand', header: 'Cash in hand', align: 'right',
+      render: row => <span className={`font-semibold whitespace-nowrap ${row.cash_in_hand < 0 ? 'text-rose-600' : 'text-brand-800'}`}>{formatBalance(row.cash_in_hand)}</span>,
+    },
+  ];
+
+  const branchLabel = globalBranch && globalBranch !== 'All' ? globalBranch : 'All branches';
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <PageHeader
-        icon={<Wallet className="w-5 h-5" />}
-        title="Reconciliation Dashboard"
-        subtitle="Real-time reconciliation of Cash Fee Collections and Bank Remittance Deposits"
-        actions={
-          <>
-            <span className="badge-brand">{globalBranch || 'All Branches'}</span>
-            <span className="badge-neutral">FY: {academicYear}</span>
-          </>
-        }
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">Cash check (reconciliation)</h2>
+        <p className="text-sm text-slate-500">
+          Cash fees collected against cash deposited, so you can see how much cash should be in hand.
+        </p>
+        <p className="mt-1 text-sm text-slate-700">{branchLabel} · Academic year {academicYear}</p>
+      </div>
+
+      <SegmentTabs
+        value={activeTab}
+        onChange={setActiveTab}
+        options={[
+          { value: 'month-ledger', label: 'By month' },
+          { value: 'details-ledger', label: 'Day by day' },
+        ]}
       />
 
-      {/* Navigation Tabs */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => setActiveTab('month-ledger')}
-          className={activeTab === 'month-ledger' ? 'btn-primary' : 'btn-secondary'}
-        >
-          <Calendar className="w-4 h-4" />
-          <span>Month wise cash ledger</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('details-ledger')}
-          className={activeTab === 'details-ledger' ? 'btn-primary' : 'btn-secondary'}
-        >
-          <Wallet className="w-4 h-4" />
-          <span>Cash ledger in details</span>
-        </button>
-      </div>
+      {error && <Alert tone="error">{error}</Alert>}
 
-      {/* Tab Content Card with clean visual gap after tabs */}
-      <div className="card overflow-hidden">
-        <div className="p-5">
-          {error && (
-            <Alert tone="error" className="mb-4">
-              {error}
-            </Alert>
+      {/* TAB 1: Month Wise Cash Ledger */}
+      {activeTab === 'month-ledger' && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-slate-500">Tap a month to see each fee receipt and deposit in it.</p>
+            <div className="flex gap-2 w-full sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none">
+              <button onClick={fetchMonthLedger} disabled={loading} className="btn-secondary">
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+              <button onClick={handleExportMonthExcel} disabled={loading || activeMonthLedgerData.length === 0} className="btn-success">
+                <FileSpreadsheet className="w-4 h-4" />
+                Download Excel
+              </button>
+            </div>
+          </div>
+
+          {!loading && activeMonthLedgerData.length > 0 && (
+            <StatTiles
+              tiles={[
+                { label: 'Cash in hand now', value: formatBalance(monthTotals.closingBalance), tone: monthTotals.closingBalance < 0 ? 'danger' : 'brand', wide: true },
+                { label: 'Cash fees collected', value: formatCurrency(monthTotals.totalDebit), tone: 'success' },
+                { label: 'Cash deposited', value: formatCurrency(monthTotals.totalCredit), tone: 'danger' },
+              ]}
+            />
           )}
 
-          {/* TAB 1: Month Wise Cash Ledger */}
-          {activeTab === 'month-ledger' && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between pb-3 border-b border-slate-200">
-                <div>
-                  <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                    Month wise cash ledger
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Click on any month name to inspect daily detailed fee receipts and remittance deposits.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={fetchMonthLedger}
-                    disabled={loading}
-                    className="btn-secondary btn-sm"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </button>
-                  <button
-                    onClick={handleExportMonthExcel}
-                    disabled={loading || activeMonthLedgerData.length === 0}
-                    className="btn-success btn-sm"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    Export Excel
-                  </button>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto rounded-lg border border-slate-200">
-                <table className="w-full text-sm text-left border-collapse">
-                  <thead className="bg-slate-50 text-slate-600 font-semibold uppercase text-xs">
-                    <tr>
-                      <th className="p-3.5 border-b border-slate-200 w-1/4">Particulars (Month)</th>
-                      <th className="p-3.5 border-b border-slate-200 text-right w-1/4 text-emerald-800 bg-emerald-50/50">
-                        Debit (Fee Collected in Cash)
-                      </th>
-                      <th className="p-3.5 border-b border-slate-200 text-right w-1/4 text-rose-800 bg-rose-50/50">
-                        Credit (Remittance Deposited)
-                      </th>
-                      <th className="p-3.5 border-b border-slate-200 text-right w-1/4 text-blue-900 bg-blue-50/60 font-bold">
-                        Cash in Hand (Running Balance)
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
-                    {loading && (
-                      <tr>
-                        <td colSpan={4}>
-                          <LoadingState label="Calculating month-wise cash positions..." />
-                        </td>
-                      </tr>
-                    )}
-                    {!loading && activeMonthLedgerData.length === 0 && (
-                      <tr>
-                        <td colSpan={4}>
-                          <EmptyState compact title="No cash ledger records found" description="No cash ledger records found for this branch and academic year." />
-                        </td>
-                      </tr>
-                    )}
-                    {!loading && activeMonthLedgerData.map((row, idx) => (
-                      <tr
-                        key={idx}
-                        className={`transition-colors ${row.is_opening
-                          ? 'bg-amber-50/60 text-slate-800 font-bold'
-                          : 'hover:bg-slate-50 text-slate-700'
-                          }`}
-                      >
-                        <td className="p-3.5 border-r border-slate-100">
-                          {row.is_opening ? (
-                            <span className="text-slate-800 font-bold flex items-center gap-1.5">
-                              <span>🪙</span> {row.particulars}
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => handleMonthClick(row.particulars)}
-                              className="text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 group transition-colors focus:outline-none"
-                            >
-                              <span className="group-hover:underline">{row.particulars}</span>
-                              <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-0.5" />
-                            </button>
-                          )}
-                        </td>
-                        <td className="p-3.5 text-right font-semibold text-emerald-700 border-r border-slate-100">
-                          {formatCurrency(row.debit)}
-                        </td>
-                        <td className="p-3.5 text-right font-semibold text-rose-700 border-r border-slate-100">
-                          {formatCurrency(row.credit)}
-                        </td>
-                        <td className={`p-3.5 text-right font-bold ${row.cash_in_hand < 0 ? 'text-rose-600 bg-rose-50/30' : 'text-blue-800 bg-blue-50/20'
-                          }`}>
-                          {formatBalance(row.cash_in_hand)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  {!loading && activeMonthLedgerData.length > 0 && (
-                    <tfoot className="bg-slate-50 font-bold border-t-2 border-slate-200 text-slate-900 text-xs">
-                      <tr>
-                        <td className="p-3.5 text-right uppercase tracking-wider font-extrabold text-slate-800 border-r border-slate-200">
-                          Total (Active Months):
-                        </td>
-                        <td className="p-3.5 text-right font-black text-emerald-800 bg-emerald-100/70 border-r border-slate-200">
-                          {formatCurrency(monthTotals.totalDebit)}
-                        </td>
-                        <td className="p-3.5 text-right font-black text-rose-800 bg-rose-100/70 border-r border-slate-200">
-                          {formatCurrency(monthTotals.totalCredit)}
-                        </td>
-                        <td className={`p-3.5 text-right font-black ${monthTotals.closingBalance < 0 ? 'text-rose-700 bg-rose-200/50' : 'text-blue-950 bg-blue-100/80'
-                          }`}>
-                          {formatBalance(monthTotals.closingBalance)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: Cash Ledger in Details */}
-          {activeTab === 'details-ledger' && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between pb-3 border-b border-slate-200 gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    {selectedMonth !== 'All' && (
-                      <button
-                        onClick={() => setActiveTab('month-ledger')}
-                        className="btn-icon h-8 w-8"
-                        title="Back to Month Wise Ledger"
-                      >
-                        <ArrowLeft className="w-4 h-4" />
-                      </button>
-                    )}
-                    <h2 className="text-base font-semibold text-slate-900">
-                      Cash ledger in details
-                    </h2>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Day-wise line items of Student Cash Fee Collections & Bank Remittance Deposits
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <Filter className="w-3.5 h-3.5 text-slate-500" />
-                    <span className="font-medium text-slate-600">Filter Month:</span>
-                    <select
-                      value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="input !w-auto !py-1 text-xs font-semibold"
-                    >
-                      {monthOptions.map((m, i) => (
-                        <option key={i} value={m}>{m === 'All' ? 'All Months (Full Year)' : m}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    onClick={fetchDetailLedger}
-                    disabled={loading}
-                    className="btn-secondary btn-sm"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </button>
-                  <button
-                    onClick={handleExportDetailExcel}
-                    disabled={loading || detailData.length === 0}
-                    className="btn-success btn-sm"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    Export Excel
-                  </button>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto rounded-lg border border-slate-200">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead className="bg-slate-50 text-slate-600 font-semibold uppercase">
-                    <tr>
-                      <th className="p-3 border-b border-slate-200 text-center w-12">S.No</th>
-                      <th className="p-3 border-b border-slate-200">Date</th>
-                      <th className="p-3 border-b border-slate-200">Voucher No</th>
-                      <th className="p-3 border-b border-slate-200">Voucher Type</th>
-                      <th className="p-3 border-b border-slate-200">Fee Type / Head</th>
-                      <th className="p-3 border-b border-slate-200">Narration / Student Details</th>
-                      <th className="p-3 border-b border-slate-200 text-right text-emerald-800 bg-emerald-50/50">
-                        Debit (Dr)
-                      </th>
-                      <th className="p-3 border-b border-slate-200 text-right text-rose-800 bg-rose-50/50">
-                        Credit (Cr)
-                      </th>
-                      <th className="p-3 border-b border-slate-200 text-right text-blue-900 bg-blue-50/60 font-bold">
-                        Cash in Hand
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                    {loading && (
-                      <tr>
-                        <td colSpan={9}>
-                          <LoadingState label="Loading daily cash ledger transactions..." />
-                        </td>
-                      </tr>
-                    )}
-                    {!loading && detailData.length === 0 && (
-                      <tr>
-                        <td colSpan={9}>
-                          <EmptyState compact title="No transaction details found" description="No transaction details found for the selected filter." />
-                        </td>
-                      </tr>
-                    )}
-                    {!loading && detailData.map((row, idx) => {
-                      const isReceipt = row.voucher_type === 'Fee Receipt';
-                      const isRemit = row.voucher_type === 'Remittance Deposit';
-                      const isOpening = row.is_opening;
-
-                      return (
-                        <tr
-                          key={idx}
-                          className={`transition-colors ${isOpening
-                            ? 'bg-amber-50/70 font-bold text-slate-900'
-                            : isRemit
-                              ? 'bg-rose-50/10 hover:bg-rose-50/30'
-                              : 'hover:bg-slate-50'
-                            }`}
-                        >
-                          <td className="p-3 text-center text-slate-400 font-semibold border-r border-slate-100">
-                            {isOpening ? '-' : idx + 1}
-                          </td>
-                          <td className="p-3 whitespace-nowrap font-semibold text-slate-800 border-r border-slate-100">
-                            {row.date_formatted || row.date}
-                          </td>
-                          <td className="p-3 font-mono text-xs font-semibold border-r border-slate-100">
-                            {isOpening ? '-' : (
-                              <span className={`px-2 py-0.5 rounded ${isReceipt ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                                }`}>
-                                {row.voucher_no}
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3 whitespace-nowrap border-r border-slate-100">
-                            <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${isOpening
-                              ? 'bg-amber-100 text-amber-900'
-                              : isReceipt
-                                ? 'text-emerald-700 bg-emerald-50 border border-emerald-200/60'
-                                : 'text-rose-700 bg-rose-50 border border-rose-200/60'
-                              }`}>
-                              {row.voucher_type}
-                            </span>
-                          </td>
-                          <td className="p-3 font-semibold text-slate-900 border-r border-slate-100">
-                            {row.ledger_head || '-'}
-                          </td>
-                          <td className="p-3 text-slate-600 max-w-xs truncate border-r border-slate-100" title={row.narration}>
-                            {row.narration || '-'}
-                          </td>
-                          <td className="p-3 text-right font-semibold text-emerald-700 border-r border-slate-100">
-                            {row.debit > 0 ? formatCurrency(row.debit) : '-'}
-                          </td>
-                          <td className="p-3 text-right font-semibold text-rose-700 border-r border-slate-100">
-                            {row.credit > 0 ? formatCurrency(row.credit) : '-'}
-                          </td>
-                          <td className={`p-3 text-right font-bold whitespace-nowrap ${row.cash_in_hand < 0 ? 'text-rose-600 bg-rose-50/20' : 'text-blue-800 bg-blue-50/10'
-                            }`}>
-                            {formatBalance(row.cash_in_hand)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  {!loading && detailData.length > 0 && (
-                    <tfoot className="bg-slate-50 font-bold border-t-2 border-slate-200 text-slate-900 text-xs">
-                      <tr>
-                        <td colSpan={6} className="p-3 text-right uppercase tracking-wider font-extrabold text-slate-800 border-r border-slate-200">
-                          Total (Current Period):
-                        </td>
-                        <td className="p-3 text-right font-black text-emerald-800 bg-emerald-100/70 border-r border-slate-200">
-                          {formatCurrency(detailTotals.totalDebit)}
-                        </td>
-                        <td className="p-3 text-right font-black text-rose-800 bg-rose-100/70 border-r border-slate-200">
-                          {formatCurrency(detailTotals.totalCredit)}
-                        </td>
-                        <td className={`p-3 text-right font-black whitespace-nowrap ${detailTotals.closingBalance < 0 ? 'text-rose-700 bg-rose-200/50' : 'text-blue-950 bg-blue-100/80'
-                          }`}>
-                          {formatBalance(detailTotals.closingBalance)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-              </div>
-            </div>
+          {loading ? (
+            <div className="card"><LoadingState label="Working out cash for each month…" /></div>
+          ) : activeMonthLedgerData.length === 0 ? (
+            <div className="card"><EmptyState compact title="No cash records found" description="Nothing found for this branch and academic year." /></div>
+          ) : (
+            <DataList
+              columns={monthColumns}
+              rows={activeMonthLedgerData}
+              rowKey={(_, i) => i}
+              onRowClick={row => { if (!row.is_opening) handleMonthClick(row.particulars); }}
+            />
           )}
         </div>
-      </div>
+      )}
+
+      {/* TAB 2: Cash Ledger in Details */}
+      {activeTab === 'details-ledger' && (
+        <div className="space-y-4">
+          {selectedMonth !== 'All' && (
+            <button onClick={() => setActiveTab('month-ledger')} className="btn-ghost !px-1">
+              <ArrowLeft className="w-4 h-4" /> Back to months
+            </button>
+          )}
+
+          <div className="card p-4 space-y-3">
+            <Field label="Month" htmlFor="rd-month">
+              <select
+                id="rd-month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="input min-h-[44px] sm:max-w-xs"
+              >
+                {monthOptions.map((m, i) => (
+                  <option key={i} value={m}>{m === 'All' ? 'All months (full year)' : m}</option>
+                ))}
+              </select>
+            </Field>
+            <div className="flex gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
+              <button onClick={fetchDetailLedger} disabled={loading} className="btn-secondary">
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+              <button onClick={handleExportDetailExcel} disabled={loading || detailData.length === 0} className="btn-success">
+                <FileSpreadsheet className="w-4 h-4" />
+                Download Excel
+              </button>
+            </div>
+          </div>
+
+          {!loading && detailData.length > 0 && (
+            <StatTiles
+              tiles={[
+                { label: 'Cash in hand at end', value: formatBalance(detailTotals.closingBalance), tone: detailTotals.closingBalance < 0 ? 'danger' : 'brand', wide: true },
+                { label: 'Money in', value: formatCurrency(detailTotals.totalDebit), tone: 'success' },
+                { label: 'Money out', value: formatCurrency(detailTotals.totalCredit), tone: 'danger' },
+              ]}
+            />
+          )}
+
+          {loading ? (
+            <div className="card"><LoadingState label="Loading each day's cash…" /></div>
+          ) : (
+            <DataList
+              columns={detailColumns}
+              rows={detailData}
+              rowKey={(_, i) => i}
+              emptyTitle="Nothing found"
+              emptyHint="No receipts or deposits for this month."
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 };

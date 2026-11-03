@@ -1,22 +1,21 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
-import { confirmDialog } from './ui/feedback';
-import { Alert, EmptyState } from './ui';
+import { confirmDialog, notify } from './ui/feedback';
+import { Alert, EmptyState, LoadingState } from './ui';
+import ApprovalCard from './cash/ApprovalCard';
+import SegmentTabs from './cash/SegmentTabs';
+import { rupees, shortDate } from './cash/format';
+
+type StatusTab = 'Pending' | 'Approved' | 'Rejected';
 
 const PettyCashApproval: React.FC = () => {
     const globalYear = localStorage.getItem('academicYear') || '2026-2027';
     const [transactions, setTransactions] = useState<any[]>([]);
     const [allocations, setAllocations] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState('');
+    const [listLoading, setListLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'expenses' | 'funds'>('expenses');
-    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    useEffect(() => {
-        return () => {
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        };
-    }, []);
+    const [statusTab, setStatusTab] = useState<StatusTab>('Pending');
 
     const getHeaders = () => {
         const token = localStorage.getItem('token') || '';
@@ -30,6 +29,7 @@ const PettyCashApproval: React.FC = () => {
     };
 
     const fetchTransactions = async () => {
+        setListLoading(true);
         try {
             const res = await fetch(`${API_URL}/petty-cash`, { headers: getHeaders() });
             if (res.ok) {
@@ -38,10 +38,13 @@ const PettyCashApproval: React.FC = () => {
             }
         } catch (e) {
             console.error('Error fetching transactions', e);
+        } finally {
+            setListLoading(false);
         }
     };
 
     const fetchAllocations = async () => {
+        setListLoading(true);
         try {
             const res = await fetch(`${API_URL}/petty-cash/allocations`, { headers: getHeaders() });
             if (res.ok) {
@@ -50,6 +53,8 @@ const PettyCashApproval: React.FC = () => {
             }
         } catch (e) {
             console.error('Error fetching allocations', e);
+        } finally {
+            setListLoading(false);
         }
     };
 
@@ -61,233 +66,134 @@ const PettyCashApproval: React.FC = () => {
         }
     }, [activeTab]);
 
-    const handleApproval = async (id: number, type: 'expense' | 'fund', status: 'Approved' | 'Rejected') => {
-        if (!await confirmDialog(`Are you sure you want to mark this as ${status}?`)) return;
-        
+    const handleApproval = async (id: number, type: 'expense' | 'fund', status: 'Approved' | 'Rejected', what: string) => {
+        const question = status === 'Approved' ? `Approve ${what}?` : `Reject ${what}?`;
+        if (!await confirmDialog(question, {
+            title: status === 'Approved' ? 'Approve' : 'Reject',
+            confirmText: status === 'Approved' ? 'Yes, approve' : 'Yes, reject',
+            cancelText: 'No, go back',
+            tone: status === 'Approved' ? 'default' : 'danger',
+        })) return;
+
         setLoading(true);
-        setMessage('');
         try {
-            const url = type === 'expense' 
+            const url = type === 'expense'
                 ? `${API_URL}/petty-cash/${id}/approve`
                 : `${API_URL}/petty-cash/fund-allocation/${id}/approve`;
-                
+
             const res = await fetch(url, {
                 method: 'PUT',
                 headers: getHeaders(),
                 body: JSON.stringify({ approval_status: status })
             });
             const data = await res.json();
-            
+
             if (res.ok) {
-                setMessage(`Successfully marked as ${status}`);
+                notify.success(status === 'Approved' ? 'Approved' : 'Rejected');
                 if (type === 'expense') {
                     fetchTransactions();
                 } else {
                     fetchAllocations();
                 }
             } else {
-                setMessage(data.message || 'Error updating status');
+                notify.error(data.message || 'Error updating status');
             }
         } catch (e) {
-            setMessage('Network error');
+            notify.error('Network error. Check the internet and try again.');
         } finally {
             setLoading(false);
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            timeoutRef.current = setTimeout(() => setMessage(''), 3000);
         }
     };
 
-    const pendingTransactions = transactions.filter(t => t.approval_status === 'Pending' || !t.approval_status);
-    const approvedTransactions = transactions.filter(t => t.approval_status === 'Approved');
-    const rejectedTransactions = transactions.filter(t => t.approval_status === 'Rejected');
+    const byStatus = (rows: any[], s: StatusTab) =>
+        s === 'Pending' ? rows.filter(r => r.approval_status === 'Pending' || !r.approval_status) : rows.filter(r => r.approval_status === s);
 
-    const pendingAllocations = allocations.filter(a => a.approval_status === 'Pending' || !a.approval_status);
-    const approvedAllocations = allocations.filter(a => a.approval_status === 'Approved');
-    const rejectedAllocations = allocations.filter(a => a.approval_status === 'Rejected');
+    const rows = activeTab === 'expenses' ? transactions : allocations;
+    const shown = byStatus(rows, statusTab);
+    const pendingTotal = byStatus(rows, 'Pending').reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
-    const renderTransactionTable = (title: string, txns: any[], showActions: boolean) => (
-        <div className="card overflow-hidden mb-6">
-            <div className="card-header">
-                <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-                <span className="text-sm text-slate-500">{txns.length} entries</span>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50">
-                        <tr>
-                            <th className="p-3 border">Date</th>
-                            <th className="p-3 border">Voucher</th>
-                            <th className="p-3 border">Type</th>
-                            <th className="p-3 border">Ledger</th>
-                            <th className="p-3 border">Amount</th>
-                            <th className="p-3 border text-center">Status</th>
-                            {showActions && <th className="p-3 border text-center">Actions</th>}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {txns.length === 0 && (
-                            <tr>
-                                <td colSpan={showActions ? 7 : 6}><EmptyState compact title="No records found." /></td>
-                            </tr>
-                        )}
-                        {txns.map(t => (
-                            <tr key={t.id} className="hover:bg-slate-50 border-b border-slate-100">
-                                <td className="p-3 border">{t.transaction_date}</td>
-                                <td className="p-3 border">{t.voucher_name}</td>
-                                <td className="p-3 border">
-                                    <span className={t.voucher_type === 'Received' ? 'badge-success' : 'badge-danger'}>
-                                        {t.voucher_type}
-                                    </span>
-                                </td>
-                                <td className="p-3 border">{t.ledger_name}</td>
-                                <td className="p-3 border text-right font-semibold">₹{Number(t.amount).toFixed(2)}</td>
-                                <td className="p-3 border text-center">
-                                    <span className={
-                                        t.approval_status === 'Approved' ? 'badge-success' :
-                                        t.approval_status === 'Rejected' ? 'badge-danger' :
-                                        'badge-warning'
-                                    }>
-                                        {t.approval_status || 'Pending'}
-                                    </span>
-                                </td>
-                                {showActions && (
-                                    <td className="p-3 border text-center space-x-2">
-                                        <button 
-                                            onClick={() => handleApproval(t.id, 'expense', 'Approved')}
-                                            disabled={loading}
-                                            className="btn-success btn-sm"
-                                        >
-                                            Approve
-                                        </button>
-                                        <button 
-                                            onClick={() => handleApproval(t.id, 'expense', 'Rejected')}
-                                            disabled={loading}
-                                            className="btn-danger btn-sm"
-                                        >
-                                            Reject
-                                        </button>
-                                    </td>
-                                )}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
-
-    const renderAllocationTable = (title: string, allcs: any[], showActions: boolean) => (
-        <div className="card overflow-hidden mb-6">
-            <div className="card-header">
-                <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-                <span className="text-sm text-slate-500">{allcs.length} entries</span>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50">
-                        <tr>
-                            <th className="p-3 border">Date</th>
-                            <th className="p-3 border">Branch</th>
-                            <th className="p-3 border">Amount</th>
-                            <th className="p-3 border">Remarks</th>
-                            <th className="p-3 border text-center">Status</th>
-                            {showActions && <th className="p-3 border text-center">Actions</th>}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {allcs.length === 0 && (
-                            <tr>
-                                <td colSpan={showActions ? 6 : 5}><EmptyState compact title="No records found." /></td>
-                            </tr>
-                        )}
-                        {allcs.map(a => (
-                            <tr key={a.id} className="hover:bg-slate-50 border-b border-slate-100">
-                                <td className="p-3 border">{a.allocation_date}</td>
-                                <td className="p-3 border">{a.branch_name}</td>
-                                <td className="p-3 border text-emerald-600 font-semibold">₹{Number(a.amount).toFixed(2)}</td>
-                                <td className="p-3 border">{a.remarks}</td>
-                                <td className="p-3 border text-center">
-                                    <span className={
-                                        a.approval_status === 'Approved' ? 'badge-success' :
-                                        a.approval_status === 'Rejected' ? 'badge-danger' :
-                                        'badge-warning'
-                                    }>
-                                        {a.approval_status || 'Pending'}
-                                    </span>
-                                </td>
-                                {showActions && (
-                                    <td className="p-3 border text-center space-x-2">
-                                        <button 
-                                            onClick={() => handleApproval(a.id, 'fund', 'Approved')}
-                                            disabled={loading}
-                                            className="btn-success btn-sm"
-                                        >
-                                            Approve
-                                        </button>
-                                        <button 
-                                            onClick={() => handleApproval(a.id, 'fund', 'Rejected')}
-                                            disabled={loading}
-                                            className="btn-danger btn-sm"
-                                        >
-                                            Reject
-                                        </button>
-                                    </td>
-                                )}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
+    const emptyText = {
+        Pending: 'Nothing is waiting for approval.',
+        Approved: 'Nothing approved yet.',
+        Rejected: 'Nothing rejected.',
+    }[statusTab];
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h2 className="page-title">
-                    Petty Cash Approval
-                </h2>
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-lg font-semibold text-slate-900">Approve petty cash</h2>
+                <p className="text-sm text-slate-500">Check each entry, then tap Approve or Reject.</p>
             </div>
-            
-            {message && (
-                <Alert tone={message.startsWith('Successfully') ? 'success' : 'error'} onClose={() => setMessage('')}>
-                    {message}
+
+            <SegmentTabs
+                value={activeTab}
+                onChange={setActiveTab}
+                options={[
+                    { value: 'expenses', label: 'Expenses' },
+                    { value: 'funds', label: 'Money given to branches' },
+                ]}
+            />
+
+            <SegmentTabs
+                value={statusTab}
+                onChange={setStatusTab}
+                options={[
+                    { value: 'Pending', label: 'Waiting', count: byStatus(rows, 'Pending').length },
+                    { value: 'Approved', label: 'Approved', count: byStatus(rows, 'Approved').length },
+                    { value: 'Rejected', label: 'Rejected', count: byStatus(rows, 'Rejected').length },
+                ]}
+            />
+
+            {statusTab === 'Pending' && shown.length > 0 && (
+                <Alert tone="warning">
+                    {shown.length} waiting · {rupees(pendingTotal)} in total
                 </Alert>
             )}
 
-            {/* Tabs */}
-            <div className="segmented max-w-full overflow-x-auto">
-                <button
-                    className={`segmented-item whitespace-nowrap ${activeTab === 'expenses' ? 'segmented-item-active' : ''}`}
-                    onClick={() => setActiveTab('expenses')}
-                >
-                    Petty Cash Expenses
-                </button>
-                <button
-                    className={`segmented-item whitespace-nowrap ${activeTab === 'funds' ? 'segmented-item-active' : ''}`}
-                    onClick={() => setActiveTab('funds')}
-                >
-                    Fund Allocations
-                </button>
-            </div>
-
-            {/* Content */}
-            {activeTab === 'expenses' && (
-                <div>
-                    {renderTransactionTable("Pending Expense Approvals", pendingTransactions, true)}
-                    {renderTransactionTable("Approved Expenses", approvedTransactions, false)}
-                    {renderTransactionTable("Rejected Expenses", rejectedTransactions, false)}
-                </div>
+            {listLoading && rows.length === 0 ? (
+                <LoadingState />
+            ) : shown.length === 0 ? (
+                <div className="card"><EmptyState compact title={emptyText} /></div>
+            ) : activeTab === 'expenses' ? (
+                <ul className="space-y-2.5">
+                    {shown.map(t => (
+                        <ApprovalCard
+                            key={t.id}
+                            title={t.voucher_name}
+                            amount={rupees(t.amount)}
+                            details={[
+                                `${shortDate(t.transaction_date)} · ${t.voucher_type === 'Received' ? 'Money received' : 'Spent'}`,
+                                [t.ledger_name, t.paid_to ? `Paid to ${t.paid_to}` : ''].filter(Boolean).join(' · '),
+                                t.created_by ? `By ${t.created_by}` : '',
+                            ]}
+                            status={t.approval_status || 'Pending'}
+                            busy={loading}
+                            canDecide={statusTab === 'Pending'}
+                            onApprove={() => handleApproval(t.id, 'expense', 'Approved', `${rupees(t.amount)} for ${t.voucher_name}`)}
+                            onReject={() => handleApproval(t.id, 'expense', 'Rejected', `${rupees(t.amount)} for ${t.voucher_name}`)}
+                        />
+                    ))}
+                </ul>
+            ) : (
+                <ul className="space-y-2.5">
+                    {shown.map(a => (
+                        <ApprovalCard
+                            key={a.id}
+                            title={a.branch_name || 'Branch'}
+                            amount={<span className="text-emerald-700">{rupees(a.amount)}</span>}
+                            details={[
+                                `Given on ${shortDate(a.allocation_date)}`,
+                                a.remarks ? `Note: ${a.remarks}` : '',
+                            ]}
+                            status={a.approval_status || 'Pending'}
+                            busy={loading}
+                            canDecide={statusTab === 'Pending'}
+                            onApprove={() => handleApproval(a.id, 'fund', 'Approved', `${rupees(a.amount)} for ${a.branch_name}`)}
+                            onReject={() => handleApproval(a.id, 'fund', 'Rejected', `${rupees(a.amount)} for ${a.branch_name}`)}
+                        />
+                    ))}
+                </ul>
             )}
-
-            {activeTab === 'funds' && (
-                <div>
-                    {renderAllocationTable("Pending Fund Allocations", pendingAllocations, true)}
-                    {renderAllocationTable("Approved Fund Allocations", approvedAllocations, false)}
-                    {renderAllocationTable("Rejected Fund Allocations", rejectedAllocations, false)}
-                </div>
-            )}
-            
         </div>
     );
 };

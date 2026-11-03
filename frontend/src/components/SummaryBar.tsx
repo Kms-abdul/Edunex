@@ -4,15 +4,15 @@ import { UserIcon, CurrencyRupeeIcon } from './icons';
 import { UserCheck } from 'lucide-react';
 import api from '../api';
 
-const SummaryCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; tone: string; hint?: string }> = ({ title, value, icon, tone, hint }) => (
-    <div className="kpi relative overflow-hidden">
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${tone}`}>
+const SummaryCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; tone: string; hint?: string; className?: string }> = ({ title, value, icon, tone, hint, className = '' }) => (
+    <div className={`card relative overflow-hidden flex items-center gap-3 p-3 sm:p-5 sm:gap-4 min-w-0 ${className}`}>
+        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${tone}`}>
             {icon}
         </div>
         <div className="min-w-0">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{title}</p>
-            <p className="text-2xl font-semibold text-slate-900 tracking-tight mt-0.5 tabular-nums truncate">{value}</p>
-            {hint && <p className="text-2xs text-slate-400 mt-0.5">{hint}</p>}
+            <p className="text-sm text-slate-500">{title}</p>
+            <p className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight mt-0.5 tabular-nums break-words">{value}</p>
+            {hint && <p className="text-xs text-slate-500 mt-0.5">{hint}</p>}
         </div>
     </div>
 );
@@ -78,28 +78,29 @@ const SummaryBar: React.FC = () => {
     const scopeHint = isAll ? 'All branches' : targetBranchName;
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-4">
             <SummaryCard
-                title="Total Students"
+                title="Students"
                 value={totalStudents.toLocaleString('en-IN')}
                 icon={<UserIcon className="w-6 h-6" />}
                 tone="bg-brand-50 text-brand-600"
                 hint={scopeHint}
             />
             <SummaryCard
-                title="Total Fee Dues"
+                title="Fees still due"
                 value={`₹ ${totalDues.toLocaleString('en-IN')}`}
                 icon={<CurrencyRupeeIcon className="w-6 h-6" />}
                 tone="bg-rose-50 text-rose-600"
-                hint="Outstanding across students"
+                hint="Not yet paid by students"
+                className="col-span-2 md:col-span-1 order-last md:order-none"
             />
 
             <SummaryCard
-                title="Total Present Students"
+                title="Present today"
                 value={presentToday.toLocaleString('en-IN')}
                 icon={<UserCheck className="w-6 h-6" />}
                 tone="bg-emerald-50 text-emerald-600"
-                hint="Marked present today"
+                hint="Students marked present"
             />
 
         </div>

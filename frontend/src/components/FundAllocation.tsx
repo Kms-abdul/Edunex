@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { API_URL } from '../config';
-import { Alert, EmptyState } from './ui';
+import { ActionBar, Alert, Badge, DataList, Field, Steps } from './ui';
+import type { Column } from './ui';
+import SegmentTabs from './cash/SegmentTabs';
+import { rupees, shortDate } from './cash/format';
+
+const STEP_LABELS = ['Who gets the money?', 'Check and save'];
 
 const FundAllocation: React.FC = () => {
     const globalYear = localStorage.getItem('academicYear') || '2026-2027';
@@ -15,6 +21,10 @@ const FundAllocation: React.FC = () => {
     const [allocations, setAllocations] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
+
+    const [view, setView] = useState<'new' | 'history'>('new');
+    const [step, setStep] = useState(0);
+    const [saved, setSaved] = useState<{ amount: string; branch: string; date: string } | null>(null);
 
     const getHeaders = () => {
         const token = localStorage.getItem('token') || '';
@@ -69,8 +79,9 @@ const FundAllocation: React.FC = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const branchName = branches.find(b => String(b.id) === String(formData.branch_id))?.branch_name || '';
+
+    const handleSubmit = async () => {
         setLoading(true);
         setMessage('');
         try {
@@ -81,151 +92,141 @@ const FundAllocation: React.FC = () => {
             });
             const data = await res.json();
             if (res.ok) {
-                setMessage('Fund Allocation successful!');
+                setSaved({ amount: formData.amount, branch: branchName, date: formData.allocation_date });
                 setFormData({ ...formData, amount: '', remarks: '', approved_by: '' });
                 fetchAllocations();
             } else {
                 setMessage(data.message || 'Error saving allocation');
             }
         } catch (e) {
-            setMessage('Network error');
+            setMessage('Network error. Check the internet and try again.');
         } finally {
             setLoading(false);
         }
     };
 
+    const step1Note =
+        !formData.branch_id ? 'Choose a branch.'
+            : !formData.allocation_date ? 'Choose the date.'
+                : formData.amount === '' || isNaN(parseFloat(formData.amount)) ? 'Write the amount.'
+                    : '';
+    const reviewLine = `Give ${rupees(formData.amount)} to ${branchName || '…'} on ${shortDate(formData.allocation_date)}`;
+
+    const columns: Column<any>[] = [
+        { key: 'branch_name', header: 'Branch', primary: true },
+        { key: 'allocation_date', header: 'Date', secondary: true, render: a => shortDate(a.allocation_date) },
+        { key: 'amount', header: 'Amount', align: 'right', render: a => <span className="font-semibold text-emerald-700">{rupees(a.amount)}</span> },
+        { key: 'approval_status', header: 'Status', render: a => <Badge status={a.approval_status || 'Pending'} /> },
+        { key: 'approved_by', header: 'Approved by', render: a => a.approved_by || '—' },
+        { key: 'remarks', header: 'Note', render: a => a.remarks || '—' },
+    ];
+
     return (
-        <div className="space-y-6">
-            <h2 className="page-title">
-                Fund Allocation
-            </h2>
-            <div className="card p-5">
-                <h3 className="text-base font-semibold text-slate-900 mb-4">New Fund Allocation</h3>
-                {message && (
-                    <Alert
-                        tone={message === 'Fund Allocation successful!' ? 'success' : 'error'}
-                        onClose={() => setMessage('')}
-                        className="mb-4"
-                    >
-                        {message}
-                    </Alert>
-                )}
-
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div>
-                        <label className="label">Branch *</label>
-                        <select
-                            name="branch_id"
-                            value={formData.branch_id}
-                            onChange={handleChange}
-                            className="input"
-                            required
-                        >
-                            <option value="">Select Branch</option>
-                            {branches.map(b => (
-                                <option key={b.id} value={b.id}>{b.branch_name}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="label">Date *</label>
-                        <input
-                            type="date"
-                            name="allocation_date"
-                            value={formData.allocation_date}
-                            onChange={handleChange}
-                            className="input"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="label">Amount *</label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            name="amount"
-                            value={formData.amount}
-                            onChange={handleChange}
-                            className="input"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="label">Approved By</label>
-                        <input
-                            type="text"
-                            name="approved_by"
-                            value={formData.approved_by}
-                            onChange={handleChange}
-                            className="input"
-                        />
-                    </div>
-                    <div>
-                        <label className="label">Remarks</label>
-                        <textarea
-                            name="remarks"
-                            value={formData.remarks}
-                            onChange={handleChange}
-                            className="input"
-                            rows={1}
-                        ></textarea>
-                    </div>
-                    <div className="md:col-span-2 lg:col-span-5 flex justify-end">
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="btn-primary"
-                        >
-                            {loading ? 'Saving...' : 'Save Allocation'}
-                        </button>
-                    </div>
-                </form>
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-lg font-semibold text-slate-900">Give petty cash to a branch</h2>
+                <p className="text-sm text-slate-500">Money given here is added to the branch's cash in hand for small expenses.</p>
             </div>
 
-            <div className="card overflow-hidden">
-                <div className="card-header">
-                    <h3 className="text-base font-semibold text-slate-900">Recent Allocations</h3>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50">
-                            <tr>
-                                <th className="p-3 border">Date</th>
-                                <th className="p-3 border">Branch</th>
-                                <th className="p-3 border">Amount</th>
-                                <th className="p-3 border text-center">Status</th>
-                                <th className="p-3 border">Approved By</th>
-                                <th className="p-3 border">Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {allocations.length === 0 && (
-                                <tr>
-                                    <td colSpan={6}><EmptyState compact title="No allocations found." /></td>
-                                </tr>
+            <SegmentTabs
+                value={view}
+                onChange={setView}
+                options={[
+                    { value: 'new', label: 'Give money' },
+                    { value: 'history', label: 'Past entries', count: allocations.length },
+                ]}
+            />
+
+            {view === 'new' ? (
+                <div className="card p-4 sm:p-5 max-w-2xl">
+                    {saved ? (
+                        <div className="space-y-4">
+                            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-6 text-center">
+                                <CheckCircle2 className="w-14 h-14 text-emerald-600 mx-auto" />
+                                <p className="mt-3 text-xl font-semibold text-slate-900">{rupees(saved.amount)} given</p>
+                                <p className="mt-1 text-sm text-slate-700">To {saved.branch} on {shortDate(saved.date)}</p>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <button type="button" className="btn-primary btn-lg" onClick={() => { setSaved(null); setStep(0); }}>Give more money</button>
+                                <button type="button" className="btn-secondary btn-lg" onClick={() => { setSaved(null); setStep(0); setView('history'); }}>See past entries</button>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <Steps steps={STEP_LABELS} current={step} onJump={setStep} className="mb-5" />
+                            {message && (
+                                <Alert tone="error" onClose={() => setMessage('')} className="mb-4">{message}</Alert>
                             )}
-                            {allocations.map(a => (
-                                <tr key={a.id} className="hover:bg-slate-50">
-                                    <td className="p-3 border">{a.allocation_date}</td>
-                                    <td className="p-3 border">{a.branch_name}</td>
-                                    <td className="p-3 border text-emerald-600 font-semibold">₹{Number(a.amount).toFixed(2)}</td>
-                                    <td className="p-3 border text-center">
-                                        <span className={
-                                            a.approval_status === 'Approved' ? 'badge-success' :
-                                            a.approval_status === 'Rejected' ? 'badge-danger' :
-                                            'badge-warning'
-                                        }>
-                                            {a.approval_status || 'Pending'}
-                                        </span>
-                                    </td>
-                                    <td className="p-3 border">{a.approved_by}</td>
-                                    <td className="p-3 border">{a.remarks}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+
+                            {step === 0 && (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <Field label="Branch" htmlFor="fa-branch" required className="sm:col-span-2">
+                                            <select id="fa-branch" name="branch_id" value={formData.branch_id} onChange={handleChange} className="input min-h-[44px]">
+                                                <option value="">Choose a branch</option>
+                                                {branches.map(b => (
+                                                    <option key={b.id} value={b.id}>{b.branch_name}</option>
+                                                ))}
+                                            </select>
+                                        </Field>
+                                        <Field label="Amount" htmlFor="fa-amount" required>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₹</span>
+                                                <input
+                                                    id="fa-amount"
+                                                    type="number"
+                                                    inputMode="decimal"
+                                                    step="0.01"
+                                                    name="amount"
+                                                    value={formData.amount}
+                                                    onChange={handleChange}
+                                                    className="input min-h-[44px] pl-7"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                        </Field>
+                                        <Field label="Date" htmlFor="fa-date" required>
+                                            <input id="fa-date" type="date" name="allocation_date" value={formData.allocation_date} onChange={handleChange} className="input min-h-[44px]" />
+                                        </Field>
+                                    </div>
+                                    <ActionBar note={step1Note || undefined}>
+                                        <button type="button" className="btn-primary btn-lg" disabled={!!step1Note} onClick={() => setStep(1)}>
+                                            Next: check
+                                        </button>
+                                    </ActionBar>
+                                </div>
+                            )}
+
+                            {step === 1 && (
+                                <div className="space-y-4">
+                                    <Alert tone="info" title={reviewLine} />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <Field label="Approved by (optional)" htmlFor="fa-approved">
+                                            <input id="fa-approved" type="text" name="approved_by" value={formData.approved_by} onChange={handleChange} className="input min-h-[44px]" placeholder="Name" />
+                                        </Field>
+                                        <Field label="Note (optional)" htmlFor="fa-note">
+                                            <textarea id="fa-note" name="remarks" value={formData.remarks} onChange={handleChange} className="input" rows={2} />
+                                        </Field>
+                                    </div>
+                                    <ActionBar note={reviewLine}>
+                                        <button type="button" className="btn-secondary btn-lg" onClick={() => setStep(0)} disabled={loading}>Back</button>
+                                        <button type="button" className="btn-primary btn-lg" onClick={handleSubmit} disabled={loading || !!step1Note}>
+                                            {loading ? 'Saving…' : `Give ${rupees(formData.amount)}`}
+                                        </button>
+                                    </ActionBar>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
-            </div>
+            ) : (
+                <DataList
+                    columns={columns}
+                    rows={allocations}
+                    rowKey={(a, i) => a.id ?? i}
+                    emptyTitle="No money given yet"
+                />
+            )}
         </div>
     );
 };

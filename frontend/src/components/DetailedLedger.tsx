@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { EmptyState, LoadingState } from './ui';
+import { EmptyState, LoadingState, DataList, Field } from './ui';
+import type { Column } from './ui';
+import Filters from './cash/Filters';
+import StatTiles from './cash/StatTiles';
+import Sheet from './cash/Sheet';
 
 interface LedgerDetailRow {
     date: string;
@@ -143,168 +147,109 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
         XLSX.writeFile(wb, `Detailed_Ledger_${academicYear}.xlsx`);
     };
 
+    const branchName = branches.find(b => String(b.id) === String(selectedBranch))?.branch_name || '';
+    const totalDebit = filteredData.reduce((sum, row) => sum + row.debit, 0);
+    const totalCredit = filteredData.reduce((sum, row) => sum + row.credit, 0);
+
+    const columns: Column<LedgerDetailRow>[] = [
+        { key: 'narration', header: 'Details', primary: true, render: row => row.narration || row.ledger_name || '—' },
+        { key: 'date', header: 'Date', secondary: true, render: row => `${row.date} · ${row.voucher_no}` },
+        { key: 'ledger_name', header: 'Head', render: row => <>{row.ledger_name}{row.ledger_type ? <span className="text-slate-500"> ({row.ledger_type})</span> : null}</> },
+        { key: 'debit', header: 'Money in', align: 'right', render: row => <span className="text-emerald-600">{row.debit > 0 ? row.debit.toFixed(2) : '-'}</span> },
+        { key: 'credit', header: 'Money out', align: 'right', render: row => <span className="text-rose-600">{row.credit > 0 ? row.credit.toFixed(2) : '-'}</span> },
+    ];
+
     return (
-        <div className="p-4 min-h-full space-y-6">
-            <h2 className="text-xl font-semibold tracking-tight text-brand-700 mb-4">
-                Cash ledger in details {filterMonth ? `(${filterMonth})` : ''}
-            </h2>
-            <div className="card p-4">
-                <div className="flex flex-wrap gap-3 items-center justify-between mb-6 pb-2 border-b border-slate-100">
-                    <div className="flex items-center gap-2">
-                        <span className="text-brand-600 font-medium">📜 Cash ledger in details</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm text-slate-700">Branch:</span>
-                            <select
-                                className="input w-auto"
-                                value={selectedBranch}
-                                onChange={(e) => setSelectedBranch(e.target.value)}
-                            >
-                                {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
-                            </select>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm text-slate-700">FY:</span>
-                            {/* Follows the academic year selected in the header (Apr–Mar of that year) */}
-                            <span className="badge-brand text-xs" title="Change the academic year from the header">{academicYear}</span>
-                        </div>
-                        <button
-                            onClick={handleExcelExport}
-                            className="btn btn-sm bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
-                        >
-                            <FileSpreadsheet size={16} /> Excel
-                        </button>
-                    </div>
-                </div>
-
-                <div className="overflow-x-auto rounded-lg border border-slate-200">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                            <tr>
-                                <th className="p-3 border w-12 text-center">S.No</th>
-                                <th className="p-3 border">Voucher Date</th>
-                                <th className="p-3 border">Voucher No</th>
-                                <th className="p-3 border">Ledger Type</th>
-                                <th className="p-3 border">Ledger Head</th>
-                                <th className="p-3 border">Narration</th>
-                                <th className="p-3 border text-right">Debit (Dr)</th>
-                                <th className="p-3 border text-right">Credit (Cr)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredData.length === 0 && !loading && (
-                                <tr>
-                                    <td colSpan={8}><EmptyState compact title="No transactions found." /></td>
-                                </tr>
-                            )}
-                            {loading && (
-                                <tr>
-                                    <td colSpan={8}><LoadingState label="Loading details..." /></td>
-                                </tr>
-                            )}
-                            {filteredData.map((row, idx) => (
-                                <tr key={idx} className="hover:bg-slate-50">
-                                    <td className="p-3 border text-center text-slate-500">{idx + 1}</td>
-                                    <td className="p-3 border">
-                                        <button
-                                            className="text-brand-600 hover:text-brand-800 hover:underline font-medium text-left"
-                                            onClick={() => setSelectedTxn(row)}
-                                            title="Click to view details"
-                                        >
-                                            {row.date}
-                                        </button>
-                                    </td>
-                                    <td className="p-3 border font-medium text-slate-700">{row.voucher_no}</td>
-                                    <td className="p-3 border">{row.ledger_type}</td>
-                                    <td className="p-3 border">{row.ledger_name}</td>
-                                    <td className="p-3 border text-slate-600">{row.narration}</td>
-                                    <td className="p-3 border text-right text-emerald-600">
-                                        {row.debit > 0 ? row.debit.toFixed(2) : '-'}
-                                    </td>
-                                    <td className="p-3 border text-right text-rose-600">
-                                        {row.credit > 0 ? row.credit.toFixed(2) : '-'}
-                                    </td>
-                                </tr>
-                            ))}
-                            {filteredData.length > 0 && (
-                                <tr className="bg-slate-50 font-semibold">
-                                    <td colSpan={6} className="p-3 border text-right">Total:</td>
-                                    <td className="p-3 border text-right text-emerald-700">
-                                        {filteredData.reduce((sum, row) => sum + row.debit, 0).toFixed(2)}
-                                    </td>
-                                    <td className="p-3 border text-right text-rose-700">
-                                        {filteredData.reduce((sum, row) => sum + row.credit, 0).toFixed(2)}
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Modal */}
-                {selectedTxn && (
-                    <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
-                        <div className="card shadow-pop p-6 max-w-2xl w-full mx-4">
-                            <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
-                                <h3 className="text-base font-semibold text-slate-900">
-                                    Voucher Details: {selectedTxn.voucher_no}
-                                </h3>
-                                <button onClick={() => setSelectedTxn(null)} className="btn-icon" aria-label="Close">
-                                    ✖
-                                </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                                <div><span className="text-slate-500 font-medium">Date:</span> {selectedTxn.date}</div>
-                                <div><span className="text-slate-500 font-medium">Voucher Type:</span> {selectedTxn.voucher_type}</div>
-                                <div><span className="text-slate-500 font-medium">Ledger Type:</span> {selectedTxn.ledger_type}</div>
-                                <div><span className="text-slate-500 font-medium">Ledger Head:</span> {selectedTxn.ledger_name}</div>
-                                <div><span className="text-slate-500 font-medium">Narration:</span> {selectedTxn.narration}</div>
-                                <div><span className="text-slate-500 font-medium">Debit:</span> {selectedTxn.debit > 0 ? selectedTxn.debit.toFixed(2) : '-'}</div>
-                                <div><span className="text-slate-500 font-medium">Credit:</span> {selectedTxn.credit > 0 ? selectedTxn.credit.toFixed(2) : '-'}</div>
-                            </div>
-
-                            {selectedTxn.items && selectedTxn.items.length > 0 && (
-                                <div>
-                                    <h4 className="text-base font-semibold text-slate-900 mb-2">Items Breakdown</h4>
-                                    <div className="border border-slate-200 rounded-lg overflow-x-auto">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600 border-b border-slate-200">
-                                                <tr>
-                                                    <th className="p-2 border-r">Item Name</th>
-                                                    <th className="p-2 text-right">Amount</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {selectedTxn.items.map((item, idx) => (
-                                                    <tr key={idx} className="border-b last:border-b-0 hover:bg-slate-50">
-                                                        <td className="p-2 border-r">{item.item_name}</td>
-                                                        <td className="p-2 text-right">{item.amount.toFixed(2)}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                            <tfoot className="bg-slate-50">
-                                                <tr>
-                                                    <td className="p-2 border-r font-semibold text-right">Total:</td>
-                                                    <td className="p-2 font-semibold text-right">
-                                                        {selectedTxn.items.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}
-                                                    </td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-                            <div className="mt-6 text-right">
-                                <button onClick={() => setSelectedTxn(null)} className="btn-secondary">
-                                    Close
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-lg font-semibold text-slate-900">
+                    Petty cash entries {filterMonth ? `· ${filterMonth}` : ''}
+                </h2>
+                <p className="text-sm text-slate-500">Every entry one by one. Tap an entry to see its items.</p>
             </div>
+
+            <Filters
+                summary={<>Showing {branchName || 'branch'} · {filterMonth ? `${filterMonth} · ` : ''}Academic year {academicYear}</>}
+                collapsible={filteredData.length > 0}
+                actions={
+                    <button type="button" onClick={handleExcelExport} className="btn-secondary text-emerald-700">
+                        <FileSpreadsheet size={16} /> Download Excel
+                    </button>
+                }
+            >
+                <Field label="Branch" htmlFor="dl-branch">
+                    <select
+                        id="dl-branch"
+                        className="input min-h-[44px]"
+                        value={selectedBranch}
+                        onChange={(e) => setSelectedBranch(e.target.value)}
+                    >
+                        {branches.map(b => <option key={b.id} value={b.id}>{b.branch_name}</option>)}
+                    </select>
+                </Field>
+                <Field label="Academic year" hint="Change it from the top bar.">
+                    {/* Follows the academic year selected in the header (Apr–Mar of that year) */}
+                    <div className="min-h-[44px] flex items-center"><span className="badge-brand text-sm" title="Change the academic year from the header">{academicYear}</span></div>
+                </Field>
+            </Filters>
+
+            {!loading && filteredData.length > 0 && (
+                <StatTiles
+                    tiles={[
+                        { label: 'Money in', value: `₹ ${totalDebit.toFixed(2)}`, tone: 'success' },
+                        { label: 'Money out', value: `₹ ${totalCredit.toFixed(2)}`, tone: 'danger' },
+                    ]}
+                />
+            )}
+
+            {loading ? (
+                <div className="card"><LoadingState label="Loading entries…" /></div>
+            ) : filteredData.length === 0 ? (
+                <div className="card"><EmptyState compact title="No entries found" /></div>
+            ) : (
+                <DataList
+                    columns={columns}
+                    rows={filteredData}
+                    rowKey={(_, i) => i}
+                    onRowClick={row => setSelectedTxn(row)}
+                />
+            )}
+
+            {selectedTxn && (
+                <Sheet
+                    title={`Entry ${selectedTxn.voucher_no}`}
+                    subtitle={selectedTxn.date}
+                    onClose={() => setSelectedTxn(null)}
+                    footer={<button onClick={() => setSelectedTxn(null)} className="btn-secondary btn-lg">Close</button>}
+                >
+                    <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm mb-5">
+                        <div><dt className="text-slate-500">Type</dt><dd className="text-slate-900">{selectedTxn.voucher_type}</dd></div>
+                        <div><dt className="text-slate-500">Type of head</dt><dd className="text-slate-900">{selectedTxn.ledger_type || '—'}</dd></div>
+                        <div className="col-span-2"><dt className="text-slate-500">Head</dt><dd className="text-slate-900">{selectedTxn.ledger_name}</dd></div>
+                        <div className="col-span-2"><dt className="text-slate-500">Details</dt><dd className="text-slate-900 break-words">{selectedTxn.narration || '—'}</dd></div>
+                        <div><dt className="text-slate-500">Money in</dt><dd className="text-emerald-700 font-semibold">{selectedTxn.debit > 0 ? selectedTxn.debit.toFixed(2) : '-'}</dd></div>
+                        <div><dt className="text-slate-500">Money out</dt><dd className="text-rose-600 font-semibold">{selectedTxn.credit > 0 ? selectedTxn.credit.toFixed(2) : '-'}</dd></div>
+                    </dl>
+
+                    {selectedTxn.items && selectedTxn.items.length > 0 && (
+                        <div>
+                            <h4 className="text-sm font-semibold text-slate-900 mb-2">Items</h4>
+                            <ul className="rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm">
+                                {selectedTxn.items.map((item, idx) => (
+                                    <li key={idx} className="flex justify-between gap-3 px-3 py-2">
+                                        <span className="break-words min-w-0">{item.item_name}</span>
+                                        <span className="tabular-nums">{item.amount.toFixed(2)}</span>
+                                    </li>
+                                ))}
+                                <li className="flex justify-between gap-3 px-3 py-2 bg-slate-50 font-semibold">
+                                    <span>Total</span>
+                                    <span className="tabular-nums">{selectedTxn.items.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}</span>
+                                </li>
+                            </ul>
+                        </div>
+                    )}
+                </Sheet>
+            )}
         </div>
     );
 };
