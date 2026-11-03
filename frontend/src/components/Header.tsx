@@ -1,12 +1,32 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDownIcon, UserIcon, LogoutIcon, MenuIcon } from './icons';
-import { ChevronLeft, ChevronRight, MapPin, Building2, GitBranch, CalendarDays, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Building2, GitBranch, CalendarDays, Check, Download } from 'lucide-react';
+import { canInstall, promptInstall, onInstallAvailabilityChange } from '../utils/pwa';
 import { applyBrandTheme, DEFAULT_BRAND_COLOR } from '../theme';
 import { canWrite } from '../utils/permissions';
 import { Page } from '../App';
 import api from '../api';
 import Learnspacelogo1 from '../images/Learnspacelogo1.webp';
 import { useAuth } from '../contexts/AuthContext';
+
+const SheetGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <section>
+    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2 px-1">{title}</p>
+    <div className="space-y-1.5">{children}</div>
+  </section>
+);
+
+const SheetOption: React.FC<{ active?: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`w-full flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left text-[15px] ${active ? 'border-brand-500 bg-brand-50 text-brand-800 font-semibold' : 'border-slate-200 bg-white text-slate-800'}`}
+  >
+    <span className="min-w-0 truncate">{children}</span>
+    {active && <Check className="w-5 h-5 text-brand-600 flex-shrink-0" />}
+  </button>
+);
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -28,6 +48,9 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
   const [schoolDropdownOpen, setSchoolDropdownOpen] = useState(false);
+  const [contextSheetOpen, setContextSheetOpen] = useState(false); // phone: branch / session picker
+  const [installable, setInstallable] = useState(canInstall());
+  useEffect(() => onInstallAvailabilityChange(() => setInstallable(canInstall())), []);
 
   // State for Location → School → Branch cascade
   const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
@@ -459,7 +482,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
           <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={toggleSidebar}
-              className="btn-icon md:hidden text-brand-contrast/80 hover:bg-white/15 hover:text-brand-contrast"
+              className="btn-icon hidden text-brand-contrast/80 hover:bg-white/15 hover:text-brand-contrast"
               aria-label="Toggle navigation"
             >
               <MenuIcon className="w-5 h-5" />
@@ -485,7 +508,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
                 className="h-9 w-auto max-w-[110px] object-contain rounded-md bg-white/95 px-1.5 py-0.5 shadow-sm"
                 onError={(e) => { (e.target as HTMLImageElement).src = Learnspacelogo1; }}
               />
-              <div className="hidden md:block leading-tight min-w-0">
+              <div className="leading-tight min-w-0 max-w-[40vw] md:max-w-none">
                 <p className="font-semibold text-sm text-brand-contrast truncate">{schoolName}</p>
                 {branchLabel && (
                   <p className="text-xs text-brand-contrast/70 truncate">{branchLabel}</p>
@@ -496,6 +519,19 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
 
           {/* Right: context selectors + profile */}
           <div className="flex items-center gap-2">
+            {/* Phone: one button that opens the branch / session picker */}
+            <button
+              type="button"
+              onClick={() => setContextSheetOpen(true)}
+              className="sm:hidden flex items-center gap-1.5 h-9 px-3 rounded-lg border border-white/20 bg-white/10 text-sm font-medium text-brand-contrast max-w-[44vw]"
+              aria-label="Change branch or session"
+            >
+              <CalendarDays className="w-4 h-4 flex-shrink-0 text-brand-contrast/80" />
+              <span className="truncate">{selectedYear}</span>
+              <ChevronDownIcon className="w-3.5 h-3.5 flex-shrink-0 text-brand-contrast/70" />
+            </button>
+
+            <div className="hidden sm:flex items-center gap-2">
 
             {/* Location Dropdown (Admin / SuperAdmin Only) */}
             {canManageSchool && locationList.length > 1 && (
@@ -591,6 +627,8 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
               </MenuList>
             </Chip>
 
+            </div>
+
             <div className="hidden sm:block h-6 w-px bg-white/20 mx-1" />
 
             {/* Profile Dropdown */}
@@ -616,12 +654,19 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
                   </li>
                   <li>
                     <a href="#" onClick={(e) => { e.preventDefault(); navigateTo('profile'); setProfileDropdownOpen(false); }} className="menu-item">
-                      <UserIcon className="w-4 h-4 text-slate-400" /> Profile
+                      <UserIcon className="w-4 h-4 text-slate-400" /> My account
                     </a>
                   </li>
+                  {installable && (
+                    <li>
+                      <button onClick={() => { setProfileDropdownOpen(false); promptInstall(); }} className="menu-item">
+                        <Download className="w-4 h-4 text-slate-400" /> Install app on this device
+                      </button>
+                    </li>
+                  )}
                   <li>
                     <button onClick={onLogout} className="menu-item text-red-600 hover:text-red-700 hover:bg-red-50 focus:outline-none">
-                      <LogoutIcon className="w-4 h-4" /> Logout
+                      <LogoutIcon className="w-4 h-4" /> Log out
                     </button>
                   </li>
                 </ul>
@@ -630,6 +675,62 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
           </div>
         </div>
       </nav>
+
+      {/* Phone: branch / session picker as a bottom sheet (portal so it sits above the tab bar) */}
+      {contextSheetOpen && createPortal(
+        <div className="sm:hidden fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Change branch or session">
+          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setContextSheetOpen(false)} />
+          <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white text-slate-800 shadow-pop animate-fade-in pb-[env(safe-area-inset-bottom)]">
+            <div className="sticky top-0 bg-white flex items-center justify-between px-4 py-3 border-b border-slate-100">
+              <p className="text-base font-semibold text-slate-900">Where are you working?</p>
+              <button type="button" onClick={() => setContextSheetOpen(false)} className="btn-ghost btn-sm">Done</button>
+            </div>
+            <div className="p-4 space-y-5">
+              {canManageSchool && locationList.length > 1 && (
+                <SheetGroup title="Location">
+                  {locationList.map(loc => (
+                    <SheetOption key={loc} active={selectedLocation === loc} onClick={() => handleLocationChange(loc)}>
+                      {loc === 'All' ? 'All locations' : loc}
+                    </SheetOption>
+                  ))}
+                </SheetGroup>
+              )}
+              {(isSuperAdmin || schoolOptions.length > 1) && (
+                <SheetGroup title="School">
+                  <SheetOption active={selectedSchoolId === 'All'} onClick={() => handleSchoolChange('All', 'All')}>All schools</SheetOption>
+                  {schoolOptions.map(sc => (
+                    <SheetOption key={sc.id} active={selectedSchoolId === sc.id} onClick={() => handleSchoolChange(sc.id, sc.name)}>{sc.name}</SheetOption>
+                  ))}
+                </SheetGroup>
+              )}
+              {showDropdown ? (
+                <SheetGroup title="Branch">
+                  {branchOptions.map((branch: string) => (
+                    <SheetOption
+                      key={branch}
+                      active={currentBranch === (branch === 'All Branches' ? 'All' : branch)}
+                      onClick={() => handleBranchChange(branch === 'All Branches' ? 'All' : branch)}
+                    >
+                      {branch === 'All Branches' ? 'All branches' : branch}
+                    </SheetOption>
+                  ))}
+                </SheetGroup>
+              ) : (
+                <SheetGroup title="Branch">
+                  <p className="text-sm text-slate-600 px-1">{currentBranch === 'All' ? 'All branches' : currentBranch}</p>
+                </SheetGroup>
+              )}
+              <SheetGroup title="Session (academic year)">
+                {years.length === 0 && <p className="text-sm text-slate-500 px-1">No sessions set up yet</p>}
+                {years.map(year => (
+                  <SheetOption key={year} active={selectedYear === year} onClick={() => handleYearChange(year)}>{year}</SheetOption>
+                ))}
+              </SheetGroup>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </header>
   );
 };

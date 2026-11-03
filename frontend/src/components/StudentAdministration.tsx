@@ -18,6 +18,7 @@ import { Student } from '../types';
 import api from '../api';
 import { notify, confirmDialog } from './ui/feedback';
 import { PageHeader, LoadingState, EmptyState } from './ui';
+import { consumeIntent } from '../utils/intent';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -783,11 +784,13 @@ const StudentAdministration: React.FC<StudentAdministrationProps> = () => {
         return 'students';
     }, [hasPermission]);
 
-    const [activeView, setActiveView] = useState<StudentAdminView>('students');
+    // A shortcut (e.g. Home → "Add a new student") may ask for a specific view
+    const [intentView] = useState(() => consumeIntent('student-administration') as StudentAdminView | null);
+    const [activeView, setActiveView] = useState<StudentAdminView>(intentView || 'students');
 
     useEffect(() => {
-        setActiveView(defaultView);
-    }, [defaultView]);
+        if (!intentView) setActiveView(defaultView);
+    }, [defaultView, intentView]);
 
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 

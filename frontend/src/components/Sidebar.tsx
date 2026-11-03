@@ -1,11 +1,12 @@
 import React from 'react';
 import {
-  DashboardIcon, AcademicIcon, FinancialIcon, AdministrationIcon, SetupIcon, HeadphoneIcon, UserIcon, ControlPanelIcon
+  HeadphoneIcon, UserIcon, ControlPanelIcon
 } from './icons';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Page } from "../App";
 import { useAuth } from '../contexts/AuthContext';
 import Learnspacelogo from '../images/Learnspacelogo.webp';
+import { navCategories, isInSection } from './shell/nav';
 
 
 interface SidebarProps {
@@ -15,19 +16,17 @@ interface SidebarProps {
   currentPage: Page;
 }
 
-const navCategories: { title: string; icon: React.ReactNode; page: Page; permission: string }[] = [
-  { title: 'Dashboard', icon: <DashboardIcon className="w-5 h-5" />, page: 'dashboard', permission: 'home.dashboard.main' },
-  { title: 'Academic', icon: <AcademicIcon className="w-5 h-5" />, page: 'academic', permission: 'academics.academic.management'},
-  { title: 'Financial', icon: <FinancialIcon className="w-5 h-5" />, page: 'fee', permission: 'fees.collections.receipt-entry' },
-  { title: 'Administration', icon: <AdministrationIcon className="w-5 h-5" />, page: 'administration', permission: 'administration.students.management' },
-  { title: 'HR & Staff', icon: <UserIcon className="w-5 h-5" />, page: 'hr-management', permission: 'hr.hr.hr-management,hr.hr.staff-profile' },
-  { title: 'Setup Your School', icon: <SetupIcon className="w-5 h-5" />, page: 'setup', permission: 'setup.school.setup' },
-];
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, navigateTo, currentPage }) => {
+
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, navigateTo: rawNavigate, currentPage }) => {
+  // On phones the menu is a drawer: close it after choosing a page
+  const navigateTo = (page: Page) => {
+    rawNavigate(page);
+    if (isOpen && typeof window !== 'undefined' && window.innerWidth < 768) toggleSidebar();
+  };
   const { hasPermission } = useAuth();
   const canAccess = (permission: string) => {
-    return permission.split(',').some(p => hasPermission(p.trim(), 'read'));
+    return permission === '*' || permission.split(',').some(p => hasPermission(p.trim(), 'read'));
   };
 
   const showControlPanel =
@@ -83,7 +82,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, navigateTo, cu
             />
             <div className={`leading-tight min-w-0 ${!isOpen && 'md:hidden'}`}>
               <p className="text-sm font-bold text-brand-contrast tracking-tight truncate">Edunex</p>
-              <p className="text-2xs font-medium text-brand-contrast/70 uppercase tracking-wider">School ERP</p>
+              <p className="text-2xs font-medium text-brand-contrast/70 uppercase tracking-wider">School app</p>
             </div>
           </a>
           <button
@@ -97,36 +96,36 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, navigateTo, cu
 
         {/* Navigation */}
         <nav className={`flex-1 overflow-y-auto overflow-x-hidden py-4 space-y-1 ${isOpen ? 'px-3' : 'px-3 md:px-3'}`}>
-          <p className={`px-3 pb-2 text-2xs font-semibold uppercase tracking-wider text-slate-400 ${!isOpen && 'md:hidden'}`}>Modules</p>
+          <p className={`px-3 pb-2 text-2xs font-semibold uppercase tracking-wider text-slate-400 ${!isOpen && 'md:hidden'}`}>Menu</p>
           {navCategories.filter(cat => canAccess(cat.permission)).map((cat) => (
             <NavLink
               key={cat.title}
               title={cat.title}
               icon={cat.icon}
-              active={cat.page === currentPage}
+              active={isInSection(currentPage, cat)}
               onClick={() => navigateTo(cat.page)}
             />
           ))}
 
           <div className="pt-4 mt-4 border-t border-slate-100 space-y-1">
-            <p className={`px-3 pb-2 text-2xs font-semibold uppercase tracking-wider text-slate-400 ${!isOpen && 'md:hidden'}`}>System</p>
+            <p className={`px-3 pb-2 text-2xs font-semibold uppercase tracking-wider text-slate-400 ${!isOpen && 'md:hidden'}`}>More</p>
             {/* Control Panel – Admin & SuperAdmin */}
             {showControlPanel && (
               <NavLink
-                title="Control Panel"
+                title="Users & access"
                 icon={<ControlPanelIcon className="w-5 h-5" />}
                 active={currentPage === 'control-panel'}
                 onClick={() => navigateTo('control-panel')}
               />
             )}
             <NavLink
-              title="Staff Support"
+              title="Help"
               icon={<HeadphoneIcon className="w-5 h-5" />}
               active={currentPage === 'staffsupport'}
               onClick={() => navigateTo('staffsupport')}
             />
             <NavLink
-              title="My Details"
+              title="My account"
               icon={<UserIcon className="w-5 h-5" />}
               active={currentPage === 'profile'}
               onClick={() => navigateTo('profile')}

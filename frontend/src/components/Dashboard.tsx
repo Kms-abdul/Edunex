@@ -3,6 +3,7 @@ import { LoadingState } from './ui/States';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import MainContent from './MainContent';
+import BottomNav from './shell/BottomNav';
 import FinancialLayout from './FinancialLayout';
 import HRLayout from './HRLayout';
 import { useNavigationHistory } from '../hooks/useNavigationHistory';
@@ -115,7 +116,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
           canGoBack={canGoBack}
           canGoForward={canGoForward}
         />
-        <main className="flex-1 min-h-0">
+        {/* Bottom padding leaves room for the phone tab bar */}
+        <main className="flex-1 min-h-0 pb-24 md:pb-0">
           <Suspense fallback={<LoadingState label="Loading page…" className="py-24" />}>
           {currentPage === 'dashboard' && <MainContent navigateTo={navigateTo} />}
           {currentPage === 'profile' && <Profile />}
@@ -194,6 +196,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
           </Suspense>
         </main>
       </div>
+      <BottomNav currentPage={currentPage} navigateTo={navigateTo} openMenu={() => setIsSidebarOpen(true)} />
     </div>
   );
 };

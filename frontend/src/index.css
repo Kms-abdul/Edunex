@@ -330,6 +330,59 @@
   }
 }
 
+/* ------------------------------------------------------------------
+   Phone & installed-app (PWA) friendliness
+   ------------------------------------------------------------------ */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* iOS zooms into inputs smaller than 16px; keep forms at 16px on phones */
+@media (max-width: 639px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea,
+  .input {
+    font-size: 16px;
+  }
+  /* Dialogs never wider than the screen */
+  .fixed > .max-w-md,
+  .fixed > .max-w-lg,
+  .fixed > .max-w-xl,
+  .fixed > .max-w-2xl,
+  .fixed > .max-w-3xl,
+  .fixed > .max-w-4xl {
+    max-width: calc(100vw - 1.5rem);
+  }
+}
+
+/* Bigger tap targets on touch screens */
+@media (pointer: coarse) {
+  .btn, .btn-primary, .btn-secondary, .btn-ghost, .btn-soft, .btn-danger, .btn-success, .btn-warn {
+    min-height: 2.75rem;
+  }
+  .btn-sm {
+    min-height: 2.5rem;
+  }
+  .btn-icon {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+  .menu-item {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+}
+
+/* Installed app: keep content clear of the notch / status bar */
+@media (display-mode: standalone) {
+  header.sticky {
+    padding-top: env(safe-area-inset-top);
+    height: calc(60px + env(safe-area-inset-top));
+  }
+}
+
 /* Fix for mixed language in charts (Arabic/Urdu) */
 .recharts-text,
 text,

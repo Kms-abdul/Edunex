@@ -15,6 +15,7 @@ import MarksUpload from "./MarksUpload";
 import StudentReportCard from "./StudentReportCard";
 import SetExamAttendance from "./SetExamAttendance";
 import MarksEntryAllSubjects from "./MarksEntryAllSubjects";
+import { consumeIntent } from '../utils/intent';
 
 
 // --- Types ---
@@ -86,7 +87,8 @@ const NavDropdown: React.FC<DropdownProps> = ({ title, items }) => {
 
 // --- Main ERP Component ---
 const Academics: React.FC = () => {
-    const [view, setView] = useState<AcademicView>("HOME");
+    // A shortcut (e.g. Home → "Enter marks") may open a specific screen directly
+    const [view, setView] = useState<AcademicView>(() => (consumeIntent('academics') as AcademicView | null) || "HOME");
     const { hasPermission } = useAuth();
 
     const canSubjectMaster = hasPermission('academics.academic.subject-master', 'read');
