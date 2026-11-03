@@ -188,26 +188,22 @@ const AdjustFeeReport: React.FC = () => {
     void handleViewReceipt;
 
     return (
-        <div className="container mx-auto p-6">
-            <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 flex items-center">
-                <span className="bg-brand-100 text-brand-600 p-2 rounded-lg mr-3">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                    </svg>
-                </span>
-                Adjust Fee Report
-            </h2>
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
+            <div>
+                <h2 className="text-lg font-semibold text-slate-900">Fee adjustments</h2>
+                <p className="text-sm text-slate-500">Changes made to students' fees after they were set.</p>
+            </div>
 
-            <div className="card min-h-[400px] flex items-center justify-center">
+            <div className="card">
                 <EmptyState
-                    title="Adjust Fee Report"
-                    description="This report will display fee adjustment records. (Pending explicit backend data mapping)"
+                    title="Nothing to show yet"
+                    description="Fee adjustment records will appear here once this report is connected."
                 />
             </div>
 
             {loadingReceipt && (
                 <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
-                    <div className="card px-8"><LoadingState label="Loading Receipt..." /></div>
+                    <div className="card px-8"><LoadingState label="Opening receipt…" /></div>
                 </div>
             )}
 

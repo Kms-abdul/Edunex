@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Printer, X } from 'lucide-react';
 import ReceiptLogo from '../images/Receiptlogo.png';
 import api from '../api';
 import { notify } from './ui/feedback';
@@ -300,17 +301,33 @@ const FeeReceipt: React.FC<FeeReceiptProps> = ({ onClose, receiptData }) => {
   const schoolName = matchingBranch?.school_name || "Edunex";
   const resolvedLogo = schoolLogo;
   return (
-    <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
-      <div className="card shadow-pop w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="printable-receipt">
-          {/* We use the Template Component for the main display (Single Copy) */}
-          <ReceiptTemplate data={receiptData} copyType="Student Copy" logo={resolvedLogo} schoolName={schoolName} />
-          {/* Note: The user sees 'Student Copy' on screen. When printing, we manipulate HTML to show both. */}
+    <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-end sm:items-center z-50 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="fee-receipt-title">
+      <div className="card shadow-pop w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden rounded-b-none sm:rounded-b-xl">
+        {/* On-screen header (not printed) */}
+        <div className="no-print flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200">
+          <div className="min-w-0">
+            <p id="fee-receipt-title" className="text-base font-semibold text-slate-900">Receipt {receiptData.receiptNo}</p>
+            <p className="text-sm text-slate-500 truncate">{receiptData.studentName} · Paid ₹{Number(receiptData.paid || 0).toLocaleString('en-IN')}</p>
+          </div>
+          <button type="button" onClick={onClose} className="btn-icon flex-shrink-0" aria-label="Close">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <p className="no-print sm:hidden px-4 pt-2 text-xs text-slate-500">Swipe sideways to see the full receipt.</p>
+
+        <div className="flex-1 min-h-0 overflow-auto">
+          <div className="printable-receipt min-w-[600px] sm:min-w-0">
+            {/* We use the Template Component for the main display (Single Copy) */}
+            <ReceiptTemplate data={receiptData} copyType="Student Copy" logo={resolvedLogo} schoolName={schoolName} />
+            {/* Note: The user sees 'Student Copy' on screen. When printing, we manipulate HTML to show both. */}
+          </div>
         </div>
 
-        <div className="p-6 pt-0 flex justify-end space-x-4 no-print">
-          <button onClick={onClose} className="btn-secondary">Close</button>
-          <button onClick={handlePrint} className="btn-primary">Print</button>
+        <div className="no-print border-t border-slate-200 px-4 py-3 flex gap-2 sm:justify-end [&>*]:flex-1 sm:[&>*]:flex-none">
+          <button type="button" onClick={onClose} className="btn-secondary min-h-[44px]">Close</button>
+          <button type="button" onClick={handlePrint} className="btn-primary min-h-[44px]">
+            <Printer className="w-4 h-4" /> Print receipt
+          </button>
         </div>
       </div>
     </div>

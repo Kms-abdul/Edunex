@@ -6,7 +6,10 @@ import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { notify } from './ui/feedback';
-import { Alert, EmptyState, LoadingState } from './ui';
+import { Alert, Button, DataList, EmptyState, Field, LoadingState } from './ui';
+import type { Column } from './ui';
+import DueReportView from './fee-reports/DueReportView';
+import { Pager, CardField, joinSummary, currentBranchLabel, FilterCard, SelectField, StatGrid, StatTile, ExportButtons, ResultsBar, niceDate } from './fee-reports/ReportKit';
 
 // Types 
 export interface Receipt {
@@ -70,88 +73,25 @@ const formatDateDDMMYYYY = (dateStr: string | undefined | null): string => {
     }
 };
 // --------------------------------------------------------------------------
-// Shared Components
+// Shared Components (building blocks live in ./fee-reports/ReportKit)
 // --------------------------------------------------------------------------
 
-const StatCard = ({ label, value, subtext }: any) => {
-    return (
-        <div className="card p-6 relative overflow-hidden flex flex-col justify-center">
-            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-gradient-to-br from-slate-50 to-slate-100 rounded-full opacity-50"></div>
-            <p className="text-sm text-slate-500 font-medium mb-1 z-10">{label}</p>
-            <p className="text-3xl font-bold text-slate-800 z-10">
-                {typeof value === 'number' && (label.toLowerCase().includes('amount') || label.toLowerCase().includes('total')) ? `₹${value.toLocaleString('en-IN')}` : value}
-            </p>            {subtext && <p className="text-xs text-slate-400 mt-2 z-10">{subtext}</p>}
-        </div>
+const Pagination = Pager;
+
+const PAYMENT_MODE_LABEL = (m: string) => (m === 'All' ? 'All payment modes' : m);
+const classOptions = (list: string[]) => list.map(c => ({ value: c, label: c === 'All' ? 'All classes' : c }));
+const sectionOptions = (list: string[]) => list.map(s => ({ value: s, label: s === 'All' ? 'All sections' : s }));
+const modeOptions = (list: string[]) => list.map(m => ({ value: m, label: PAYMENT_MODE_LABEL(m) }));
+const feeTypeOptions = (types: any[]) => [{ value: 'All', label: 'All fees' }, ...types.map(ft => ({ value: ft.fee_type, label: ft.fee_type }))];
+
+/** The class / section / fee / mode part of a summary line, e.g. "Class 5 A · Tuition Fee · Cash". */
+const filterSummary = (f: { cls?: string; section?: string; feeType?: string; mode?: string }) =>
+    joinSummary(
+        f.cls && f.cls !== 'All' ? `Class ${f.cls}${f.section && f.section !== 'All' ? ` ${f.section}` : ''}` : 'All classes',
+        f.feeType,
+        f.mode,
+        currentBranchLabel()
     );
-};
-
-// Reusable Filter Wrapper
-const FilterContainer = ({ children }: { children: React.ReactNode }) => (
-    <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 mb-6 shadow-sm mx-4 mt-4">
-        <h3 className="text-sm font-semibold text-slate-700 mb-4 uppercase tracking-wider">Filters</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {children}
-        </div>
-    </div>
-);
-
-// Reusable Pagination Component
-const Pagination = ({ currentPage, totalPages, onPageChange, totalRecords, perPage }: any) => {
-    if (totalPages <= 1) return null;
-
-    const visiblePages = 3;
-    const startPage = Math.max(1, Math.min(currentPage, totalPages - visiblePages + 1));
-    const endPage = Math.min(totalPages, startPage + visiblePages - 1);
-    const pages = Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
-    const showLastPage = endPage < totalPages;
-
-    return (
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <span className="text-sm text-slate-500 italic">
-                Showing {((currentPage - 1) * perPage) + 1} to {Math.min(currentPage * perPage, totalRecords)} of {totalRecords} records
-            </span>
-            <div className="flex items-center gap-1 flex-wrap">
-                <button
-                    disabled={currentPage === 1}
-                    onClick={() => onPageChange(currentPage - 1)}
-                    className="px-2 py-1 text-sm font-medium text-slate-600 hover:text-brand-600 disabled:opacity-30 disabled:hover:text-slate-600 mr-2"
-                >
-                    Previous
-                </button>
-
-                {pages.map(p => (
-                    <button
-                        key={p}
-                        onClick={() => onPageChange(p)}
-                        className={`btn min-w-[28px] ${currentPage === p ? 'text-brand-700 underline underline-offset-4' : 'text-slate-500 hover:text-slate-800' }`}
-                    >
-                        {p}
-                    </button>
-                ))}
-
-                {showLastPage && (
-                    <>
-                        <span className="px-1 text-sm text-slate-400">...</span>
-                        <button
-                            onClick={() => onPageChange(totalPages)}
-                            className={`btn min-w-[28px] ${currentPage === totalPages ? 'text-brand-700 underline underline-offset-4' : 'text-slate-500 hover:text-slate-800' }`}
-                        >
-                            {totalPages}
-                        </button>
-                    </>
-                )}
-
-                <button
-                    disabled={currentPage === totalPages}
-                    onClick={() => onPageChange(currentPage + 1)}
-                    className="px-2 py-1 text-sm font-medium text-slate-600 hover:text-brand-600 disabled:opacity-30 disabled:hover:text-slate-600 ml-2"
-                >
-                    Next
-                </button>
-            </div>
-        </div>
-    );
-};
 
 // HOOK: Dynamic Sections based on Class
 const useClassSections = (selectedClass: string) => {
@@ -264,65 +204,65 @@ const SummaryTables = ({ modeSummary, collectedBySummary, totalCollection }: {
     collectedBySummary: any[];
     totalCollection: number;
 }) => (
-    <div className="flex flex-col lg:flex-row gap-6 mt-8 px-4 pb-6">
-        {/* Payment Mode Table */}
-        <div className="card flex-1 overflow-hidden">
-            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100">
-                <h4 className="text-base font-semibold text-slate-900">Payment Mode Summary</h4>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* By payment mode */}
+        <div className="card overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100">
+                <h4 className="text-base font-semibold text-slate-900">By payment mode</h4>
             </div>
-            <div className="p-0 overflow-x-auto">
+            <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                    <thead className="bg-white text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    <thead className="text-xs font-medium text-slate-500">
                         <tr className="border-b border-slate-100">
-                            <th className="px-6 py-3 text-left">Payment Mode</th>
-                            <th className="px-6 py-3 text-right">Amount</th>
+                            <th className="px-4 py-2.5 text-left">Payment mode</th>
+                            <th className="px-4 py-2.5 text-right">Amount</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                         {Object.entries(modeSummary || {}).map(([mode, amt]: any) => (
-                            <tr key={mode} className="hover:bg-slate-50 transition-colors">
-                                <td className="px-6 py-4 font-medium text-slate-700">{mode}</td>
-                                <td className="px-6 py-4 text-right text-slate-600">₹{Number(amt).toLocaleString()}</td>
+                            <tr key={mode}>
+                                <td className="px-4 py-3 font-medium text-slate-700">{mode}</td>
+                                <td className="px-4 py-3 text-right text-slate-700">₹{Number(amt).toLocaleString()}</td>
                             </tr>
                         ))}
-                        <tr className="bg-slate-50/50">
-                            <td className="px-6 py-4 font-bold text-slate-800">Total</td>
-                            <td className="px-6 py-4 text-right font-bold text-slate-800 text-lg">₹{totalCollection.toLocaleString()}</td>
+                        <tr className="bg-slate-50">
+                            <td className="px-4 py-3 font-bold text-slate-800">Total</td>
+                            <td className="px-4 py-3 text-right font-bold text-slate-900 text-base">₹{totalCollection.toLocaleString()}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        {/* Collected By Table */}
-        <div className="card flex-1 overflow-hidden">
-            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100">
-                <h4 className="text-base font-semibold text-slate-900">Collected By Summary</h4>
+        {/* By person who collected */}
+        <div className="card overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100">
+                <h4 className="text-base font-semibold text-slate-900">By person who collected</h4>
             </div>
-            <div className="p-0 overflow-x-auto">
+            <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                    <thead className="bg-white text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    <thead className="text-xs font-medium text-slate-500">
                         <tr className="border-b border-slate-100">
-                            <th className="px-6 py-3 text-left">Collected By</th>
-                            <th className="px-6 py-3 text-left">Branch</th>
-                            <th className="px-6 py-3 text-center">Count</th>
-                            <th className="px-6 py-3 text-right">Amount</th>
+                            <th className="px-4 py-2.5 text-left">Collected by</th>
+                            <th className="px-4 py-2.5 text-left">Branch</th>
+                            <th className="px-4 py-2.5 text-center">Receipts</th>
+                            <th className="px-4 py-2.5 text-right">Amount</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                         {Array.isArray(collectedBySummary) && collectedBySummary.map((row: any, idx: number) => (
-                            <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                <td className="px-6 py-4 font-medium text-slate-700">{row.user}</td>
-                                <td className="px-6 py-4 text-slate-600">{row.branch}</td>
-                                <td className="px-6 py-4 text-center text-slate-600">
+                            <tr key={idx}>
+                                <td className="px-4 py-3 font-medium text-slate-700">{row.user}</td>
+                                <td className="px-4 py-3 text-slate-600">{row.branch}</td>
+                                <td className="px-4 py-3 text-center text-slate-600">
                                     <span className="badge-neutral">{row.count}</span>
                                 </td>
-                                <td className="px-6 py-4 text-right text-slate-600">₹{Number(row.amount).toLocaleString()}</td>
+                                <td className="px-4 py-3 text-right text-slate-700">₹{Number(row.amount).toLocaleString()}</td>
                             </tr>
                         ))}
-                        <tr className="bg-slate-50/50">
-                            <td colSpan={3} className="px-6 py-4 text-right font-bold text-slate-800">Total</td>
-                            <td className="px-6 py-4 text-right font-bold text-slate-800 text-lg">₹{totalCollection.toLocaleString()}</td>
+                        <tr className="bg-slate-50">
+                            <td colSpan={3} className="px-4 py-3 text-right font-bold text-slate-800">Total</td>
+                            <td className="px-4 py-3 text-right font-bold text-slate-900 text-base">₹{totalCollection.toLocaleString()}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -331,7 +271,13 @@ const SummaryTables = ({ modeSummary, collectedBySummary, totalCollection }: {
     </div>
 );
 
-// Full Featured Receipts Table
+/** Transaction / cheque details for one receipt row. */
+const paymentRef = (r: any) =>
+    r.mode === 'Cheque'
+        ? [r.cheque_no, r.bank_name, r.cheque_date].filter(Boolean).join(' · ') || '-'
+        : (r.transaction_id || '-');
+
+// Receipts list: cards on phones, the full table on wide screens
 const FullReceiptsTable: React.FC<{
     receipts: any[];
     onViewReceipt: (id: string) => void;
@@ -347,8 +293,8 @@ const FullReceiptsTable: React.FC<{
 
     if (!receipts || receipts.length === 0) {
         return (
-            <div className="card mt-4 mx-4">
-                <EmptyState title="No collections recorded yet." description="Try changing the filters or collect a new fee." />
+            <div className="card">
+                <EmptyState compact title="No fee collected for this choice" description="Try changing the filters." />
             </div>
         );
     }
@@ -357,29 +303,61 @@ const FullReceiptsTable: React.FC<{
     const currentReceipts = receipts.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
     return (
-        <div className="card overflow-hidden mx-4 mt-6">
-            <div className="overflow-x-auto">
+        <div className="card overflow-hidden">
+            {/* Phone: cards */}
+            <ul className="md:hidden divide-y divide-slate-100">
+                {currentReceipts.map((r: any, idx: number) => (
+                    <li key={idx} className="px-4 py-3">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <p className="text-[15px] font-semibold text-slate-900 break-words">{r.student_name}</p>
+                                <p className="text-sm text-slate-500 break-words">
+                                    {[`${r.class || ''} ${r.section || ''}`.trim(), r.admission_no && `Adm ${r.admission_no}`].filter(Boolean).join(' · ')}
+                                </p>
+                            </div>
+                            <p className="text-base font-bold text-slate-900 whitespace-nowrap">₹{(r.amount_paid || r.amount || 0).toLocaleString()}</p>
+                        </div>
+                        <dl className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                            <CardField label="Receipt number">{r.receipt_no}</CardField>
+                            <CardField label="Date">{r.date} {r.time}</CardField>
+                            <CardField label="Paid by">{r.mode || '-'}</CardField>
+                            <CardField label="Collected by">{r.collected_by || '-'}</CardField>
+                            {Number(r.due_amount || 0) > 0 && <CardField label="Still due"><span className="text-red-600">₹{(r.due_amount || 0).toLocaleString()}</span></CardField>}
+                            {showAllColumns && Number(r.concession || 0) > 0 && <CardField label="Concession">₹{(r.concession || 0).toLocaleString()}</CardField>}
+                            {r.mode !== 'Cash' && paymentRef(r) !== '-' && <CardField label={r.mode === 'Cheque' ? 'Cheque' : 'Transaction ID'} className="col-span-2">{paymentRef(r)}</CardField>}
+                            {showAllColumns && r.fee_type_str && <CardField label="Fee" className="col-span-2">{r.fee_type_str}</CardField>}
+                            {showAllColumns && r.note && <CardField label="Note" className="col-span-2">{r.note}</CardField>}
+                        </dl>
+                        <button type="button" onClick={() => onViewReceipt(r.receipt_no)} className="btn-soft btn-sm w-full min-h-[44px] mt-3">
+                            View receipt
+                        </button>
+                    </li>
+                ))}
+            </ul>
+
+            {/* Wide screens: full table */}
+            <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full text-sm">
-                    <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600 border-b border-slate-200">
+                    <thead className="bg-slate-50 text-xs font-medium text-slate-600 border-b border-slate-200">
                         <tr>
-                            <th className="px-3 py-2 text-left">S.No</th>
-                            <th className="px-3 py-2 text-left">Student Name</th>
-                            <th className="px-3 py-2 text-left">Adm No.</th>
+                            <th className="px-3 py-2 text-left">No.</th>
+                            <th className="px-3 py-2 text-left">Student</th>
+                            <th className="px-3 py-2 text-left">Admission no.</th>
                             <th className="px-3 py-2 text-left">Class</th>
                             <th className="px-3 py-2 text-left">Branch</th>
-                            <th className="px-3 py-2 text-left">Rcpt No</th>
-                            {showAllColumns && <th className="px-3 py-2 text-left">Fee Type</th>}
-                            {showAllColumns && <th className="px-3 py-2 text-right">Tot.Amt</th>}
+                            <th className="px-3 py-2 text-left">Receipt no.</th>
+                            {showAllColumns && <th className="px-3 py-2 text-left">Fee</th>}
+                            {showAllColumns && <th className="px-3 py-2 text-right">Total fee</th>}
                             {showAllColumns && <th className="px-3 py-2 text-right">Concession</th>}
-                            {showAllColumns && <th className="px-3 py-2 text-right">Pay Amt</th>}
+                            {showAllColumns && <th className="px-3 py-2 text-right">To pay</th>}
                             <th className="px-3 py-2 text-right">Paid</th>
-                            <th className="px-3 py-2 text-right">Due</th>
-                            <th className="px-3 py-2 text-left">Mode</th>
-                            <th className="px-3 py-2 text-left">Trans ID</th>
+                            <th className="px-3 py-2 text-right">Still due</th>
+                            <th className="px-3 py-2 text-left">Paid by</th>
+                            <th className="px-3 py-2 text-left">Transaction ID</th>
                             {showAllColumns && <th className="px-3 py-2 text-left">Note</th>}
-                            <th className="px-3 py-2 text-left">Date/Time</th>
-                            <th className="px-3 py-2 text-left">Taken By</th>
-                            <th className="px-3 py-2 text-center">Action</th>
+                            <th className="px-3 py-2 text-left">Date / time</th>
+                            <th className="px-3 py-2 text-left">Collected by</th>
+                            <th className="px-3 py-2 text-center">Receipt</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -410,7 +388,8 @@ const FullReceiptsTable: React.FC<{
                                         ) : (
                                             <div className="truncate" title={r.transaction_id}>{r.transaction_id || '-'}</div>
                                         )}
-                                    </td>                                {showAllColumns && <td className="px-3 py-2 text-xs truncate max-w-[150px]" title={r.note}>{r.note || '-'}</td>}
+                                    </td>
+                                    {showAllColumns && <td className="px-3 py-2 text-xs truncate max-w-[150px]" title={r.note}>{r.note || '-'}</td>}
                                     <td className="px-3 py-2 text-xs text-slate-500">
                                         {r.date} <br /> {r.time}
                                     </td>
@@ -616,107 +595,38 @@ export const TodayCollection: React.FC<ReportProps> = ({ onViewReceipt }) => {
     const summary = useMemo(() => calculateSummary(filteredReceipts), [filteredReceipts]);
 
     if (loading) return <LoadingState label="Loading today's collection..." />;
-    if (error) return <div className="p-4"><Alert tone="error" title="Error" onRetry={fetchReport}>{error}</Alert></div>;
+    if (error) return <Alert tone="error" title="Could not load the report" onRetry={fetchReport}>{error}</Alert>;
+
+    const summaryLine = joinSummary(
+        `Fee collected today (${niceDate(new Date().toLocaleDateString('en-CA'))})`,
+        filterSummary({ cls: selectedClass, section: selectedSection, feeType: selectedFeeType, mode: selectedMode })
+    );
 
     return (
-        <div className="space-y-4 font-sans">
-            {/* Filter Bar Grid */}
-            <FilterContainer>
-                {/* Fee Type */}
-                <div>
-                    <label className="label">Fee Type</label>
-                    <select
-                        value={selectedFeeType}
-                        onChange={(e) => setSelectedFeeType(e.target.value)}
-                        className="input"
-                    >
-                        <option value="All">All Fee Types</option>
-                        {feeTypes.map(ft => (
-                            <option key={ft.id} value={ft.fee_type}>{ft.fee_type}</option>
-                        ))}
-                    </select>
-                </div>
+        <div className="space-y-4">
+            <FilterCard summary={summaryLine} hasResults={!!rawData} onApply={handleRefresh} applyLabel="Refresh list" applyNote="The list changes as soon as you pick a filter.">
+                <SelectField id="today-fee" label="Fee" value={selectedFeeType} onChange={setSelectedFeeType} options={feeTypeOptions(feeTypes)} />
+                <SelectField id="today-class" label="Class" value={selectedClass} onChange={setSelectedClass} options={classOptions(classList)} />
+                <SelectField id="today-section" label="Section" value={selectedSection} onChange={setSelectedSection} options={sectionOptions(sections)} />
+                <SelectField id="today-mode" label="Payment mode" value={selectedMode} onChange={setSelectedMode} options={modeOptions(paymentModes)} />
+            </FilterCard>
 
-                {/* Class */}
-                <div>
-                    <label className="label">Class</label>
-                    <select
-                        value={selectedClass}
-                        onChange={(e) => setSelectedClass(e.target.value)}
-                        className="input"
-                    >
-                        {classList.map(c => (
-                            <option key={c} value={c}>{c === 'All' ? 'All Classes' : c}</option>
-                        ))}
-                    </select>
-                </div>
+            {/* Totals */}
+            <StatGrid>
+                <StatTile label="Collected today" value={summary.total} money tone="good" className="col-span-2 lg:col-span-2" />
+                <StatTile label="Cash payments" value={summary.cashTransactionsCount || 0} hint="Number of receipts" />
+                <StatTile label="UPI / card / bank payments" value={summary.digitalTransactionsCount || 0} hint="Number of receipts" />
+            </StatGrid>
 
-                {/* Section */}
-                <div>
-                    <label className="label">Section</label>
-                    <select
-                        value={selectedSection}
-                        onChange={(e) => setSelectedSection(e.target.value)}
-                        className="input"
-                    >
-                        {sections.map(s => (
-                            <option key={s} value={s}>{s === 'All' ? 'All Sections' : s}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Payment Mode */}
-                <div>
-                    <label className="label">Payment Mode</label>
-                    <select
-                        value={selectedMode}
-                        onChange={(e) => setSelectedMode(e.target.value)}
-                        className="input"
-                    >
-                        {paymentModes.map(m => (
-                            <option key={m} value={m}>{m === 'All' ? 'All Modes' : m}</option>
-                        ))}
-                    </select>
-                </div>
-            </FilterContainer>
-
-            {/* Actions Row */}
-            <div className="flex flex-wrap gap-3 mb-6 px-4 items-center">
-                <button
-                    onClick={handleRefresh}
-                    className="btn-secondary"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    Refresh
-                </button>
-                <div className="flex-grow"></div>
-                <button
-                    onClick={() => downloadExcelReport(filteredReceipts, 'Today_Collection')}
-                    className="btn-secondary text-emerald-600"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    Export Excel
-                </button>
-                <button
-                    onClick={() => downloadPDFReport(filteredReceipts, "Today's Collection Report", 'Today_Collection')}
-                    className="btn-secondary text-red-600"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                    Export PDF
-                </button>
-            </div>
-
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-4 mb-8">
-                <StatCard label="Total Collected Today" value={summary.total} />
-                <StatCard label="Cash Transactions" value={summary.cashTransactionsCount || 0} subtext="Total count" />
-                <StatCard label="Digital/Online Transactions" value={summary.digitalTransactionsCount || 0} subtext="Total count" />
-            </div>
-
-            {/* Full Table */}
+            <ResultsBar title="Receipts" count={filteredReceipts.length}>
+                <ExportButtons
+                    disabled={!filteredReceipts.length}
+                    onExcel={() => downloadExcelReport(filteredReceipts, 'Today_Collection')}
+                    onPdf={() => downloadPDFReport(filteredReceipts, "Today's Collection Report", 'Today_Collection')}
+                />
+            </ResultsBar>
             <FullReceiptsTable receipts={filteredReceipts} onViewReceipt={onViewReceipt} />
 
-            {/* Summary Tables */}
             <SummaryTables
                 modeSummary={summary.modeMap || {}}
                 collectedBySummary={summary.collectedBySummary || []}
@@ -787,7 +697,7 @@ export const DailyReport: React.FC<ReportProps> = ({ onViewReceipt, forcedStatus
         const end = new Date(endDate);
         const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
         if (diffDays > 365) {
-            notify("Date range cannot exceed 1 year.");
+            notify("Choose dates no more than one year apart.");
             return;
         }
         try {
@@ -834,127 +744,48 @@ export const DailyReport: React.FC<ReportProps> = ({ onViewReceipt, forcedStatus
     // Derived State: Summary based on Filtered Data
     const summary = useMemo(() => calculateSummary(filteredReceipts), [filteredReceipts]);
 
+    const summaryLine = joinSummary(
+        startDate === endDate
+            ? `Fee collected on ${niceDate(startDate)}`
+            : `Fee collected from ${niceDate(startDate)} to ${niceDate(endDate)}`,
+        filterSummary({ cls: selectedClass, section: selectedSection, feeType: selectedFeeType, mode: selectedMode })
+    );
+
     return (
-        <div className="space-y-4 font-sans">
-            <FilterContainer>
-                {/* Date Selection */}
-                <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="label">From Date</label>
-                        <input
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            className="input"
-                        />
-                    </div>
-                    <div>
-                        <label className="label">To Date</label>
-                        <input
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className="input"
-                        />
-                    </div>
-                </div>
-
-                {/* Fee Type */}
+        <div className="space-y-4">
+            <FilterCard summary={summaryLine} hasResults={!!rawData} onApply={handleSearch} applying={loading} applyNote="You can choose up to one year.">
                 <div>
-                    <label className="label">Fee Type</label>
-                    <select
-                        value={selectedFeeType}
-                        onChange={(e) => setSelectedFeeType(e.target.value)}
-                        className="input"
-                    >
-                        <option value="All">All Fee Types</option>
-                        {feeTypes.map(ft => (
-                            <option key={ft.id} value={ft.fee_type}>{ft.fee_type}</option>
-                        ))}
-                    </select>
+                    <label htmlFor="daily-from" className="block text-sm font-medium text-slate-800 mb-1.5">From date</label>
+                    <input id="daily-from" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="input min-h-[44px]" />
                 </div>
-
-                {/* Class */}
                 <div>
-                    <label className="label">Class</label>
-                    <select
-                        value={selectedClass}
-                        onChange={(e) => setSelectedClass(e.target.value)}
-                        className="input"
-                    >
-                        {classList.map(c => (
-                            <option key={c} value={c}>{c === 'All' ? 'All Classes' : c}</option>
-                        ))}
-                    </select>
+                    <label htmlFor="daily-to" className="block text-sm font-medium text-slate-800 mb-1.5">To date</label>
+                    <input id="daily-to" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="input min-h-[44px]" />
                 </div>
-
-                {/* Section */}
-                <div>
-                    <label className="label">Section</label>
-                    <select
-                        value={selectedSection}
-                        onChange={(e) => setSelectedSection(e.target.value)}
-                        className="input"
-                    >
-                        {sections.map(s => (
-                            <option key={s} value={s}>{s === 'All' ? 'All Sections' : s}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Payment Mode */}
-                <div>
-                    <label className="label">Payment Mode</label>
-                    <select
-                        value={selectedMode}
-                        onChange={(e) => setSelectedMode(e.target.value)}
-                        className="input"
-                    >
-                        {paymentModes.map(m => (
-                            <option key={m} value={m}>{m === 'All' ? 'All Modes' : m}</option>
-                        ))}
-                    </select>
-                </div>
-            </FilterContainer>
-
-            {/* Actions Row */}
-            <div className="flex flex-wrap gap-3 mb-6 px-4 items-center">
-                <button
-                    onClick={handleSearch}
-                    className="btn-secondary"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    Search Report
-                </button>
-                <div className="flex-grow"></div>
-                <button
-                    onClick={() => downloadExcelReport(filteredReceipts, 'Daily_Fee_Report')}
-                    className="btn-secondary text-emerald-600"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    Export Excel
-                </button>
-                <button
-                    onClick={() => downloadPDFReport(filteredReceipts, 'Daily Fee Report', 'Daily_Fee_Report')}
-                    className="btn-secondary text-red-600"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                    Export PDF
-                </button>
-            </div>
+                <SelectField id="daily-fee" label="Fee" value={selectedFeeType} onChange={setSelectedFeeType} options={feeTypeOptions(feeTypes)} />
+                <SelectField id="daily-class" label="Class" value={selectedClass} onChange={setSelectedClass} options={classOptions(classList)} />
+                <SelectField id="daily-section" label="Section" value={selectedSection} onChange={setSelectedSection} options={sectionOptions(sections)} />
+                <SelectField id="daily-mode" label="Payment mode" value={selectedMode} onChange={setSelectedMode} options={modeOptions(paymentModes)} />
+            </FilterCard>
 
             {loading && <LoadingState label="Loading report..." />}
-            {error && <Alert tone="error" className="mx-4">{error}</Alert>}
+            {error && <Alert tone="error" title="Could not load the report">{error}</Alert>}
 
             {rawData && (
                 <>
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 px-4">
-                        <StatCard label="Total Collection" value={summary.total} />
-                        <StatCard label="Cash Transactions" value={summary.cashTransactionsCount || 0} subtext="Total count" />
-                        <StatCard label="Digital/Online Transactions" value={summary.digitalTransactionsCount || 0} subtext="Total count" />
-                    </div>
+                    <StatGrid>
+                        <StatTile label="Total collected" value={summary.total} money tone="good" className="col-span-2 lg:col-span-2" />
+                        <StatTile label="Cash payments" value={summary.cashTransactionsCount || 0} hint="Number of receipts" />
+                        <StatTile label="UPI / card / bank payments" value={summary.digitalTransactionsCount || 0} hint="Number of receipts" />
+                    </StatGrid>
 
+                    <ResultsBar title="Receipts" count={filteredReceipts.length}>
+                        <ExportButtons
+                            disabled={!filteredReceipts.length}
+                            onExcel={() => downloadExcelReport(filteredReceipts, 'Daily_Fee_Report')}
+                            onPdf={() => downloadPDFReport(filteredReceipts, 'Daily Fee Report', 'Daily_Fee_Report')}
+                        />
+                    </ResultsBar>
                     <FullReceiptsTable receipts={filteredReceipts} onViewReceipt={onViewReceipt} />
                     <SummaryTables
                         modeSummary={summary.modeMap || {}}
@@ -1067,134 +898,46 @@ export const MonthlyReport: React.FC<ReportProps> = ({ onViewReceipt }) => {
     const summary = useMemo(() => calculateSummary(filteredReceipts), [filteredReceipts]);
 
 
+    const summaryLine = joinSummary(
+        `Fee collected in ${monthName} ${year}`,
+        filterSummary({ cls: selectedClass, section: selectedSection, feeType: selectedFeeType, mode: selectedMode })
+    );
+
     return (
-        <div className="space-y-4 font-sans">
-            <FilterContainer>
-                {/* Month & Year Selection */}
-                <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="label">Month</label>
-                        <select
-                            value={month}
-                            onChange={(e) => setMonth(e.target.value)}
-                            className="input"
-                        >
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                                <option key={m} value={m}>
-                                    {new Date(0, m - 1).toLocaleString('default', { month: 'long' })}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="label">Year</label>
-                        <select
-                            value={year}
-                            onChange={(e) => setYear(e.target.value)}
-                            className="input"
-                        >
-                            {years.map(y => (
-                                <option key={y} value={y}>{y}</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-
-                {/* Fee Type */}
-                <div>
-                    <label className="label">Fee Type</label>
-                    <select
-                        value={selectedFeeType}
-                        onChange={(e) => setSelectedFeeType(e.target.value)}
-                        className="input"
-                    >
-                        <option value="All">All Fee Types</option>
-                        {feeTypes.map(ft => (
-                            <option key={ft.id} value={ft.fee_type}>{ft.fee_type}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Class */}
-                <div>
-                    <label className="label">Class</label>
-                    <select
-                        value={selectedClass}
-                        onChange={(e) => setSelectedClass(e.target.value)}
-                        className="input"
-                    >
-                        {classList.map(c => (
-                            <option key={c} value={c}>{c === 'All' ? 'All Classes' : c}</option>
-                        ))}
-                    </select>
-                </div>
-                {/* Section */}
-                <div>
-                    <label className="label">Section</label>
-                    <select
-                        value={selectedSection}
-                        onChange={(e) => setSelectedSection(e.target.value)}
-                        className="input"
-                    >
-                        {sections.map(s => (
-                            <option key={s} value={s}>{s === 'All' ? 'All Sections' : s}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Payment Mode */}
-                <div>
-                    <label className="label">Payment Mode</label>
-                    <select
-                        value={selectedMode}
-                        onChange={(e) => setSelectedMode(e.target.value)}
-                        className="input"
-                    >
-                        {paymentModes.map(m => (
-                            <option key={m} value={m}>{m === 'All' ? 'All Modes' : m}</option>
-                        ))}
-                    </select>
-                </div>
-            </FilterContainer>
-
-            {/* Actions Row */}
-            <div className="flex flex-wrap gap-3 mb-6 px-4 items-center">
-                <button
-                    onClick={handleSearch}
-                    className="btn-secondary"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    Search Report
-                </button>
-                <div className="flex-grow"></div>
-                <button
-                    onClick={() => downloadExcelReport(filteredReceipts, `Monthly_Report_${monthName}_${year}`)}
-                    className="btn-secondary text-emerald-600"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    Export Excel
-                </button>
-                <button
-                    onClick={() => downloadPDFReport(filteredReceipts, `Monthly Report - ${monthName} ${year}`, `Monthly_Report_${monthName}_${year}`)}
-                    className="btn-secondary text-red-600"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                    Export PDF
-                </button>
-            </div>
+        <div className="space-y-4">
+            <FilterCard summary={summaryLine} hasResults={!!rawData} onApply={handleSearch} applying={loading}>
+                <SelectField
+                    id="monthly-month"
+                    label="Month"
+                    value={month}
+                    onChange={setMonth}
+                    options={Array.from({ length: 12 }, (_, i) => i + 1).map(m => ({ value: String(m), label: new Date(0, m - 1).toLocaleString('default', { month: 'long' }) }))}
+                />
+                <SelectField id="monthly-year" label="Year" value={year} onChange={setYear} options={years.map(y => ({ value: y, label: y }))} />
+                <SelectField id="monthly-fee" label="Fee" value={selectedFeeType} onChange={setSelectedFeeType} options={feeTypeOptions(feeTypes)} />
+                <SelectField id="monthly-class" label="Class" value={selectedClass} onChange={setSelectedClass} options={classOptions(classList)} />
+                <SelectField id="monthly-section" label="Section" value={selectedSection} onChange={setSelectedSection} options={sectionOptions(sections)} />
+                <SelectField id="monthly-mode" label="Payment mode" value={selectedMode} onChange={setSelectedMode} options={modeOptions(paymentModes)} />
+            </FilterCard>
 
             {loading && <LoadingState label="Loading report..." />}
-            {error && <Alert tone="error" className="mx-4">{error}</Alert>}
+            {error && <Alert tone="error" title="Could not load the report">{error}</Alert>}
 
             {rawData && (
                 <>
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 px-4">
-                        <StatCard label="Total Collection" value={summary.total} />
-                        <StatCard label="Cash Transactions" value={summary.cashTransactionsCount || 0} subtext="Total count" />
-                        <StatCard label="Digital/Online Transactions" value={summary.digitalTransactionsCount || 0} subtext="Total count" />
-                    </div>
+                    <StatGrid>
+                        <StatTile label="Total collected" value={summary.total} money tone="good" className="col-span-2 lg:col-span-2" />
+                        <StatTile label="Cash payments" value={summary.cashTransactionsCount || 0} hint="Number of receipts" />
+                        <StatTile label="UPI / card / bank payments" value={summary.digitalTransactionsCount || 0} hint="Number of receipts" />
+                    </StatGrid>
 
+                    <ResultsBar title="Receipts" count={filteredReceipts.length}>
+                        <ExportButtons
+                            disabled={!filteredReceipts.length}
+                            onExcel={() => downloadExcelReport(filteredReceipts, `Monthly_Report_${monthName}_${year}`)}
+                            onPdf={() => downloadPDFReport(filteredReceipts, `Monthly Report - ${monthName} ${year}`, `Monthly_Report_${monthName}_${year}`)}
+                        />
+                    </ResultsBar>
                     <FullReceiptsTable receipts={filteredReceipts} onViewReceipt={onViewReceipt} />
                     <SummaryTables
                         modeSummary={summary.modeMap || {}}
@@ -1311,110 +1054,49 @@ export const ClassWiseReport: React.FC<ReportProps> = ({ onViewReceipt }) => {
 
     const summary = useMemo(() => calculateSummary(filteredReceipts), [filteredReceipts]);
 
+    const summaryLine = joinSummary(
+        className ? `Fee collected from Class ${className}${selectedSection !== 'All' ? ` ${selectedSection}` : ''}` : 'Choose a class',
+        selectedFeeType,
+        selectedMode,
+        currentBranchLabel()
+    );
+
     return (
-        <div className="space-y-4 font-sans">
-            <FilterContainer>
-                {/* Class */}
-                <div>
-                    <label className="label">Class</label>
-                    <select
-                        value={className}
-                        onChange={e => setClassName(e.target.value)}
-                        className="input"
-                    >
-                        {classList.map(c => (
-                            <option key={c} value={c}>{c}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Section */}
-                <div>
-                    <label className="label">Section</label>
-                    <select
-                        value={selectedSection}
-                        onChange={(e) => setSelectedSection(e.target.value)}
-                        className="input"
-                    >
-                        {sections.map(s => (
-                            <option key={s} value={s}>{s === 'All' ? 'All Sections' : s}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Fee Type */}
-                <div>
-                    <label className="label">Fee Type</label>
-                    <select
-                        value={selectedFeeType}
-                        onChange={(e) => setSelectedFeeType(e.target.value)}
-                        className="input"
-                    >
-                        <option value="All">All Fee Types</option>
-                        {feeTypes.map(ft => (
-                            <option key={ft.id} value={ft.fee_type}>{ft.fee_type}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Payment Mode */}
-                <div>
-                    <label className="label">Payment Mode</label>
-                    <select
-                        value={selectedMode}
-                        onChange={(e) => setSelectedMode(e.target.value)}
-                        className="input"
-                    >
-                        {paymentModes.map(m => (
-                            <option key={m} value={m}>{m === 'All' ? 'All Modes' : m}</option>
-                        ))}
-                    </select>
-                </div>
-            </FilterContainer>
-
-            {/* Actions Row */}
-            <div className="flex flex-wrap gap-3 mb-6 px-4 items-center">
-                <button
-                    onClick={fetchReport}
-                    className="btn-secondary"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    Search Report
-                </button>
-                <div className="flex-grow"></div>
-                <button
-                    onClick={() => downloadExcelReport(filteredReceipts, `ClassWise_Report_${className}`)}
-                    className="btn-secondary text-emerald-600"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    Export Excel
-                </button>
-                <button
-                    onClick={() => downloadPDFReport(filteredReceipts, `Class ${className} Fee Report`, `ClassWise_Report_${className}`)}
-                    className="btn-secondary text-red-600"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                    Export PDF
-                </button>
-            </div>
+        <div className="space-y-4">
+            <FilterCard
+                summary={summaryLine}
+                hasResults={!!rawData}
+                onApply={fetchReport}
+                applying={loading}
+                applyDisabled={!className}
+                applyNote={!className ? 'Choose a class first.' : undefined}
+            >
+                <SelectField id="class-class" label="Class" value={className} onChange={setClassName} options={classList.map(c => ({ value: c, label: c }))} />
+                <SelectField id="class-section" label="Section" value={selectedSection} onChange={setSelectedSection} options={sectionOptions(sections)} />
+                <SelectField id="class-fee" label="Fee" value={selectedFeeType} onChange={setSelectedFeeType} options={feeTypeOptions(feeTypes)} />
+                <SelectField id="class-mode" label="Payment mode" value={selectedMode} onChange={setSelectedMode} options={modeOptions(paymentModes)} />
+            </FilterCard>
 
             {loading && <LoadingState />}
-            {error && <Alert tone="error" className="mx-4">{error}</Alert>}
+            {error && <Alert tone="error" title="Could not load the report">{error}</Alert>}
 
             {rawData && (
                 <>
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 px-4 mb-8">
-                        <StatCard label="Total Demand" value={rawData.total_fee} />
-                        <StatCard label="Collected (Filtered)" value={summary.total} />
-                        <StatCard label="Due Amount" value={rawData.due} />
-                        <StatCard label="Collection %" value={`${rawData.total_fee ? ((summary.total / rawData.total_fee) * 100).toFixed(1) : 0}%`} />
-                    </div>
+                    <StatGrid>
+                        <StatTile label="Total fee of the class" value={rawData.total_fee} money />
+                        <StatTile label="Collected (with these filters)" value={summary.total} money tone="good" />
+                        <StatTile label="Still to collect" value={rawData.due} money tone="bad" />
+                        <StatTile label="Collected so far" value={`${rawData.total_fee ? ((summary.total / rawData.total_fee) * 100).toFixed(1) : 0}%`} />
+                    </StatGrid>
 
-                    {/* Full Table */}
+                    <ResultsBar title="Receipts" count={filteredReceipts.length}>
+                        <ExportButtons
+                            disabled={!filteredReceipts.length}
+                            onExcel={() => downloadExcelReport(filteredReceipts, `ClassWise_Report_${className}`)}
+                            onPdf={() => downloadPDFReport(filteredReceipts, `Class ${className} Fee Report`, `ClassWise_Report_${className}`)}
+                        />
+                    </ResultsBar>
                     <FullReceiptsTable receipts={filteredReceipts} onViewReceipt={onViewReceipt} />
-
-                    {/* Summary Tables */}
                     <SummaryTables
                         modeSummary={summary.modeMap || {}}
                         collectedBySummary={summary.collectedBySummary || []}
@@ -1519,111 +1201,54 @@ export const InstallmentWiseReport: React.FC<ReportProps> = ({ onViewReceipt }) 
 
     const summary = useMemo(() => calculateSummary(filteredReceipts), [filteredReceipts]);
 
+    const summaryLine = joinSummary(
+        installment ? `Fee collected for ${installment}` : 'Choose a fee',
+        filterSummary({ cls: selectedClass, section: selectedSection, mode: selectedMode })
+    );
+
     return (
-        <div className="space-y-4 font-sans">
-            <FilterContainer>
-                {/* Fee Type / Installment */}
-                <div>
-                    <label className="label">Fee Head</label>
-                    <select
-                        value={installment}
-                        onChange={e => setInstallment(e.target.value)}
-                        className="input"
-                    >
-                        <option value="">Select Fee Type</option>
-                        {feeTypes.map(ft => (
-                            <option key={ft.id} value={ft.fee_type}>{ft.fee_type}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Class */}
-                <div>
-                    <label className="label">Class</label>
-                    <select
-                        value={selectedClass}
-                        onChange={(e) => setSelectedClass(e.target.value)}
-                        className="input"
-                    >
-                        {classList.map(c => (
-                            <option key={c} value={c}>{c === 'All' ? 'All Classes' : c}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Section */}
-                <div>
-                    <label className="label">Section</label>
-                    <select
-                        value={selectedSection}
-                        onChange={(e) => setSelectedSection(e.target.value)}
-                        className="input"
-                    >
-                        {sections.map(s => (
-                            <option key={s} value={s}>{s === 'All' ? 'All Sections' : s}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Payment Mode */}
-                <div>
-                    <label className="label">Payment Mode</label>
-                    <select
-                        value={selectedMode}
-                        onChange={(e) => setSelectedMode(e.target.value)}
-                        className="input"
-                    >
-                        {paymentModes.map(m => (
-                            <option key={m} value={m}>{m === 'All' ? 'All Modes' : m}</option>
-                        ))}
-                    </select>
-                </div>
-            </FilterContainer>
-
-            {/* Actions Row */}
-            <div className="flex flex-wrap gap-3 mb-6 px-4 items-center">
-                <button
-                    onClick={fetchReport}
-                    className="btn-secondary"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    Search Report
-                </button>
-                <div className="flex-grow"></div>
-                <button
-                    onClick={() => downloadExcelReport(filteredReceipts, `Installment_Report_${installment}`)}
-                    className="btn-secondary text-emerald-600"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    Export Excel
-                </button>
-                <button
-                    onClick={() => downloadPDFReport(filteredReceipts, `${installment} - Fee Report`, `Installment_Report_${installment}`)}
-                    className="btn-secondary text-red-600"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                    Export PDF
-                </button>
-            </div>
+        <div className="space-y-4">
+            <FilterCard
+                summary={summaryLine}
+                hasResults={!!rawData}
+                onApply={fetchReport}
+                applying={loading}
+                applyDisabled={!installment}
+                applyNote={!installment ? 'Choose a fee first.' : undefined}
+            >
+                <SelectField
+                    id="inst-fee"
+                    label="Fee (month or term)"
+                    value={installment}
+                    onChange={setInstallment}
+                    options={[{ value: '', label: 'Choose a fee' }, ...feeTypes.map(ft => ({ value: ft.fee_type, label: ft.fee_type }))]}
+                />
+                <SelectField id="inst-class" label="Class" value={selectedClass} onChange={setSelectedClass} options={classOptions(classList)} />
+                <SelectField id="inst-section" label="Section" value={selectedSection} onChange={setSelectedSection} options={sectionOptions(sections)} />
+                <SelectField id="inst-mode" label="Payment mode" value={selectedMode} onChange={setSelectedMode} options={modeOptions(paymentModes)} />
+            </FilterCard>
 
             {loading && <LoadingState />}
-            {error && <Alert tone="error" className="mx-4">{error}</Alert>}
+            {error && <Alert tone="error" title="Could not load the report">{error}</Alert>}
 
             {rawData && (
                 <>
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-6 px-4 mb-8">
-                        <StatCard label="Total Demand" value={rawData.total_demand} />
-                        <StatCard label="Collected (Filtered)" value={summary.total} />
-                        <StatCard label="Due Amount" value={rawData.due} />
-                        <StatCard label="Paid Students" value={`${rawData.paid_students} / ${rawData.total_students}`} />
-                        <StatCard label="Collection %" value={`${rawData.total_demand ? ((summary.total / rawData.total_demand) * 100).toFixed(1) : 0}%`} />
-                    </div>
+                    <StatGrid>
+                        <StatTile label="Total fee" value={rawData.total_demand} money />
+                        <StatTile label="Collected (with these filters)" value={summary.total} money tone="good" />
+                        <StatTile label="Still to collect" value={rawData.due} money tone="bad" />
+                        <StatTile label="Students who paid" value={`${rawData.paid_students} / ${rawData.total_students}`} />
+                        <StatTile label="Collected so far" value={`${rawData.total_demand ? ((summary.total / rawData.total_demand) * 100).toFixed(1) : 0}%`} />
+                    </StatGrid>
 
-                    {/* Full Table */}
+                    <ResultsBar title="Receipts" count={filteredReceipts.length}>
+                        <ExportButtons
+                            disabled={!filteredReceipts.length}
+                            onExcel={() => downloadExcelReport(filteredReceipts, `Installment_Report_${installment}`)}
+                            onPdf={() => downloadPDFReport(filteredReceipts, `${installment} - Fee Report`, `Installment_Report_${installment}`)}
+                        />
+                    </ResultsBar>
                     <FullReceiptsTable receipts={filteredReceipts} onViewReceipt={onViewReceipt} />
-
-                    {/* Summary Tables */}
                     <SummaryTables
                         modeSummary={summary.modeMap || {}}
                         collectedBySummary={summary.collectedBySummary || []}
@@ -1791,194 +1416,30 @@ export const DueReport: React.FC = () => {
     };
 
     return (
-        <div className="space-y-4 font-sans">
-            <FilterContainer>
-                {/* Class */}
-                <div>
-                    <label className="label">Class</label>
-                    <select
-                        value={selectedClass}
-                        onChange={(e) => setSelectedClass(e.target.value)}
-                        className="input"
-                    >
-                        {classList.map(c => (
-                            <option key={c} value={c}>{c === 'All' ? 'All Classes' : c}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Section */}
-                <div>
-                    <label className="label">Section</label>
-                    <select
-                        value={selectedSection}
-                        onChange={(e) => setSelectedSection(e.target.value)}
-                        className="input"
-                    >
-                        {sections.map(s => (
-                            <option key={s} value={s}>{s === 'All' ? 'All Sections' : s}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Search */}
-                <div className="col-span-1 md:col-span-2">
-                    <label className="label">Search Student</label>
-                    <input
-                        type="text"
-                        placeholder="Name, admission no, mobile..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="input"
-                    />
-                </div>
-            </FilterContainer>
-
-            {/* Actions Row */}
-            <div className="flex flex-wrap gap-3 mb-6 px-4 items-center">
-                <button
-                    onClick={fetchReport}
-                    className="btn-secondary"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    Search Report
-                </button>
-                <div className="flex-grow"></div>
-                <button
-                    onClick={downloadExcel}
-                    className="btn-secondary text-emerald-600"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    Export Excel
-                </button>
-                <button
-                    onClick={downloadPDF}
-                    className="btn-secondary text-red-600"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                    Export PDF
-                </button>
-            </div>
-
-            {loading && <LoadingState />}
-            {error && <Alert tone="error" className="mx-4">{error}</Alert>}
-
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 px-4 mb-8">
-                <StatCard label="Total Students with Dues" value={String(filteredData.length)} />
-                <StatCard label="Total Fee Demand" value={totalFee} />
-                <StatCard label="Total Due Amount" value={totalDue} />
-                <StatCard
-                    label="Avg Due per Student"
-                    value={`₹${(filteredData.length ? Math.round(totalDue / filteredData.length) : 0).toLocaleString('en-IN')}`}
-                />
-            </div>
-
-            {/* Due Table */}
-            <div className="card overflow-hidden mx-4 mb-6">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600 border-b border-slate-200">
-                            <tr>
-                                <th className="px-4 py-3 text-left">S.No</th>
-                                <th className="px-4 py-3 text-left">Student Name</th>
-                                <th className="px-4 py-3 text-left">Adm No.</th>
-                                <th className="px-4 py-3 text-left">Class</th>
-                                <th className="px-4 py-3 text-left">Father Name</th>
-                                <th className="px-4 py-3 text-left">Mobile</th>
-                                <th className="px-4 py-3 text-right">Total Fee</th>
-                                <th className="px-4 py-3 text-right">Paid</th>
-                                <th className="px-4 py-3 text-right">Due Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {filteredData.length === 0 ? (
-                                <tr>
-                                    <td colSpan={9}>
-                                        <EmptyState compact icon={<span className="text-xl">🎉</span>} title="No students with pending dues!" />
-                                    </td>
-                                </tr>
-                            ) : (
-                                <>
-                                    {filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage).map((s, idx) => {
-                                        const sNo = ((currentPage - 1) * rowsPerPage) + idx + 1;
-                                        return (
-                                            <tr key={s.student_id || idx} className="hover:bg-slate-50 h-[45px]">
-                                                <td className="px-4 py-3 text-slate-500">{sNo}</td>
-                                                <td className="px-4 py-3 font-medium text-slate-900">{s.name}</td>
-                                                <td className="px-4 py-3 text-brand-600">{s.admission_no || s.adm_no || s.admissionNo || '-'}</td>
-                                                <td className="px-4 py-3">{s.class} {s.section}</td>
-                                                <td className="px-4 py-3 text-slate-600">{s.father_name || s.father || s.parent_name || '-'}</td>
-                                                <td className="px-4 py-3">
-                                                    <a href={`tel:${s.father_mobile}`} className="text-brand-600 hover:underline">
-                                                        {s.father_mobile}
-                                                    </a>
-                                                </td>
-                                                <td className="px-4 py-3 text-right">₹{s.total_fee?.toLocaleString('en-IN')}</td>
-                                                <td className="px-4 py-3 text-right text-emerald-600">
-                                                    ₹{(s.paid_amount || (s.total_fee - s.due_amount))?.toLocaleString('en-IN')}
-                                                </td>
-                                                <td className="px-4 py-3 text-right font-bold text-red-600">
-                                                    ₹{s.due_amount?.toLocaleString('en-IN')}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                    {/* Empty rows for stability */}
-                                    {Array.from({ length: rowsPerPage - (filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage).length) }).map((_, i) => (
-                                        <tr key={`empty-${i}`} className="h-[45px]">
-                                            <td colSpan={9}>&nbsp;</td>
-                                        </tr>
-                                    ))}
-                                </>
-                            )}
-                        </tbody>
-                        {filteredData.length > 0 && (
-                            <tfoot className="bg-slate-50 font-semibold border-t-2 border-slate-200">
-                                <tr>
-                                    <td colSpan={6} className="px-4 py-3 text-right">Total:</td>
-                                    <td className="px-4 py-3 text-right">₹{totalFee.toLocaleString('en-IN')}</td>
-                                    <td className="px-4 py-3 text-right text-emerald-600">
-                                        ₹{(totalFee - totalDue).toLocaleString('en-IN')}
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-red-600">
-                                        ₹{totalDue.toLocaleString('en-IN')}
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        )}
-                    </table>
-                </div>
-                <Pagination
-                    currentPage={currentPage}
-                    totalPages={Math.ceil(filteredData.length / rowsPerPage)}
-                    onPageChange={setCurrentPage}
-                    totalRecords={filteredData.length}
-                    perPage={rowsPerPage}
-                />
-            </div>
-
-            {/* Class-wise Due Summary */}
-            {filteredData.length > 0 && (
-                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm mt-4 mx-4 mb-6">
-                    <h4 className="text-base font-semibold mb-4 text-slate-900">Class-wise Due Summary</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        {Object.entries(
-                            filteredData.reduce((acc: any, s) => {
-                                const key = `${s.class} ${s.section || ''}`;
-                                acc[key] = (acc[key] || 0) + (s.due_amount || 0);
-                                return acc;
-                            }, {})
-                        ).map(([cls, amt]: any) => (
-                            <div key={cls} className="card p-4">
-                                <p className="text-xs text-slate-500 font-medium mb-1">{cls}</p>
-                                <p className="font-bold text-red-600 text-lg">₹{Number(amt).toLocaleString('en-IN')}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
+        <DueReportView
+            idPrefix="due"
+            summaryLine={joinSummary('Students who still owe fees', filterSummary({ cls: selectedClass, section: selectedSection }), searchTerm && `matching "${searchTerm}"`)}
+            listTitle="Students who owe fees"
+            classList={classList}
+            sections={sections}
+            selectedClass={selectedClass}
+            onClassChange={setSelectedClass}
+            selectedSection={selectedSection}
+            onSectionChange={setSelectedSection}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            onApply={fetchReport}
+            loading={loading}
+            error={error}
+            filteredData={filteredData}
+            totalFee={totalFee}
+            totalDue={totalDue}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            rowsPerPage={rowsPerPage}
+            onExcel={downloadExcel}
+            onPdf={downloadPDF}
+        />
     );
 };
 
@@ -2135,197 +1596,31 @@ export const LateFeeDueReport: React.FC = () => {
     };
 
     return (
-        <div className="space-y-4 font-sans">
-            <FilterContainer>
-                {/* Class */}
-                <div>
-                    <label className="label">Class</label>
-                    <select
-                        value={selectedClass}
-                        onChange={(e) => setSelectedClass(e.target.value)}
-                        className="input"
-                    >
-                        {classList.map(c => (
-                            <option key={c} value={c}>{c === 'All' ? 'All Classes' : c}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Section */}
-                <div>
-                    <label className="label">Section</label>
-                    <select
-                        value={selectedSection}
-                        onChange={(e) => setSelectedSection(e.target.value)}
-                        className="input"
-                    >
-                        {sections.map(s => (
-                            <option key={s} value={s}>{s === 'All' ? 'All Sections' : s}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Search */}
-                <div className="col-span-1 md:col-span-2">
-                    <label className="label">Search Student</label>
-                    <input
-                        type="text"
-                        placeholder="Name, admission no, mobile..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="input"
-                    />
-                </div>
-            </FilterContainer>
-
-            {/* Actions Row */}
-            <div className="flex flex-wrap gap-3 mb-6 px-4 items-center">
-                <button
-                    onClick={fetchReport}
-                    className="btn-secondary"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    Search Report
-                </button>
-                <div className="flex-grow"></div>
-                <button
-                    onClick={downloadExcel}
-                    className="btn-secondary text-emerald-600"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    Export Excel
-                </button>
-                <button
-                    onClick={downloadPDF}
-                    className="btn-secondary text-red-600"
-                >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                    Export PDF
-                </button>
-            </div>
-
-            {loading && <LoadingState />}
-            {error && <Alert tone="error" className="mx-4">{error}</Alert>}
-
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 px-4 mb-8">
-                <StatCard label="Total Students with Dues" value={String(filteredData.length)} />
-                <StatCard label="Total Fee Demand" value={totalFee} />
-                <StatCard label="Total Due Amount" value={totalDue} />
-                <StatCard
-                    label="Avg Due per Student"
-                    value={`₹${(filteredData.length ? Math.round(totalDue / filteredData.length) : 0).toLocaleString('en-IN')}`}
-                />
-            </div>
-
-            {/* Late Fee Due Table */}
-            <div className="card overflow-hidden mx-4 mb-6">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600 border-b border-slate-200">
-                            <tr>
-                                <th className="px-4 py-3 text-left">S.No</th>
-                                <th className="px-4 py-3 text-left">Student Name</th>
-                                <th className="px-4 py-3 text-left">Adm No.</th>
-                                <th className="px-4 py-3 text-left">Class</th>
-                                <th className="px-4 py-3 text-left">Father Name</th>
-                                <th className="px-4 py-3 text-left">Mobile</th>
-                                <th className="px-4 py-3 text-right">Total Fee</th>
-                                <th className="px-4 py-3 text-right">Paid</th>
-                                <th className="px-4 py-3 text-right">Due Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {filteredData.length === 0 ? (
-                                <tr>
-                                    <td colSpan={9}>
-                                        <EmptyState compact icon={<span className="text-xl">🎉</span>} title="No students with pending dues!" />
-                                    </td>
-                                </tr>
-                            ) : (
-                                <>
-                                    {filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage).map((s, idx) => {
-                                        const sNo = ((currentPage - 1) * rowsPerPage) + idx + 1;
-                                        return (
-                                            <tr key={s.student_id || idx} className="hover:bg-slate-50 h-[45px]">
-                                                <td className="px-4 py-3 text-slate-500">{sNo}</td>
-                                                <td className="px-4 py-3 font-medium text-slate-900">{s.name}</td>
-                                                <td className="px-4 py-3 text-brand-600">{s.admission_no || s.adm_no || s.admissionNo || '-'}</td>
-                                                <td className="px-4 py-3">{s.class} {s.section}</td>
-                                                <td className="px-4 py-3 text-slate-600">{s.father_name || s.father || s.parent_name || '-'}</td>
-                                                <td className="px-4 py-3">
-                                                    <a href={`tel:${s.father_mobile}`} className="text-brand-600 hover:underline">
-                                                        {s.father_mobile}
-                                                    </a>
-                                                </td>
-                                                <td className="px-4 py-3 text-right">₹{s.total_fee?.toLocaleString('en-IN')}</td>
-                                                <td className="px-4 py-3 text-right text-emerald-600">
-                                                    ₹{(s.paid_amount || (s.total_fee - s.due_amount))?.toLocaleString('en-IN')}
-                                                </td>
-                                                <td className="px-4 py-3 text-right font-bold text-red-600">
-                                                    ₹{s.due_amount?.toLocaleString('en-IN')}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                    {/* Empty rows for stability */}
-                                    {Array.from({ length: rowsPerPage - (filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage).length) }).map((_, i) => (
-                                        <tr key={`empty-${i}`} className="h-[45px]">
-                                            <td colSpan={9}>&nbsp;</td>
-                                        </tr>
-                                    ))}
-                                </>
-                            )}
-                        </tbody>
-                        {filteredData.length > 0 && (
-                            <tfoot className="bg-slate-50 font-semibold border-t-2 border-slate-200">
-                                <tr>
-                                    <td colSpan={6} className="px-4 py-3 text-right">Total:</td>
-                                    <td className="px-4 py-3 text-right">₹{totalFee.toLocaleString('en-IN')}</td>
-                                    <td className="px-4 py-3 text-right text-emerald-600">
-                                        ₹{(totalFee - totalDue).toLocaleString('en-IN')}
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-red-600">
-                                        ₹{totalDue.toLocaleString('en-IN')}
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        )}
-                    </table>
-                </div>
-                <Pagination
-                    currentPage={currentPage}
-                    totalPages={Math.ceil(filteredData.length / rowsPerPage)}
-                    onPageChange={setCurrentPage}
-                    totalRecords={filteredData.length}
-                    perPage={rowsPerPage}
-                />
-            </div>
-
-            {/* Class-wise Due Summary */}
-            {filteredData.length > 0 && (
-                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm mt-4 mx-4 mb-6">
-                    <h4 className="text-base font-semibold mb-4 text-slate-900">Class-wise Due Summary</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        {Object.entries(
-                            filteredData.reduce((acc: any, s) => {
-                                const key = `${s.class} ${s.section || ''}`;
-                                acc[key] = (acc[key] || 0) + (s.due_amount || 0);
-                                return acc;
-                            }, {})
-                        ).map(([cls, amt]: any) => (
-                            <div key={cls} className="card p-4">
-                                <p className="text-xs text-slate-500 font-medium mb-1">{cls}</p>
-                                <p className="font-bold text-red-600 text-lg">₹{Number(amt).toLocaleString('en-IN')}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
+        <DueReportView
+            idPrefix="late"
+            summaryLine={joinSummary('Students with unpaid late fees', filterSummary({ cls: selectedClass, section: selectedSection }), searchTerm && `matching "${searchTerm}"`)}
+            listTitle="Students with late fees"
+            classList={classList}
+            sections={sections}
+            selectedClass={selectedClass}
+            onClassChange={setSelectedClass}
+            selectedSection={selectedSection}
+            onSectionChange={setSelectedSection}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            onApply={fetchReport}
+            loading={loading}
+            error={error}
+            filteredData={filteredData}
+            totalFee={totalFee}
+            totalDue={totalDue}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            rowsPerPage={rowsPerPage}
+            onExcel={downloadExcel}
+            onPdf={downloadPDF}
+        />
     );
-
-
 };
 // --------------------------------------------------------------------------
 // Search Student Report (NEW)
@@ -2361,7 +1656,7 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
     // Search students by name or admission no
     const handleSearch = async () => {
         if (!searchTerm.trim()) {
-            notify('Please enter a search term');
+            notify('Type an admission number or a name first.');
             return;
         }
         try {
@@ -2383,7 +1678,7 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
             if (list.length === 1) {
                 handleSelectStudent(list[0]);
             } else if (list.length === 0) {
-                setError('No students found');
+                setError('No student found. Check the spelling, or try the admission number.');
             }
         } catch (err: any) {
             setError(err.response?.data?.error || 'Failed to search students');
@@ -2413,7 +1708,7 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
     // Open edit modal (admin only)
     const handleEditReceipt = (receipt: any) => {
         if (!isAdmin) {
-            notify('Only admin can edit receipt details');
+            notify('Only an admin can change receipt details.');
             return;
         }
         setEditingReceipt(receipt);
@@ -2454,9 +1749,9 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
                 await handleSelectStudent(selectedStudent);
             }
             setEditingReceipt(null);
-            notify('Receipt updated successfully');
+            notify.success('Receipt details saved.');
         } catch (err: any) {
-            notify(err.response?.data?.error || 'Failed to update receipt');
+            notify.error(err.response?.data?.error || 'Could not save the receipt. Please try again.');
         } finally {
             setSaving(false);
         }
@@ -2464,116 +1759,116 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
 
     const totalCollected = receipts.reduce((sum, r) => sum + Number(r.amount_paid || r.amount || 0), 0);
 
+    const studentColumns: Column<any>[] = [
+        { key: 'name', header: 'Student', primary: true, render: s => <span className="font-medium">{s.name}</span> },
+        { key: 'class', header: 'Class', secondary: true, render: s => `${s.class || ''} ${s.section || ''}`.trim() || '-' },
+        { key: 'adm', header: 'Admission no.', render: s => <span className="text-brand-700">{s.admission_no || s.adm_no}</span> },
+        { key: 'father', header: 'Father', render: s => s.father_name || s.father || '-' },
+        { key: 'mobile', header: 'Phone', render: s => s.father_mobile || '-' },
+    ];
+
+    const receiptColumns: Column<any>[] = [
+        { key: 'receipt_no', header: 'Receipt no.', primary: true, render: r => <span className="font-medium text-brand-700">{r.receipt_no}</span> },
+        { key: 'date', header: 'Date', secondary: true, render: r => <>{formatDateDDMMYYYY(r.date)} <span className="text-slate-400">{r.time}</span></> },
+        { key: 'fee', header: 'Fee', render: r => <span className="md:block md:max-w-[200px] md:truncate" title={r.fee_type_str}>{r.fee_type_str || '-'}</span> },
+        { key: 'paid', header: 'Paid', align: 'right', render: r => <span className="font-bold">₹{(r.amount_paid || r.amount || 0).toLocaleString()}</span> },
+        { key: 'due', header: 'Still due', align: 'right', render: r => <span className="text-red-500">₹{(r.due_amount || 0).toLocaleString()}</span> },
+        {
+            key: 'mode', header: 'Paid by', render: r => (
+                <span className={r.mode === 'Cash' ? 'badge-success' : r.mode === 'Cheque' ? 'badge-warning' : 'badge-brand'}>{r.mode}</span>
+            )
+        },
+        {
+            key: 'ref', header: 'Transaction / cheque', render: r => r.mode === 'Cheque' ? (
+                <div className="text-xs">
+                    <div>{r.cheque_no || '-'}</div>
+                    <div className="text-slate-400">{r.bank_name || '-'}</div>
+                </div>
+            ) : (
+                <div className="text-xs md:max-w-[180px] md:truncate" title={r.transaction_id}>{r.transaction_id || '-'}</div>
+            )
+        },
+        { key: 'by', header: 'Collected by', render: r => r.collected_by || '-' },
+        {
+            key: 'actions', header: '', align: 'center', hideOnMobile: true, render: r => (
+                <div className="flex gap-1 justify-center">
+                    <button onClick={() => onViewReceipt(r.receipt_no)} className="btn-primary btn-sm">View</button>
+                    {isAdmin && <button onClick={() => handleEditReceipt(r)} className="btn-warn btn-sm">Edit</button>}
+                </div>
+            )
+        },
+    ];
+
     return (
-        <div className="space-y-4 font-sans">
-            {/* Search Bar */}
-            <div className="card p-4 mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                    <div className="md:col-span-3">
-                        <label className="label">Search By</label>
-                        <select
-                            value={searchType}
-                            onChange={(e) => setSearchType(e.target.value as 'name' | 'admission')}
-                            className="input"
-                        >
-                            <option value="admission">Admission Number</option>
-                            <option value="name">Student Name</option>
-                        </select>
-                    </div>
-                    <div className="md:col-span-7">
-                        <label className="label">
-                            {searchType === 'admission' ? 'Admission Number' : 'Student Name'}
-                        </label>
-                        <input
-                            type="text"
-                            placeholder={searchType === 'admission' ? 'e.g. HARG0001' : 'Enter student name...'}
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            className="input"
-                        />
-                    </div>
-                    <div className="md:col-span-2">
-                        <button
-                            onClick={handleSearch}
-                            disabled={searching}
-                            className="btn-primary w-full"
-                        >
-                            {searching ? 'Searching...' : '🔍 Search'}
-                        </button>
-                    </div>
+        <div className="space-y-4">
+            {/* Search */}
+            <div className="card p-4 sm:p-5">
+                <h3 className="text-sm font-semibold text-slate-800 mb-3">Find a student to see their receipts</h3>
+                <div className="segmented w-full sm:w-auto mb-3" role="group" aria-label="Search by">
+                    <button
+                        type="button"
+                        onClick={() => setSearchType('admission')}
+                        className={`segmented-item flex-1 sm:flex-none min-h-[40px] ${searchType === 'admission' ? 'segmented-item-active' : ''}`}
+                    >
+                        Admission number
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setSearchType('name')}
+                        className={`segmented-item flex-1 sm:flex-none min-h-[40px] ${searchType === 'name' ? 'segmented-item-active' : ''}`}
+                    >
+                        Name
+                    </button>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <label htmlFor="search-student-term" className="sr-only">
+                        {searchType === 'admission' ? 'Admission number' : 'Student name'}
+                    </label>
+                    <input
+                        id="search-student-term"
+                        type="search"
+                        placeholder={searchType === 'admission' ? 'Type admission number, e.g. HARG0001' : "Type the student's name"}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                        className="input min-h-[44px] flex-1"
+                    />
+                    <Button onClick={handleSearch} loading={searching} disabled={!searchTerm.trim()} className="min-h-[44px] sm:w-auto">
+                        Find student
+                    </Button>
                 </div>
             </div>
 
-            {error && <Alert tone="error" className="mx-4">{error}</Alert>}
+            {error && <Alert tone="error">{error}</Alert>}
 
             {/* Student List (when multiple results) */}
             {students.length > 1 && !selectedStudent && (
-                <div className="card overflow-hidden mx-4">
-                    <h4 className="text-base font-semibold text-slate-900 p-3 border-b border-slate-200 bg-slate-50">Select a Student ({students.length} found)</h4>
-                    <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200 text-sm">
-                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                            <tr>
-                                <th className="px-3 py-2 text-left">Adm No.</th>
-                                <th className="px-3 py-2 text-left">Student Name</th>
-                                <th className="px-3 py-2 text-left">Class</th>
-                                <th className="px-3 py-2 text-left">Father Name</th>
-                                <th className="px-3 py-2 text-left">Mobile</th>
-                                <th className="px-3 py-2 text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {students.map((s: any, idx: number) => (
-                                <tr key={idx} className="hover:bg-slate-50">
-                                    <td className="px-3 py-2 text-brand-600 font-medium">{s.admission_no || s.adm_no}</td>
-                                    <td className="px-3 py-2 font-medium">{s.name}</td>
-                                    <td className="px-3 py-2">{s.class} {s.section}</td>
-                                    <td className="px-3 py-2">{s.father_name || s.father || '-'}</td>
-                                    <td className="px-3 py-2">{s.father_mobile || '-'}</td>
-                                    <td className="px-3 py-2 text-center">
-                                        <button
-                                            onClick={() => handleSelectStudent(s)}
-                                            className="btn-primary btn-sm"
-                                        >
-                                            View Receipts
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    </div>
+                <div className="space-y-2">
+                    <h4 className="text-base font-semibold text-slate-900">Choose the student <span className="font-normal text-slate-500">({students.length} found)</span></h4>
+                    <DataList
+                        columns={studentColumns}
+                        rows={students}
+                        rowKey={(_, i) => i}
+                        onRowClick={handleSelectStudent}
+                    />
                 </div>
             )}
 
             {/* Selected Student Info */}
             {selectedStudent && (
-                <div className="bg-brand-50 border border-brand-200 rounded-lg p-4 mx-4">
-                    <div className="flex justify-between items-start">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-1">
-                            <div>
-                                <p className="text-xs text-slate-500">Student Name</p>
-                                <p className="font-semibold">{selectedStudent.name}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-slate-500">Admission No.</p>
-                                <p className="font-semibold text-brand-700">{selectedStudent.admission_no || selectedStudent.adm_no}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-slate-500">Class</p>
-                                <p className="font-semibold">{selectedStudent.class} {selectedStudent.section}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-slate-500">Father Name</p>
-                                <p className="font-semibold">{selectedStudent.father_name || selectedStudent.father || '-'}</p>
-                            </div>
-                        </div>
+                <div className="bg-brand-50 border border-brand-200 rounded-xl p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                        <dl className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-1 text-sm">
+                            <CardField label="Student"><span className="font-semibold">{selectedStudent.name}</span></CardField>
+                            <CardField label="Admission number"><span className="font-semibold text-brand-700">{selectedStudent.admission_no || selectedStudent.adm_no}</span></CardField>
+                            <CardField label="Class"><span className="font-semibold">{selectedStudent.class} {selectedStudent.section}</span></CardField>
+                            <CardField label="Father"><span className="font-semibold">{selectedStudent.father_name || selectedStudent.father || '-'}</span></CardField>
+                        </dl>
                         <button
                             onClick={() => { setSelectedStudent(null); setReceipts([]); }}
-                            className="btn-ghost btn-sm ml-4"
+                            className="btn-secondary btn-sm min-h-[44px] sm:min-h-0"
                         >
-                            ✕ Clear
+                            Choose another student
                         </button>
                     </div>
                 </div>
@@ -2581,108 +1876,39 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
 
             {loading && <LoadingState label="Loading receipts..." />}
 
-            {/* Receipts Summary */}
+            {/* Receipts */}
             {selectedStudent && !loading && (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-4">
-                        <StatCard label="Total Receipts" value={receipts.length} color="blue" />
-                        <StatCard label="Total Collected" value={totalCollected} color="green" />
-                        <StatCard label="Edit Access" value={isAdmin ? 'Admin (Allowed)' : 'View Only'} color={isAdmin ? 'green' : 'orange'} />
-                    </div>
+                    <StatGrid>
+                        <StatTile label="Receipts" value={receipts.length} />
+                        <StatTile label="Total paid" value={totalCollected} money tone="good" />
+                    </StatGrid>
+                    <p className="text-sm text-slate-500">
+                        {isAdmin ? 'You can change the date and payment details of these receipts.' : 'You can view these receipts. Only an admin can change them.'}
+                    </p>
 
-                    {/* Receipts Table - Custom with Edit Button */}
-                    {receipts.length === 0 ? (
-                        <div className="card mt-4 mx-4">
-                            <EmptyState compact title="No receipts found for this student" />
-                        </div>
-                    ) : (
-                        <div className="card overflow-x-auto mt-4 mx-4">
-                            <table className="min-w-full divide-y divide-slate-200 text-sm">
-                                <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                    <tr>
-                                        <th className="px-3 py-2 text-left">S.No</th>
-                                        <th className="px-3 py-2 text-left">Rcpt No</th>
-                                        <th className="px-3 py-2 text-left">Date/Time</th>
-                                        <th className="px-3 py-2 text-left">Fee Type</th>
-                                        <th className="px-3 py-2 text-right">Paid</th>
-                                        <th className="px-3 py-2 text-right">Due</th>
-                                        <th className="px-3 py-2 text-left">Mode</th>
-                                        <th className="px-3 py-2 text-left">Trans/Cheque</th>
-                                        <th className="px-3 py-2 text-left">Taken By</th>
-                                        <th className="px-3 py-2 text-center">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {receipts.map((r: any, idx: number) => (
-                                        <tr key={idx} className="hover:bg-slate-50">
-                                            <td className="px-3 py-2 text-slate-500">{idx + 1}</td>
-                                            <td className="px-3 py-2 font-medium text-brand-700">{r.receipt_no}</td>
-                                            <td className="px-3 py-2 text-xs text-slate-600">
-                                                {formatDateDDMMYYYY(r.date)}<br />
-                                                <span className="text-slate-400">{r.time}</span>
-                                            </td>
-                                            <td className="px-3 py-2 max-w-[200px] truncate" title={r.fee_type_str}>{r.fee_type_str || '-'}</td>
-                                            <td className="px-3 py-2 text-right font-bold">₹{(r.amount_paid || r.amount || 0).toLocaleString()}</td>
-                                            <td className="px-3 py-2 text-right text-red-500">₹{(r.due_amount || 0).toLocaleString()}</td>
-                                            <td className="px-3 py-2">
-                                                <span className={r.mode === 'Cash' ? 'badge-success' :
-                                                    r.mode === 'Cheque' ? 'badge-warning' :
-                                                        'badge-brand'}>
-                                                    {r.mode}
-                                                </span>
-                                            </td>
-                                            <td className="px-3 py-2 text-xs max-w-[180px]">
-                                                {r.mode === 'Cheque' ? (
-                                                    <div>
-                                                        <div>{r.cheque_no || '-'}</div>
-                                                        <div className="text-slate-400">{r.bank_name || '-'}</div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="truncate" title={r.transaction_id}>{r.transaction_id || '-'}</div>
-                                                )}
-                                            </td>
-                                            <td className="px-3 py-2 text-slate-600">{r.collected_by}</td>
-                                            <td className="px-3 py-2 text-center">
-                                                <div className="flex gap-1 justify-center">
-                                                    <button
-                                                        onClick={() => onViewReceipt(r.receipt_no)}
-                                                        className="btn-primary btn-sm"
-                                                    >
-                                                        View
-                                                    </button>
-                                                    {isAdmin && (
-                                                        <button
-                                                            onClick={() => handleEditReceipt(r)}
-                                                            className="btn-warn btn-sm"
-                                                        >
-                                                            Edit
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                                <tfoot className="bg-slate-50 font-semibold">
-                                    <tr>
-                                        <td colSpan={4} className="px-3 py-2 text-right">Total:</td>
-                                        <td className="px-3 py-2 text-right">₹{totalCollected.toLocaleString()}</td>
-                                        <td colSpan={5}></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    )}
+                    <DataList
+                        columns={receiptColumns}
+                        rows={receipts}
+                        rowKey={(_, i) => i}
+                        emptyTitle="No receipts found for this student"
+                        mobileActions={r => (
+                            <>
+                                <button onClick={() => onViewReceipt(r.receipt_no)} className="btn-soft btn-sm flex-1 min-h-[44px]">View receipt</button>
+                                {isAdmin && <button onClick={() => handleEditReceipt(r)} className="btn-secondary btn-sm flex-1 min-h-[44px]">Change details</button>}
+                            </>
+                        )}
+                    />
                 </>
             )}
 
-            {/* Edit Modal */}
+            {/* Edit dialog */}
             {editingReceipt && (
-                <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50 p-4">
-                    <div className="card shadow-pop max-w-md w-full">
+                <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-end sm:items-center z-50 sm:p-4">
+                    <div className="card shadow-pop max-w-md w-full max-h-[92vh] overflow-y-auto rounded-b-none sm:rounded-b-xl" role="dialog" aria-modal="true" aria-labelledby="edit-receipt-title">
                         <div className="card-header">
-                            <h3 className="text-base font-semibold text-slate-900">
-                                Edit Receipt: {editingReceipt.receipt_no}
+                            <h3 id="edit-receipt-title" className="text-base font-semibold text-slate-900">
+                                Change receipt {editingReceipt.receipt_no}
                             </h3>
                             <button
                                 onClick={() => setEditingReceipt(null)}
@@ -2695,27 +1921,16 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
 
                         <div className="p-4 space-y-4">
                             {/* Read-only info */}
-                            <div className="bg-slate-50 p-3 rounded-lg text-sm border border-slate-200">
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <span className="text-slate-500">Student:</span>
-                                        <p className="font-semibold">{selectedStudent?.name}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-500">Amount Paid:</span>
-                                        <p className="font-semibold text-emerald-700">
-                                            ₹{(editingReceipt.amount_paid || editingReceipt.amount || 0).toLocaleString()}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
+                            <dl className="bg-slate-50 p-3 rounded-lg text-sm border border-slate-200 grid grid-cols-2 gap-2">
+                                <CardField label="Student"><span className="font-semibold">{selectedStudent?.name}</span></CardField>
+                                <CardField label="Amount paid">
+                                    <span className="font-semibold text-emerald-700">₹{(editingReceipt.amount_paid || editingReceipt.amount || 0).toLocaleString()}</span>
+                                </CardField>
+                            </dl>
 
-                            {/* Editable: Date */}
-                            <div>
-                                <label className="label">
-                                    Payment Date <span className="text-red-500">*</span>
-                                </label>
+                            <Field label="Date paid" htmlFor="edit-receipt-date" required>
                                 <input
+                                    id="edit-receipt-date"
                                     type="date"
                                     value={editForm.date ? (
                                         /^\d{2}-\d{2}-\d{4}$/.test(editForm.date)
@@ -2723,50 +1938,47 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
                                             : editForm.date.split('T')[0]
                                     ) : ''}
                                     onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
-                                    className="input"
+                                    className="input min-h-[44px]"
                                 />
-                            </div>
+                            </Field>
 
-                            {/* Editable: Mode */}
-                            <div>
-                                <label className="label">
-                                    Payment Mode <span className="text-red-500">*</span>
-                                </label>
+                            <Field label="Paid by" htmlFor="edit-receipt-mode" required>
                                 <select
+                                    id="edit-receipt-mode"
                                     value={editForm.mode}
                                     onChange={(e) => setEditForm({ ...editForm, mode: e.target.value })}
-                                    className="input"
+                                    className="input min-h-[44px]"
                                 >
                                     {paymentModes.map(m => (
                                         <option key={m} value={m}>{m}</option>
                                     ))}
                                 </select>
-                            </div>
+                            </Field>
 
-                            {/* Conditional fields based on mode */}
                             {editForm.mode === 'Cheque' ? (
                                 <>
-                                    <div>
-                                        <label className="label">Cheque No.</label>
+                                    <Field label="Cheque number" htmlFor="edit-receipt-chq">
                                         <input
+                                            id="edit-receipt-chq"
                                             type="text"
+                                            inputMode="numeric"
                                             value={editForm.cheque_no}
                                             onChange={(e) => setEditForm({ ...editForm, cheque_no: e.target.value })}
-                                            className="input"
+                                            className="input min-h-[44px]"
                                         />
-                                    </div>
-                                    <div>
-                                        <label className="label">Bank Name</label>
+                                    </Field>
+                                    <Field label="Bank name" htmlFor="edit-receipt-bank">
                                         <input
+                                            id="edit-receipt-bank"
                                             type="text"
                                             value={editForm.bank_name}
                                             onChange={(e) => setEditForm({ ...editForm, bank_name: e.target.value })}
-                                            className="input"
+                                            className="input min-h-[44px]"
                                         />
-                                    </div>
-                                    <div>
-                                        <label className="label">Cheque Date</label>
+                                    </Field>
+                                    <Field label="Cheque date" htmlFor="edit-receipt-chqdate">
                                         <input
+                                            id="edit-receipt-chqdate"
                                             type="date"
                                             value={editForm.cheque_date ? (
                                                 /^\d{2}-\d{2}-\d{4}$/.test(editForm.cheque_date)
@@ -2774,42 +1986,38 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
                                                     : editForm.cheque_date.split('T')[0]
                                             ) : ''}
                                             onChange={(e) => setEditForm({ ...editForm, cheque_date: e.target.value })}
-                                            className="input"
+                                            className="input min-h-[44px]"
                                         />
-                                    </div>
+                                    </Field>
                                 </>
                             ) : editForm.mode !== 'Cash' ? (
-                                <div>
-                                    <label className="label">Transaction ID</label>
+                                <Field label="Transaction ID" htmlFor="edit-receipt-txn">
                                     <input
+                                        id="edit-receipt-txn"
                                         type="text"
                                         value={editForm.transaction_id}
                                         onChange={(e) => setEditForm({ ...editForm, transaction_id: e.target.value })}
-                                        className="input"
+                                        className="input min-h-[44px]"
                                     />
-                                </div>
+                                </Field>
                             ) : null}
 
-                            <Alert tone="warning" className="text-xs">
-                                Only Payment Date, Mode, and Transaction/Cheque details can be edited. Amount, Fee Type, and Student details are non-editable.
+                            <Alert tone="info">
+                                Only the date, payment mode and transaction or cheque details can be changed. The amount, fee and student stay the same.
                             </Alert>
                         </div>
 
-                        <div className="p-4 border-t border-slate-200 flex gap-2 justify-end bg-slate-50">
+                        <div className="p-4 border-t border-slate-200 flex gap-2 justify-end bg-slate-50 [&>*]:flex-1 sm:[&>*]:flex-none">
                             <button
                                 onClick={() => setEditingReceipt(null)}
                                 disabled={saving}
-                                className="btn-secondary"
+                                className="btn-secondary min-h-[44px]"
                             >
                                 Cancel
                             </button>
-                            <button
-                                onClick={handleSaveEdit}
-                                disabled={saving}
-                                className="btn-primary"
-                            >
-                                {saving ? 'Saving...' : 'Save Changes'}
-                            </button>
+                            <Button onClick={handleSaveEdit} loading={saving} className="min-h-[44px]">
+                                Save changes
+                            </Button>
                         </div>
                     </div>
                 </div>

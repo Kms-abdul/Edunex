@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ArrowLeft, ChevronRight } from 'lucide-react';
 import {
     TodayCollection,
     DailyReport,
@@ -13,9 +14,19 @@ import FeeReceipt from './FeeReceipt';
 import api from '../api';
 import { notify } from './ui/feedback';
 import { LoadingState } from './ui';
+import { consumeIntent } from '../utils/intent';
+import { FEE_REPORTS, type FeeReportId } from './fee-reports/reportCatalog';
 
 const FeeReports: React.FC = () => {
-    const [activeTab, setActiveTab] = useState('today');
+    // Opens on the list of reports; a shortcut may open one report directly.
+    const [activeTab, setActiveTab] = useState<FeeReportId | null>(() => {
+        const view = consumeIntent('fee-reports');
+        return FEE_REPORTS.some(r => r.id === view) ? (view as FeeReportId) : null;
+    });
+    const openReport = (id: FeeReportId | null) => {
+        setActiveTab(id);
+        window.scrollTo({ top: 0 });
+    };
     const [receiptData, setReceiptData] = useState<any>(null);
     const [loadingReceipt, setLoadingReceipt] = useState(false);
     const [, setError] = useState('');
@@ -30,7 +41,7 @@ const FeeReports: React.FC = () => {
             const payments = res.data.items || [];
 
             if (payments.length === 0) {
-                notify("No items found in this receipt.");
+                notify("This receipt has no items.");
                 return;
             }
 
@@ -124,63 +135,73 @@ const FeeReports: React.FC = () => {
             setReceiptData(formattedData);
         } catch (err: any) {
             console.error(err);
-            notify(err.response?.data?.error || 'Failed to load receipt');
+            notify.error(err.response?.data?.error || 'Could not open the receipt. Please try again.');
         } finally {
             setLoadingReceipt(false);
         }
     };
 
-    const tabs = [
-        { id: 'today', label: "Today's Collection" },
-        { id: 'daily', label: 'Daily Report' },
-        { id: 'monthly', label: 'Monthly Report' },
-        { id: 'class', label: 'Class Wise' },
-        { id: 'installment', label: 'Installment Wise' },
-        { id: 'due', label: 'Due Report' },
-        { id: 'late-due', label: 'Late Fee Due' },
-        { id: 'search', label: 'Search Student' },
-    ];
+    const active = FEE_REPORTS.find(r => r.id === activeTab) || null;
 
     return (
-        <div className="container mx-auto p-6">
-            <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 flex items-center">
-                <span className="bg-brand-100 text-brand-600 p-2 rounded-lg mr-3">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                </span>
-                Fee Reports
-            </h2>
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+            {!active ? (
+                <>
+                    <div className="mb-4">
+                        <h2 className="text-lg font-semibold text-slate-900">Fee reports</h2>
+                        <p className="text-sm text-slate-500">Choose the report you want to see.</p>
+                    </div>
+                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                        {FEE_REPORTS.map(r => (
+                            <li key={r.id}>
+                                <button
+                                    type="button"
+                                    onClick={() => openReport(r.id)}
+                                    className="w-full text-left card px-4 py-3.5 min-h-[64px] flex items-center gap-3 hover:border-brand-300 active:bg-slate-50 transition-colors"
+                                >
+                                    <span className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center flex-shrink-0">{r.icon}</span>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block text-[15px] font-semibold text-slate-900">{r.title}</span>
+                                        <span className="block text-sm text-slate-500">{r.description}</span>
+                                    </span>
+                                    <ChevronRight className="w-5 h-5 text-slate-300 flex-shrink-0" />
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </>
+            ) : (
+                <>
+                    <div className="mb-4 flex items-start gap-3">
+                        <button
+                            type="button"
+                            onClick={() => openReport(null)}
+                            className="btn-secondary btn-sm min-h-[44px] flex-shrink-0"
+                            aria-label="Back to all reports"
+                        >
+                            <ArrowLeft className="w-4 h-4" /> <span className="hidden sm:inline">All reports</span>
+                        </button>
+                        <div className="min-w-0">
+                            <h2 className="text-lg font-semibold text-slate-900 leading-snug">{active.title}</h2>
+                            <p className="text-sm text-slate-500">{active.description}</p>
+                        </div>
+                    </div>
 
-            {/* Tabs */}
-            <div className="segmented flex-wrap mb-8">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`segmented-item ${activeTab === tab.id ? 'segmented-item-active' : ''}`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
-
-            {/* Content */}
-            <div className="card min-h-[400px]">
-                {activeTab === 'today' && <TodayCollection onViewReceipt={handleViewReceipt} />}
-                {activeTab === 'daily' && <DailyReport onViewReceipt={handleViewReceipt} />}
-                {activeTab === 'monthly' && <MonthlyReport onViewReceipt={handleViewReceipt} />}
-                {activeTab === 'class' && <ClassWiseReport onViewReceipt={handleViewReceipt} />}
-                {activeTab === 'installment' && <InstallmentWiseReport onViewReceipt={handleViewReceipt} />}
-                {activeTab === 'due' && <DueReport />}
-                {activeTab === 'late-due' && <LateFeeDueReport />}
-                {activeTab === 'search' && <SearchStudentReport onViewReceipt={handleViewReceipt} />}
-            </div>
+                    {activeTab === 'today' && <TodayCollection onViewReceipt={handleViewReceipt} />}
+                    {activeTab === 'daily' && <DailyReport onViewReceipt={handleViewReceipt} />}
+                    {activeTab === 'monthly' && <MonthlyReport onViewReceipt={handleViewReceipt} />}
+                    {activeTab === 'class' && <ClassWiseReport onViewReceipt={handleViewReceipt} />}
+                    {activeTab === 'installment' && <InstallmentWiseReport onViewReceipt={handleViewReceipt} />}
+                    {activeTab === 'due' && <DueReport />}
+                    {activeTab === 'late-due' && <LateFeeDueReport />}
+                    {activeTab === 'search' && <SearchStudentReport onViewReceipt={handleViewReceipt} />}
+                </>
+            )}
 
             {/* Receipt Modal */}
             {loadingReceipt && (
                 <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
-                    <div className="card px-8"><LoadingState label="Loading Receipt..." /></div>
+                    <div className="card px-8"><LoadingState label="Opening receipt…" /></div>
                 </div>
             )}
 

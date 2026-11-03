@@ -76,14 +76,15 @@ const Pagination: React.FC<{
         <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm">
             <div className="flex items-center gap-3">
                 <span className="text-slate-500 italic text-xs sm:text-sm">
-                    Showing <span className="font-semibold text-slate-700">{startRecord}</span> to <span className="font-semibold text-slate-700">{endRecord}</span> of <span className="font-semibold text-slate-700">{totalRecords}</span> records
+                    Showing <span className="font-semibold text-slate-700">{startRecord}</span>–<span className="font-semibold text-slate-700">{endRecord}</span> of <span className="font-semibold text-slate-700">{totalRecords}</span>
                 </span>
                 <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                    <span>Rows:</span>
+                    <label htmlFor="del-per-page">Per page:</label>
                     <select
+                        id="del-per-page"
                         value={perPage}
                         onChange={(e) => onPerPageChange(Number(e.target.value))}
-                        className="input py-1 px-2 w-auto text-xs"
+                        className="input py-1 px-2 w-auto text-xs min-h-[36px]"
                     >
                         <option value={10}>10</option>
                         <option value={25}>25</option>
@@ -98,7 +99,7 @@ const Pagination: React.FC<{
                     <button
                         disabled={currentPage === 1}
                         onClick={() => onPageChange(currentPage - 1)}
-                        className="px-3 py-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-red-600 disabled:opacity-30 disabled:hover:text-slate-600 mr-1 rounded hover:bg-slate-200/60 transition-colors"
+                        className="px-3 py-1 min-h-[44px] sm:min-h-0 text-xs sm:text-sm font-medium text-slate-600 hover:text-red-600 disabled:opacity-30 disabled:hover:text-slate-600 mr-1 rounded hover:bg-slate-200/60 transition-colors"
                     >
                         Previous
                     </button>
@@ -107,7 +108,7 @@ const Pagination: React.FC<{
                         <button
                             key={p}
                             onClick={() => onPageChange(p)}
-                            className={`btn min-w-[30px] h-[30px] sm:text-sm ${currentPage === p ? 'bg-red-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60' }`}
+                            className={`btn min-w-[44px] h-[44px] sm:min-w-[32px] sm:h-[32px] sm:text-sm ${currentPage === p ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60' }`}
                         >
                             {p}
                         </button>
@@ -118,7 +119,7 @@ const Pagination: React.FC<{
                             <span className="px-1 text-slate-400">...</span>
                             <button
                                 onClick={() => onPageChange(totalPages)}
-                                className={`btn min-w-[30px] h-[30px] sm:text-sm ${currentPage === totalPages ? 'bg-red-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60' }`}
+                                className={`btn min-w-[44px] h-[44px] sm:min-w-[32px] sm:h-[32px] sm:text-sm ${currentPage === totalPages ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60' }`}
                             >
                                 {totalPages}
                             </button>
@@ -128,7 +129,7 @@ const Pagination: React.FC<{
                     <button
                         disabled={currentPage === totalPages}
                         onClick={() => onPageChange(currentPage + 1)}
-                        className="px-3 py-1 text-xs sm:text-sm font-medium text-slate-600 hover:text-red-600 disabled:opacity-30 disabled:hover:text-slate-600 ml-1 rounded hover:bg-slate-200/60 transition-colors"
+                        className="px-3 py-1 min-h-[44px] sm:min-h-0 text-xs sm:text-sm font-medium text-slate-600 hover:text-red-600 disabled:opacity-30 disabled:hover:text-slate-600 ml-1 rounded hover:bg-slate-200/60 transition-colors"
                     >
                         Next
                     </button>
@@ -181,6 +182,7 @@ const DeleteFeeReceipt: React.FC = () => {
     const [selectedReasonOption, setSelectedReasonOption] = useState(PREDEFINED_REASONS[0]);
     const [customReason, setCustomReason] = useState('');
     const [isCancelling, setIsCancelling] = useState(false);
+    const [showMoreFilters, setShowMoreFilters] = useState(false);
 
     // Print Receipt states
     const [receiptDataForPrint, setReceiptDataForPrint] = useState<any | null>(null);
@@ -304,7 +306,7 @@ const DeleteFeeReceipt: React.FC = () => {
                 : selectedReasonOption;
 
         if (!finalReason) {
-            notify("Please provide a cancellation reason.");
+            notify("Write why you are cancelling this receipt.");
             return;
         }
 
@@ -332,7 +334,7 @@ const DeleteFeeReceipt: React.FC = () => {
             const res = await api.get(`/reports/fees/receipt/${encodeURIComponent(receiptNo)}`);
             const payments = res.data.payments || [];
             if (payments.length === 0) {
-                notify("Receipt details not found.");
+                notify("Could not find this receipt's details.");
                 return;
             }
 
@@ -409,41 +411,51 @@ const DeleteFeeReceipt: React.FC = () => {
         return receipts.slice(start, start + perPage);
     }, [receipts, currentPage, perPage]);
 
+    const isOtherReason = selectedReasonOption === "Other (specify below)";
+    const reasonMissing = isOtherReason && !customReason.trim();
+    const money = (v: string | number) => `₹${(parseFloat(String(v || 0)) || 0).toLocaleString('en-IN')}`;
+    const classLabel = (r: ReceiptSummary) => (r.class_name ? `${r.class_name}${r.section ? ` ${r.section}` : ''}` : '');
+    const extraFilterCount = [statusFilter !== 'all', selectedClass, selectedSection, startDate, endDate].filter(Boolean).length;
+
+    const feeLines = (r: ReceiptSummary) => (
+        <ul className="space-y-0.5">
+            {r.items.map((it, idx) => (
+                <li key={idx} className="text-xs text-slate-700">
+                    <span className="font-medium">{it.fee_type}</span>
+                    {it.installment && it.installment !== 'One-Time' && <span className="text-slate-500"> ({it.installment})</span>}
+                    <span className="text-slate-400"> · </span>
+                    <span className="text-slate-600">₹{parseFloat(it.amount_paid).toLocaleString('en-IN')}</span>
+                </li>
+            ))}
+        </ul>
+    );
+
+    const statusBadge = (r: ReceiptSummary) => r.status === 'I' ? <Badge tone="danger">Cancelled</Badge> : <Badge tone="success">Active</Badge>;
+
     if (!canReadReceipts) {
         return (
-            <div className="p-8 max-w-4xl mx-auto">
+            <div className="p-4 sm:p-8 max-w-4xl mx-auto">
                 <div className="card">
-                    <ErrorState title="Access Restricted" message="You do not have permission to view or delete fee receipts." />
+                    <ErrorState title="You can't open this page" message="You do not have permission to see or cancel fee receipts. Ask an admin for access." />
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="p-6 max-w-7xl mx-auto space-y-6">
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
             {/* Header */}
-            <div className="card flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6">
-                <div>
-                    <h2 className="text-xl font-semibold text-slate-900 tracking-tight flex items-center gap-2">
-                        <span className="p-2 bg-red-100 text-red-600 rounded-xl">
-                            <TrashIcon className="w-6 h-6" />
-                        </span>
-                        Delete / Cancel Fee Receipt
-                    </h2>
-                    <p className="text-slate-500 text-sm mt-1">
-                        Search and cancel erroneous fee receipts. Cancelling will revert student fee ledger balances and mark receipt as cancelled.
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <h2 className="text-lg font-semibold text-slate-900">Cancel a fee receipt</h2>
+                    <p className="text-sm text-slate-500">
+                        Find the receipt, check it, then cancel it with a reason. The fees on it become unpaid again for that student.
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={fetchReceipts}
-                        disabled={loading}
-                        className="btn-secondary"
-                    >
-                        <RefreshIcon className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                        Refresh
-                    </button>
-                </div>
+                <button onClick={fetchReceipts} disabled={loading} className="btn-secondary btn-sm min-h-[44px] sm:min-h-0 flex-shrink-0" aria-label="Refresh list">
+                    <RefreshIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">Refresh</span>
+                </button>
             </div>
 
             {/* Notification Messages */}
@@ -459,130 +471,88 @@ const DeleteFeeReceipt: React.FC = () => {
                 </Alert>
             )}
 
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="card p-4 flex items-center justify-between">
-                    <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Found</p>
-                        <p className="text-2xl font-bold text-slate-800 mt-1">{receipts.length}</p>
-                    </div>
-                    <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center font-bold">
-                        #
-                    </div>
-                </div>
-
-                <div className="card p-4 flex items-center justify-between">
-                    <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Receipts</p>
-                        <p className="text-2xl font-bold text-emerald-600 mt-1">{activeCount}</p>
-                    </div>
-                    <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                        ✓
-                    </div>
-                </div>
-
-                <div className="card p-4 flex items-center justify-between">
-                    <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cancelled Receipts</p>
-                        <p className="text-2xl font-bold text-red-600 mt-1">{cancelledCount}</p>
-                    </div>
-                    <div className="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-bold">
-                        ✕
-                    </div>
-                </div>
-
-                <div className="card p-4 flex items-center justify-between">
-                    <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Total Paid</p>
-                        <p className="text-2xl font-bold text-brand-600 mt-1">₹{totalCollected.toLocaleString('en-IN')}</p>
-                    </div>
-                    <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center font-bold">
-                        ₹
-                    </div>
-                </div>
-            </div>
-
             {/* Search & Filter Card */}
-            <div className="card p-6 space-y-4">
+            <div className="card p-4 sm:p-5">
                 <form onSubmit={handleSearchSubmit} className="space-y-4">
-                    {/* Primary Search Bar */}
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-4">
                         <div className="md:col-span-4">
-                            <label className="label">
-                                Exact Receipt Number
-                            </label>
+                            <label htmlFor="del-receipt-no" className="block text-sm font-medium text-slate-800 mb-1.5">Receipt number</label>
                             <input
+                                id="del-receipt-no"
                                 type="text"
                                 value={receiptNoSearch}
                                 onChange={(e) => setReceiptNoSearch(e.target.value)}
-                                placeholder="e.g. 10, 1024, REC-2026..."
-                                className="input font-medium"
+                                placeholder="e.g. 1024"
+                                className="input min-h-[44px] font-medium"
                             />
                         </div>
 
                         <div className="md:col-span-5">
-                            <label className="label">
-                                Search Student / Adm No / Name
-                            </label>
+                            <label htmlFor="del-student" className="block text-sm font-medium text-slate-800 mb-1.5">Or student name / admission number</label>
                             <input
-                                type="text"
+                                id="del-student"
+                                type="search"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Student name, admission no, or enrollment no..."
-                                className="input"
+                                placeholder="Name, admission or enrolment number"
+                                className="input min-h-[44px]"
                             />
                         </div>
 
-                        <div className="md:col-span-3 flex items-end gap-2">
-                            <button
-                                type="submit"
-                                className="btn-danger flex-1"
-                            >
+                        <div className="sm:col-span-2 md:col-span-3 flex items-end gap-2">
+                            <button type="submit" className="btn-primary flex-1 min-h-[44px]">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
-                                Search
+                                Find receipts
                             </button>
-                            <button
-                                type="button"
-                                onClick={handleResetFilters}
-                                className="btn-secondary"
-                            >
-                                Reset
+                            <button type="button" onClick={handleResetFilters} className="btn-secondary min-h-[44px]">
+                                Clear
                             </button>
                         </div>
                     </div>
 
-                    {/* Secondary Filters */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-100 text-sm">
+                    <button
+                        type="button"
+                        onClick={() => setShowMoreFilters(v => !v)}
+                        className="md:hidden btn-ghost btn-sm min-h-[44px] -ml-2"
+                        aria-expanded={showMoreFilters}
+                    >
+                        {showMoreFilters ? 'Hide more filters' : `More filters${extraFilterCount ? ` (${extraFilterCount} on)` : ''}`}
+                    </button>
+
+                    {/* More filters */}
+                    <div className={`${showMoreFilters ? 'grid' : 'hidden md:grid'} grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-3 border-t border-slate-100`}>
                         <div>
-                            <label className="label">Status</label>
+                            <label htmlFor="del-status" className="block text-sm font-medium text-slate-800 mb-1.5">Show</label>
                             <select
+                                id="del-status"
                                 value={statusFilter}
                                 onChange={(e) => {
                                     setStatusFilter(e.target.value as any);
                                     setCurrentPage(1);
                                 }}
-                                className="input"
+                                className="input min-h-[44px]"
                             >
-                                <option value="all">All Receipts (Active & Cancelled)</option>
-                                <option value="A">Active Only</option>
-                                <option value="I">Cancelled Only</option>
+                                <option value="all">All receipts</option>
+                                <option value="A">Active only</option>
+                                <option value="I">Cancelled only</option>
                             </select>
                         </div>
 
                         <div>
-                            <label className="label">Class</label>
+                            <label htmlFor="del-class" className="block text-sm font-medium text-slate-800 mb-1.5">Class</label>
                             <select
+                                id="del-class"
                                 value={selectedClass}
                                 onChange={(e) => {
                                     setSelectedClass(e.target.value);
                                     setSelectedSection('');
                                     setCurrentPage(1);
                                 }}
-                                className="input"
+                                className="input min-h-[44px]"
                             >
-                                <option value="">All Classes</option>
+                                <option value="">All classes</option>
                                 {classes.map(c => (
                                     <option key={c} value={c}>{c}</option>
                                 ))}
@@ -590,17 +560,18 @@ const DeleteFeeReceipt: React.FC = () => {
                         </div>
 
                         <div>
-                            <label className="label">Section</label>
+                            <label htmlFor="del-section" className="block text-sm font-medium text-slate-800 mb-1.5">Section</label>
                             <select
+                                id="del-section"
                                 value={selectedSection}
                                 onChange={(e) => {
                                     setSelectedSection(e.target.value);
                                     setCurrentPage(1);
                                 }}
                                 disabled={!selectedClass || sections.length === 0}
-                                className="input"
+                                className="input min-h-[44px]"
                             >
-                                <option value="">All Sections</option>
+                                <option value="">All sections</option>
                                 {sections.map((s, idx) => (
                                     <option key={idx} value={s}>{s}</option>
                                 ))}
@@ -608,187 +579,220 @@ const DeleteFeeReceipt: React.FC = () => {
                         </div>
 
                         <div>
-                            <label className="label">From Date</label>
+                            <label htmlFor="del-from" className="block text-sm font-medium text-slate-800 mb-1.5">From date</label>
                             <input
+                                id="del-from"
                                 type="date"
                                 value={startDate}
                                 onChange={(e) => {
                                     setStartDate(e.target.value);
                                     setCurrentPage(1);
                                 }}
-                                className="input"
+                                className="input min-h-[44px]"
                             />
                         </div>
 
                         <div>
-                            <label className="label">To Date</label>
+                            <label htmlFor="del-to" className="block text-sm font-medium text-slate-800 mb-1.5">To date</label>
                             <input
+                                id="del-to"
                                 type="date"
                                 value={endDate}
                                 onChange={(e) => {
                                     setEndDate(e.target.value);
                                     setCurrentPage(1);
                                 }}
-                                className="input"
+                                className="input min-h-[44px]"
                             />
                         </div>
                     </div>
                 </form>
             </div>
 
-            {/* Receipts Table & Pagination */}
+            {/* Totals */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="card p-4 min-w-0">
+                    <p className="text-xs sm:text-sm text-slate-500">Receipts found</p>
+                    <p className="mt-1 text-lg sm:text-2xl font-bold text-slate-900">{receipts.length}</p>
+                </div>
+                <div className="card p-4 min-w-0">
+                    <p className="text-xs sm:text-sm text-slate-500">Active</p>
+                    <p className="mt-1 text-lg sm:text-2xl font-bold text-emerald-600">{activeCount}</p>
+                </div>
+                <div className="card p-4 min-w-0">
+                    <p className="text-xs sm:text-sm text-slate-500">Cancelled</p>
+                    <p className="mt-1 text-lg sm:text-2xl font-bold text-red-600">{cancelledCount}</p>
+                </div>
+                <div className="card p-4 min-w-0">
+                    <p className="text-xs sm:text-sm text-slate-500">Paid on active receipts</p>
+                    <p className="mt-1 text-lg sm:text-2xl font-bold text-brand-600 break-words">₹{totalCollected.toLocaleString('en-IN')}</p>
+                </div>
+            </div>
+
+            {/* Receipts list & pagination */}
             <div className="card overflow-hidden flex flex-col">
-                <div className="card-header bg-slate-50">
+                <div className="card-header">
                     <h3 className="font-semibold text-slate-800 text-base">
-                        Fee Receipts List ({receipts.length})
+                        Receipts <span className="font-normal text-slate-500">({receipts.length})</span>
                     </h3>
                     <span className="text-xs text-slate-500">
                         Page {currentPage} of {totalPages}
                     </span>
                 </div>
 
-                <div className="overflow-x-auto flex-1">
-                    <table className="w-full text-left border-collapse text-sm">
-                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                            <tr className="border-b border-slate-200">
-                                <th className="px-4 py-3">Receipt No</th>
-                                <th className="px-4 py-3">Date</th>
-                                <th className="px-4 py-3">Student Info</th>
-                                <th className="px-4 py-3">Class / Sec</th>
-                                <th className="px-4 py-3">Fee Details</th>
-                                <th className="px-4 py-3 text-right">Amount</th>
-                                <th className="px-4 py-3 text-right">Concession</th>
-                                <th className="px-4 py-3">Mode</th>
-                                <th className="px-4 py-3 text-center">Status</th>
-                                <th className="px-4 py-3 text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan={10}>
-                                        <LoadingState label="Loading fee receipts..." />
-                                    </td>
-                                </tr>
-                            ) : paginatedReceipts.length === 0 ? (
-                                <tr>
-                                    <td colSpan={10}>
-                                        <EmptyState compact title="No receipts found" description="Try changing your search keywords, receipt number or date filters." />
-                                    </td>
-                                </tr>
-                            ) : (
-                                paginatedReceipts.map((r) => {
-                                    const isCancelled = r.status === 'I';
-                                    return (
-                                        <tr
-                                            key={r.receipt_no}
-                                            className={`hover:bg-slate-50/80 transition-colors ${isCancelled ? 'bg-red-50/40' : ''}`}
-                                        >
-                                            {/* Receipt No */}
-                                            <td className="px-4 py-3.5 font-bold text-slate-900 whitespace-nowrap">
-                                                #{r.receipt_no}
-                                                <div className="text-[11px] font-normal text-slate-500">{r.academic_year}</div>
-                                            </td>
+                {loading ? (
+                    <LoadingState label="Loading fee receipts..." />
+                ) : paginatedReceipts.length === 0 ? (
+                    <EmptyState compact title="No receipts found" description="Check the receipt number or name, or clear the filters." />
+                ) : (
+                    <>
+                        {/* Phone: cards */}
+                        <ul className="md:hidden divide-y divide-slate-100">
+                            {paginatedReceipts.map((r) => {
+                                const isCancelled = r.status === 'I';
+                                return (
+                                    <li key={r.receipt_no} className={`px-4 py-3 ${isCancelled ? 'bg-red-50/40' : ''}`}>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="text-[15px] font-semibold text-slate-900 break-words">{r.student_name}</p>
+                                                <p className="text-sm text-slate-500 break-words">
+                                                    {[classLabel(r), r.admission_no && `Adm ${r.admission_no}`].filter(Boolean).join(' · ')}
+                                                </p>
+                                            </div>
+                                            <div className="text-right flex-shrink-0">
+                                                <p className="text-base font-bold text-slate-900 whitespace-nowrap">{money(r.total_paid)}</p>
+                                                {statusBadge(r)}
+                                            </div>
+                                        </div>
+                                        <dl className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                                            <div className="min-w-0"><dt className="text-xs text-slate-500">Receipt number</dt><dd className="text-slate-800">#{r.receipt_no}</dd></div>
+                                            <div className="min-w-0"><dt className="text-xs text-slate-500">Date</dt><dd className="text-slate-800">{r.payment_date || 'N/A'}</dd></div>
+                                            <div className="min-w-0"><dt className="text-xs text-slate-500">Paid by</dt><dd className="text-slate-800">{r.payment_mode || 'Cash'}</dd></div>
+                                            {parseFloat(r.total_concession) > 0 && (
+                                                <div className="min-w-0"><dt className="text-xs text-slate-500">Concession</dt><dd className="text-slate-800">{money(r.total_concession)}</dd></div>
+                                            )}
+                                            <div className="col-span-2 min-w-0"><dt className="text-xs text-slate-500">Fees on this receipt</dt><dd>{feeLines(r)}</dd></div>
+                                            {isCancelled && r.cancel_reason && (
+                                                <div className="col-span-2 min-w-0"><dt className="text-xs text-slate-500">Why it was cancelled</dt><dd className="text-red-700 break-words">{r.cancel_reason}</dd></div>
+                                            )}
+                                        </dl>
+                                        <div className="mt-3 flex gap-2">
+                                            <button
+                                                onClick={() => handlePrintReceipt(r.receipt_no)}
+                                                disabled={loadingReceiptData}
+                                                className="btn-secondary btn-sm flex-1 min-h-[44px]"
+                                            >
+                                                <PrinterIcon className="w-4 h-4" /> View / print
+                                            </button>
+                                            {canDeleteReceipt && !isCancelled && (
+                                                <button
+                                                    onClick={() => handleOpenCancelModal(r)}
+                                                    className="btn-secondary btn-sm flex-1 min-h-[44px] text-red-600 border-red-200"
+                                                >
+                                                    <TrashIcon className="w-4 h-4" /> Cancel receipt
+                                                </button>
+                                            )}
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
 
-                                            {/* Date */}
-                                            <td className="px-4 py-3.5 text-slate-700 whitespace-nowrap">
-                                                {r.payment_date || 'N/A'}
-                                            </td>
-
-                                            {/* Student Details */}
-                                            <td className="px-4 py-3.5">
-                                                <div className="font-semibold text-slate-900">{r.student_name}</div>
-                                                <div className="text-xs text-slate-500">Adm: {r.admission_no || 'N/A'} {r.branch ? `• ${r.branch}` : ''}</div>
-                                            </td>
-
-                                            {/* Class / Section */}
-                                            <td className="px-4 py-3.5 whitespace-nowrap text-slate-700">
-                                                {r.class_name ? `${r.class_name} ${r.section ? `(${r.section})` : ''}` : 'N/A'}
-                                            </td>
-
-                                            {/* Fee Details */}
-                                            <td className="px-4 py-3.5">
-                                                <div className="space-y-0.5 max-w-xs">
-                                                    {r.items.map((it, idx) => (
-                                                        <div key={idx} className="text-xs text-slate-700 flex items-center gap-1">
-                                                            <span className="font-medium">{it.fee_type}</span>
-                                                            {it.installment && it.installment !== 'One-Time' && (
-                                                                <span className="text-slate-500">({it.installment})</span>
+                        {/* Wide screens: table */}
+                        <div className="hidden md:block overflow-x-auto flex-1">
+                            <table className="w-full text-left border-collapse text-sm">
+                                <thead className="bg-slate-50 text-xs font-medium text-slate-600">
+                                    <tr className="border-b border-slate-200">
+                                        <th className="px-4 py-3">Receipt no.</th>
+                                        <th className="px-4 py-3">Date</th>
+                                        <th className="px-4 py-3">Student</th>
+                                        <th className="px-4 py-3">Class</th>
+                                        <th className="px-4 py-3">Fees</th>
+                                        <th className="px-4 py-3 text-right">Amount</th>
+                                        <th className="px-4 py-3 text-right">Concession</th>
+                                        <th className="px-4 py-3">Paid by</th>
+                                        <th className="px-4 py-3 text-center">Status</th>
+                                        <th className="px-4 py-3 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200">
+                                    {paginatedReceipts.map((r) => {
+                                        const isCancelled = r.status === 'I';
+                                        return (
+                                            <tr
+                                                key={r.receipt_no}
+                                                className={`hover:bg-slate-50/80 transition-colors ${isCancelled ? 'bg-red-50/40' : ''}`}
+                                            >
+                                                <td className="px-4 py-3.5 font-bold text-slate-900 whitespace-nowrap">
+                                                    #{r.receipt_no}
+                                                    <div className="text-[11px] font-normal text-slate-500">{r.academic_year}</div>
+                                                </td>
+                                                <td className="px-4 py-3.5 text-slate-700 whitespace-nowrap">
+                                                    {r.payment_date || 'N/A'}
+                                                </td>
+                                                <td className="px-4 py-3.5">
+                                                    <div className="font-semibold text-slate-900">{r.student_name}</div>
+                                                    <div className="text-xs text-slate-500">Adm: {r.admission_no || 'N/A'} {r.branch ? `• ${r.branch}` : ''}</div>
+                                                </td>
+                                                <td className="px-4 py-3.5 whitespace-nowrap text-slate-700">
+                                                    {r.class_name ? `${r.class_name} ${r.section ? `(${r.section})` : ''}` : 'N/A'}
+                                                </td>
+                                                <td className="px-4 py-3.5"><div className="max-w-xs">{feeLines(r)}</div></td>
+                                                <td className="px-4 py-3.5 text-right font-bold text-slate-900 whitespace-nowrap">
+                                                    {money(r.total_paid)}
+                                                </td>
+                                                <td className="px-4 py-3.5 text-right text-slate-600 whitespace-nowrap">
+                                                    {parseFloat(r.total_concession) > 0 ? money(r.total_concession) : '₹0'}
+                                                </td>
+                                                <td className="px-4 py-3.5 text-slate-700 whitespace-nowrap">
+                                                    <span className="badge-neutral">{r.payment_mode || 'Cash'}</span>
+                                                </td>
+                                                <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                                                    {isCancelled ? (
+                                                        <div className="inline-flex flex-col items-center">
+                                                            <Badge tone="danger">Cancelled</Badge>
+                                                            {r.cancel_reason && (
+                                                                <span className="text-[11px] text-red-600 max-w-[150px] truncate mt-0.5 italic" title={r.cancel_reason}>
+                                                                    {r.cancel_reason}
+                                                                </span>
                                                             )}
-                                                            <span className="text-slate-400">•</span>
-                                                            <span className="text-slate-600">₹{parseFloat(it.amount_paid).toLocaleString('en-IN')}</span>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            </td>
-
-                                            {/* Total Amount */}
-                                            <td className="px-4 py-3.5 text-right font-bold text-slate-900 whitespace-nowrap">
-                                                ₹{parseFloat(r.total_paid).toLocaleString('en-IN')}
-                                            </td>
-
-                                            {/* Total Concession */}
-                                            <td className="px-4 py-3.5 text-right text-slate-600 whitespace-nowrap">
-                                                {parseFloat(r.total_concession) > 0 ? `₹${parseFloat(r.total_concession).toLocaleString('en-IN')}` : '₹0'}
-                                            </td>
-
-                                            {/* Mode */}
-                                            <td className="px-4 py-3.5 text-slate-700 whitespace-nowrap">
-                                                <span className="badge-neutral">
-                                                    {r.payment_mode || 'Cash'}
-                                                </span>
-                                            </td>
-
-                                            {/* Status */}
-                                            <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                                                {isCancelled ? (
-                                                    <div className="inline-flex flex-col items-center">
-                                                        <Badge tone="danger">Cancelled</Badge>
-                                                        {r.cancel_reason && (
-                                                            <span className="text-[11px] text-red-600 max-w-[150px] truncate mt-0.5 italic" title={r.cancel_reason}>
-                                                                {r.cancel_reason}
-                                                            </span>
+                                                    ) : (
+                                                        <Badge tone="success">Active</Badge>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button
+                                                            onClick={() => handlePrintReceipt(r.receipt_no)}
+                                                            disabled={loadingReceiptData}
+                                                            title="View / print receipt"
+                                                            aria-label={`View or print receipt ${r.receipt_no}`}
+                                                            className="btn-icon text-brand-600 hover:text-brand-800 hover:bg-brand-50"
+                                                        >
+                                                            <PrinterIcon className="w-4 h-4" />
+                                                        </button>
+                                                        {canDeleteReceipt && (
+                                                            <button
+                                                                onClick={() => handleOpenCancelModal(r)}
+                                                                disabled={isCancelled}
+                                                                title={isCancelled ? "Already cancelled" : "Cancel this receipt"}
+                                                                className={`btn btn-sm ${isCancelled ? 'text-slate-300 cursor-not-allowed' : 'text-red-600 hover:text-red-800 hover:bg-red-50'}`}
+                                                            >
+                                                                <TrashIcon className="w-4 h-4" />
+                                                                <span>Cancel</span>
+                                                            </button>
                                                         )}
                                                     </div>
-                                                ) : (
-                                                    <Badge tone="success">Active</Badge>
-                                                )}
-                                            </td>
-
-                                            {/* Actions */}
-                                            <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    {/* Print / View Button */}
-                                                    <button
-                                                        onClick={() => handlePrintReceipt(r.receipt_no)}
-                                                        disabled={loadingReceiptData}
-                                                        title="View / Print Receipt"
-                                                        className="btn-icon text-brand-600 hover:text-brand-800 hover:bg-brand-50"
-                                                    >
-                                                        <PrinterIcon className="w-4 h-4" />
-                                                    </button>
-
-                                                    {/* Cancel / Delete Button */}
-                                                    {canDeleteReceipt && (
-                                                        <button
-                                                            onClick={() => handleOpenCancelModal(r)}
-                                                            disabled={isCancelled}
-                                                            title={isCancelled ? "Already cancelled" : "Delete / Cancel this Receipt"}
-                                                            className={`btn ${isCancelled ? 'text-slate-300 cursor-not-allowed' : 'text-red-600 hover:text-red-800 hover:bg-red-50' }`}
-                                                        >
-                                                            <TrashIcon className="w-4 h-4" />
-                                                            <span className="hidden xl:inline">Cancel</span>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
+                )}
 
                 {/* Pagination Controls */}
                 <Pagination
@@ -804,45 +808,61 @@ const DeleteFeeReceipt: React.FC = () => {
                 />
             </div>
 
-            {/* Cancel Confirmation Modal */}
+            {/* Cancel confirmation: shows the receipt and asks for a reason */}
             {receiptToCancel && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-                    <div className="card shadow-pop max-w-lg w-full overflow-hidden">
-                        {/* Modal Header */}
-                        <div className="bg-red-50 border-b border-red-100 p-6 flex items-start gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0">
-                                <TrashIcon className="w-6 h-6" />
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 z-50 animate-fade-in">
+                    <div
+                        className="card shadow-pop max-w-lg w-full max-h-[95vh] flex flex-col overflow-hidden rounded-b-none sm:rounded-b-xl"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="cancel-receipt-title"
+                    >
+                        {/* Header */}
+                        <div className="bg-red-50 border-b border-red-100 px-4 sm:px-6 py-4 flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0">
+                                <TrashIcon className="w-5 h-5" />
                             </div>
-                            <div>
-                                <h3 className="text-base font-semibold text-red-900">
-                                    Cancel Fee Receipt #{receiptToCancel.receipt_no}
+                            <div className="min-w-0">
+                                <h3 id="cancel-receipt-title" className="text-base font-semibold text-red-900">
+                                    Cancel receipt #{receiptToCancel.receipt_no}?
                                 </h3>
-                                <p className="text-sm text-red-700 mt-1">
-                                    Student: <span className="font-semibold">{receiptToCancel.student_name}</span> (Adm: {receiptToCancel.admission_no})
-                                </p>
+                                <p className="text-sm text-red-700 mt-0.5">Check the details below before you cancel.</p>
                             </div>
                         </div>
 
-                        {/* Modal Body */}
-                        <div className="p-6 space-y-5">
-                            <div className="bg-amber-50 border border-amber-200 text-amber-900 p-3.5 rounded-xl text-xs space-y-1">
-                                <p className="font-bold flex items-center gap-1">
-                                    <span>⚠</span> Warning: Financial Ledger Reversal
-                                </p>
-                                <p>
-                                    Cancelling this receipt (Amount: <strong>₹{parseFloat(receiptToCancel.total_paid).toLocaleString('en-IN')}</strong>) will immediately revert all associated fee payments. The student's due balances will be restored.
-                                </p>
-                            </div>
+                        {/* Body */}
+                        <div className="px-4 sm:px-6 py-4 space-y-4 overflow-y-auto">
+                            {/* Receipt summary */}
+                            <dl className="rounded-xl border border-slate-200 p-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                <div className="col-span-2 min-w-0">
+                                    <dt className="text-xs text-slate-500">Student</dt>
+                                    <dd className="font-semibold text-slate-900 break-words">
+                                        {receiptToCancel.student_name}
+                                        <span className="font-normal text-slate-500"> · Adm {receiptToCancel.admission_no}{classLabel(receiptToCancel) ? ` · ${classLabel(receiptToCancel)}` : ''}</span>
+                                    </dd>
+                                </div>
+                                <div className="min-w-0"><dt className="text-xs text-slate-500">Date paid</dt><dd className="text-slate-800">{receiptToCancel.payment_date || 'N/A'}</dd></div>
+                                <div className="min-w-0"><dt className="text-xs text-slate-500">Paid by</dt><dd className="text-slate-800">{receiptToCancel.payment_mode || 'Cash'}</dd></div>
+                                <div className="col-span-2 min-w-0"><dt className="text-xs text-slate-500">Fees on this receipt</dt><dd>{feeLines(receiptToCancel)}</dd></div>
+                                <div className="col-span-2 flex items-center justify-between border-t border-slate-100 pt-2">
+                                    <dt className="text-sm font-medium text-slate-700">Amount paid</dt>
+                                    <dd className="text-lg font-bold text-slate-900">{money(receiptToCancel.total_paid)}</dd>
+                                </div>
+                            </dl>
 
-                            {/* Predefined Reason Selection */}
+                            <Alert tone="warning" title="What happens when you cancel">
+                                The {money(receiptToCancel.total_paid)} on this receipt is taken back from the fee records, and these fees become unpaid again for this student.
+                            </Alert>
+
                             <div>
-                                <label className="label">
-                                    Select Cancellation Reason *
+                                <label htmlFor="cancel-reason" className="block text-sm font-medium text-slate-800 mb-1.5">
+                                    Why are you cancelling it? <span className="text-red-600" aria-hidden="true">*</span>
                                 </label>
                                 <select
+                                    id="cancel-reason"
                                     value={selectedReasonOption}
                                     onChange={(e) => setSelectedReasonOption(e.target.value)}
-                                    className="input"
+                                    className="input min-h-[44px]"
                                 >
                                     {PREDEFINED_REASONS.map((reason, idx) => (
                                         <option key={idx} value={reason}>{reason}</option>
@@ -850,51 +870,62 @@ const DeleteFeeReceipt: React.FC = () => {
                                 </select>
                             </div>
 
-                            {/* Custom Reason Details */}
                             <div>
-                                <label className="label">
-                                    Additional Remarks / Details {selectedReasonOption === "Other (specify below)" ? "*" : "(Optional)"}
+                                <label htmlFor="cancel-details" className="block text-sm font-medium text-slate-800 mb-1.5">
+                                    {isOtherReason ? 'Write the reason' : 'More details (optional)'}
+                                    {isOtherReason && <span className="text-red-600" aria-hidden="true"> *</span>}
                                 </label>
                                 <textarea
+                                    id="cancel-details"
                                     value={customReason}
                                     onChange={(e) => setCustomReason(e.target.value)}
                                     rows={3}
-                                    placeholder="Explain why this receipt is being deleted..."
+                                    placeholder="Explain why this receipt is being cancelled..."
                                     className="input"
                                 />
                             </div>
                         </div>
 
-                        {/* Modal Footer */}
-                        <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setReceiptToCancel(null)}
-                                disabled={isCancelling}
-                                className="btn-secondary"
-                            >
-                                Close / Keep Active
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleConfirmCancel}
-                                disabled={isCancelling}
-                                className="btn-danger"
-                            >
-                                {isCancelling ? (
-                                    <>
-                                        <RefreshIcon className="w-4 h-4 animate-spin" />
-                                        Cancelling...
-                                    </>
-                                ) : (
-                                    <>
-                                        <TrashIcon className="w-4 h-4" />
-                                        Confirm & Cancel Receipt
-                                    </>
-                                )}
-                            </button>
+                        {/* Footer */}
+                        <div className="px-4 sm:px-6 py-3 bg-slate-50 border-t border-slate-200">
+                            {reasonMissing && <p className="mb-2 text-sm text-slate-600">Write the reason to continue.</p>}
+                            <div className="flex items-center justify-end gap-2 [&>*]:flex-1 sm:[&>*]:flex-none">
+                                <button
+                                    type="button"
+                                    onClick={() => setReceiptToCancel(null)}
+                                    disabled={isCancelling}
+                                    className="btn-secondary min-h-[44px]"
+                                >
+                                    Keep receipt
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleConfirmCancel}
+                                    disabled={isCancelling || reasonMissing}
+                                    className="btn-danger min-h-[44px]"
+                                >
+                                    {isCancelling ? (
+                                        <>
+                                            <RefreshIcon className="w-4 h-4 animate-spin" />
+                                            Cancelling...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <TrashIcon className="w-4 h-4" />
+                                            Cancel receipt
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Opening receipt */}
+            {loadingReceiptData && (
+                <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
+                    <div className="card px-8"><LoadingState label="Opening receipt…" /></div>
                 </div>
             )}
 

@@ -4,7 +4,8 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { notify } from './ui/feedback';
-import { EmptyState, ErrorState, LoadingState } from './ui';
+import { ErrorState, LoadingState } from './ui';
+import DeletedReceiptList from './fee-reports/DeletedReceiptList';
 
 const DeletedReceiptsReport: React.FC = () => {
     const [receipts, setReceipts] = useState<any[]>([]);
@@ -35,7 +36,7 @@ const DeletedReceiptsReport: React.FC = () => {
     );
 
     const exportToExcel = () => {
-        if (filteredReceipts.length === 0) return notify('No data to export');
+        if (filteredReceipts.length === 0) return notify('Nothing to download');
         const data = filteredReceipts.map((r, idx) => ({
             'S.No': idx + 1,
             'Student Name': r.student_name,
@@ -57,7 +58,7 @@ const DeletedReceiptsReport: React.FC = () => {
     };
 
     const exportToPDF = () => {
-        if (filteredReceipts.length === 0) return notify('No data to export');
+        if (filteredReceipts.length === 0) return notify('Nothing to download');
         const doc = new jsPDF("l", "mm", "a4");
         doc.setFontSize(16);
         doc.text("Deleted Receipts Report", 14, 15);
@@ -89,89 +90,51 @@ const DeletedReceiptsReport: React.FC = () => {
     };
 
     return (
-        <div className="container mx-auto p-6">
-            <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 flex items-center">
-                <span className="bg-red-100 text-red-600 p-2 rounded-lg mr-3">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </span>
-                Deleted Receipts Report
-            </h2>
-
-            <div className="card mb-6 p-4">
-                <div className="flex flex-col md:flex-row justify-between items-center gap-2 mb-4">
-                    <div className="w-full md:w-1/3">
-                        <input
-                            type="text"
-                            placeholder="Search by Student, Adm No, Receipt No..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="input"
-                        />
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        <button onClick={exportToExcel} className="btn-success">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                            Excel
-                        </button>
-                        <button onClick={exportToPDF} className="btn-danger">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                            PDF
-                        </button>
-                        <button onClick={fetchReport} className="btn-primary">
-                            Refresh
-                        </button>
-                    </div>
-                </div>
-
-                {loading ? (
-                    <LoadingState label="Loading deleted receipts..." />
-                ) : error ? (
-                    <ErrorState message={error} onRetry={fetchReport} />
-                ) : filteredReceipts.length === 0 ? (
-                    <EmptyState compact title="No deleted receipts found." />
-                ) : (
-                    <div className="overflow-x-auto rounded-lg border border-slate-200">
-                        <table className="min-w-full divide-y divide-slate-200 text-sm">
-                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                <tr>
-                                    <th className="px-3 py-2 text-left">S.No</th>
-                                    <th className="px-3 py-2 text-left">Student Name</th>
-                                    <th className="px-3 py-2 text-left">Adm No.</th>
-                                    <th className="px-3 py-2 text-left">Class</th>
-                                    <th className="px-3 py-2 text-left">Branch</th>
-                                    <th className="px-3 py-2 text-left">Rcpt No</th>
-                                    <th className="px-3 py-2 text-left">Fee Type</th>
-                                    <th className="px-3 py-2 text-right">Amount</th>
-                                    <th className="px-3 py-2 text-left">Mode</th>
-                                    <th className="px-3 py-2 text-left">Deleted By</th>
-                                    <th className="px-3 py-2 text-left">Deleted At</th>
-                                    <th className="px-3 py-2 text-left">Cancel Reason</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {filteredReceipts.map((r, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50">
-                                        <td className="px-3 py-2 text-slate-500">{idx + 1}</td>
-                                        <td className="px-3 py-2 font-medium">{r.student_name}</td>
-                                        <td className="px-3 py-2 text-brand-600">{r.admission_no}</td>
-                                        <td className="px-3 py-2">{r.class} {r.section}</td>
-                                        <td className="px-3 py-2 text-slate-600">{r.branch}</td>
-                                        <td className="px-3 py-2">{r.receipt_no}</td>
-                                        <td className="px-3 py-2 truncate max-w-[150px]" title={r.fee_type_str}>{r.fee_type_str || '-'}</td>
-                                        <td className="px-3 py-2 text-right font-medium text-slate-800">₹{(r.amount_paid || 0).toLocaleString()}</td>
-                                        <td className="px-3 py-2">{r.mode}</td>
-                                        <td className="px-3 py-2 font-semibold text-red-600">{r.deleted_by}</td>
-                                        <td className="px-3 py-2 text-xs text-slate-500">{r.deleted_at}</td>
-                                        <td className="px-3 py-2 text-xs truncate max-w-[200px] text-slate-600" title={r.cancel_reason}>{r.cancel_reason}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
+            <div>
+                <h2 className="text-lg font-semibold text-slate-900">Cancelled receipts</h2>
+                <p className="text-sm text-slate-500">Receipts that were cancelled, who cancelled them, and why.</p>
             </div>
+
+            <div className="card p-4 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                <div className="w-full md:w-1/2">
+                    <label htmlFor="deleted-search" className="block text-sm font-medium text-slate-800 mb-1.5">Find a receipt (optional)</label>
+                    <input
+                        id="deleted-search"
+                        type="search"
+                        placeholder="Student name, admission or receipt number"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="input min-h-[44px]"
+                    />
+                </div>
+                <div className="flex gap-2 [&>*]:flex-1 md:[&>*]:flex-none">
+                    <button onClick={exportToExcel} className="btn-secondary btn-sm min-h-[44px] text-emerald-700">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        Excel
+                    </button>
+                    <button onClick={exportToPDF} className="btn-secondary btn-sm min-h-[44px] text-red-700">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        PDF
+                    </button>
+                    <button onClick={fetchReport} className="btn-secondary btn-sm min-h-[44px]">
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            {loading ? (
+                <div className="card"><LoadingState label="Loading cancelled receipts..." /></div>
+            ) : error ? (
+                <div className="card"><ErrorState title="Could not load the report" message={error} onRetry={fetchReport} /></div>
+            ) : (
+                <>
+                    <p className="text-sm text-slate-600">
+                        {filteredReceipts.length} cancelled {filteredReceipts.length === 1 ? 'receipt' : 'receipts'}{searchTerm ? ` matching "${searchTerm}"` : ''}
+                    </p>
+                    <DeletedReceiptList receipts={filteredReceipts} />
+                </>
+            )}
         </div>
     );
 };
