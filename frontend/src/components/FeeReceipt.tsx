@@ -296,7 +296,7 @@ const FeeReceipt: React.FC<FeeReceiptProps> = ({ onClose, receiptData }) => {
   const API_BASE = import.meta.env.VITE_API_URL || '';
   const rawLogo = matchingBranch?.school_logo || null;
   const schoolLogo = rawLogo ? (rawLogo.startsWith('/static') ? rawLogo : (rawLogo.startsWith('/') ? `${API_BASE}${rawLogo}` : rawLogo)) : ReceiptLogo;
-  const schoolName = matchingBranch?.school_name || "MS LearnSpace";
+  const schoolName = matchingBranch?.school_name || "Edunex";
   const resolvedLogo = schoolLogo;
   return (
     <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronDownIcon, UserIcon, LogoutIcon, MenuIcon } from './icons';
 import { ChevronLeft, ChevronRight, MapPin, Building2, GitBranch, CalendarDays, Check } from 'lucide-react';
 import { applyBrandTheme, DEFAULT_BRAND_COLOR } from '../theme';
@@ -68,7 +68,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
   }
 
   const schoolLogo = (isAllSchools || !rawLogo) ? Learnspacelogo1 : (rawLogo.startsWith('/static') ? rawLogo : (rawLogo.startsWith('/') ? `${API_BASE}${rawLogo}` : rawLogo));
-  const schoolName = isAllSchools ? 'LearnSpace' : (selectedSchool !== 'All' ? selectedSchool : (user.school_name || 'LearnSpace'));
+  const schoolName = isAllSchools ? 'Edunex' : (selectedSchool !== 'All' ? selectedSchool : (user.school_name || 'Edunex'));
   const themeColor = isAllSchools ? DEFAULT_BRAND_COLOR : (user.school_theme || DEFAULT_BRAND_COLOR);
 
   // Publish the active school's colour to the design system (presentation only)
@@ -283,6 +283,33 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
     }
   };
 
+  // ── Dropdown behaviour: close on outside click / Escape; one open at a time ──
+  const closeAllDropdowns = useCallback(() => {
+    setYearDropdownOpen(false);
+    setProfileDropdownOpen(false);
+    setBranchDropdownOpen(false);
+    setSchoolDropdownOpen(false);
+    setLocationDropdownOpen(false);
+  }, []);
+
+  useEffect(() => {
+    const onPointerDown = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement)?.closest?.('[data-dropdown]')) closeAllDropdowns();
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeAllDropdowns(); };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [closeAllDropdowns]);
+
+  const toggleOnly = (setter: React.Dispatch<React.SetStateAction<boolean>>, current: boolean) => {
+    closeAllDropdowns();
+    setter(!current);
+  };
+
   // Dynamic Academic Years
   const [academicYearOptions, setAcademicYearOptions] = useState<string[]>([]);
 
@@ -380,14 +407,14 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
     value: string;
     open: boolean;
     onToggle: () => void;
-    onBlur: () => void;
     children: React.ReactNode;
     className?: string;
-  }> = ({ icon, label, value, open, onToggle, onBlur, children, className }) => (
-    <div className={`relative ${className || ''}`}>
+  }> = ({ icon, label, value, open, onToggle, children, className }) => (
+    <div data-dropdown className={`relative ${className || ''}`}>
       <button
         onClick={onToggle}
-        onBlur={onBlur}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         className={`group flex items-center gap-2 h-9 pl-2.5 pr-2 rounded-lg border text-sm transition-colors text-brand-contrast
           ${open ? 'border-white/40 bg-white/25' : 'border-white/15 bg-white/10 hover:bg-white/20 hover:border-white/30'}`}
       >
@@ -477,8 +504,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
                 label="Location"
                 value={selectedLocation === 'All' ? 'All Locations' : selectedLocation}
                 open={locationDropdownOpen}
-                onToggle={() => setLocationDropdownOpen(!locationDropdownOpen)}
-                onBlur={() => setTimeout(() => setLocationDropdownOpen(false), 200)}
+                onToggle={() => toggleOnly(setLocationDropdownOpen, locationDropdownOpen)}
                 className="hidden sm:block"
               >
                 <MenuList>
@@ -498,8 +524,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
                 label="School"
                 value={selectedSchool === 'All' ? 'All Schools' : selectedSchool}
                 open={schoolDropdownOpen}
-                onToggle={() => setSchoolDropdownOpen(!schoolDropdownOpen)}
-                onBlur={() => setTimeout(() => setSchoolDropdownOpen(false), 200)}
+                onToggle={() => toggleOnly(setSchoolDropdownOpen, schoolDropdownOpen)}
                 className="hidden sm:block"
               >
                 <MenuList width="w-60">
@@ -524,8 +549,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
                 label="Branch"
                 value={currentBranch === 'All' ? 'All Branches' : currentBranch}
                 open={branchDropdownOpen}
-                onToggle={() => setBranchDropdownOpen(!branchDropdownOpen)}
-                onBlur={() => setTimeout(() => setBranchDropdownOpen(false), 200)}
+                onToggle={() => toggleOnly(setBranchDropdownOpen, branchDropdownOpen)}
               >
                 <MenuList>
                   {branchOptions.map((branch: string) => (
@@ -553,10 +577,12 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
               label="Session"
               value={selectedYear}
               open={yearDropdownOpen}
-              onToggle={() => setYearDropdownOpen(!yearDropdownOpen)}
-              onBlur={() => setTimeout(() => setYearDropdownOpen(false), 150)}
+              onToggle={() => toggleOnly(setYearDropdownOpen, yearDropdownOpen)}
             >
               <MenuList width="w-44">
+                {years.length === 0 && (
+                  <li className="px-3 py-2 text-xs text-slate-500">No academic sessions configured yet</li>
+                )}
                 {years.map(year => (
                   <MenuItem key={year} active={selectedYear === year} onClick={() => handleYearChange(year)}>
                     {year}
@@ -568,10 +594,9 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
             <div className="hidden sm:block h-6 w-px bg-white/20 mx-1" />
 
             {/* Profile Dropdown */}
-            <div className="relative">
+            <div data-dropdown className="relative">
               <button
-                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                onBlur={() => setTimeout(() => setProfileDropdownOpen(false), 150)}
+                onClick={() => toggleOnly(setProfileDropdownOpen, profileDropdownOpen)}
                 className="flex items-center gap-2 h-9 pl-1 pr-2 rounded-lg hover:bg-white/10 focus:outline-none"
               >
                 <span className="flex items-center justify-center w-8 h-8 rounded-full bg-white text-brand-700 text-xs font-bold ring-2 ring-white/40 shadow-sm">

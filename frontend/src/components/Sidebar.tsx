@@ -78,11 +78,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, navigateTo, cu
           >
             <img
               src={Learnspacelogo}
-              alt="LearnSpace Logo"
+              alt="Edunex Logo"
               className="h-9 w-9 object-contain flex-shrink-0 rounded-lg bg-white p-0.5 shadow-sm"
             />
             <div className={`leading-tight min-w-0 ${!isOpen && 'md:hidden'}`}>
-              <p className="text-sm font-bold text-brand-contrast tracking-tight truncate">LearnSpace</p>
+              <p className="text-sm font-bold text-brand-contrast tracking-tight truncate">Edunex</p>
               <p className="text-2xs font-medium text-brand-contrast/70 uppercase tracking-wider">School ERP</p>
             </div>
           </a>

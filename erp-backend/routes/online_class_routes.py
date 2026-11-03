@@ -1007,7 +1007,7 @@ def google_connect_callback():
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Connected — Learnspace</title>
+<title>Connected — Edunex</title>
 <style>
   * {{ box-sizing: border-box; }}
   body {{
@@ -1141,7 +1141,7 @@ def google_connect_callback():
     <p class="message">This teacher's Google account is now linked. Classes scheduled for them will run on their own Google Meet.</p>
     <div class="email-pill"><span class="dot"></span>{html.escape(display_email)}</div>
     <div class="divider"></div>
-    <div class="brand"><b>Learnspace</b> · Online Classes</div>
+    <div class="brand"><b>Edunex</b> · Online Classes</div>
   </div>
 </body>
 </html>""", 200

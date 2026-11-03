@@ -77,6 +77,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       localStorage.removeItem('branch');
       localStorage.removeItem('location');
       localStorage.removeItem('academicYear');
+      localStorage.removeItem('academicYearDefaultVersion');
       localStorage.removeItem('user');
       localStorage.removeItem('token');
       sessionStorage.removeItem('token');
@@ -101,9 +102,15 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             headers: { Authorization: `Bearer ${response.data.token}` },
           });
           const yearsList = yearsRes.data.academic_years || [];
-          if (yearsList.length > 0) localStorage.setItem('academicYear', yearsList[0].name);
+          const targetDefaultYear = '2026-2027';
+          const defaultYear = yearsList.find((y: any) => y.name === targetDefaultYear)?.name
+            || (yearsList.length > 0 ? yearsList[0].name : targetDefaultYear);
+          localStorage.setItem('academicYear', defaultYear);
+          localStorage.setItem('academicYearDefaultVersion', defaultYear);
         } catch (err) {
           console.warn('Could not fetch academic years during login', err);
+          localStorage.setItem('academicYear', '2026-2027');
+          localStorage.setItem('academicYearDefaultVersion', '2026-2027');
         }
       } catch (ex) {
         console.warn('Could not persist to localStorage', ex);
@@ -181,7 +188,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   const titles: Record<ViewState, { title: string; subtitle: string }> = {
-    'login': { title: 'Welcome back', subtitle: 'Sign in to your LearnSpace account to continue.' },
+    'login': { title: 'Welcome back', subtitle: 'Sign in to your Edunex account to continue.' },
     'forgot-email': { title: 'Reset your password', subtitle: 'Enter your registered email address to receive an OTP.' },
     'forgot-otp': { title: 'Verify OTP', subtitle: `We've sent a 6-digit OTP to ${email}` },
     'forgot-reset': { title: 'Set a new password', subtitle: 'OTP verified! Please enter your new password below.' },
@@ -208,7 +215,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           <div className="w-full max-w-[400px] animate-fade-in">
             {/* Logo */}
             <div className="flex flex-col items-center text-center mb-8">
-              <img src={Learnspacelogo} alt="MS LearnSpace" className="h-20 w-auto object-contain mb-4" />
+              <img src={Learnspacelogo} alt="Edunex" className="h-20 w-auto object-contain mb-4" />
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{titles[view].title}</h1>
               <p className="text-sm text-slate-500 mt-1.5">{titles[view].subtitle}</p>
             </div>
@@ -401,7 +408,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
         {/* ── Footer ── */}
         <div className="flex items-center justify-between px-6 sm:px-12 py-5 border-t border-slate-100">
-          <p className="text-xs text-slate-400">© {new Date().getFullYear()} MS LearnSpace · School ERP</p>
+          <p className="text-xs text-slate-400">© {new Date().getFullYear()} Edunex · School ERP</p>
           <img src={DeLogo} alt="DE" className="h-8 w-auto object-contain opacity-90" />
         </div>
       </div>
