@@ -1,7 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import api from '../api';
 import { notify, confirmDialog } from './ui/feedback';
-import { Alert, EmptyState } from './ui';
+import { ActionBar, Alert, Button, EmptyState, Field, LoadingState, Steps } from './ui';
+import { CopyToBranches, MoreOptions, SuccessPanel, SummaryRow, groupBranches, rupees } from './fee-setup/shared';
+
+const STEP_TITLES = ['Choose class', 'Fees for new students', 'Fees for old students', 'Check and save'];
 
 interface FeeType {
     id: number;
@@ -36,11 +40,7 @@ interface ClassFeeStructure {
     fees: FeeStructureItem[];
 }
 
-interface BranchOption {
-    id: number | string;
-    name: string;
-    location_name: string;
-}
+import type { BranchOption } from './fee-setup/shared';
 
 const ClassFeeStructure: React.FC = () => {
     const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
@@ -56,8 +56,8 @@ const ClassFeeStructure: React.FC = () => {
     const [newAdmissionFees, setNewAdmissionFees] = useState<FeeStructureItem[]>([]);
     const [existingStudentFees, setExistingStudentFees] = useState<FeeStructureItem[]>([]);
 
-    const [showNewAdmissionForm, setShowNewAdmissionForm] = useState(false);
-    const [showExistingStudentForm, setShowExistingStudentForm] = useState(false);
+    const [, setShowNewAdmissionForm] = useState(false);
+    const [, setShowExistingStudentForm] = useState(false);
 
     // START FIX: Add state to track effective branch
     const [effectiveBranch, setEffectiveBranch] = useState('All');
@@ -72,20 +72,12 @@ const ClassFeeStructure: React.FC = () => {
     const [copyTargets, setCopyTargets] = useState<Set<string>>(new Set());
     const [isCopyDropdownOpen, setIsCopyDropdownOpen] = useState(false);
     const [copying, setCopying] = useState(false);
-    const copyDropdownRef = useRef<HTMLDivElement>(null);
 
-    // Close dropdown on outside click
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (copyDropdownRef.current && !copyDropdownRef.current.contains(event.target as Node)) {
-                setIsCopyDropdownOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
+    // Screen state (presentation only)
+    const [step, setStep] = useState(0);
+    const [loadingStructure, setLoadingStructure] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState<{ className: string; newCount: number; oldCount: number } | null>(null);
 
     useEffect(() => {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -161,6 +153,7 @@ const ClassFeeStructure: React.FC = () => {
     }, [selectedClass, academicYear, selectedLocation, effectiveBranch]);
 
     const fetchExistingFeeStructures = async () => {
+        setLoadingStructure(true);
         try {
             const globalBranch = effectiveBranch;
             const branchParam = globalBranch === "All Branches" || globalBranch === "All" ? "All" : globalBranch;
@@ -210,6 +203,8 @@ const ClassFeeStructure: React.FC = () => {
             }
         } catch (error) {
             console.error('Error fetching existing fee structures:', error);
+        } finally {
+            setLoadingStructure(false);
         }
     };
 
@@ -225,7 +220,7 @@ const ClassFeeStructure: React.FC = () => {
 
     const addFeeToStructure = async (feeTypeId: number, totalAmount: number, isNewAdmission: boolean) => {
         if (isAllBranchesMode) {
-            notify('Please select a specific branch to add fee structures.');
+            notify.warning('Choose one branch at the top of the screen first.');
             return;
         }
 
@@ -235,7 +230,7 @@ const ClassFeeStructure: React.FC = () => {
         // Check for duplicates
         const currentFees = isNewAdmission ? newAdmissionFees : existingStudentFees;
         if (currentFees.some(f => f.fee_type_id === feeTypeId)) {
-            notify(`Fee type "${feeType.fee_type}" already exists in the list.`);
+            notify.warning(`"${feeType.fee_type}" is already in this list.`);
             return;
         }
 
@@ -264,12 +259,12 @@ const ClassFeeStructure: React.FC = () => {
                         month_order: inst.installment_no
                     }));
                 } else {
-                    notify('Installments not created for this fee type. Please configure installments first.');
+                    notify.warning('This fee has no installments yet. Create them first under Fee setup → Installments.');
                     return;
                 }
             } catch (error) {
                 console.error('Error fetching installments:', error);
-                notify('Error fetching installment schedule. Please try again.');
+                notify.error('Could not load the installments for this fee. Please try again.');
                 return;
             }
         }
@@ -296,14 +291,14 @@ const ClassFeeStructure: React.FC = () => {
         // If the fee has an ID, it's saved in the database - delete it via API
         if (feeToRemove.id) {
             const confirmDelete = await confirmDialog(
-                `Are you sure you want to delete this fee structure? This will also remove it from all students in this class.`
+                `Remove this fee from the class? It will also be removed from every student in this class.`
             );
 
             if (!confirmDelete) return;
 
             try {
                 await api.delete(`/class-fee-structure/${feeToRemove.id}`);
-                notify('Fee structure deleted successfully from database and student records!');
+                notify.success('Fee removed from this class and its students.');
             } catch (error: any) {
                 console.error('Error deleting fee structure:', error);
                 notify(`Error: ${error.response?.data?.error || 'Failed to delete fee structure'}`);
@@ -381,7 +376,7 @@ const ClassFeeStructure: React.FC = () => {
         }
 
         if (!selectedClass || !academicYear) {
-            notify('Please select class and academic year');
+            notify.warning('Choose a class first.');
             return;
         }
 
@@ -415,14 +410,18 @@ const ClassFeeStructure: React.FC = () => {
             })
         };
 
+        setSaving(true);
         try {
             await api.post('/class-fee-structure', payload);
-            notify('Fee structure saved successfully!');
+            notify.success('Class fees saved.');
+            setSaved({ className: selectedClass, newCount: newAdmissionFees.length, oldCount: existingStudentFees.length });
             resetForm();
         } catch (error: any) {
             console.error('Error saving fee structure:', error);
             const errorMessage = error.response?.data?.error || 'Failed to save fee structure';
-            notify(`Error: ${errorMessage}`);
+            notify.error(`Could not save: ${errorMessage}`);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -446,16 +445,16 @@ const ClassFeeStructure: React.FC = () => {
 
     const handleCopy = async () => {
         if (copyTargets.size === 0) {
-            notify("Please select at least one branch to copy to.");
+            notify.warning("Choose at least one branch to copy to.");
             return;
         }
 
         if (!selectedClass) {
-            notify("Please select a class first.");
+            notify.warning("Choose a class first.");
             return;
         }
 
-        if (!await confirmDialog(`Are you sure you want to copy fee structure for ${selectedClass} to ${copyTargets.size} branches?\n(Merge Mode: Only missing fee types will be added)`)) {
+        if (!await confirmDialog(`Copy Class ${selectedClass} fees to ${copyTargets.size} branch${copyTargets.size === 1 ? '' : 'es'}?\nOnly fees that are missing there will be added.`)) {
             return;
         }
 
@@ -467,7 +466,7 @@ const ClassFeeStructure: React.FC = () => {
                 academic_year: academicYear,
                 class: selectedClass
             });
-            notify("Fee structure copied successfully!");
+            notify.success("Class fees copied.");
             setCopyTargets(new Set()); // Reset selections
             setIsCopyDropdownOpen(false);
         } catch (error: any) {
@@ -478,205 +477,181 @@ const ClassFeeStructure: React.FC = () => {
         }
     };
 
-    // Prepare Grouped Branches for Copy
-    const availableBranches = allBranches.filter(b => String(b.id) !== String(sourceBranchId) && b.name !== 'All Branches' && b.name !== 'All');
-    const branchesByLocation: { [key: string]: BranchOption[] } = {};
-    availableBranches.forEach(b => {
-        if (!branchesByLocation[b.location_name]) {
-            branchesByLocation[b.location_name] = [];
-        }
-        branchesByLocation[b.location_name].push(b);
-    });
+    const branchesByLocation = groupBranches(allBranches, sourceBranchId);
 
-    return (
-        <div className="container mx-auto p-6 min-h-full">
-            <div className="card p-6 mb-6">
-                <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6">Create Class Fee Structure</h2>
+    const sumOf = (fees: FeeStructureItem[]) => fees.reduce((s, f) => s + (Number(f.total_amount) || 0), 0);
+    const goTo = (i: number) => { setStep(i); window.scrollTo?.({ top: 0 }); };
 
-                {isAllBranchesMode && (
-                    <Alert tone="warning" title='Cannot create fee structure in "All Branches" mode.' className="mb-6">
-                        Please select a specific branch from the header to create or modify fee structures.
-                    </Alert>
-                )}
+    /* ------------------------------------------------------------ Saved */
+    if (saved) {
+        return (
+            <div className="max-w-3xl mx-auto space-y-4">
+                <SuccessPanel title={`Fees saved for Class ${saved.className}`}>
+                    {saved.newCount} fee{saved.newCount === 1 ? '' : 's'} for new students · {saved.oldCount} fee{saved.oldCount === 1 ? '' : 's'} for old students
+                </SuccessPanel>
+                <ActionBar>
+                    <Button variant="secondary" size="lg" onClick={() => { setSaved(null); fetchExistingFeeStructures(); goTo(1); }}>
+                        Open Class {saved.className} again
+                    </Button>
+                    <Button size="lg" onClick={() => { setSaved(null); setSelectedClass(''); goTo(0); }}>
+                        Set fees for another class
+                    </Button>
+                </ActionBar>
+            </div>
+        );
+    }
 
-                {/* Class and Academic Year Selection */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div>
-                        <label className="label">Class *</label>
-                        <select
-                            value={selectedClass}
-                            onChange={(e) => setSelectedClass(e.target.value)}
-                            className="input"
-                        >
-                            <option value="">Select Class</option>
-                            {classes.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                    </div>
+    const branchWarning = isAllBranchesMode && (
+        <Alert tone="warning" title="Choose a branch first">
+            You are looking at all branches. Choose one branch at the top of the screen to add or change class fees.
+        </Alert>
+    );
 
-                    <div>
-                        <label className="label">Academic Year *</label>
-                        <input
-                            type="text"
-                            value={academicYear}
-                            readOnly
-                            disabled
-                            className="input"
-                        />
-                    </div>
-                </div>
-
-                {/* Fee Structure for New Admissions */}
-                <div className="mb-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-base font-semibold text-slate-900">Fee for New Admissions</h3>
-                        <button
-                            onClick={() => setShowNewAdmissionForm(!showNewAdmissionForm)}
-                            className="btn-primary"
-                        >
-                            {showNewAdmissionForm ? 'Cancel' : '+ Add Fee'}
-                        </button>
-                    </div>
-
-                    {showNewAdmissionForm && (
-                        <AddFeeForm
-                            feeTypes={feeTypes}
-                            onAdd={(feeTypeId, amount) => {
-                                addFeeToStructure(feeTypeId, amount, true);
-                                setShowNewAdmissionForm(false);
-                            }}
-                        />
-                    )}
-
-                    <FeeStructureTable
-                        fees={newAdmissionFees}
-                        onRemove={(index) => removeFee(index, true)}
-                        onUpdateTotalAmount={(index, amount) => updateTotalAmount(index, amount, true)}
-                        onUpdateInstallment={(feeIndex, monthIndex, amount) =>
-                            updateInstallmentAmount(feeIndex, monthIndex, amount, true)
-                        }
-                        onRecalculate={(index) => recalculateInstallments(index, true)}
-                    />
-                </div>
-
-                {/* Fee Structure for Existing Students */}
-                <div className="mb-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-base font-semibold text-slate-900">Fee Structure for Existing Students</h3>
-                        <button
-                            onClick={() => setShowExistingStudentForm(!showExistingStudentForm)}
-                            className="btn-primary"
-                        >
-                            {showExistingStudentForm ? 'Cancel' : '+ Add Fee'}
-                        </button>
-                    </div>
-
-                    {showExistingStudentForm && (
-                        <AddFeeForm
-                            feeTypes={feeTypes}
-                            onAdd={(feeTypeId, amount) => {
-                                addFeeToStructure(feeTypeId, amount, false);
-                                setShowExistingStudentForm(false);
-                            }}
-                        />
-                    )}
-
-                    <FeeStructureTable
-                        fees={existingStudentFees}
-                        onRemove={(index) => removeFee(index, false)}
-                        onUpdateTotalAmount={(index, amount) => updateTotalAmount(index, amount, false)}
-                        onUpdateInstallment={(feeIndex, monthIndex, amount) =>
-                            updateInstallmentAmount(feeIndex, monthIndex, amount, false)
-                        }
-                        onRecalculate={(index) => recalculateInstallments(index, false)}
-                    />
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex flex-wrap justify-between items-center gap-4 mt-8 pt-4 border-t border-slate-100">
-                    {/* Copy Section */}
-                    <div>
-                        {!isAllBranchesMode && selectedClass && (
-                            <div className="relative" ref={copyDropdownRef}>
-                                <button
-                                    className="btn-primary"
-                                    onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
-                                >
-                                    <span>Copy to Branches</span>
-                                    <span className="text-xs">▼</span>
-                                </button>
-                                {/* Grouped Dropdown */}
-                                {isCopyDropdownOpen && (
-                                    <div className="card shadow-pop absolute bottom-12 left-0 w-80 z-50 p-2 max-h-96 overflow-y-auto">
-                                        <div className="mb-2 text-sm font-semibold text-slate-700 pb-2 border-b border-slate-100">
-                                            Select Target Branches
-                                        </div>
-                                        {Object.keys(branchesByLocation).length === 0 ? (
-                                            <EmptyState compact title="No other branches available" />
-                                        ) : (
-                                            Object.keys(branchesByLocation).map(loc => (
-                                                <div key={loc} className="mb-1">
-                                                    {/* Header - Clean & Bold */}
-                                                    <div className="text-sm font-semibold text-slate-900 px-3 py-2 bg-slate-50 border-b border-slate-100">
-                                                        {loc}
-                                                    </div>
-                                                    {/* Items - Indented */}
-                                                    <div className="py-1">
-                                                        {branchesByLocation[loc].map(b => (
-                                                            <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-brand-50 cursor-pointer transition-colors pl-6">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={copyTargets.has(String(b.id))}
-                                                                    onChange={() => toggleCopyTarget(String(b.id))}
-                                                                    className="w-4 h-4 accent-brand-600 rounded border-slate-300"
-                                                                />
-                                                                <span className="text-sm text-slate-700">{b.name}</span>
-                                                            </label>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )}
-                                        <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center sticky bottom-0 bg-white">
-                                            <span className="text-xs text-slate-500">{copyTargets.size} selected</span>
-                                            <button
-                                                onClick={handleCopy}
-                                                disabled={copying || copyTargets.size === 0}
-                                                className="btn-success btn-sm"
-                                            >
-                                                {copying ? "Copying..." : "Confirm Copy"}
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+    /* ------------------------------------------------------------ Step 1: class */
+    if (step === 0) {
+        return (
+            <div className="max-w-3xl mx-auto space-y-4">
+                <Steps steps={STEP_TITLES} current={0} />
+                {branchWarning}
+                <div className="card">
+                    <div className="card-body space-y-4">
+                        <p className="text-sm text-slate-600">Set how much each student of a class pays. Choose the class.</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field label="Class" htmlFor="cfs-class" required>
+                                <select id="cfs-class" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="input">
+                                    <option value="">Choose a class</option>
+                                    {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="School year">
+                                <input type="text" value={academicYear} readOnly disabled className="input" />
+                            </Field>
+                        </div>
+                        {selectedClass && (
+                            loadingStructure ? <LoadingState label="Loading this class's fees…" className="py-6" /> : (
+                                <p className="text-sm text-slate-600">
+                                    {newAdmissionFees.length + existingStudentFees.length === 0
+                                        ? `Class ${selectedClass} has no fees yet.`
+                                        : `Class ${selectedClass} already has ${newAdmissionFees.length} fee(s) for new students and ${existingStudentFees.length} for old students. You can change them in the next steps.`}
+                                </p>
+                            )
                         )}
                     </div>
-
-                    <div className="flex flex-wrap gap-4 items-center">
-                        <label className="flex items-center gap-2 mr-4 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={updateAssignedStudents}
-                                onChange={(e) => setUpdateAssignedStudents(e.target.checked)}
-                                className="w-4 h-4 accent-brand-600 rounded border-slate-300 cursor-pointer"
-                            />
-                            <span className="text-sm text-slate-700 font-medium">Update assigned students (unpaid fees)</span>
-                        </label>
-                        <button
-                            onClick={resetForm}
-                            className="btn-secondary"
-                        >
-                            Reset
-                        </button>
-                        <button
-                            onClick={saveFeeStructure}
-                            className="btn-primary"
-                        >
-                            Save Fee Structure
-                        </button>
-                    </div>
                 </div>
+
+                {!isAllBranchesMode && selectedClass && (
+                    <CopyToBranches
+                        what={`Class ${selectedClass} fees`}
+                        note="Only fees that are missing in the other branch are added."
+                        branchesByLocation={branchesByLocation}
+                        selected={copyTargets}
+                        onToggle={toggleCopyTarget}
+                        onCopy={handleCopy}
+                        copying={copying}
+                        open={isCopyDropdownOpen}
+                        onOpenChange={setIsCopyDropdownOpen}
+                    />
+                )}
+
+                <ActionBar note={!selectedClass ? 'Choose a class first' : undefined}>
+                    <Button size="lg" disabled={!selectedClass || loadingStructure} onClick={() => goTo(1)}>Next</Button>
+                </ActionBar>
             </div>
+        );
+    }
+
+    /* ------------------------------------------------------------ Steps 2 & 3: fee lists */
+    if (step === 1 || step === 2) {
+        const isNew = step === 1;
+        const fees = isNew ? newAdmissionFees : existingStudentFees;
+        return (
+            <div className="max-w-4xl mx-auto space-y-4">
+                <Steps steps={STEP_TITLES} current={step} onJump={goTo} />
+                {branchWarning}
+                <p className="text-sm text-slate-600">
+                    Class <strong>{selectedClass}</strong> ·{' '}
+                    {isNew ? 'Fees for students who are joining the school this year.' : 'Fees for students who were already in the school last year.'}
+                </p>
+
+                {!isAllBranchesMode && (
+                    <AddFeeForm
+                        key={step}
+                        feeTypes={feeTypes}
+                        onAdd={(feeTypeId, amount) => addFeeToStructure(feeTypeId, amount, isNew)}
+                    />
+                )}
+
+                <FeeStructureTable
+                    fees={fees}
+                    onRemove={(index) => removeFee(index, isNew)}
+                    onUpdateTotalAmount={(index, amount) => updateTotalAmount(index, amount, isNew)}
+                    onUpdateInstallment={(feeIndex, monthIndex, amount) => updateInstallmentAmount(feeIndex, monthIndex, amount, isNew)}
+                    onRecalculate={(index) => recalculateInstallments(index, isNew)}
+                />
+
+                <ActionBar note={fees.length > 0 ? `${fees.length} fee${fees.length === 1 ? '' : 's'} · Total ${rupees(sumOf(fees))}` : 'No fees in this list yet'}>
+                    <Button variant="secondary" size="lg" onClick={() => goTo(step - 1)}>Back</Button>
+                    <Button size="lg" onClick={() => goTo(step + 1)}>Next</Button>
+                </ActionBar>
+            </div>
+        );
+    }
+
+    /* ------------------------------------------------------------ Step 4: review */
+    const reviewList = (title: string, fees: FeeStructureItem[]) => (
+        <div className="card">
+            <div className="card-header">
+                <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+                <span className="text-sm font-semibold text-slate-900">{rupees(sumOf(fees))}</span>
+            </div>
+            <div className="px-5 py-1">
+                {fees.length === 0 ? (
+                    <p className="py-3 text-sm text-slate-500">No fees</p>
+                ) : fees.map((f, i) => (
+                    <SummaryRow key={i} label={`${f.fee_type_name || 'Fee'}${f.installments.length ? ` · ${f.installments.length} installments` : ' · one time'}`}>
+                        {rupees(f.total_amount)}
+                    </SummaryRow>
+                ))}
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="max-w-3xl mx-auto space-y-4">
+            <Steps steps={STEP_TITLES} current={3} onJump={goTo} />
+            {branchWarning}
+            <p className="text-sm text-slate-600">Check the fees for Class <strong>{selectedClass}</strong> ({academicYear}) and save.</p>
+
+            {reviewList('New students', newAdmissionFees)}
+            {reviewList('Old students', existingStudentFees)}
+
+            <label className="flex items-start gap-3 min-h-[48px] px-4 py-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
+                <input
+                    type="checkbox"
+                    checked={updateAssignedStudents}
+                    onChange={(e) => setUpdateAssignedStudents(e.target.checked)}
+                    className="w-5 h-5 mt-0.5 accent-brand-600 rounded border-slate-300 cursor-pointer flex-shrink-0"
+                />
+                <span>
+                    <span className="block text-[15px] text-slate-900">Also change fees for students already in this class</span>
+                    <span className="block text-sm text-slate-500">Only fees they have not paid yet are changed.</span>
+                </span>
+            </label>
+
+            <MoreOptions>
+                <button type="button" className="btn-ghost text-red-600 hover:bg-red-50" onClick={async () => {
+                    if (await confirmDialog('Clear both lists on this screen? Nothing is deleted until you save.')) { resetForm(); goTo(1); }
+                }}>
+                    <RotateCcw className="w-4 h-4" /> Clear both lists and start again
+                </button>
+            </MoreOptions>
+
+            <ActionBar note={isAllBranchesMode ? 'Choose one branch at the top of the screen to save' : undefined}>
+                <Button variant="secondary" size="lg" onClick={() => goTo(2)}>Back</Button>
+                <Button size="lg" onClick={saveFeeStructure} loading={saving} disabled={isAllBranchesMode}>
+                    Save fees for Class {selectedClass}
+                </Button>
+            </ActionBar>
         </div>
     );
 };
@@ -698,41 +673,37 @@ const AddFeeForm: React.FC<{
     };
 
     return (
-        <div className="bg-slate-50 p-4 rounded-lg mb-4 border border-slate-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label className="label">Fee Type</label>
-                    <select
-                        value={selectedFeeType}
-                        onChange={(e) => setSelectedFeeType(e.target.value)}
-                        className="input"
-                    >
-                        <option value="">Select Fee Type</option>
-                        {feeTypes.map(ft => (
-                            <option key={ft.id} value={ft.id}>
-                                {ft.fee_type} ({ft.type})
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div>
-                    <label className="label">Total Amount</label>
-                    <input
-                        type="number"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder="12000"
-                        className="input"
-                    />
-                </div>
-                <div className="flex items-end">
-                    <button
-                        onClick={handleSubmit}
-                        className="btn-success w-full"
-                    >
-                        Add Fee
+        <div className="card">
+            <div className="card-body">
+                <p className="text-sm font-semibold text-slate-900 mb-3">Add a fee to this list</p>
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_12rem_auto] gap-3 sm:items-end">
+                    <Field label="Fee" htmlFor="cfs-add-type">
+                        <select id="cfs-add-type" value={selectedFeeType} onChange={(e) => setSelectedFeeType(e.target.value)} className="input">
+                            <option value="">Choose a fee</option>
+                            {feeTypes.map(ft => (
+                                <option key={ft.id} value={ft.id}>
+                                    {ft.fee_type} ({ft.type === 'One-Time' ? 'one time' : 'installments'})
+                                </option>
+                            ))}
+                        </select>
+                    </Field>
+                    <Field label="Total for the year (₹)" htmlFor="cfs-add-amt">
+                        <input
+                            id="cfs-add-amt"
+                            type="number"
+                            inputMode="decimal"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
+                            placeholder="12000"
+                            className="input"
+                        />
+                    </Field>
+                    <button type="button" onClick={handleSubmit} disabled={!selectedFeeType || !amount} className="btn-soft min-h-[44px]">
+                        <Plus className="w-4 h-4" /> Add fee
                     </button>
                 </div>
+                <p className="mt-2 text-xs text-slate-500">Installment fees are split equally into the months set up under Installments.</p>
             </div>
         </div>
     );
@@ -749,86 +720,90 @@ const FeeStructureTable: React.FC<{
 
     if (fees.length === 0) {
         return (
-            <EmptyState compact title="No fees added yet" className="bg-slate-50 rounded-lg border border-slate-200" />
+            <div className="card">
+                <EmptyState compact title="No fees in this list yet" description="Add a fee above, or go to the next step." />
+            </div>
         );
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3">
             {fees.map((fee, feeIndex) => (
-                <div key={feeIndex} className="border border-slate-200 rounded-lg overflow-hidden">
-                    <div className="bg-brand-50 px-4 py-3 flex flex-wrap gap-2 justify-between items-center">
-                        <div>
-                            <h4 className="font-semibold text-slate-900">{fee.fee_type_name}</h4>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="text-sm text-slate-600 font-medium">Total: ₹</span>
-                                {editingTotalIndex === feeIndex ? (
-                                    <>
-                                        <input
-                                            type="number"
-                                            value={fee.total_amount}
-                                            onChange={(e) => onUpdateTotalAmount(feeIndex, parseFloat(e.target.value) || 0)}
-                                            className="input w-32"
-                                            autoFocus
-                                        />
-                                        <button
-                                            onClick={() => setEditingTotalIndex(null)}
-                                            className="btn btn-sm bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                                        >
-                                            Done
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <span className="text-sm font-semibold">{fee.total_amount.toLocaleString()}</span>
-                                        <button
-                                            onClick={() => setEditingTotalIndex(feeIndex)}
-                                            className="p-1 text-slate-400 hover:text-brand-600 transition-colors"
-                                            title="Edit Total Amount"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                                            </svg>
-                                        </button>
-                                    </>
-                                )}
+                <div key={feeIndex} className="card overflow-hidden">
+                    <div className="px-4 py-3 bg-slate-50 border-b border-slate-100">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <h4 className="font-semibold text-slate-900 break-words">{fee.fee_type_name}</h4>
+                                <p className="text-xs text-slate-500">
+                                    {fee.installments.length > 0 ? `${fee.installments.length} installments` : 'One time'}
+                                    {fee.id ? ' · saved' : ' · not saved yet'}
+                                </p>
                             </div>
-                        </div>
-                        <div className="flex gap-2">
-                            {fee.installments.length > 0 && (
+                            {editingTotalIndex !== feeIndex && (
                                 <button
-                                    onClick={() => onRecalculate(feeIndex)}
-                                    className="btn-warn btn-sm"
-                                    title="Recalculate installments based on total amount"
+                                    type="button"
+                                    onClick={() => setEditingTotalIndex(feeIndex)}
+                                    className="inline-flex items-center gap-1.5 min-h-[44px] px-2 rounded-lg text-base font-semibold text-slate-900 hover:bg-white"
+                                    title="Change total"
                                 >
-                                    Recalculate
+                                    {rupees(fee.total_amount)}
+                                    <Pencil className="w-4 h-4 text-slate-400" />
                                 </button>
                             )}
-                            <button
-                                onClick={() => onRemove(feeIndex)}
-                                className="btn-danger btn-sm"
-                            >
-                                Remove
+                        </div>
+                        {editingTotalIndex === feeIndex && (
+                            <div className="mt-2 flex items-end gap-2">
+                                <Field label="Total (₹)" htmlFor={`cfs-total-${feeIndex}`} className="flex-1">
+                                    <input
+                                        id={`cfs-total-${feeIndex}`}
+                                        type="number"
+                                        inputMode="decimal"
+                                        value={fee.total_amount}
+                                        onChange={(e) => onUpdateTotalAmount(feeIndex, parseFloat(e.target.value) || 0)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') setEditingTotalIndex(null); }}
+                                        className="input"
+                                        autoFocus
+                                    />
+                                </Field>
+                                <button type="button" onClick={() => setEditingTotalIndex(null)} className="btn-success min-h-[44px]">Done</button>
+                            </div>
+                        )}
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            {fee.installments.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => onRecalculate(feeIndex)}
+                                    className="btn-secondary btn-sm"
+                                    title="Split the total equally into the installments again"
+                                >
+                                    <RotateCcw className="w-4 h-4" /> Split total equally
+                                </button>
+                            )}
+                            <button type="button" onClick={() => onRemove(feeIndex)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50">
+                                <Trash2 className="w-4 h-4" /> Remove
                             </button>
                         </div>
                     </div>
 
                     {fee.installments.length > 0 && (
-                        <div className="p-4 bg-white">
-                            <h5 className="text-sm font-medium text-slate-700 mb-2">Monthly Installments:</h5>
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                        <div className="p-4">
+                            <p className="text-sm font-medium text-slate-700 mb-2">Amount for each installment (₹)</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                                 {fee.installments.map((inst, monthIndex) => (
-                                    <div key={monthIndex} className="flex flex-col">
-                                        <label className="label">{inst.month}</label>
+                                    <div key={monthIndex} className="min-w-0">
+                                        <label htmlFor={`cfs-${feeIndex}-${monthIndex}`} className="block text-xs text-slate-600 mb-1 truncate">{inst.month}</label>
                                         <input
+                                            id={`cfs-${feeIndex}-${monthIndex}`}
                                             type="number"
+                                            inputMode="decimal"
                                             value={inst.amount}
                                             onChange={(e) => onUpdateInstallment(feeIndex, monthIndex, parseFloat(e.target.value) || 0)}
-                                            className="input w-auto"
+                                            className="input"
                                         />
                                     </div>
                                 ))}
                             </div>
+                            <p className="mt-2 text-xs text-slate-500">Changing an installment changes the total.</p>
                         </div>
                     )}
                 </div>

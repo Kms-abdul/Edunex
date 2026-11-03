@@ -1,7 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import api from '../api';
 import { notify, confirmDialog } from './ui/feedback';
-import { Alert, EmptyState } from './ui';
+import { ActionBar, Alert, Button, DataList, Field } from './ui';
+import type { Column } from './ui';
+import { CopyToBranches, Intro, groupBranches, rupees } from './fee-setup/shared';
 
 interface FeeType {
     id: number;
@@ -26,16 +29,12 @@ interface ConcessionGroup {
     branch?: string;
 }
 
-interface BranchOption {
-    id: number | string;
-    name: string;
-    location_name: string;
-}
+import type { BranchOption } from './fee-setup/shared';
 
 const ConcessionMaster: React.FC = () => {
     const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
     const [concessions, setConcessions] = useState<ConcessionGroup[]>([]);
-    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [showForm, setShowForm] = useState(false);
 
     // Form State
     const [title, setTitle] = useState('');
@@ -61,20 +60,6 @@ const ConcessionMaster: React.FC = () => {
     const [copyTargets, setCopyTargets] = useState<Set<string>>(new Set());
     const [isCopyDropdownOpen, setIsCopyDropdownOpen] = useState(false);
     const [copying, setCopying] = useState(false);
-    const copyDropdownRef = useRef<HTMLDivElement>(null);
-
-    // Close dropdown on outside click
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (copyDropdownRef.current && !copyDropdownRef.current.contains(event.target as Node)) {
-                setIsCopyDropdownOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
 
 
     // Fetch Data on load
@@ -162,11 +147,11 @@ const ConcessionMaster: React.FC = () => {
 
     const handleCopyConcessions = async () => {
         if (copyTargets.size === 0) {
-            notify("Please select at least one branch to copy to.");
+            notify.warning("Choose at least one branch to copy to.");
             return;
         }
 
-        if (!await confirmDialog(`Are you sure you want to copy all concessions to ${copyTargets.size} branches? Duplicates will be skipped.`)) {
+        if (!await confirmDialog(`Copy all discount types to ${copyTargets.size} branch${copyTargets.size === 1 ? '' : 'es'}? Ones that already exist there are skipped.`)) {
             return;
         }
 
@@ -178,7 +163,7 @@ const ConcessionMaster: React.FC = () => {
                 target_branch_ids: Array.from(copyTargets),
                 academic_year: academicYear
             });
-            notify("Concessions copied successfully!");
+            notify.success("Discount types copied.");
             setCopyTargets(new Set());
             setIsCopyDropdownOpen(false);
         } catch (error: any) {
@@ -233,16 +218,17 @@ const ConcessionMaster: React.FC = () => {
 
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        setMessage("Editing mode enabled. Make changes and click Update.");
+        setMessage('');
+        setShowForm(true);
     };
 
     const handleDelete = async (title: string, year: string) => {
-        if (!await confirmDialog(`Are you sure you want to delete "${title}" for ${year}?`)) return;
+        if (!await confirmDialog(`Delete the discount "${title}" for ${year}? This cannot be undone.`, { tone: 'danger', confirmText: 'Delete' })) return;
 
         try {
 
             await api.delete(`/concessions/${encodeURIComponent(title)}/${encodeURIComponent(year)}`);
-            setMessage("Concession deleted successfully");
+            setMessage("Discount type deleted.");
             fetchConcessions();
         } catch (error: any) {
             console.error("Error deleting concession:", error);
@@ -259,7 +245,7 @@ const ConcessionMaster: React.FC = () => {
 
     const handleSave = async () => {
         if (!title || !academicYear) {
-            notify("Please fill Title and Academic Year");
+            notify.warning("Type a name for the discount.");
             return;
         }
 
@@ -287,16 +273,17 @@ const ConcessionMaster: React.FC = () => {
             if (isEditing) {
                 // UPDATE
                 await api.put(`/concessions/${encodeURIComponent(originalTitle)}/${encodeURIComponent(originalYear)}`, payload);
-                setMessage("Concession updated successfully!");
+                setMessage("Discount type saved.");
             } else {
                 // CREATE
                 await api.post('/concessions', payload);
-                setMessage("Concession created successfully!");
+                setMessage("Discount type added.");
             }
 
             // Reset form
             handleReset();
             fetchConcessions();
+            setShowForm(false);
 
         } catch (error: any) {
             console.error("Error saving concession:", error);
@@ -321,304 +308,173 @@ const ConcessionMaster: React.FC = () => {
         resetItems(feeTypes);
     };
 
-    return (
-        <div className="p-6 min-h-full">
-            <div className="max-w-4xl mx-auto space-y-8">
+    const isError = message.includes('Error');
+    const messageAlert = message && (
+        <Alert tone={isError ? 'error' : 'success'} onClose={() => setMessage('')}>
+            {isError ? message.replace(/^Error:\s*/, 'Could not save: ') : message}
+        </Alert>
+    );
 
-                {/* FORM SECTION */}
-                <div className="card p-6">
-                    <div className="flex items-center space-x-2 mb-6 border-b border-slate-100 pb-4">
-                        <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        <h2 className="text-base font-semibold text-slate-900">
-                            {isEditing ? 'Edit Concession Type' : 'Add Concession Type'}
-                        </h2>
+    /* ------------------------------------------------------------ Add / edit form */
+    if (showForm) {
+        return (
+            <div className="max-w-2xl mx-auto space-y-4">
+                <div>
+                    <h2 className="text-lg font-semibold text-slate-900">{isEditing ? 'Edit discount type' : 'Add a discount type'}</h2>
+                    <Intro>For branch <strong>{branch}</strong> · Year <strong>{academicYear || '—'}</strong></Intro>
+                </div>
+
+                {messageAlert}
+
+                <div className="card">
+                    <div className="card-body space-y-4">
+                        <Field label="Name of the discount" htmlFor="cm-title" required hint="For example: Sibling discount, Staff child">
+                            <input id="cm-title" type="text" className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Sibling discount" autoFocus />
+                        </Field>
+                        <Field label="Note (optional)" htmlFor="cm-desc">
+                            <input id="cm-desc" type="text" className="input" value={description} onChange={e => setDescription(e.target.value)} />
+                        </Field>
+                        <label htmlFor="showInPayment" className="flex items-start gap-3 min-h-[48px] px-3 py-2.5 rounded-xl border border-slate-200 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                id="showInPayment"
+                                className="w-5 h-5 mt-0.5 accent-brand-600 rounded flex-shrink-0"
+                                checked={showInPayment}
+                                onChange={e => setShowInPayment(e.target.checked)}
+                            />
+                            <span>
+                                <span className="block text-[15px] text-slate-900">Show when collecting fees</span>
+                                <span className="block text-sm text-slate-500">The cashier can pick this discount on the Collect fee screen.</span>
+                            </span>
+                        </label>
                     </div>
+                </div>
 
-                    {/* Copy Button */}
-                    {allBranches.length > 0 && sourceBranchId && (
-                        <div className="flex justify-end mb-4 relative" ref={copyDropdownRef}>
-                            <button
-                                className="btn-primary"
-                                onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
-                            >
-                                <span>Copy to Branches</span>
-                                <span className="text-xs">▼</span>
-                            </button>
-                            {isCopyDropdownOpen && (
-                                <div className="card shadow-pop absolute top-12 right-0 w-80 z-50 p-2 max-h-96 overflow-y-auto">
-                                    <div className="mb-2 text-sm font-semibold text-slate-700 pb-2 border-b border-slate-100 px-2">
-                                        Select Target Branches
-                                    </div>
-                                    {/* Copy Grouping Logic Inline or we can compute above. Let's compute inline to save lines in helper */}
-                                    {(() => {
-                                        const availableBranches = allBranches.filter(b => String(b.id) !== String(sourceBranchId) && b.name !== 'All Branches' && b.name !== 'All');
-                                        const branchesByLocation: { [key: string]: BranchOption[] } = {};
-                                        availableBranches.forEach(b => {
-                                            if (!branchesByLocation[b.location_name]) {
-                                                branchesByLocation[b.location_name] = [];
-                                            }
-                                            branchesByLocation[b.location_name].push(b);
-                                        });
-
-                                        if (Object.keys(branchesByLocation).length === 0) {
-                                            return <EmptyState compact title="No other branches available" />
-                                        }
-                                        return Object.keys(branchesByLocation).map(loc => (
-                                            <div key={loc} className="mb-1">
-                                                <div className="text-sm font-semibold text-slate-900 px-3 py-2 bg-slate-50 border-b border-slate-100">
-                                                    {loc}
-                                                </div>
-                                                <div className="py-1">
-                                                    {branchesByLocation[loc].map(b => (
-                                                        <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-brand-50 cursor-pointer transition-colors pl-6">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={copyTargets.has(String(b.id))}
-                                                                onChange={() => toggleCopyTarget(String(b.id))}
-                                                                className="w-4 h-4 accent-brand-600 rounded border-slate-300"
-                                                            />
-                                                            <span className="text-sm text-slate-700">{b.name}</span>
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ));
-                                    })()}
-
-                                    <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center sticky bottom-0 bg-white p-1">
-                                        <span className="text-xs text-slate-500">{copyTargets.size} selected</span>
-                                        <button
-                                            onClick={handleCopyConcessions}
-                                            disabled={copying || copyTargets.size === 0}
-                                            className="btn-success btn-sm"
-                                        >
-                                            {copying ? "Copying..." : "Confirm Copy"}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="space-y-4 mb-6">
-                        <div>
-                            <label className="label">Title*</label>
-                            <input
-                                type="text"
-                                className="input"
-                                value={title}
-                                onChange={e => setTitle(e.target.value)}
-                                placeholder="e.g. Sibling Discount"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="label">Description</label>
-                            <input
-                                type="text"
-                                className="input"
-                                value={description}
-                                onChange={e => setDescription(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="label">Academic Year</label>
-                                <input
-                                    type="text"
-                                    className="input"
-                                    value={academicYear}
-                                    readOnly
-                                />
-                            </div>
-                            <div>
-                                <label className="label">Branch</label>
-                                <input
-                                    type="text"
-                                    className="input"
-                                    value={branch}
-                                    readOnly
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-3 items-center justify-between bg-brand-50 p-4 rounded-lg border border-brand-100 mb-6">
-                            <span className="text-slate-700 font-medium">Set Global Concession Amount</span>
-
-                            <div className="flex items-center space-x-2">
+                <div className="card">
+                    <div className="card-header">
+                        <h3 className="text-sm font-semibold text-slate-900">Discount on each fee (₹)</h3>
+                    </div>
+                    <div className="card-body space-y-4">
+                        <div className="rounded-xl bg-brand-50 border border-brand-100 p-3">
+                            <p className="text-sm font-medium text-slate-800 mb-2">Same amount for every fee?</p>
+                            <div className="flex gap-2">
                                 <input
                                     type="number"
-                                    className="input w-40"
-                                    placeholder="Enter Amount"
+                                    inputMode="decimal"
+                                    aria-label="Amount for every fee"
+                                    className="input flex-1"
+                                    placeholder="Amount"
                                     value={globalAmount}
                                     onChange={e => setGlobalAmount(e.target.value)}
                                 />
-                                <button
-                                    onClick={handleCopy}
-                                    className="btn-success"
-                                >
-                                    Copy
+                                <button type="button" onClick={handleCopy} disabled={!globalAmount} className="btn-soft min-h-[44px]">
+                                    Fill all
                                 </button>
                             </div>
                         </div>
 
-                        <div className="flex items-center space-x-2 mb-4">
-                            <input
-                                type="checkbox"
-                                id="showInPayment"
-                                className="form-checkbox h-5 w-5 text-brand-600 rounded"
-                                checked={showInPayment}
-                                onChange={e => setShowInPayment(e.target.checked)}
-                            />
-                            <label htmlFor="showInPayment" className="text-slate-700 font-medium cursor-pointer">
-                                Show in Fee Payment Dropdown?
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Table */}
-                    <div className="border border-slate-200 rounded-lg overflow-x-auto mb-6">
-                        <table className="min-w-full divide-y divide-slate-200">
-                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                <tr>
-                                    <th className="px-6 py-3 text-left w-10">
-                                        <input
-                                            type="checkbox"
-                                            className="rounded"
-                                            checked={feeTypes.length > 0 && feeTypes.every(ft => selectedIds.has(ft.id))}
-                                            onChange={e => {
-                                                if (e.target.checked) {
-                                                    setSelectedIds(new Set(feeTypes.map(ft => ft.id)));
-                                                } else {
-                                                    setSelectedIds(new Set());
-                                                }
-                                            }}
-                                        />
-                                    </th>
-                                    <th className="px-6 py-3 text-left">
-                                        Fee Type
-                                    </th>
-                                    <th className="px-6 py-3 text-left">
-                                        Concession Amount
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-slate-100">
-                                {feeTypes.map(ft => (
-                                    <tr key={ft.id}>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <input
-                                                type="checkbox"
-                                                className="rounded"
-                                                checked={selectedIds.has(ft.id)}
-                                                onChange={e => {
-                                                    const next = new Set(selectedIds);
-                                                    if (e.target.checked) next.add(ft.id);
-                                                    else next.delete(ft.id);
-                                                    setSelectedIds(next);
-                                                }}
-                                            />
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                                            {ft.fee_type}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <input
-                                                type="number"
-                                                className="input"
-                                                value={concessionItems[ft.id] !== undefined ? concessionItems[ft.id] : ''}
-                                                onChange={e => handleItemChange(ft.id, e.target.value)}
-                                            />
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {message && (
-                        <Alert tone={message.includes('Error') ? 'error' : 'success'} className="mb-4">
-                            {message}
-                        </Alert>
-                    )}
-
-                    <div className="flex justify-end space-x-3 border-t border-slate-100 pt-4">
-                        <button
-                            onClick={handleReset}
-                            className="btn-secondary"
-                        >
-                            {isEditing ? 'Cancel Edit' : 'Reset'}
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={loading}
-                            className="btn-primary"
-                        >
-                            {loading ? 'Saving...' : (isEditing ? 'Update Concession' : 'Save Concession')}
-                        </button>
+                        <p className="text-sm text-slate-500">Leave a fee empty for no discount on it.</p>
+                        <ul className="divide-y divide-slate-100 -mx-1">
+                            {feeTypes.map(ft => (
+                                <li key={ft.id} className="flex items-center gap-3 px-1 py-2">
+                                    <label htmlFor={`cm-item-${ft.id}`} className="flex-1 min-w-0 text-[15px] text-slate-900 break-words">{ft.fee_type}</label>
+                                    <input
+                                        id={`cm-item-${ft.id}`}
+                                        type="number"
+                                        inputMode="decimal"
+                                        className="input w-32 text-right"
+                                        placeholder="0"
+                                        value={concessionItems[ft.id] !== undefined ? concessionItems[ft.id] : ''}
+                                        onChange={e => handleItemChange(ft.id, e.target.value)}
+                                    />
+                                </li>
+                            ))}
+                        </ul>
                     </div>
                 </div>
 
-                {/* LIST SECTION */}
-                <div className="card p-6">
-                    <h3 className="text-base font-semibold text-slate-900 mb-4">Existing Concessions</h3>
-
-                    {concessions.length === 0 ? (
-                        <EmptyState compact title="No concessions found." />
-                    ) : (
-                        <div className="overflow-x-auto rounded-lg border border-slate-200">
-                            <table className="min-w-full divide-y divide-slate-200">
-                                <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left">Title</th>
-                                        <th className="px-6 py-3 text-left">Academic Year</th>
-                                        <th className="px-6 py-3 text-left">Branch</th>
-                                        <th className="px-6 py-3 text-left">Show in Payment</th>
-                                        <th className="px-6 py-3 text-left">Description</th>
-                                        <th className="px-6 py-3 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-slate-100">
-                                    {concessions.map((c, idx) => (
-                                        <tr key={idx} className="hover:bg-slate-50">
-                                            <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">{c.title}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-slate-500">{c.academic_year}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-slate-500">
-                                                <span className={!c.branch || c.branch === 'All' ? 'badge-brand' : 'badge-neutral'}>
-                                                    {c.branch || 'All'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-slate-500">
-                                                {c.show_in_payment ? (
-                                                    <span className="badge-success">Yes</span>
-                                                ) : (
-                                                    <span className="badge-neutral">No</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-slate-500">{c.description}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <button
-                                                    onClick={() => handleEdit(c)}
-                                                    className="btn-ghost btn-sm text-brand-600 hover:text-brand-800 mr-2"
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(c.title, c.academic_year)}
-                                                    className="btn-ghost btn-sm text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                >
-                                                    Delete
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
+                <ActionBar note={!title ? 'Type a name for the discount' : undefined}>
+                    <Button variant="secondary" size="lg" onClick={() => { handleReset(); setMessage(''); setShowForm(false); }}>Cancel</Button>
+                    <Button size="lg" onClick={handleSave} loading={loading} disabled={!title}>
+                        Save discount type
+                    </Button>
+                </ActionBar>
             </div>
+        );
+    }
+
+    /* ------------------------------------------------------------ List */
+    const rowActions = (c: ConcessionGroup) => (
+        <>
+            <button type="button" onClick={() => handleEdit(c)} className="btn-soft btn-sm">
+                <Pencil className="w-4 h-4" /> Edit
+            </button>
+            <button type="button" onClick={() => handleDelete(c.title, c.academic_year)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50">
+                <Trash2 className="w-4 h-4" /> Delete
+            </button>
+        </>
+    );
+
+    const columns: Column<ConcessionGroup>[] = [
+        { key: 'title', header: 'Discount', primary: true },
+        { key: 'description', header: 'Note', secondary: true, render: c => c.description || '' },
+        {
+            key: 'items', header: 'Fees with a discount',
+            render: c => {
+                const withAmount = (c.items || []).filter(i => Number(i.percentage) > 0);
+                if (withAmount.length === 0) return '—';
+                const amounts = Array.from(new Set(withAmount.map(i => Number(i.percentage))));
+                return amounts.length === 1 ? `${withAmount.length} · ${rupees(amounts[0])} each` : `${withAmount.length} fees`;
+            },
+        },
+        { key: 'academic_year', header: 'Year' },
+        {
+            key: 'show_in_payment', header: 'At fee collection',
+            render: c => c.show_in_payment ? <span className="badge-success">Shown</span> : <span className="badge-neutral">Hidden</span>,
+        },
+        {
+            key: 'branch', header: 'Branch',
+            render: c => <span className={!c.branch || c.branch === 'All' ? 'badge-brand' : 'badge-neutral'}>{c.branch || 'All'}</span>,
+        },
+        { key: 'actions', header: '', hideOnMobile: true, align: 'right', render: c => <div className="flex justify-end gap-2">{rowActions(c)}</div> },
+    ];
+
+    return (
+        <div className="max-w-5xl mx-auto space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Discount types</h2>
+                    <Intro>Discounts you can give students, like Sibling discount. Give one to a student under Discounts → Give a discount.</Intro>
+                </div>
+                <Button size="lg" icon={<Plus className="w-5 h-5" />} onClick={() => { handleReset(); setMessage(''); setShowForm(true); }}>
+                    Add discount type
+                </Button>
+            </div>
+
+            {messageAlert}
+
+            <DataList
+                columns={columns}
+                rows={concessions}
+                rowKey={(c, i) => `${c.title}-${c.academic_year}-${i}`}
+                emptyTitle="No discount types yet"
+                emptyHint='Tap "Add discount type" to add the first one.'
+                mobileActions={rowActions}
+            />
+
+            {allBranches.length > 0 && sourceBranchId && (
+                <CopyToBranches
+                    what="all discount types"
+                    note="Ones that already exist in the other branch are skipped."
+                    branchesByLocation={groupBranches(allBranches, sourceBranchId)}
+                    selected={copyTargets}
+                    onToggle={toggleCopyTarget}
+                    onCopy={handleCopyConcessions}
+                    copying={copying}
+                    open={isCopyDropdownOpen}
+                    onOpenChange={setIsCopyDropdownOpen}
+                />
+            )}
         </div>
     );
 };

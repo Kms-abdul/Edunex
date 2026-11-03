@@ -1,7 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { CalendarPlus, Pencil, Plus, Trash2 } from 'lucide-react';
 import api from '../api';
 import { notify, confirmDialog } from './ui/feedback';
-import { EmptyState } from './ui';
+import { ActionBar, Button, DataList, Field, Steps } from './ui';
+import type { Column } from './ui';
+import { CopyToBranches, Intro, MoreOptions, SuccessPanel, SummaryRow, groupBranches, prettyDate } from './fee-setup/shared';
+
+const BULK_STEPS = ['Choose fee', 'Choose months', 'Check and create'];
 
 interface FeeType {
     id: number;
@@ -26,11 +31,7 @@ interface Installment {
     academic_year?: string;
 }
 
-interface BranchOption {
-    id: number | string;
-    name: string;
-    location_name: string;
-}
+import type { BranchOption } from './fee-setup/shared';
 
 interface BulkConfig {
     fee_type_id: string;
@@ -45,6 +46,7 @@ interface BulkConfig {
 }
 
 // ─── Bulk Preview Component ───────────────────────────────────────────────────
+// Same date maths as generateBulkInstallments below; shows every installment that will be created.
 const BulkPreview: React.FC<{ bulkConfig: BulkConfig; MONTHS: string[] }> = ({ bulkConfig, MONTHS }) => {
     const count = parseInt(bulkConfig.count.toString()) || 0;
     const startIdx = parseInt(bulkConfig.start_month_idx.toString()) || 0;
@@ -54,7 +56,7 @@ const BulkPreview: React.FC<{ bulkConfig: BulkConfig; MONTHS: string[] }> = ({ b
     if (!count || count < 1) return null;
 
     const preview = [];
-    for (let i = 0; i < Math.min(count, 6); i++) {
+    for (let i = 0; i < Math.min(count, 12); i++) {
         const monthIdx = (startIdx + i) % 12;
         const calMonth = (monthIdx + 3) % 12;
         const yearOffset = Math.floor((startIdx + 3 + i) / 12);
@@ -71,39 +73,20 @@ const BulkPreview: React.FC<{ bulkConfig: BulkConfig; MONTHS: string[] }> = ({ b
     }
 
     return (
-        <div className="card mt-4 border-brand-200 overflow-hidden">
-            <div className="px-4 py-2 bg-brand-100 text-sm font-medium text-brand-800">
-                Preview — first {Math.min(count, 6)} of {count} installments
+        <div className="card overflow-hidden">
+            <div className="card-header">
+                <h3 className="text-sm font-semibold text-slate-900">{count} installment{count === 1 ? '' : 's'} will be created</h3>
             </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                        <tr>
-                            <th className="px-4 py-2 text-left">Title</th>
-                            <th className="px-4 py-2 text-left">Start</th>
-                            <th className="px-4 py-2 text-left">End</th>
-                            <th className="px-4 py-2 text-left">Cut-off</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {preview.map((p, i) => (
-                            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                                <td className="px-4 py-2 font-medium text-slate-800">{p.title}</td>
-                                <td className="px-4 py-2 text-slate-600">{p.start}</td>
-                                <td className="px-4 py-2 text-slate-600">{p.end}</td>
-                                <td className="px-4 py-2 text-brand-700 font-medium">{p.cutoff}</td>
-                            </tr>
-                        ))}
-                        {count > 6 && (
-                            <tr>
-                                <td colSpan={4} className="px-4 py-2 text-center text-slate-400 text-xs">
-                                    + {count - 6} more months…
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+            <ul className="divide-y divide-slate-100">
+                {preview.map((p, i) => (
+                    <li key={i} className="px-4 py-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5">
+                        <span className="font-medium text-slate-900">{p.title}</span>
+                        <span className="text-sm text-slate-600">
+                            {p.start} – {p.end} · <span className="text-brand-700 font-medium">pay by {p.cutoff}</span>
+                        </span>
+                    </li>
+                ))}
+            </ul>
         </div>
     );
 };
@@ -159,18 +142,13 @@ const FeeInstallments: React.FC = () => {
     const [isCopyDropdownOpen, setIsCopyDropdownOpen] = useState(false);
     const [copying, setCopying] = useState(false);
     const [selectedCopyFeeTypeId, setSelectedCopyFeeTypeId] = useState<number | string>('');
-    const copyDropdownRef = useRef<HTMLDivElement>(null);
 
-    // Close dropdown on outside click
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (copyDropdownRef.current && !copyDropdownRef.current.contains(event.target as Node)) {
-                setIsCopyDropdownOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    // Screen state (presentation only)
+    const [showSingle, setShowSingle] = useState(false);
+    const [bulkStep, setBulkStep] = useState(0);
+    const [bulkDone, setBulkDone] = useState<{ count: number; feeName: string } | null>(null);
+    const [working, setWorking] = useState(false);
+    const [feeFilter, setFeeFilter] = useState('');
 
     useEffect(() => {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -305,7 +283,7 @@ const FeeInstallments: React.FC = () => {
     // ── Bulk Generate ───────────────────────────────────────────────────────────
     const generateBulkInstallments = async () => {
         if (!bulkConfig.fee_type_id) {
-            notify('Please select a Fee Type');
+            notify.warning('Choose a fee first.');
             return;
         }
 
@@ -350,14 +328,18 @@ const FeeInstallments: React.FC = () => {
             });
         }
 
+        setWorking(true);
         try {
             await api.post('/installment-schedule', newInstallments);
-            notify(`Successfully generated ${count} installments!`);
+            notify.success(`${count} installments created.`);
+            setBulkDone({ count, feeName: feeTypes.find(ft => String(ft.id) === String(bulkConfig.fee_type_id))?.fee_type || 'this fee' });
             fetchInstallments();
             setBulkMode(false);
         } catch (error) {
             console.error('Error generating bulk installments:', error);
-            notify('Failed to generate installments');
+            notify.error('Could not create the installments. Please try again.');
+        } finally {
+            setWorking(false);
         }
     };
 
@@ -366,7 +348,7 @@ const FeeInstallments: React.FC = () => {
         e.preventDefault();
 
         if (!formData.title || !formData.start_date || !formData.end_date || !formData.last_pay_date) {
-            notify('Please fill all required fields');
+            notify.warning('Fill in the name and all three dates.');
             return;
         }
 
@@ -380,19 +362,23 @@ const FeeInstallments: React.FC = () => {
             academic_year: formData.academic_year || ''
         };
 
+        setWorking(true);
         try {
             if (editingId) {
                 await api.put(`/installment-schedule/${editingId}`, payload);
-                notify('Installment updated successfully!');
+                notify.success('Installment saved.');
             } else {
                 await api.post('/installment-schedule', payload);
-                notify('Installment created successfully!');
+                notify.success('Installment added.');
             }
             fetchInstallments();
             handleReset();
+            setShowSingle(false);
         } catch (error) {
             console.error('Error saving installment:', error);
-            notify('Failed to save installment');
+            notify.error('Could not save the installment. Please try again.');
+        } finally {
+            setWorking(false);
         }
     };
 
@@ -412,17 +398,18 @@ const FeeInstallments: React.FC = () => {
         });
         setEditingId(installment.id || null);
         setBulkMode(false);
+        setShowSingle(true);
     };
 
     const handleDelete = async (id: number) => {
-        if (!await confirmDialog('Are you sure you want to delete this installment?')) return;
+        if (!await confirmDialog('Delete this installment? This cannot be undone.', { tone: 'danger', confirmText: 'Delete' })) return;
         try {
             await api.delete(`/installment-schedule/${id}`);
-            notify('Installment deleted successfully!');
+            notify.success('Installment deleted.');
             fetchInstallments();
         } catch (error) {
             console.error('Error deleting installment:', error);
-            notify('Failed to delete installment');
+            notify.error('Could not delete the installment.');
         }
     };
 
@@ -453,14 +440,14 @@ const FeeInstallments: React.FC = () => {
 
     const handleCopy = async () => {
         if (copyTargets.size === 0) {
-            notify('Please select at least one branch to copy to.');
+            notify.warning('Choose at least one branch to copy to.');
             return;
         }
         if (!selectedCopyFeeTypeId) {
-            notify('Please select a Fee Type to copy installments for.');
+            notify.warning('Choose which fee to copy.');
             return;
         }
-        if (!await confirmDialog(`Are you sure you want to copy installments for the selected fee type to ${copyTargets.size} branches?`)) return;
+        if (!await confirmDialog(`Copy the installments of this fee to ${copyTargets.size} branch${copyTargets.size === 1 ? '' : 'es'}?`)) return;
 
         setCopying(true);
         try {
@@ -470,7 +457,7 @@ const FeeInstallments: React.FC = () => {
                 source_fee_type_id: selectedCopyFeeTypeId,
                 academic_year: localStorage.getItem('academicYear') || ''
             });
-            notify('Installments copied successfully!');
+            notify.success('Installments copied.');
             setCopyTargets(new Set());
             setSelectedCopyFeeTypeId('');
             setIsCopyDropdownOpen(false);
@@ -486,326 +473,109 @@ const FeeInstallments: React.FC = () => {
     const currentBranch = localStorage.getItem('currentBranch');
     const isSpecificBranch = currentBranch && currentBranch !== 'All' && currentBranch !== 'All Branches';
 
-    const availableBranches = allBranches.filter(
-        b => String(b.id) !== String(sourceBranchId) && b.name !== 'All Branches' && b.name !== 'All'
-    );
-    const branchesByLocation: { [key: string]: BranchOption[] } = {};
-    availableBranches.forEach(b => {
-        if (!branchesByLocation[b.location_name]) branchesByLocation[b.location_name] = [];
-        branchesByLocation[b.location_name].push(b);
-    });
+    const branchesByLocation = groupBranches(allBranches, sourceBranchId);
 
     const copyableFeeTypes = feeTypes.filter(ft => ft.branch === 'All' || ft.branch === currentBranch);
 
-    // ── Render ──────────────────────────────────────────────────────────────────
-    return (
-        <div className="container mx-auto p-6 min-h-full">
-            <div className="card p-6">
+    const singleFeeTypes = feeTypes.filter(ft => {
+        const cb = formData.branch || localStorage.getItem('currentBranch') || 'All';
+        return !ft.branch || ft.branch === 'All' || ft.branch === cb;
+    });
+    const bulkFeeTypes = feeTypes.filter(ft => {
+        const cb = bulkConfig.branch || localStorage.getItem('currentBranch') || 'All';
+        return !ft.branch || ft.branch === 'All' || ft.branch === cb;
+    });
+    const bulkFeeName = feeTypes.find(ft => String(ft.id) === String(bulkConfig.fee_type_id))?.fee_type || '';
 
-                {/* ── Header ── */}
-                <div className="flex flex-wrap gap-3 justify-between items-center mb-6">
-                    <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Fee Installments</h2>
+    // Only clear the form when leaving an edit, so a new installment keeps the defaults set on load.
+    const backToList = () => { setBulkMode(false); setShowSingle(false); setBulkDone(null); if (editingId) handleReset(); };
 
-                    {/* Copy to Branches Button */}
-                    {isSpecificBranch && (
-                        <div className="relative" ref={copyDropdownRef}>
-                            <button
-                                className="btn-primary"
-                                onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
-                            >
-                                <span>Copy to Branches</span>
-                                <span className="text-xs">▼</span>
-                            </button>
+    // ── Render: bulk created ────────────────────────────────────────────────────
+    if (bulkDone) {
+        return (
+            <div className="max-w-3xl mx-auto space-y-4">
+                <SuccessPanel title={`${bulkDone.count} installments created`}>For {bulkDone.feeName}.</SuccessPanel>
+                <ActionBar>
+                    <Button variant="secondary" size="lg" onClick={backToList}>See all installments</Button>
+                    <Button size="lg" onClick={() => {
+                        setBulkDone(null);
+                        setBulkConfig(prev => ({ ...prev, fee_type_id: '' }));
+                        setBulkStep(0);
+                        setBulkMode(true);
+                    }}>
+                        Create for another fee
+                    </Button>
+                </ActionBar>
+            </div>
+        );
+    }
 
-                            {isCopyDropdownOpen && (
-                                <div className="card shadow-pop absolute top-12 right-0 w-80 z-50 p-2 max-h-96 overflow-y-auto">
-                                    <div className="mb-2 p-2 border-b border-slate-100 bg-slate-50">
-                                        <label className="label">
-                                            Select Fee Type to Copy:
-                                        </label>
-                                        <select
-                                            className="input"
-                                            value={selectedCopyFeeTypeId}
-                                            onChange={e => setSelectedCopyFeeTypeId(e.target.value)}
-                                        >
-                                            <option value="">-- Select Fee Type --</option>
-                                            {copyableFeeTypes.map(ft => (
-                                                <option key={ft.id} value={ft.id}>{ft.fee_type} ({ft.type})</option>
-                                            ))}
+    // ── Render: create monthly installments (steps) ─────────────────────────────
+    if (bulkMode) {
+        const countInvalid = bulkConfig.count > 12 || bulkConfig.count < 1;
+        return (
+            <div className="max-w-3xl mx-auto space-y-4">
+                <Steps steps={BULK_STEPS} current={bulkStep} onJump={setBulkStep} />
+
+                {bulkStep === 0 && (
+                    <>
+                        <div className="card">
+                            <div className="card-body space-y-4">
+                                <p className="text-sm text-slate-600">Create one installment for each month in one go. Which fee is it for?</p>
+                                <Field label="Fee" htmlFor="bulk-fee" required>
+                                    <select id="bulk-fee" name="fee_type_id" value={bulkConfig.fee_type_id} onChange={handleBulkChange} className="input">
+                                        <option value="">Choose a fee</option>
+                                        {bulkFeeTypes.map(ft => <option key={ft.id} value={ft.id}>{ft.fee_type}</option>)}
+                                    </select>
+                                </Field>
+                                <Field label="School year" htmlFor="bulk-year">
+                                    <select id="bulk-year" name="academic_year" value={bulkConfig.academic_year} onChange={handleBulkChange} className="input">
+                                        <option value="">Choose a year</option>
+                                        {academicYearOptions.map(year => <option key={year} value={year}>{year}</option>)}
+                                    </select>
+                                </Field>
+                            </div>
+                        </div>
+                        <ActionBar note={!bulkConfig.fee_type_id ? 'Choose a fee first' : undefined}>
+                            <Button variant="secondary" size="lg" onClick={backToList}>Cancel</Button>
+                            <Button size="lg" disabled={!bulkConfig.fee_type_id} onClick={() => setBulkStep(1)}>Next</Button>
+                        </ActionBar>
+                    </>
+                )}
+
+                {bulkStep === 1 && (
+                    <>
+                        <div className="card">
+                            <div className="card-body space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field label="First month" htmlFor="bulk-month">
+                                        <select id="bulk-month" name="start_month_idx" value={bulkConfig.start_month_idx} onChange={handleBulkChange} className="input">
+                                            {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
                                         </select>
-                                    </div>
-
-                                    <div className="mb-2 text-sm font-semibold text-slate-700 pb-2 border-b border-slate-100 px-2">
-                                        Select Target Branches
-                                    </div>
-
-                                    {Object.keys(branchesByLocation).length === 0 ? (
-                                        <EmptyState compact title="No other branches available" />
-                                    ) : (
-                                        Object.keys(branchesByLocation).map(loc => (
-                                            <div key={loc} className="mb-1">
-                                                <div className="text-sm font-semibold text-slate-900 px-3 py-2 bg-slate-50 border-b border-slate-100">{loc}</div>
-                                                <div className="py-1">
-                                                    {branchesByLocation[loc].map(b => (
-                                                        <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-brand-50 cursor-pointer transition-colors pl-6">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={copyTargets.has(String(b.id))}
-                                                                onChange={() => toggleCopyTarget(String(b.id))}
-                                                                className="w-4 h-4 accent-brand-600 rounded border-slate-300"
-                                                            />
-                                                            <span className="text-sm text-slate-700">{b.name}</span>
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-
-                                    <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center sticky bottom-0 bg-white p-1">
-                                        <span className="text-xs text-slate-500">{copyTargets.size} selected</span>
-                                        <button
-                                            onClick={handleCopy}
-                                            disabled={copying || copyTargets.size === 0 || !selectedCopyFeeTypeId}
-                                            className="btn-success btn-sm"
-                                        >
-                                            {copying ? 'Copying...' : 'Confirm Copy'}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {/* ── Single Installment Form ── */}
-                <div className="mb-6 bg-slate-50 p-6 rounded-lg border border-slate-200">
-                    <h3 className="text-base font-semibold text-slate-900 mb-4">
-                        {editingId ? 'Edit Installment' : 'Add New Installment'}
-                    </h3>
-
-                    <form onSubmit={handleSubmit}>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-
-                            <div>
-                                <label className="label">Fee Type</label>
-                                <select
-                                    name="fee_type_id"
-                                    value={formData.fee_type_id || ''}
-                                    onChange={handleInputChange}
-                                    className="input"
-                                >
-                                    <option value="">Select FeeType</option>
-                                    {feeTypes
-                                        .filter(ft => {
-                                            const cb = formData.branch || localStorage.getItem('currentBranch') || 'All';
-                                            return !ft.branch || ft.branch === 'All' || ft.branch === cb;
-                                        })
-                                        .map(ft => (
-                                            <option key={ft.id} value={ft.id}>{ft.fee_type}</option>
-                                        ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="label">Installment No *</label>
-                                <input
-                                    type="number"
-                                    name="installment_no"
-                                    value={formData.installment_no}
-                                    onChange={handleInputChange}
-                                    className="input"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="label">Title *</label>
-                                <input
-                                    type="text"
-                                    name="title"
-                                    value={formData.title}
-                                    onChange={handleInputChange}
-                                    placeholder="e.g., April Fee"
-                                    className="input"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="label">Start Date *</label>
-                                <input
-                                    type="date"
-                                    name="start_date"
-                                    value={formData.start_date}
-                                    onChange={handleInputChange}
-                                    className="input"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="label">End Date *</label>
-                                <input
-                                    type="date"
-                                    name="end_date"
-                                    value={formData.end_date}
-                                    onChange={handleInputChange}
-                                    className="input"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="label">Cut Off Date *</label>
-                                <input
-                                    type="date"
-                                    name="last_pay_date"
-                                    value={formData.last_pay_date}
-                                    onChange={handleInputChange}
-                                    className="input"
-                                    required
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                                <div className="md:col-span-3">
-                                    <label className="label">Academic Year</label>
-                                    <select
-                                        name="academic_year"
-                                        className="input"
-                                        value={formData.academic_year}
-                                        onChange={handleInputChange}
-                                    >
-                                        <option value="">Select Year</option>
-                                        {academicYearOptions.map(year => (
-                                            <option key={year} value={year}>{year}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mb-4">
-                            <label className="label">Description</label>
-                            <textarea
-                                name="description"
-                                value={formData.description}
-                                onChange={handleInputChange}
-                                rows={2}
-                                className="input"
-                                placeholder="Optional description"
-                            />
-                        </div>
-
-                        <div className="flex gap-3">
-                            <button
-                                type="submit"
-                                className="btn-primary"
-                            >
-                                {editingId ? 'Update' : 'Save'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleReset}
-                                className="btn-secondary"
-                            >
-                                Reset
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                {/* ── Bulk Generation Panel ── */}
-                <div className="mb-6 bg-brand-50 p-6 rounded-lg border border-brand-200">
-                    <div className="flex flex-wrap gap-3 justify-between items-center mb-4">
-                        <div>
-                            <h3 className="text-base font-semibold text-brand-800">Bulk Generate Installments</h3>
-                            <p className="text-sm text-brand-600 mt-0.5">Generate up to 12 installments in one click with automatic year rollover</p>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setBulkMode(!bulkMode)}
-                            className="btn-primary"
-                        >
-                            {bulkMode ? '✕ Cancel' : '+ Bulk Generate'}
-                        </button>
-                    </div>
-
-                    {bulkMode && (
-                        <div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-
-                                {/* Fee Type */}
-                                <div>
-                                    <label className="label">Fee Type *</label>
-                                    <select
-                                        name="fee_type_id"
-                                        value={bulkConfig.fee_type_id}
-                                        onChange={handleBulkChange}
-                                        className="input"
-                                    >
-                                        <option value="">Select Fee Type</option>
-                                        {feeTypes
-                                            .filter(ft => {
-                                                const cb = bulkConfig.branch || localStorage.getItem('currentBranch') || 'All';
-                                                return !ft.branch || ft.branch === 'All' || ft.branch === cb;
-                                            })
-                                            .map(ft => (
-                                                <option key={ft.id} value={ft.id}>{ft.fee_type}</option>
-                                            ))}
-                                    </select>
+                                    </Field>
+                                    <Field label="Year of the first month" htmlFor="bulk-startyear">
+                                        <input id="bulk-startyear" type="number" inputMode="numeric" name="year" value={bulkConfig.year} onChange={handleBulkChange} min={2020} max={2100} className="input" />
+                                    </Field>
                                 </div>
 
-                                {/* Starting Month */}
-                                <div>
-                                    <label className="label">Starting Month *</label>
-                                    <select
-                                        name="start_month_idx"
-                                        value={bulkConfig.start_month_idx}
-                                        onChange={handleBulkChange}
-                                        className="input"
-                                    >
-                                        {MONTHS.map((m, i) => (
-                                            <option key={m} value={i}>{m}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                {/* Starting Year */}
-                                <div>
-                                    <label className="label">Starting Year *</label>
-                                    <input
-                                        type="number"
-                                        name="year"
-                                        value={bulkConfig.year}
-                                        onChange={handleBulkChange}
-                                        min={2020}
-                                        max={2100}
-                                        className="input"
-                                    />
-                                </div>
-
-                                {/* Number of Installments */}
-                                <div className="lg:col-span-2">
-                                    <label className="label">
-                                        Number of Installments *
-                                        <span className="ml-1 text-xs text-slate-400">(max 12)</span>
-                                    </label>
+                                <Field label="How many months?" hint="Up to 12" error={bulkConfig.count > 12 ? 'You can create up to 12 at a time' : null}>
                                     <div className="flex gap-2">
                                         {[3, 6, 12].map(n => (
                                             <button
                                                 key={n}
                                                 type="button"
                                                 onClick={() => setBulkConfig(prev => ({ ...prev, count: n }))}
-                                                className={`flex-1 ${bulkConfig.count === n ? 'btn-primary' : 'btn-secondary'}`}
+                                                aria-pressed={bulkConfig.count === n}
+                                                className={`flex-1 min-h-[44px] ${bulkConfig.count === n ? 'btn-primary' : 'btn-secondary'}`}
                                             >
                                                 {n}
                                             </button>
                                         ))}
                                         <input
                                             type="number"
+                                            inputMode="numeric"
                                             name="count"
+                                            aria-label="Other number of months"
                                             value={bulkConfig.count}
                                             onChange={e => {
                                                 const val = parseInt(e.target.value);
@@ -823,149 +593,186 @@ const FeeInstallments: React.FC = () => {
                                             }}
                                             min={1}
                                             max={12}
-                                            placeholder="Custom"
-                                            className={`input w-24 ${bulkConfig.count > 12
-                                                ? 'border-red-400 bg-red-50'
-                                                : 'border-slate-300'
-                                                }`}
+                                            className="input w-20"
                                         />
                                     </div>
-                                    {bulkConfig.count > 12 && (
-                                        <p className="text-xs text-red-500 mt-1">Maximum 12 installments allowed</p>
-                                    )}
-                                </div>
+                                </Field>
 
-                                {/* Cut-off Day */}
-                                <div>
-                                    <label className="label">
-                                        Cut-off Day of Month *
-                                        <span className="ml-1 text-xs text-slate-400">(1–28, e.g. 5 = every 5th)</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        name="cutoff_day"
-                                        value={bulkConfig.cutoff_day}
-                                        onChange={handleBulkChange}
-                                        min={1}
-                                        max={28}
-                                        className="input"
-                                    />
-                                </div>
-
-                                {/* Academic Year */}
-                                <div>
-                                    <label className="label">Academic Year</label>
-                                    <select
-                                        name="academic_year"
-                                        value={bulkConfig.academic_year}
-                                        onChange={handleBulkChange}
-                                        className="input"
-                                    >
-                                        <option value="">Select Year</option>
-                                        {academicYearOptions.map(year => (
-                                            <option key={year} value={year}>{year}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Live Preview */}
-                            <BulkPreview bulkConfig={bulkConfig} MONTHS={MONTHS} />
-
-                            <div className="flex gap-3 mt-4">
-                                <button
-                                    type="button"
-                                    onClick={generateBulkInstallments}
-                                    disabled={bulkConfig.count > 12 || bulkConfig.count < 1}
-                                    className="btn-primary"
-                                >
-                                    Generate {bulkConfig.count} Installments
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setBulkMode(false)}
-                                    className="btn-secondary"
-                                >
-                                    Cancel
-                                </button>
+                                <Field label="Last day to pay each month" htmlFor="bulk-cutoff" hint="1 to 28. For example 5 means pay by the 5th of every month.">
+                                    <input id="bulk-cutoff" type="number" inputMode="numeric" name="cutoff_day" value={bulkConfig.cutoff_day} onChange={handleBulkChange} min={1} max={28} className="input" />
+                                </Field>
                             </div>
                         </div>
-                    )}
-                </div>
+                        <ActionBar note={countInvalid ? 'Choose between 1 and 12 months' : undefined}>
+                            <Button variant="secondary" size="lg" onClick={() => setBulkStep(0)}>Back</Button>
+                            <Button size="lg" disabled={countInvalid} onClick={() => setBulkStep(2)}>Next</Button>
+                        </ActionBar>
+                    </>
+                )}
 
-
-                {/* ── Installments Table ── */}
-                <h3 className="text-base font-semibold text-slate-900 mb-4">Fee Installments</h3>
-                <div className="card overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white">
-                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                            <tr>
-                                {/*<th className="px-4 py-3 text-left border-b">No.</th>*/}
-                                <th className="px-4 py-3 text-left border-b">Fee Type</th>
-                                <th className="px-4 py-3 text-left border-b">Title</th>
-                                <th className="px-4 py-3 text-left border-b">Start Date</th>
-                                <th className="px-4 py-3 text-left border-b">End Date</th>
-                                <th className="px-4 py-3 text-left border-b">Last Pay Date</th>
-                                <th className="px-4 py-3 text-left border-b">Branch</th>
-                                <th className="px-4 py-3 text-center border-b">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {installments.length === 0 ? (
-                                <tr>
-                                    <td colSpan={7}>
-                                        <EmptyState compact title="No installments added yet" />
-                                    </td>
-                                </tr>
-                            ) : (
-                                installments.map(installment => (
-                                    <tr key={installment.id} className="hover:bg-slate-50">
-                                        {/*<td className="px-4 py-3 text-sm text-slate-800 border-b border-slate-100">{installment.installment_no}</td>*/}
-                                        <td className="px-4 py-3 text-sm text-slate-600 border-b border-slate-100">{installment.fee_type_name || '-'}</td>
-                                        <td className="px-4 py-3 text-sm text-slate-800 border-b border-slate-100">
-                                            {installment.title}
-                                            {installment.is_admission && (
-                                                <span className="ml-2 badge-success">Admission</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-slate-800 border-b border-slate-100">
-                                            {new Date(installment.start_date).toLocaleDateString('en-GB')}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-slate-800 border-b border-slate-100">
-                                            {new Date(installment.end_date).toLocaleDateString('en-GB')}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-slate-800 border-b border-slate-100">
-                                            {new Date(installment.last_pay_date).toLocaleDateString('en-GB')}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-slate-600 border-b border-slate-100">{installment.branch || 'All'}</td>
-                                        <td className="px-4 py-3 text-center border-b border-slate-100">
-                                            <div className="flex justify-center gap-2">
-                                                <button
-                                                    onClick={() => handleEdit(installment)}
-                                                    className="btn-primary btn-sm"
-                                                >
-                                                    ✏️ Edit
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(installment.id!)}
-                                                    className="btn-danger btn-sm"
-                                                >
-                                                    🗑️ Delete
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-                </div>
-
+                {bulkStep === 2 && (
+                    <>
+                        <div className="card">
+                            <div className="px-5 py-1">
+                                <SummaryRow label="Fee">{bulkFeeName || '—'}</SummaryRow>
+                                <SummaryRow label="School year">{bulkConfig.academic_year || '—'}</SummaryRow>
+                                <SummaryRow label="Months">{bulkConfig.count}, from {MONTHS[bulkConfig.start_month_idx]} {bulkConfig.year}</SummaryRow>
+                                <SummaryRow label="Pay by">Day {bulkConfig.cutoff_day} of each month</SummaryRow>
+                            </div>
+                        </div>
+                        <BulkPreview bulkConfig={bulkConfig} MONTHS={MONTHS} />
+                        <ActionBar>
+                            <Button variant="secondary" size="lg" onClick={() => setBulkStep(1)}>Back</Button>
+                            <Button size="lg" loading={working} onClick={generateBulkInstallments} disabled={countInvalid || !bulkConfig.fee_type_id}>
+                                Create {bulkConfig.count} installments
+                            </Button>
+                        </ActionBar>
+                    </>
+                )}
             </div>
+        );
+    }
+
+    // ── Render: add / edit one installment ──────────────────────────────────────
+    if (showSingle) {
+        const missing = !formData.title || !formData.start_date || !formData.end_date || !formData.last_pay_date;
+        return (
+            <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-4">
+                <div>
+                    <h2 className="text-lg font-semibold text-slate-900">{editingId ? 'Edit installment' : 'Add one installment'}</h2>
+                    <Intro>One part of a fee, with the dates it covers and the last date to pay.</Intro>
+                </div>
+                <div className="card">
+                    <div className="card-body space-y-4">
+                        <Field label="Fee" htmlFor="one-fee">
+                            <select id="one-fee" name="fee_type_id" value={formData.fee_type_id || ''} onChange={handleInputChange} className="input">
+                                <option value="">Choose a fee</option>
+                                {singleFeeTypes.map(ft => <option key={ft.id} value={ft.id}>{ft.fee_type}</option>)}
+                            </select>
+                        </Field>
+                        <Field label="Name" htmlFor="one-title" required hint="For example: April fee">
+                            <input id="one-title" type="text" name="title" value={formData.title} onChange={handleInputChange} placeholder="e.g. April fee" className="input" required />
+                        </Field>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field label="From" htmlFor="one-start" required>
+                                <input id="one-start" type="date" name="start_date" value={formData.start_date} onChange={handleInputChange} className="input" required />
+                            </Field>
+                            <Field label="To" htmlFor="one-end" required>
+                                <input id="one-end" type="date" name="end_date" value={formData.end_date} onChange={handleInputChange} className="input" required />
+                            </Field>
+                            <Field label="Last date to pay" htmlFor="one-cutoff" required>
+                                <input id="one-cutoff" type="date" name="last_pay_date" value={formData.last_pay_date} onChange={handleInputChange} className="input" required />
+                            </Field>
+                            <Field label="School year" htmlFor="one-year">
+                                <select id="one-year" name="academic_year" className="input" value={formData.academic_year} onChange={handleInputChange}>
+                                    <option value="">Choose a year</option>
+                                    {academicYearOptions.map(year => <option key={year} value={year}>{year}</option>)}
+                                </select>
+                            </Field>
+                        </div>
+                        <MoreOptions>
+                            <Field label="Installment number" htmlFor="one-no" hint="Order of this installment. Filled in for you.">
+                                <input id="one-no" type="number" inputMode="numeric" name="installment_no" value={formData.installment_no} onChange={handleInputChange} className="input" required />
+                            </Field>
+                            <Field label="Note (optional)" htmlFor="one-desc">
+                                <textarea id="one-desc" name="description" value={formData.description} onChange={handleInputChange} rows={2} className="input" />
+                            </Field>
+                        </MoreOptions>
+                    </div>
+                </div>
+                <ActionBar note={missing ? 'Fill in the name and all three dates' : undefined}>
+                    <Button variant="secondary" size="lg" onClick={backToList}>Cancel</Button>
+                    <Button type="submit" size="lg" loading={working} disabled={missing}>Save installment</Button>
+                </ActionBar>
+            </form>
+        );
+    }
+
+    // ── Render: list ────────────────────────────────────────────────────────────
+    const feeNames = Array.from(new Set(installments.map(i => i.fee_type_name || '').filter(Boolean)));
+    const shown = feeFilter ? installments.filter(i => (i.fee_type_name || '') === feeFilter) : installments;
+
+    const rowActions = (inst: Installment) => (
+        <>
+            <button type="button" onClick={() => handleEdit(inst)} className="btn-soft btn-sm">
+                <Pencil className="w-4 h-4" /> Edit
+            </button>
+            <button type="button" onClick={() => handleDelete(inst.id!)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50">
+                <Trash2 className="w-4 h-4" /> Delete
+            </button>
+        </>
+    );
+
+    const columns: Column<Installment>[] = [
+        {
+            key: 'title', header: 'Installment', primary: true,
+            render: i => <span>{i.title}{i.is_admission && <span className="ml-2 badge-success">Admission</span>}</span>,
+        },
+        { key: 'fee_type_name', header: 'Fee', secondary: true, render: i => i.fee_type_name || '—' },
+        { key: 'period', header: 'Covers', render: i => `${prettyDate(i.start_date)} – ${prettyDate(i.end_date)}` },
+        { key: 'last_pay_date', header: 'Last date to pay', render: i => <span className="font-medium">{prettyDate(i.last_pay_date)}</span> },
+        { key: 'branch', header: 'Branch', render: i => i.branch || 'All' },
+        { key: 'actions', header: '', hideOnMobile: true, align: 'right', render: i => <div className="flex justify-end gap-2">{rowActions(i)}</div> },
+    ];
+
+    return (
+        <div className="max-w-6xl mx-auto space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Installments</h2>
+                    <Intro>A fee can be split into parts, like April fee and May fee. Each part has a last date to pay.</Intro>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Button size="lg" icon={<CalendarPlus className="w-5 h-5" />} onClick={() => { setBulkStep(0); setShowSingle(false); setBulkMode(true); }}>
+                        Create monthly installments
+                    </Button>
+                    <Button variant="secondary" size="lg" icon={<Plus className="w-5 h-5" />} onClick={() => { if (editingId) handleReset(); setShowSingle(true); }}>
+                        Add one
+                    </Button>
+                </div>
+            </div>
+
+            {feeNames.length > 1 && (
+                <Field label="Show installments of" htmlFor="fi-filter" className="sm:max-w-xs">
+                    <select id="fi-filter" value={feeFilter} onChange={e => setFeeFilter(e.target.value)} className="input">
+                        <option value="">All fees</option>
+                        {feeNames.map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                </Field>
+            )}
+
+            <DataList
+                columns={columns}
+                rows={shown}
+                rowKey={(i, idx) => i.id ?? idx}
+                emptyTitle="No installments yet"
+                emptyHint='Tap "Create monthly installments" to make them in one go.'
+                mobileActions={rowActions}
+            />
+
+            {isSpecificBranch && (
+                <CopyToBranches
+                    what="installments"
+                    note="Copy the installments of one fee to other branches."
+                    branchesByLocation={branchesByLocation}
+                    selected={copyTargets}
+                    onToggle={toggleCopyTarget}
+                    onCopy={handleCopy}
+                    copying={copying}
+                    open={isCopyDropdownOpen}
+                    onOpenChange={setIsCopyDropdownOpen}
+                    blockedReason={!selectedCopyFeeTypeId ? 'Choose which fee to copy' : undefined}
+                >
+                    <Field label="Which fee?" htmlFor="fi-copy-fee">
+                        <select id="fi-copy-fee" className="input" value={selectedCopyFeeTypeId} onChange={e => setSelectedCopyFeeTypeId(e.target.value)}>
+                            <option value="">Choose a fee</option>
+                            {copyableFeeTypes.map(ft => <option key={ft.id} value={ft.id}>{ft.fee_type} ({ft.type})</option>)}
+                        </select>
+                    </Field>
+                </CopyToBranches>
+            )}
         </div>
     );
 };
 
-export default FeeInstallments; 
+export default FeeInstallments;

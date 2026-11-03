@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Page } from '../App';
-import { notify, confirmDialog } from './ui/feedback';
-import { EmptyState, ErrorState, LoadingState } from './ui';
+import { Plus, Search } from 'lucide-react';
+import { notify } from './ui/feedback';
+import { ActionBar, Button, EmptyState, ErrorState, Field, LoadingState, Steps } from './ui';
+import { CheckRow, SuccessPanel, SummaryRow, rupees } from './fee-setup/shared';
+
+const STEP_TITLES = ['Choose class', 'Choose students', 'Choose fees', 'Check and give'];
 
 interface Student {
     student_id: number;
@@ -51,6 +55,10 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
     const [assigning, setAssigning] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [restrictedFeeTypeIds, setRestrictedFeeTypeIds] = useState<Set<number>>(new Set());
+
+    // Screen state (presentation only)
+    const [step, setStep] = useState(0);
+    const [done, setDone] = useState<{ assigned: number; skipped: number; students: number } | null>(null);
 
     useEffect(() => {
         const globalBranch = localStorage.getItem('currentBranch');
@@ -220,11 +228,11 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
 
     const handleAssignFees = async () => {
         if (selectedStudentIds.length === 0) {
-            notify('Please select at least one student');
+            notify.warning('Choose at least one student.');
             return;
         }
         if (selectedFees.length === 0) {
-            notify('Please select at least one fee type');
+            notify.warning('Choose at least one fee.');
             return;
         }
 
@@ -234,20 +242,17 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
                 const ft = feeTypes.find(t => t.id === f.fee_type_id);
                 return ft ? ft.fee_type : 'Unknown Fee';
             }).join(', ');
-            notify(`The following fees are already assigned in the Class Fee Structure and cannot be assigned again: ${feeNames}`);
+            notify.warning(`These fees are already part of the class fees, so they cannot be given again: ${feeNames}`);
             return;
         }
 
         const invalidFees = selectedFees.filter(f => f.amount <= 0);
         if (invalidFees.length > 0) {
-            notify('Please enter valid amounts for all selected fees');
+            notify.warning('Type an amount for every fee you chose.');
             return;
         }
 
-        if (!await confirmDialog(`Assign selected fees to ${selectedStudentIds.length} students?`)) {
-            return;
-        }
-
+        // The "Check and give" step is the confirmation.
         setAssigning(true);
         try {
             const payload = {
@@ -260,14 +265,15 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
             };
 
             const response = await api.post('/fees/assign-special', payload);
-            notify(`Success! ${response.data.assigned_count} fees assigned. ${response.data.skipped_count} skipped (duplicates).`);
+            notify.success(`${response.data.assigned_count} fees given. ${response.data.skipped_count} skipped (already had them).`);
+            setDone({ assigned: response.data.assigned_count, skipped: response.data.skipped_count, students: selectedStudentIds.length });
 
             setSelectedFees([]);
             setSelectedStudentIds([]);
 
         } catch (error: any) {
             console.error('Error assigning fees:', error);
-            notify(`Error: ${error.response?.data?.error || 'Failed to assign fees'}`);
+            notify.error(`Could not give the fees: ${error.response?.data?.error || 'Failed to assign fees'}`);
         } finally {
             setAssigning(false);
         }
@@ -275,169 +281,210 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
 
     if (error) {
         return (
-            <div className="p-6">
-                <div className="card">
-                    <ErrorState title="Error" message={error} onRetry={() => window.location.reload()} />
-                </div>
+            <div className="card">
+                <ErrorState title="Something went wrong" message={error} onRetry={() => window.location.reload()} />
             </div>
         );
     }
 
-    return (
-        <div className="p-6 min-h-full">
-            <h2 className="text-xl font-semibold tracking-tight mb-6 text-brand-600">Assign Special Fee Type</h2>
+    const feeName = (id: number) => {
+        const ft = feeTypes.find(t => t.id === id);
+        return ft ? (ft.display_name || ft.fee_type) : 'Fee';
+    };
+    const feeTotal = selectedFees.reduce((s, f) => s + (f.amount || 0), 0);
+    const missingAmount = selectedFees.some(f => f.amount <= 0);
+    const classText = selectedClass ? `Class ${selectedClass}${selectedSection ? ` - ${selectedSection}` : ''}` : '';
 
-            <div className="card p-4 mb-6 flex flex-wrap gap-4 items-end">
-                <div>
-                    <label className="label">Class</label>
-                    <select
-                        className="input w-40"
-                        value={selectedClass}
-                        onChange={(e) => setSelectedClass(e.target.value)}
-                    >
-                        <option value="">Select Class</option>
-                        {classes.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="label">Section</label>
-                    <select
-                        className="input w-40"
-                        value={selectedSection}
-                        onChange={(e) => setSelectedSection(e.target.value)}
-                    >
-                        <option value="">Select Section</option>
-                        {sections.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                </div>
+    /* ------------------------------------------------------------ Done */
+    if (done) {
+        return (
+            <div className="max-w-3xl mx-auto space-y-4">
+                <SuccessPanel title="Fees given">
+                    {done.assigned} fee{done.assigned === 1 ? '' : 's'} added for {done.students} student{done.students === 1 ? '' : 's'} of {classText}.
+                    {done.skipped > 0 && <> {done.skipped} skipped because the student already had it.</>}
+                </SuccessPanel>
+                <ActionBar>
+                    <Button variant="secondary" size="lg" onClick={() => { setDone(null); setStep(1); }}>Give to more students</Button>
+                    <Button size="lg" onClick={() => { setDone(null); setSelectedClass(''); setSelectedSection(''); setStep(0); }}>Choose another class</Button>
+                </ActionBar>
             </div>
+        );
+    }
 
-            <div className="flex flex-col lg:flex-row gap-6">
-                <div className="card w-full lg:w-1/3 p-4 h-fit">
-                    <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
-                        <h3 className="text-base font-semibold text-slate-900">Special Fee Type</h3>
-                        <button
-                            onClick={() => navigateTo && navigateTo('fee-type')}
-                            className="btn-success btn-sm"
-                        >
-                            + Add Special Fee Type
-                        </button>
-                    </div>
-
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between font-medium text-slate-500 text-sm pb-2 border-b border-slate-100">
-                            <span>Fee Type</span>
-                            <span>Amount</span>
+    /* ------------------------------------------------------------ Step 1: class */
+    if (step === 0) {
+        return (
+            <div className="max-w-3xl mx-auto space-y-4">
+                <Steps steps={STEP_TITLES} current={0} />
+                <div className="card">
+                    <div className="card-body space-y-4">
+                        <p className="text-sm text-slate-600">Give an extra fee (like Bus fee or Hostel fee) to some students. First choose their class.</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field label="Class" htmlFor="asf-class" required>
+                                <select id="asf-class" className="input" value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(''); }}>
+                                    <option value="">Choose a class</option>
+                                    {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="Section" htmlFor="asf-section" required>
+                                <select id="asf-section" className="input" value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} disabled={!selectedClass}>
+                                    <option value="">Choose a section</option>
+                                    {sections.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </Field>
                         </div>
-
-                        {feeTypes.length === 0 ? (
-                            <EmptyState compact title="No special fee types found." />
-                        ) : (
-                            feeTypes.map(ft => {
-                                const isSelected = selectedFees.some(f => f.fee_type_id === ft.id);
-                                const selectedFee = selectedFees.find(f => f.fee_type_id === ft.id);
-
-                                return (
-                                    <div key={ft.id} className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="checkbox"
-                                                checked={isSelected}
-                                                onChange={(e) => handleFeeSelection(ft.id, e.target.checked)}
-                                                className="w-4 h-4 text-brand-600"
-                                            />
-                                            <span>{ft.display_name || ft.fee_type}</span>
-                                        </div>
-                                        {isSelected && (
-                                            <input
-                                                type="number"
-                                                className="input w-24 text-right"
-                                                placeholder="0"
-                                                value={selectedFee?.amount || ''}
-                                                onChange={(e) => handleFeeAmountChange(ft.id, e.target.value)}
-                                            />
-                                        )}
-                                    </div>
-                                );
-                            })
-                        )}
-                    </div>
-
-                    <div className="mt-6 flex justify-end">
-                        <button
-                            className="btn-success"
-                            onClick={handleAssignFees}
-                            disabled={selectedStudentIds.length === 0 || selectedFees.length === 0 || assigning}
-                        >
-                            {assigning ? 'Assigning...' : 'Assign >'}
-                        </button>
                     </div>
                 </div>
+                <ActionBar note={!selectedClass ? 'Choose a class first' : !selectedSection ? 'Choose a section' : undefined}>
+                    <Button size="lg" disabled={!selectedClass || !selectedSection} onClick={() => setStep(1)}>Show students</Button>
+                </ActionBar>
+            </div>
+        );
+    }
 
-                <div className="card w-full lg:w-2/3 p-4">
-                    <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
-                        <h3 className="text-base font-semibold text-slate-900">Student List</h3>
-                        <input
-                            type="text"
-                            placeholder="Search"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="input w-auto"
-                        />
+    /* ------------------------------------------------------------ Step 2: students */
+    if (step === 1) {
+        const allShownSelected = filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.includes(s.student_id));
+        return (
+            <div className="max-w-3xl mx-auto space-y-4">
+                <Steps steps={STEP_TITLES} current={1} onJump={setStep} />
+                <p className="text-sm text-slate-600">{classText} · Tick the students who should pay the extra fee.</p>
+
+                <div className="relative">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                        type="search"
+                        placeholder="Search by name or admission number"
+                        aria-label="Search students"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="input pl-9"
+                    />
+                </div>
+
+                {loading ? (
+                    <LoadingState label="Loading students…" />
+                ) : filteredStudents.length === 0 ? (
+                    <div className="card"><EmptyState compact title={students.length === 0 ? 'No students in this section' : 'No students match your search'} /></div>
+                ) : (
+                    <div className="space-y-2">
+                        <CheckRow
+                            checked={allShownSelected}
+                            onChange={(checked) => handleSelectAllStudents({ target: { checked } } as React.ChangeEvent<HTMLInputElement>)}
+                            className="bg-slate-50"
+                        >
+                            <span className="font-semibold">Select all {filteredStudents.length} shown</span>
+                        </CheckRow>
+                        {filteredStudents.map(student => (
+                            <CheckRow
+                                key={student.student_id}
+                                checked={selectedStudentIds.includes(student.student_id)}
+                                onChange={() => handleSelectStudent(student.student_id)}
+                                hint={`Admission number ${student.admission_no}${student.fatherMobile ? ` · Father ${student.fatherMobile}` : ''}`}
+                            >
+                                <span className="font-medium">{student.name}</span>
+                            </CheckRow>
+                        ))}
                     </div>
+                )}
 
-                    <div className="overflow-x-auto rounded-lg border border-slate-200">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                <tr className="border-b border-slate-200">
-                                    <th className="p-2 w-10">
-                                        <input
-                                            type="checkbox"
-                                            onChange={handleSelectAllStudents}
-                                            checked={filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.includes(s.student_id))}
-                                        />
-                                    </th>
-                                    <th className="p-2">Admission No.</th>
-                                    <th className="p-2">Name</th>
-                                    <th className="p-2">Class</th>
-                                    <th className="p-2">Father Mobile</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr>
-                                        <td colSpan={5}>
-                                            <LoadingState label="Loading students..." />
-                                        </td>
-                                    </tr>
-                                ) : filteredStudents.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5}>
-                                            <EmptyState compact title="No students match the search criteria." />
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredStudents.map(student => (
-                                        <tr key={student.student_id} className="border-b border-slate-100 hover:bg-slate-50">
-                                            <td className="p-2">
+                <ActionBar note={selectedStudentIds.length === 0 ? 'Choose at least one student' : `${selectedStudentIds.length} student${selectedStudentIds.length === 1 ? '' : 's'} chosen`}>
+                    <Button variant="secondary" size="lg" onClick={() => setStep(0)}>Back</Button>
+                    <Button size="lg" disabled={selectedStudentIds.length === 0} onClick={() => setStep(2)}>Next</Button>
+                </ActionBar>
+            </div>
+        );
+    }
+
+    /* ------------------------------------------------------------ Step 3: fees */
+    if (step === 2) {
+        return (
+            <div className="max-w-3xl mx-auto space-y-4">
+                <Steps steps={STEP_TITLES} current={2} onJump={setStep} />
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <p className="text-sm text-slate-600">Tick each fee and type how much each student pays.</p>
+                    {navigateTo && (
+                        <button type="button" onClick={() => navigateTo('fee-type')} className="btn-ghost btn-sm text-brand-700 self-start">
+                            <Plus className="w-4 h-4" /> Add a new special fee type
+                        </button>
+                    )}
+                </div>
+
+                {feeTypes.length === 0 ? (
+                    <div className="card"><EmptyState compact title="No special fees yet" description='Add a fee type with "Only some students (special)" first.' /></div>
+                ) : (
+                    <div className="space-y-2">
+                        {feeTypes.map(ft => {
+                            const isSelected = selectedFees.some(f => f.fee_type_id === ft.id);
+                            const selectedFee = selectedFees.find(f => f.fee_type_id === ft.id);
+                            const inClassFees = restrictedFeeTypeIds.has(ft.id);
+                            return (
+                                <div key={ft.id} className="space-y-2">
+                                    <CheckRow
+                                        checked={isSelected}
+                                        onChange={(checked) => handleFeeSelection(ft.id, checked)}
+                                        hint={inClassFees ? 'Already part of this class’s fees, so it cannot be given again' : undefined}
+                                    >
+                                        {ft.display_name || ft.fee_type}
+                                    </CheckRow>
+                                    {isSelected && (
+                                        <div className="pl-11 pr-1">
+                                            <Field label="Amount each student pays (₹)" htmlFor={`asf-amt-${ft.id}`}>
                                                 <input
-                                                    type="checkbox"
-                                                    checked={selectedStudentIds.includes(student.student_id)}
-                                                    onChange={() => handleSelectStudent(student.student_id)}
+                                                    id={`asf-amt-${ft.id}`}
+                                                    type="number"
+                                                    inputMode="decimal"
+                                                    className="input sm:max-w-[12rem]"
+                                                    placeholder="0"
+                                                    value={selectedFee?.amount || ''}
+                                                    onChange={(e) => handleFeeAmountChange(ft.id, e.target.value)}
                                                 />
-                                            </td>
-                                            <td className="p-2">{student.admission_no}</td>
-                                            <td className="p-2 font-medium">{student.name}</td>
-                                            <td className="p-2">{student.class} {student.section}</td>
-                                            <td className="p-2">{student.fatherMobile}</td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                            </Field>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
+                )}
+
+                <ActionBar note={selectedFees.length === 0 ? 'Choose at least one fee' : missingAmount ? 'Type an amount for every fee you chose' : `Each student pays ${rupees(feeTotal)} more`}>
+                    <Button variant="secondary" size="lg" onClick={() => setStep(1)}>Back</Button>
+                    <Button size="lg" disabled={selectedFees.length === 0 || missingAmount} onClick={() => setStep(3)}>Next</Button>
+                </ActionBar>
+            </div>
+        );
+    }
+
+    /* ------------------------------------------------------------ Step 4: review */
+    return (
+        <div className="max-w-3xl mx-auto space-y-4">
+            <Steps steps={STEP_TITLES} current={3} onJump={setStep} />
+            <div className="card">
+                <div className="card-body">
+                    <p className="text-base text-slate-900">
+                        You are adding <strong>{rupees(feeTotal)}</strong> in fees to <strong>{selectedStudentIds.length} student{selectedStudentIds.length === 1 ? '' : 's'}</strong> of {classText} for {academicYear}.
+                    </p>
+                    <div className="mt-3">
+                        {selectedFees.map(f => (
+                            <SummaryRow key={f.fee_type_id} label={feeName(f.fee_type_id)}>{rupees(f.amount)} each</SummaryRow>
+                        ))}
+                        <SummaryRow label="Students" strong>{selectedStudentIds.length}</SummaryRow>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-500">Students who already have one of these fees are skipped for that fee.</p>
                 </div>
             </div>
+            <ActionBar>
+                <Button variant="secondary" size="lg" onClick={() => setStep(2)}>Back</Button>
+                <Button
+                    size="lg"
+                    onClick={handleAssignFees}
+                    loading={assigning}
+                    disabled={selectedStudentIds.length === 0 || selectedFees.length === 0}
+                >
+                    Give fees to {selectedStudentIds.length} student{selectedStudentIds.length === 1 ? '' : 's'}
+                </Button>
+            </ActionBar>
         </div>
     );
 };

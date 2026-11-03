@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { PencilIcon, TrashIcon, RefreshIcon } from './icons';
+import { ChevronRight, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { notify, confirmDialog } from './ui/feedback';
-import { EmptyState } from './ui';
+import { ActionBar, Button, EmptyState, Field, Steps } from './ui';
+import { CheckRow, Sheet, rupees } from './fee-setup/shared';
+
+const STEP_TITLES = ['Find student', 'Change fees'];
 
 interface FeeInstallment {
     sr: number;
@@ -56,6 +59,7 @@ const UpdateStudentFeeStructure: React.FC = () => {
 
 
     const [showAssignStandardModal, setShowAssignStandardModal] = useState(false);
+    const [pickedStudent, setPickedStudent] = useState<Student | null>(null);
 
     // No need to set branch state, we read from localStorage
 
@@ -139,18 +143,18 @@ const UpdateStudentFeeStructure: React.FC = () => {
             });
             fetchInstallments();
             setEditingFee(null);
-            notify('Fee updated successfully');
+            notify.success('Fee changed.');
         } catch (error: any) {
             notify(error.response?.data?.error || 'Failed to update fee');
         }
     };
 
     const handleDeleteFee = async (id: number) => {
-        if (!await confirmDialog('Are you sure you want to delete this fee?')) return;
+        if (!await confirmDialog('Remove this fee from the student? This cannot be undone.', { tone: 'danger', confirmText: 'Remove' })) return;
         try {
             await api.delete(`/fees/student-fee/${id}`);
             fetchInstallments();
-            notify('Fee deleted successfully');
+            notify.success('Fee removed.');
         } catch (error: any) {
             notify(error.response?.data?.error || 'Failed to delete fee');
         }
@@ -167,7 +171,7 @@ const UpdateStudentFeeStructure: React.FC = () => {
             });
             fetchInstallments();
             setShowAddModal(false);
-            notify('Fee added successfully');
+            notify.success('Fee added.');
         } catch (error: any) {
             notify(error.response?.data?.error || 'Failed to add fee');
         }
@@ -184,111 +188,18 @@ const UpdateStudentFeeStructure: React.FC = () => {
             ));
             fetchInstallments();
             setShowAssignStandardModal(false);
-            notify('Standard fees assigned successfully');
+            notify.success('Class fees added for this student.');
         } catch (error: any) {
             notify(error.response?.data?.error || 'Failed to assign standard fees');
         }
     };
 
-    const selectedStudent = students.find(s => s.student_id === selectedStudentId);
+    const selectedStudent = pickedStudent || students.find(s => s.student_id === selectedStudentId);
+    const branchLabel = computeGlobalBranch();
 
-    return (
-        <div className="container-fluid mx-auto p-4 min-h-full">
-            {/* Header */}
-            <div className="bg-brand-50 border-l-4 border-brand-500 p-4 mb-6 flex flex-wrap gap-3 justify-between items-center rounded-r-lg shadow-sm">
-                <div className="flex items-center">
-                    <h2 className="text-xl font-semibold text-slate-900 tracking-tight flex items-center gap-2">
-                        <span>📋</span> Update student fee structure
-                    </h2>
-                </div>
-
-                {/* Filters */}
-                <div className="flex flex-wrap gap-2 items-center">
-                    {(() => {
-                        const displayBranch = computeGlobalBranch();
-
-                        return (
-                            <input
-                                type="text"
-                                value={displayBranch}
-                                readOnly
-                                className="input w-32"
-                                title="Current Branch"
-                            />
-                        );
-                    })()}
-                    <input
-                        type="text"
-                        placeholder="Search Name/AdmNo/EnrollmentNo"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        className="input w-40"
-                    />
-                    <select
-                        value={selectedClass}
-                        onChange={e => setSelectedClass(e.target.value)}
-                        className="input w-24"
-                    >
-                        <option value="">Class</option>
-                        {classes.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    <select
-                        value={selectedStudentId || ''}
-                        onChange={e => setSelectedStudentId(Number(e.target.value) || null)}
-                        className="input w-64"
-                    >
-                        <option value="">Select Student</option>
-                        {students.map(s => (
-                            <option key={s.student_id} value={s.student_id}>
-                                {s.name} ({s.admNo})
-                            </option>
-                        ))}
-                    </select>
-
-
-                </div>
-            </div>
-
-            {/* Content */}
-            {selectedStudentId ? (
-                <div>
-                    <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
-                        <h3 className="text-base font-semibold text-slate-900">
-                            Fee Installments for <span className="text-brand-600 font-bold">{selectedStudent?.name}</span>
-                        </h3>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setShowAssignStandardModal(true)}
-                                className="btn-success btn-sm"
-                            >
-                                <RefreshIcon className="w-4 h-4" />
-                                Assign Standard Fee
-                            </button>
-                        </div>
-                    </div>
-
-                    {installments.length === 0 ? (
-                        <div className="card"><EmptyState title="No installments found for this student." /></div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {installments.map((inst) => (
-                                <InstallmentCard
-                                    key={inst.sr}
-                                    installment={inst}
-                                    onEdit={() => setEditingFee(inst)}
-                                    onDelete={() => handleDeleteFee(inst.student_fee_id)}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </div>
-            ) : (
-                <div className="card">
-                    <EmptyState title="Please select a student to view and update fee structure." />
-                </div>
-            )}
-
-            {/* Edit Modal */}
+    const modals = (
+        <>
+            {/* Edit */}
             {editingFee && (
                 <EditFeeModal
                     fee={editingFee}
@@ -297,7 +208,7 @@ const UpdateStudentFeeStructure: React.FC = () => {
                 />
             )}
 
-            {/* Add Modal */}
+            {/* Add (kept as before) */}
             {showAddModal && (
                 <AddFeeModal
                     feeTypes={feeTypes}
@@ -306,7 +217,7 @@ const UpdateStudentFeeStructure: React.FC = () => {
                 />
             )}
 
-            {/* Assign Standard Fee Modal */}
+            {/* Assign standard fees */}
             {showAssignStandardModal && (
                 <AssignStandardFeeModal
                     feeTypes={feeTypes}
@@ -314,6 +225,124 @@ const UpdateStudentFeeStructure: React.FC = () => {
                     onSave={handleAssignStandardFee}
                 />
             )}
+        </>
+    );
+
+    /* ------------------------------------------------------------ Step 1: find student */
+    if (!selectedStudentId) {
+        return (
+            <div className="max-w-3xl mx-auto space-y-4">
+                <Steps steps={STEP_TITLES} current={0} />
+                <div className="card">
+                    <div className="card-body space-y-4">
+                        <p className="text-sm text-slate-600">
+                            Change, remove or add fees for one student. Branch: <strong>{branchLabel === 'All' || branchLabel === 'All Branches' ? 'All branches' : branchLabel}</strong>
+                        </p>
+                        <div className="relative">
+                            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <input
+                                type="search"
+                                placeholder="Name, admission number or enrolment number"
+                                aria-label="Search student"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="input pl-9"
+                                autoFocus
+                            />
+                        </div>
+                        <Field label="Class (optional)" htmlFor="usfs-class" className="sm:max-w-xs">
+                            <select id="usfs-class" value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="input">
+                                <option value="">All classes</option>
+                                {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </Field>
+                    </div>
+                </div>
+
+                {!selectedClass && !searchTerm ? (
+                    <div className="card"><EmptyState compact title="Search for a student" description="Type a name or number, or choose a class." /></div>
+                ) : students.length === 0 ? (
+                    <div className="card"><EmptyState compact title="No students found" description="Try another name or class." /></div>
+                ) : (
+                    <ul className="space-y-2">
+                        {students.map(s => (
+                            <li key={s.student_id}>
+                                <button
+                                    type="button"
+                                    onClick={() => { setPickedStudent(s); setSelectedStudentId(s.student_id); }}
+                                    className="w-full flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 min-h-[56px] text-left hover:bg-slate-50 transition-colors"
+                                >
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block text-[15px] font-semibold text-slate-900 break-words">{s.name}</span>
+                                        <span className="block text-sm text-slate-500">
+                                            Admission number {s.admNo}{s.class ? ` · Class ${s.class}${s.section ? ` - ${s.section}` : ''}` : ''}
+                                        </span>
+                                    </span>
+                                    <ChevronRight className="w-5 h-5 text-slate-300 flex-shrink-0" />
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                {modals}
+            </div>
+        );
+    }
+
+    /* ------------------------------------------------------------ Step 2: change fees */
+    const totals = installments.reduce(
+        (t, i) => ({ fee: t.fee + (Number(i.payable) || 0), disc: t.disc + (Number(i.concession) || 0), paid: t.paid + (Number(i.paidAmount) || 0) }),
+        { fee: 0, disc: 0, paid: 0 },
+    );
+
+    return (
+        <div className="max-w-5xl mx-auto space-y-4">
+            <Steps steps={STEP_TITLES} current={1} onJump={() => { setSelectedStudentId(null); setPickedStudent(null); }} />
+
+            <div className="card">
+                <div className="card-body flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="text-lg font-semibold text-slate-900 break-words">{selectedStudent?.name || 'Student'}</p>
+                        {selectedStudent && (
+                            <p className="text-sm text-slate-500">
+                                Admission number {selectedStudent.admNo}{selectedStudent.class ? ` · Class ${selectedStudent.class}${selectedStudent.section ? ` - ${selectedStudent.section}` : ''}` : ''}
+                            </p>
+                        )}
+                        {installments.length > 0 && (
+                            <p className="mt-1 text-sm text-slate-700">
+                                Fees {rupees(totals.fee)} · Discount {rupees(totals.disc)} · Paid {rupees(totals.paid)}
+                            </p>
+                        )}
+                    </div>
+                    <button onClick={() => setShowAssignStandardModal(true)} className="btn-soft min-h-[44px]">
+                        <Plus className="w-4 h-4" />
+                        Add class fees
+                    </button>
+                </div>
+            </div>
+
+            {installments.length === 0 ? (
+                <div className="card"><EmptyState title="This student has no fees yet" description='Tap "Add class fees" to give the standard fees of the class.' /></div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {installments.map((inst) => (
+                        <InstallmentCard
+                            key={inst.sr}
+                            installment={inst}
+                            onEdit={() => setEditingFee(inst)}
+                            onDelete={() => handleDeleteFee(inst.student_fee_id)}
+                        />
+                    ))}
+                </div>
+            )}
+
+            <ActionBar>
+                <Button variant="secondary" size="lg" onClick={() => { setSelectedStudentId(null); setPickedStudent(null); }}>
+                    Choose another student
+                </Button>
+            </ActionBar>
+
+            {modals}
         </div>
     );
 };
@@ -327,63 +356,41 @@ const InstallmentCard: React.FC<{
 }> = ({ installment, onEdit, onDelete }) => {
     const isPaid = installment.status === 'Paid';
     const isPartial = installment.status === 'Partial';
-
-    // Status Badge Color
-    const badgeColor = isPaid
-        ? 'badge-success'
-        : isPartial
-            ? 'badge-warning'
-            : 'badge-warning'; // Image shows orange for Unpaid too
-
-    // Card Header Color
-    const headerColor = isPaid ? 'bg-emerald-50' : 'bg-amber-50';
+    const badge = isPaid ? 'badge-success' : isPartial ? 'badge-warning' : 'badge-danger';
+    const statusText = isPaid ? 'Paid' : isPartial ? 'Partly paid' : installment.status === 'Unpaid' || !installment.status ? 'Not paid' : installment.status;
 
     return (
         <div className="card overflow-hidden">
-            <div className={`px-4 py-2 flex justify-between items-center ${headerColor}`}>
-                <span className="font-semibold text-slate-700 text-sm">{installment.title}</span>
-                <span className={badgeColor}>{installment.status}</span>
+            <div className="px-4 py-2.5 flex justify-between items-center gap-2 border-b border-slate-100 bg-slate-50">
+                <span className="font-semibold text-slate-900 text-[15px] break-words min-w-0">{installment.title}</span>
+                <span className={badge}>{statusText}</span>
             </div>
-            <div className="p-4">
-                <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium text-slate-600">Tuition Fee</span>
-                    <span className="text-sm font-bold text-slate-800">{installment.payable}</span>
+            <div className="px-4 py-3 text-sm space-y-1">
+                <div className="flex justify-between"><span className="text-slate-600">Fee</span><span className="text-slate-900">{rupees(installment.payable)}</span></div>
+                {installment.concession > 0 && (
+                    <div className="flex justify-between"><span className="text-slate-600">Discount</span><span className="text-emerald-700">−{rupees(installment.concession)}</span></div>
+                )}
+                <div className="flex justify-between border-t border-slate-100 pt-1.5 mt-1.5">
+                    <span className="font-medium text-slate-700">To pay</span>
+                    <span className="font-semibold text-slate-900">{rupees(installment.payable - installment.concession)}</span>
                 </div>
-
-                {/* Calculation view matching screenshot: 3500 - 250 = 3250 */}
-                <div className="text-xs text-slate-500 text-right mb-2">
-                    {installment.payable} - {installment.concession} = {installment.payable - installment.concession}
-                </div>
-
-                <div className="border-t border-slate-100 pt-2 flex justify-between items-center">
-                    <span className="text-xs text-slate-400">Total</span>
-                    <span className="font-bold text-slate-800">
-                        ₹ {installment.payable - installment.concession}
-                    </span>
-                </div>
-
-                {/* Actions */}
-                {!isPaid && (
-                    <div className="mt-3 flex justify-end gap-2">
-                        <button
-                            onClick={onEdit}
-                            className="btn-soft btn-sm"
-                            title="Edit"
-                        >
-                            <PencilIcon className="w-4 h-4" />
-                        </button>
-                        {installment.paidAmount === 0 && (
-                            <button
-                                onClick={onDelete}
-                                className="btn btn-sm bg-red-50 text-red-600 hover:bg-red-100"
-                                title="Delete"
-                            >
-                                <TrashIcon className="w-4 h-4" />
-                            </button>
-                        )}
-                    </div>
+                {installment.paidAmount > 0 && (
+                    <div className="flex justify-between"><span className="text-slate-600">Paid</span><span className="text-slate-900">{rupees(installment.paidAmount)}</span></div>
                 )}
             </div>
+
+            {!isPaid && (
+                <div className="px-4 pb-3 flex gap-2">
+                    <button onClick={onEdit} className="btn-soft btn-sm flex-1 sm:flex-none">
+                        <Pencil className="w-4 h-4" /> Change
+                    </button>
+                    {installment.paidAmount === 0 && (
+                        <button onClick={onDelete} className="btn-ghost btn-sm text-red-600 hover:bg-red-50 flex-1 sm:flex-none">
+                            <Trash2 className="w-4 h-4" /> Remove
+                        </button>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
@@ -397,43 +404,43 @@ const EditFeeModal: React.FC<{
     const [concession, setConcession] = useState(fee.concession);
 
     return (
-        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
-            <div className="card shadow-pop p-6 w-full max-w-sm mx-4">
-                <h3 className="text-base font-semibold text-slate-900 mb-4">Edit Fee: {fee.title}</h3>
-
-                <div className="mb-4">
-                    <label className="label">Total Amount</label>
-                    <input
-                        type="number"
-                        value={total}
-                        onChange={e => setTotal(parseFloat(e.target.value) || 0)}
-                        className="input"
-                        disabled={fee.paidAmount > 0} // Can't edit total if partially paid usually
-                    />
-                    {fee.paidAmount > 0 && <p className="text-xs text-red-500 mt-1">Cannot change total amount for partially paid fees.</p>}
-                </div>
-
-                <div className="mb-6">
-                    <label className="label">Concession</label>
-                    <input
-                        type="number"
-                        value={concession}
-                        onChange={e => setConcession(parseFloat(e.target.value) || 0)}
-                        className="input"
-                    />
-                </div>
-
-                <div className="flex justify-end gap-3">
-                    <button onClick={onClose} className="btn-secondary">Cancel</button>
-                    <button
-                        onClick={() => onSave(fee.student_fee_id, total, concession)}
-                        className="btn-primary"
-                    >
-                        Save
-                    </button>
-                </div>
-            </div>
-        </div>
+        <Sheet
+            title={`Change ${fee.title}`}
+            onClose={onClose}
+            footer={
+                <>
+                    <button onClick={onClose} className="btn-secondary btn-lg">Cancel</button>
+                    <button onClick={() => onSave(fee.student_fee_id, total, concession)} className="btn-primary btn-lg">Save changes</button>
+                </>
+            }
+        >
+            <Field
+                label="Fee amount (₹)"
+                htmlFor="usfs-edit-total"
+                hint={fee.paidAmount > 0 ? 'Part of this fee is paid, so the amount cannot be changed.' : undefined}
+            >
+                <input
+                    id="usfs-edit-total"
+                    type="number"
+                    inputMode="decimal"
+                    value={total}
+                    onChange={e => setTotal(parseFloat(e.target.value) || 0)}
+                    className="input"
+                    disabled={fee.paidAmount > 0} // Can't edit total if partially paid usually
+                />
+            </Field>
+            <Field label="Discount (₹)" htmlFor="usfs-edit-disc">
+                <input
+                    id="usfs-edit-disc"
+                    type="number"
+                    inputMode="decimal"
+                    value={concession}
+                    onChange={e => setConcession(parseFloat(e.target.value) || 0)}
+                    className="input"
+                />
+            </Field>
+            <p className="text-sm text-slate-600">To pay after this change: <strong>{rupees(total - concession)}</strong></p>
+        </Sheet>
     );
 };
 
@@ -450,55 +457,37 @@ const AddFeeModal: React.FC<{
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December", "One-Time"];
 
     return (
-        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
-            <div className="card shadow-pop p-6 w-full max-w-sm mx-4">
-                <h3 className="text-base font-semibold text-slate-900 mb-4">Add Student Fee</h3>
-
-                <div className="mb-4">
-                    <label className="label">Fee Type</label>
-                    <select
-                        value={feeTypeId}
-                        onChange={e => setFeeTypeId(Number(e.target.value))}
-                        className="input"
-                    >
-                        <option value="">Select Fee Type</option>
-                        {feeTypes.map(ft => <option key={ft.id} value={ft.id}>{ft.fee_type}</option>)}
-                    </select>
-                </div>
-
-                <div className="mb-4">
-                    <label className="label">Month / Label</label>
-                    <select
-                        value={month}
-                        onChange={e => setMonth(e.target.value)}
-                        className="input"
-                    >
-                        {months.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                </div>
-
-                <div className="mb-6">
-                    <label className="label">Amount</label>
-                    <input
-                        type="number"
-                        value={amount}
-                        onChange={e => setAmount(parseFloat(e.target.value))}
-                        className="input"
-                    />
-                </div>
-
-                <div className="flex justify-end gap-3">
-                    <button onClick={onClose} className="btn-secondary">Cancel</button>
+        <Sheet
+            title="Add a fee"
+            onClose={onClose}
+            footer={
+                <>
+                    <button onClick={onClose} className="btn-secondary btn-lg">Cancel</button>
                     <button
                         onClick={() => feeTypeId && amount && onSave(feeTypeId as number, amount as number, month)}
-                        className="btn-success"
+                        className="btn-primary btn-lg"
                         disabled={!feeTypeId || !amount}
                     >
-                        Add
+                        Add fee
                     </button>
-                </div>
-            </div>
-        </div>
+                </>
+            }
+        >
+            <Field label="Fee" htmlFor="usfs-add-type">
+                <select id="usfs-add-type" value={feeTypeId} onChange={e => setFeeTypeId(Number(e.target.value))} className="input">
+                    <option value="">Choose a fee</option>
+                    {feeTypes.map(ft => <option key={ft.id} value={ft.id}>{ft.fee_type}</option>)}
+                </select>
+            </Field>
+            <Field label="Month" htmlFor="usfs-add-month">
+                <select id="usfs-add-month" value={month} onChange={e => setMonth(e.target.value)} className="input">
+                    {months.map(m => <option key={m} value={m}>{m === 'One-Time' ? 'One time' : m}</option>)}
+                </select>
+            </Field>
+            <Field label="Amount (₹)" htmlFor="usfs-add-amt">
+                <input id="usfs-add-amt" type="number" inputMode="decimal" value={amount} onChange={e => setAmount(parseFloat(e.target.value))} className="input" />
+            </Field>
+        </Sheet>
     );
 };
 
@@ -519,46 +508,37 @@ const AssignStandardFeeModal: React.FC<{
     };
 
     return (
-        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
-            <div className="card shadow-pop p-6 w-full max-w-sm mx-4">
-                <h3 className="text-base font-semibold text-slate-900 mb-4">Assign Standard Fees</h3>
-                <p className="text-sm text-slate-500 mb-4">
-                    Select standard fees to assign. The amounts will be automatically determined from the class fee structure.
-                </p>
-
-                <div className="mb-6 max-h-60 overflow-y-auto">
-                    <label className="label">Standard Fee Types</label>
-                    {standardFeeTypes.length === 0 ? (
-                        <EmptyState compact title="No standard fee types available." />
-                    ) : (
-                        <div className="space-y-2">
-                            {standardFeeTypes.map(ft => (
-                                <label key={ft.id} className="flex items-center gap-2 cursor-pointer p-1 hover:bg-slate-50 rounded">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedFeeTypeIds.includes(ft.id)}
-                                        onChange={e => handleCheckboxChange(ft.id, e.target.checked)}
-                                        className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500"
-                                    />
-                                    <span className="text-sm text-slate-700">{ft.fee_type}</span>
-                                </label>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <div className="flex justify-end gap-3">
-                    <button onClick={onClose} className="btn-secondary">Cancel</button>
+        <Sheet
+            title="Add class fees"
+            onClose={onClose}
+            footer={
+                <>
+                    <button onClick={onClose} className="btn-secondary btn-lg">Cancel</button>
                     <button
                         onClick={() => selectedFeeTypeIds.length > 0 && onSave(selectedFeeTypeIds)}
-                        className="btn-success"
+                        className="btn-primary btn-lg"
                         disabled={selectedFeeTypeIds.length === 0}
                     >
-                        Assign
+                        Add {selectedFeeTypeIds.length || ''} fee{selectedFeeTypeIds.length === 1 ? '' : 's'}
                     </button>
+                </>
+            }
+        >
+            <p className="text-sm text-slate-600">
+                Tick the fees to give this student. The amounts come from the class fees.
+            </p>
+            {standardFeeTypes.length === 0 ? (
+                <EmptyState compact title="No standard fees set up" />
+            ) : (
+                <div className="space-y-2">
+                    {standardFeeTypes.map(ft => (
+                        <CheckRow key={ft.id} checked={selectedFeeTypeIds.includes(ft.id)} onChange={checked => handleCheckboxChange(ft.id, checked)}>
+                            {ft.fee_type}
+                        </CheckRow>
+                    ))}
                 </div>
-            </div>
-        </div>
+            )}
+        </Sheet>
     );
 };
 

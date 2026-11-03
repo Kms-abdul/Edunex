@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { notify, confirmDialog } from './ui/feedback';
-import { EmptyState } from './ui';
+import { ChevronRight, Search } from 'lucide-react';
+import { notify } from './ui/feedback';
+import { ActionBar, Alert, Button, EmptyState, Field, Steps } from './ui';
+import { CheckRow, SuccessPanel, SummaryRow, rupees } from './fee-setup/shared';
+
+const STEP_TITLES = ['Find student', 'Choose discount', 'Choose fees', 'Check and give'];
+const MAX_STUDENTS_SHOWN = 50;
 
 interface ConcessionItem {
     fee_type_id: number;
@@ -59,6 +64,11 @@ const StudentConcession: React.FC = () => {
 
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
+
+    // Screen state (presentation only)
+    const [step, setStep] = useState(0);
+    const [done, setDone] = useState<{ count: number; total: number } | null>(null);
+    const [pickedStudent, setPickedStudent] = useState<Student | null>(null);
 
     // Fetch Initial Data
     useEffect(() => {
@@ -229,11 +239,13 @@ const StudentConcession: React.FC = () => {
 
     const handleAssign = async () => {
         if (!selectedStudentId || !selectedConcessionTitle || selectedInstallmentIds.length === 0) {
-            notify("Please select a student, a concession, and at least one installment.");
+            notify.warning("Choose a student, a discount and at least one fee.");
             return;
         }
 
-        if (!await confirmDialog(`Assign concession to ${selectedInstallmentIds.length} installments? This will update the fee records.`)) return;
+        // The "Check and give" step is the confirmation.
+        const givenCount = selectedInstallmentIds.length;
+        const givenTotal = selectedInstallmentIds.reduce((s, id) => s + (previewData[id] || 0), 0);
 
         setLoading(true);
         try {
@@ -246,7 +258,8 @@ const StudentConcession: React.FC = () => {
                 installments: selectedInstallmentIds
             });
 
-            setMessage("Concession assigned successfully!");
+            setMessage("Discount given.");
+            setDone({ count: givenCount, total: givenTotal });
 
             // Refresh installments
             const response = await api.get(`/fees/student-details/${selectedStudentId}`);
@@ -262,188 +275,263 @@ const StudentConcession: React.FC = () => {
     };
 
     const selectedConcession = concessions.find(c => c.title === selectedConcessionTitle);
+    const selectedStudent = pickedStudent || students.find(s => s.student_id === selectedStudentId);
+    const studentText = selectedStudent ? `${selectedStudent.name} (Class ${selectedStudent.class}${selectedStudent.section ? ` - ${selectedStudent.section}` : ''})` : 'this student';
+    const ruleText = (value: number) => (selectedConcession?.is_percentage ? `${value}%` : rupees(value));
 
-    return (
-        <div className="p-6 min-h-full">
-            <div className="max-w-7xl mx-auto space-y-6">
-                <h2 className="text-xl font-semibold text-slate-900 tracking-tight flex items-center">
-                    <span className="text-brand-600 mr-2">₹</span> Student Concession
-                </h2>
+    // Same rule as before: a fee can get the discount only if it has a new discount amount, nothing paid, and no discount yet.
+    const blockReason = (inst: FeeInstallment) => {
+        if ((inst.paidAmount || 0) > 0) return 'Already paid (fully or partly)';
+        if ((inst.concession || 0) > 0) return 'Already has a discount';
+        if (!(inst.student_fee_id && previewData[inst.student_fee_id] !== undefined)) return 'This discount does not cover this fee';
+        return '';
+    };
+    const selectableCount = installments.filter(i => !blockReason(i)).length;
+    const selectedTotal = selectedInstallmentIds.reduce((s, id) => s + (previewData[id] || 0), 0);
 
-                {/* Filters */}
-                <div className="card p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-                    {/* <div>
-                        <input
-                            type="text"
-                            value={localStorage.getItem('currentBranch') || 'All'}
-                            readOnly
-                            className="input"
-                            title="Current Branch"
-                        />
-                    </div>*/}
-                    <input
-                        type="text"
-                        placeholder="Search Admission No..."
-                        className="input w-auto"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
-                    <select
-                        className="input w-auto"
-                        value={selectedClass}
-                        onChange={e => { setSelectedClass(e.target.value); setSelectedSection(''); }}
-                    >
-                        <option value="">Select Class</option>
-                        {classes.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    <select
-                        className="input w-auto"
-                        value={selectedSection}
-                        onChange={e => setSelectedSection(e.target.value)}
-                    >
-                        <option value="">Select Section</option>
-                        {sections.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                    <select
-                        className="input w-auto"
-                        value={selectedStudentId || ''}
-                        onChange={e => setSelectedStudentId(Number(e.target.value) || null)}
-                    >
-                        <option value="">Select Student</option>
-                        {students.map(s => <option key={s.student_id} value={s.student_id}>{s.name} ({s.admNo})</option>)}
-                    </select>
+    /* ------------------------------------------------------------ Done */
+    if (done) {
+        return (
+            <div className="max-w-3xl mx-auto space-y-4">
+                <SuccessPanel title="Discount given">
+                    {selectedConcessionTitle}: {rupees(done.total)} off on {done.count} fee{done.count === 1 ? '' : 's'} for {studentText}.
+                </SuccessPanel>
+                <ActionBar>
+                    <Button variant="secondary" size="lg" onClick={() => { setDone(null); setMessage(''); setStep(2); }}>See this student's fees</Button>
+                    <Button size="lg" onClick={() => { setDone(null); setMessage(''); setSelectedStudentId(null); setPickedStudent(null); setSelectedConcessionTitle(''); setStep(0); }}>
+                        Another student
+                    </Button>
+                </ActionBar>
+            </div>
+        );
+    }
+
+    /* ------------------------------------------------------------ Step 1: find student */
+    if (step === 0) {
+        const shownStudents = students.slice(0, MAX_STUDENTS_SHOWN);
+        return (
+            <div className="max-w-3xl mx-auto space-y-4">
+                <Steps steps={STEP_TITLES} current={0} />
+                <div className="card">
+                    <div className="card-body space-y-4">
+                        <p className="text-sm text-slate-600">Give a discount to one student. Find the student.</p>
+                        <div className="relative">
+                            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <input
+                                type="search"
+                                placeholder="Admission number or name"
+                                aria-label="Search student"
+                                className="input pl-9"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field label="Class (optional)" htmlFor="sc-class">
+                                <select id="sc-class" className="input" value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setSelectedSection(''); }}>
+                                    <option value="">All classes</option>
+                                    {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="Section (optional)" htmlFor="sc-section">
+                                <select id="sc-section" className="input" value={selectedSection} onChange={e => setSelectedSection(e.target.value)} disabled={!selectedClass}>
+                                    <option value="">All sections</option>
+                                    {sections.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </Field>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left: Concession Rules */}
-                    <div className="card p-4">
-                        <div className="mb-4">
-                            <label className="label">Select Concession Template</label>
-                            <select
-                                className="input"
-                                value={selectedConcessionTitle}
-                                onChange={e => setSelectedConcessionTitle(e.target.value)}
-                            >
-                                <option value="">-- Select Concession --</option>
-                                {concessions.map((c, idx) => (
-                                    <option key={idx} value={c.title}>{c.title}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {selectedConcession && (
-                            <div>
-                                <h3 className="text-base font-semibold text-slate-900 mb-2">Concession Rules</h3>
-                                <div className="border border-slate-200 rounded-lg overflow-x-auto">
-                                    <table className="min-w-full divide-y divide-slate-200 text-sm">
-                                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                            <tr>
-                                                <th className="px-3 py-2 text-left">Fee Type</th>
-                                                <th className="px-3 py-2 text-right">Value ({selectedConcession.is_percentage ? '%' : '₹'})</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-slate-100">
-                                            {selectedConcession.items.map((item, idx) => (
-                                                <tr key={idx}>
-                                                    <td className="px-3 py-2 text-slate-900">{item.fee_type_name}</td>
-                                                    <td className="px-3 py-2 text-right text-slate-900">{item.percentage}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        )}
+                {students.length === 0 ? (
+                    <div className="card"><EmptyState compact title="No students found" description="Try another name or class." /></div>
+                ) : (
+                    <div className="space-y-2">
+                        <p className="text-sm text-slate-500">
+                            {students.length > MAX_STUDENTS_SHOWN
+                                ? `Showing ${MAX_STUDENTS_SHOWN} of ${students.length}. Search or choose a class to find the student faster.`
+                                : `Tap a student (${students.length} found).`}
+                        </p>
+                        <ul className="space-y-2">
+                            {shownStudents.map(s => (
+                                <li key={s.student_id}>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setSelectedStudentId(s.student_id); setPickedStudent(s); setMessage(''); setStep(1); }}
+                                        className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 min-h-[56px] text-left transition-colors
+                                            ${selectedStudentId === s.student_id ? 'border-brand-300 bg-brand-50/60' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
+                                    >
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block text-[15px] font-semibold text-slate-900 break-words">{s.name}</span>
+                                            <span className="block text-sm text-slate-500">
+                                                Admission number {s.admNo} · Class {s.class}{s.section ? ` - ${s.section}` : ''}
+                                            </span>
+                                        </span>
+                                        <ChevronRight className="w-5 h-5 text-slate-300 flex-shrink-0" />
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
+                )}
+            </div>
+        );
+    }
 
-                    {/* Right: Student Installments */}
-                    <div className="card lg:col-span-2 p-4">
-                        <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
-                            <h3 className="text-base font-semibold text-slate-900">Student Installments</h3>
-                            {message && <span className={`text-sm ${message.includes('Error') ? 'text-red-600' : 'text-emerald-600'}`}>{message}</span>}
+    /* ------------------------------------------------------------ Step 2: choose discount */
+    if (step === 1) {
+        return (
+            <div className="max-w-3xl mx-auto space-y-4">
+                <Steps steps={STEP_TITLES} current={1} onJump={setStep} />
+                <p className="text-sm text-slate-600">For <strong>{studentText}</strong>. Which discount?</p>
+
+                {concessions.length === 0 ? (
+                    <div className="card"><EmptyState compact title="No discount types for this year" description="Add one first under Discounts → Discount types." /></div>
+                ) : (
+                    <div className="space-y-2" role="radiogroup" aria-label="Discount">
+                        {concessions.map((c, idx) => {
+                            const active = c.title === selectedConcessionTitle;
+                            return (
+                                <label
+                                    key={idx}
+                                    className={`flex items-start gap-3 min-h-[52px] rounded-xl border px-4 py-3 cursor-pointer transition-colors
+                                        ${active ? 'border-brand-300 bg-brand-50/60' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="sc-concession"
+                                        checked={active}
+                                        onChange={() => setSelectedConcessionTitle(c.title)}
+                                        className="w-5 h-5 mt-0.5 accent-brand-600 flex-shrink-0"
+                                    />
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block text-[15px] font-semibold text-slate-900">{c.title}</span>
+                                        {c.description && <span className="block text-sm text-slate-500">{c.description}</span>}
+                                    </span>
+                                </label>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {selectedConcession && (
+                    <div className="card">
+                        <div className="card-header">
+                            <h3 className="text-sm font-semibold text-slate-900">What “{selectedConcession.title}” takes off</h3>
                         </div>
-
-                        {installments.length === 0 ? (
-                            <EmptyState title="Select a student to view installments." />
-                        ) : (
-                            <div className="overflow-x-auto rounded-lg border border-slate-200">
-                                <table className="min-w-full divide-y divide-slate-200 text-sm">
-                                    <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                        <tr>
-                                            <th className="px-3 py-2 w-10">
-                                                <input type="checkbox" onChange={handleSelectAll} />
-                                            </th>
-                                            <th className="px-3 py-2 text-left">Installment</th>
-                                            <th className="px-3 py-2 text-right">Total Fee</th>
-                                            <th className="px-3 py-2 text-right">Paid</th>
-                                            <th className="px-3 py-2 text-right">Current Concession</th>
-                                            <th className="px-3 py-2 text-right text-brand-600">New Concession</th>
-                                            <th className="px-3 py-2 text-center">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-slate-100">
-                                        {installments.map((inst) => {
-                                            const newConc = inst.student_fee_id ? previewData[inst.student_fee_id] : undefined;
-                                            const hasNewConc = newConc !== undefined;
-
-                                            // Validation: Disable if already paid (partial or full) OR already has concession
-                                            const isPaidOrPartial = (inst.paidAmount || 0) > 0;
-                                            const hasExistingConcession = (inst.concession || 0) > 0;
-                                            const isDisabled = isPaidOrPartial || hasExistingConcession;
-
-                                            let disabledReason = "";
-                                            if (isPaidOrPartial) disabledReason = "Cannot apply concession to paid/partial fees";
-                                            else if (hasExistingConcession) disabledReason = "Fee already has a concession";
-
-                                            return (
-                                                <tr key={inst.sr} className={hasNewConc ? "bg-brand-50" : ""}>
-                                                    <td className="px-3 py-2 text-center" title={disabledReason}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={inst.student_fee_id ? selectedInstallmentIds.includes(inst.student_fee_id) : false}
-                                                            onChange={() => inst.student_fee_id && !isDisabled && handleToggleInstallment(inst.student_fee_id)}
-                                                            disabled={!hasNewConc || isDisabled}
-                                                        />
-                                                    </td>
-                                                    <td className="px-3 py-2 text-slate-900">
-                                                        {inst.title}
-                                                        {isDisabled && <span className="ml-2 text-xs text-red-500">({isPaidOrPartial ? 'Paid' : 'Has Concession'})</span>}
-                                                    </td>
-                                                    <td className="px-3 py-2 text-right text-slate-900">{inst.payable}</td>
-                                                    <td className="px-3 py-2 text-right text-slate-900">{inst.paidAmount || 0}</td>
-                                                    <td className="px-3 py-2 text-right text-slate-900">{inst.concession || 0}</td>
-                                                    <td className="px-3 py-2 text-right font-bold text-brand-600">
-                                                        {hasNewConc && !isDisabled ? newConc : '-'}
-                                                    </td>
-                                                    <td className="px-3 py-2 text-center">
-                                                        <span className={inst.paid ? 'badge-success' :
-                                                            (inst.paidAmount || 0) > 0 ? 'badge-warning' :
-                                                                'badge-danger'}>
-                                                            {inst.paid ? 'Paid' : (inst.paidAmount || 0) > 0 ? 'Partial' : 'Pending'}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-
-                        <div className="mt-4 flex justify-end">
-                            <button
-                                onClick={handleAssign}
-                                disabled={loading || selectedInstallmentIds.length === 0}
-                                className="btn-primary"
-                            >
-                                {loading ? 'Assigning...' : 'Assign Concession'}
-                            </button>
+                        <div className="px-5 py-1">
+                            {selectedConcession.items.length === 0 ? (
+                                <p className="py-3 text-sm text-slate-500">No fees in this discount.</p>
+                            ) : selectedConcession.items.map((item, idx) => (
+                                <SummaryRow key={idx} label={item.fee_type_name}>{ruleText(item.percentage)}</SummaryRow>
+                            ))}
                         </div>
                     </div>
+                )}
+
+                <ActionBar note={!selectedConcessionTitle ? 'Choose a discount' : undefined}>
+                    <Button variant="secondary" size="lg" onClick={() => setStep(0)}>Back</Button>
+                    <Button size="lg" disabled={!selectedConcessionTitle} onClick={() => setStep(2)}>Next</Button>
+                </ActionBar>
+            </div>
+        );
+    }
+
+    /* ------------------------------------------------------------ Step 3: choose fees */
+    if (step === 2) {
+        const allSelected = selectableCount > 0 && selectedInstallmentIds.length === selectableCount;
+        return (
+            <div className="max-w-3xl mx-auto space-y-4">
+                <Steps steps={STEP_TITLES} current={2} onJump={setStep} />
+                <p className="text-sm text-slate-600">
+                    {studentText} · <strong>{selectedConcessionTitle}</strong>. Tick the fees that get the discount.
+                </p>
+
+                {message && (
+                    <Alert tone={message.includes('Error') ? 'error' : 'success'} onClose={() => setMessage('')}>
+                        {message.replace(/^Error:\s*/, 'Could not give the discount: ')}
+                    </Alert>
+                )}
+
+                {installments.length === 0 ? (
+                    <div className="card"><EmptyState compact title="This student has no fees yet" /></div>
+                ) : (
+                    <div className="space-y-2">
+                        {selectableCount > 0 && (
+                            <CheckRow
+                                checked={allSelected}
+                                onChange={(checked) => handleSelectAll({ target: { checked } } as React.ChangeEvent<HTMLInputElement>)}
+                                className="bg-slate-50"
+                            >
+                                <span className="font-semibold">Select all {selectableCount} that can get it</span>
+                            </CheckRow>
+                        )}
+                        {installments.map(inst => {
+                            const reason = blockReason(inst);
+                            const newConc = inst.student_fee_id ? previewData[inst.student_fee_id] : undefined;
+                            const status = inst.paid ? 'Paid' : (inst.paidAmount || 0) > 0 ? 'Partly paid' : 'Not paid';
+                            return (
+                                <CheckRow
+                                    key={inst.sr}
+                                    checked={inst.student_fee_id ? selectedInstallmentIds.includes(inst.student_fee_id) : false}
+                                    onChange={() => inst.student_fee_id && !reason && handleToggleInstallment(inst.student_fee_id)}
+                                    disabled={!!reason}
+                                    hint={reason
+                                        ? `${status} · ${reason}`
+                                        : `Fee ${rupees(inst.payable)} · ${status}`}
+                                    right={!reason && newConc !== undefined ? (
+                                        <span className="text-sm font-semibold text-brand-700 whitespace-nowrap">−{rupees(newConc)}</span>
+                                    ) : (inst.concession || 0) > 0 ? (
+                                        <span className="text-xs text-slate-500 whitespace-nowrap">Now −{rupees(inst.concession)}</span>
+                                    ) : undefined}
+                                >
+                                    {inst.title}
+                                </CheckRow>
+                            );
+                        })}
+                    </div>
+                )}
+
+                <ActionBar note={selectedInstallmentIds.length === 0 ? 'Choose at least one fee' : `${selectedInstallmentIds.length} fee${selectedInstallmentIds.length === 1 ? '' : 's'} · ${rupees(selectedTotal)} off`}>
+                    <Button variant="secondary" size="lg" onClick={() => setStep(1)}>Back</Button>
+                    <Button size="lg" disabled={selectedInstallmentIds.length === 0} onClick={() => setStep(3)}>Next</Button>
+                </ActionBar>
+            </div>
+        );
+    }
+
+    /* ------------------------------------------------------------ Step 4: review */
+    return (
+        <div className="max-w-3xl mx-auto space-y-4">
+            <Steps steps={STEP_TITLES} current={3} onJump={setStep} />
+            <div className="card">
+                <div className="card-body">
+                    <p className="text-base text-slate-900">
+                        You are giving <strong>{selectedConcessionTitle}</strong> to <strong>{studentText}</strong>:{' '}
+                        <strong>{rupees(selectedTotal)}</strong> off on {selectedInstallmentIds.length} fee{selectedInstallmentIds.length === 1 ? '' : 's'}.
+                    </p>
+                    <div className="mt-3">
+                        {installments
+                            .filter(i => i.student_fee_id && selectedInstallmentIds.includes(i.student_fee_id))
+                            .map(i => (
+                                <SummaryRow key={i.sr} label={`${i.title} (${rupees(i.payable)})`}>−{rupees(previewData[i.student_fee_id!] || 0)}</SummaryRow>
+                            ))}
+                        <SummaryRow label="Total discount" strong>{rupees(selectedTotal)}</SummaryRow>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-500">The student's fees change when you tap the button below.</p>
                 </div>
             </div>
+            {message && message.includes('Error') && (
+                <Alert tone="error" onClose={() => setMessage('')}>{message.replace(/^Error:\s*/, 'Could not give the discount: ')}</Alert>
+            )}
+            <ActionBar>
+                <Button variant="secondary" size="lg" onClick={() => setStep(2)}>Back</Button>
+                <Button size="lg" onClick={handleAssign} loading={loading} disabled={selectedInstallmentIds.length === 0}>
+                    Give {rupees(selectedTotal)} discount
+                </Button>
+            </ActionBar>
         </div>
     );
 };
 
-export default StudentConcession; 
+export default StudentConcession;

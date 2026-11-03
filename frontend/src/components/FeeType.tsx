@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import api from '../api';
 import axios from "axios";
 import { notify, confirmDialog } from './ui/feedback';
-import { EmptyState } from './ui';
+import { ActionBar, Button, DataList, Field } from './ui';
+import type { Column } from './ui';
+import { CopyToBranches, Intro, groupBranches } from './fee-setup/shared';
 
 interface FeeType {
     id?: number;
@@ -45,20 +48,8 @@ const FeeTypeManagement: React.FC = () => {
     const [copyTargets, setCopyTargets] = useState<Set<string>>(new Set());
     const [isCopyDropdownOpen, setIsCopyDropdownOpen] = useState(false);
     const [copying, setCopying] = useState(false);
-    const copyDropdownRef = useRef<HTMLDivElement>(null);
-
-    // Close dropdown on outside click
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (copyDropdownRef.current && !copyDropdownRef.current.contains(event.target as Node)) {
-                setIsCopyDropdownOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
+    const [search, setSearch] = useState('');
+    const [saving, setSaving] = useState(false);
 
     // Fetch fee types on component mount
     useEffect(() => {
@@ -120,6 +111,7 @@ const FeeTypeManagement: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        setSaving(true);
         try {
             const globalBranch = localStorage.getItem("currentBranch") || "All";
 
@@ -130,10 +122,10 @@ const FeeTypeManagement: React.FC = () => {
 
             if (editingId) {
                 await api.put(`/fee-types/${editingId}`, payload);
-                notify("Fee Type updated successfully.");
+                notify.success("Fee type saved.");
             } else {
                 await api.post("/fee-types", payload);
-                notify("Fee Type created successfully.");
+                notify.success("Fee type added.");
             }
 
             resetForm();
@@ -153,7 +145,9 @@ const FeeTypeManagement: React.FC = () => {
                 errorMessage = error.message;
             }
 
-            notify(errorMessage);
+            notify.error(errorMessage);
+        } finally {
+            setSaving(false);
         }
     };
     const handleEdit = (feeType: FeeType) => {
@@ -163,13 +157,13 @@ const FeeTypeManagement: React.FC = () => {
     };
 
     const handleDelete = async (id: number) => {
-        if (await confirmDialog('Are you sure you want to delete this fee type?')) {
+        if (await confirmDialog('Delete this fee type? This cannot be undone.', { tone: 'danger', confirmText: 'Delete' })) {
             try {
                 await api.delete(`/fee-types/${id}`);
                 fetchFeeTypes();
             } catch (error) {
                 console.error('Error deleting fee type:', error);
-                notify('Error deleting fee type. Please try again.');
+                notify.error('Could not delete this fee type. Please try again.');
             }
         }
     };
@@ -203,11 +197,11 @@ const FeeTypeManagement: React.FC = () => {
 
     const handleCopy = async () => {
         if (copyTargets.size === 0) {
-            notify("Please select at least one branch to copy to.");
+            notify("Choose at least one branch to copy to.");
             return;
         }
 
-        if (!await confirmDialog(`Are you sure you want to copy Fee Types to ${copyTargets.size} branches?`)) {
+        if (!await confirmDialog(`Copy all fee types to ${copyTargets.size} branch${copyTargets.size === 1 ? '' : 'es'}?`)) {
             return;
         }
 
@@ -218,7 +212,7 @@ const FeeTypeManagement: React.FC = () => {
                 target_branch_ids: Array.from(copyTargets),
                 academic_year: localStorage.getItem('academicYear') || ''
             });
-            notify("Fee Types copied successfully!");
+            notify.success("Fee types copied.");
             setCopyTargets(new Set());
             setIsCopyDropdownOpen(false);
         } catch (error: any) {
@@ -229,127 +223,73 @@ const FeeTypeManagement: React.FC = () => {
         }
     };
 
-    // Group Branches
-    const availableBranches = allBranches.filter(b => String(b.id) !== String(sourceBranchId) && b.name !== 'All Branches' && b.name !== 'All');
-    const branchesByLocation: { [key: string]: BranchOption[] } = {};
-    availableBranches.forEach(b => {
-        if (!branchesByLocation[b.location_name]) {
-            branchesByLocation[b.location_name] = [];
-        }
-        branchesByLocation[b.location_name].push(b);
-    });
+    const branchesByLocation = groupBranches(allBranches, sourceBranchId);
 
     const currentBranch = localStorage.getItem('currentBranch');
     const isSpecificBranch = currentBranch && currentBranch !== 'All' && currentBranch !== 'All Branches';
 
-    return (
-        <div className="container mx-auto p-6">
-            {/* Header */}
-            <div className="card p-6 mb-6">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Fee Types</h2>
-                    <div className="flex gap-2">
-                        {/* Copy Button */}
-                        {isSpecificBranch && (
-                            <div className="relative" ref={copyDropdownRef}>
-                                <button
-                                    className="btn-primary"
-                                    onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
-                                >
-                                    <span>Copy to Branches</span>
-                                    <span className="text-xs">▼</span>
-                                </button>
-                                {isCopyDropdownOpen && (
-                                    <div className="card shadow-pop absolute top-12 right-0 w-80 z-50 p-2 max-h-96 overflow-y-auto">
-                                        <div className="mb-2 text-sm font-semibold text-slate-700 pb-2 border-b border-slate-100">
-                                            Select Target Branches
-                                        </div>
-                                        {Object.keys(branchesByLocation).length === 0 ? (
-                                            <EmptyState compact title="No other branches available" />
-                                        ) : (
-                                            Object.keys(branchesByLocation).map(loc => (
-                                                <div key={loc} className="mb-1">
-                                                    <div className="text-sm font-semibold text-slate-900 px-3 py-2 bg-slate-50 border-b border-slate-100">
-                                                        {loc}
-                                                    </div>
-                                                    <div className="py-1">
-                                                        {branchesByLocation[loc].map(b => (
-                                                            <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-brand-50 cursor-pointer transition-colors pl-6">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={copyTargets.has(String(b.id))}
-                                                                    onChange={() => toggleCopyTarget(String(b.id))}
-                                                                    className="w-4 h-4 accent-brand-600 rounded border-slate-300"
-                                                                />
-                                                                <span className="text-sm text-slate-700">{b.name}</span>
-                                                            </label>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )}
-                                        <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center sticky bottom-0 bg-white">
-                                            <span className="text-xs text-slate-500">{copyTargets.size} selected</span>
-                                            <button
-                                                onClick={handleCopy}
-                                                disabled={copying || copyTargets.size === 0}
-                                                className="btn-success btn-sm"
-                                            >
-                                                {copying ? "Copying..." : "Confirm Copy"}
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+    const groupLabel = (g?: string) => (g === 'Special' ? 'Only some students' : g === 'Standard' ? 'Whole class' : '—');
+    const typeLabel = (t?: string) => (t === 'One-Time' ? 'One time' : t === 'Installment' ? 'In installments' : (t || '—'));
 
-                        <button
-                            onClick={() => setShowForm(!showForm)}
-                            className="btn-success"
-                        >
-                            <span>⊕</span> Add New Fee Type
-                        </button>
-                    </div>
+    /* ------------------------------------------------------------ Add / edit form */
+    if (showForm) {
+        return (
+            <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-4">
+                <div>
+                    <h2 className="text-lg font-semibold text-slate-900">{editingId ? 'Edit fee type' : 'Add a fee type'}</h2>
+                    <Intro>
+                        For branch <strong>{formData.branch || 'All'}</strong>
+                        {formData.academic_year ? <> · Year <strong>{formData.academic_year}</strong></> : null}
+                    </Intro>
                 </div>
-            </div>
 
-            {/* Add/Edit Form */}
-            {showForm && (
-                <div className="card p-6 mb-6">
-                    <h3 className="text-base font-semibold text-slate-900 mb-4">
-                        {editingId ? 'Edit Fee Type' : 'Add New Fee Type'}
-                    </h3>
+                <div className="card">
+                    <div className="card-body space-y-4">
+                        <Field label="Name of the fee" htmlFor="ft-name" required hint="For example: Tuition fee, Bus fee">
+                            <input
+                                id="ft-name"
+                                type="text"
+                                name="fee_type"
+                                value={formData.fee_type}
+                                onChange={handleInputChange}
+                                required
+                                className="input"
+                                placeholder="e.g. Bus fee"
+                                autoFocus
+                            />
+                        </Field>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Fee Type */}
-                            <div>
-                                <label className="label">
-                                    Fee Type <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    name="fee_type"
-                                    value={formData.fee_type}
-                                    onChange={handleInputChange}
-                                    required
-                                    className="input"
-                                    placeholder="e.g., Transport Fee"
-                                />
-                            </div>
+                        <Field label="Name on receipt (optional)" htmlFor="ft-display" hint="How this fee is written on the receipt">
+                            <input
+                                id="ft-display"
+                                type="text"
+                                name="display_name"
+                                value={formData.display_name}
+                                onChange={handleInputChange}
+                                className="input"
+                                placeholder="e.g. Transport fee"
+                            />
+                        </Field>
 
-                            {/* Fee Category */}
-                            <div>
-                                <label className="label">
-                                    Fee Category
-                                </label>
-                                <select
-                                    name="category"
-                                    value={formData.category}
-                                    onChange={handleInputChange}
-                                    className="input"
-                                >
-                                    <option value="">Select Fee category</option>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field label="Who pays it?" htmlFor="ft-group">
+                                <select id="ft-group" name="fee_type_group" value={formData.fee_type_group} onChange={handleInputChange} className="input">
+                                    <option value="">Choose</option>
+                                    <option value="Standard">Whole class (standard)</option>
+                                    <option value="Special">Only some students (special)</option>
+                                </select>
+                            </Field>
+
+                            <Field label="How is it paid?" htmlFor="ft-type">
+                                <select id="ft-type" name="type" value={formData.type} onChange={handleInputChange} className="input">
+                                    <option value="Installment">In installments (e.g. every month)</option>
+                                    <option value="One-Time">One time</option>
+                                </select>
+                            </Field>
+
+                            <Field label="Category (optional)" htmlFor="ft-cat">
+                                <select id="ft-cat" name="category" value={formData.category} onChange={handleInputChange} className="input">
+                                    <option value="">Choose a category</option>
                                     <option value="Academic">Academic</option>
                                     <option value="Tuition">Tuition</option>
                                     <option value="Transport">Transport</option>
@@ -359,228 +299,134 @@ const FeeTypeManagement: React.FC = () => {
                                     <option value="Examination">Examination</option>
                                     <option value="Other">Other</option>
                                 </select>
-                            </div>
-
-
-                            {/* Branch Selection */}
-                            <div>
-                                <label className="label">
-                                    Branch
-                                </label>
-                                <input
-                                    type="text"
-                                    name="branch"
-                                    value={formData.branch}
-                                    readOnly
-                                    className="input"
-                                />
-                            </div>
-
-                            {/* Academic Year Selection */}
-                            <div>
-                                <label className="label">
-                                    Academic Year
-                                </label>
-                                <input
-                                    type="text"
-                                    name="academic_year"
-                                    value={formData.academic_year}
-                                    readOnly
-                                    className="input"
-                                />
-                            </div>
-
-                            {/* Fee Type Group */}
-                            <div>
-                                <label className="label">
-                                    Fee Type Group
-                                </label>
-                                <select
-                                    name="fee_type_group"
-                                    value={formData.fee_type_group}
-                                    onChange={handleInputChange}
-                                    className="input"
-                                >
-                                    <option value="">Select Fee Type Group</option>
-                                    <option value="Standard">Standard</option>
-                                    <option value="Special">Special</option>
-                                </select>
-                            </div>
-
-                            {/* Display Name */}
-                            <div>
-                                <label className="label">
-                                    Display Name
-                                </label>
-                                <input
-                                    type="text"
-                                    name="display_name"
-                                    value={formData.display_name}
-                                    onChange={handleInputChange}
-                                    className="input"
-                                    placeholder="Display name for receipts"
-                                />
-                            </div>
-
-                            {/* Type */}
-                            <div>
-                                <label className="label">
-                                    Type
-                                </label>
-                                <select
-                                    name="type"
-                                    value={formData.type}
-                                    onChange={handleInputChange}
-                                    className="input"
-                                >
-                                    <option value="Installment">Installment</option>
-                                    <option value="One-Time">One-Time</option>
-                                </select>
-                            </div>
+                            </Field>
                         </div>
 
-                        {/* Is Fee Refundable Checkbox */}
-                        <div className="flex items-center">
+                        <label htmlFor="is_refundable" className="flex items-center gap-3 min-h-[48px] px-3 rounded-xl border border-slate-200 cursor-pointer">
                             <input
                                 type="checkbox"
                                 name="is_refundable"
                                 id="is_refundable"
                                 checked={formData.is_refundable}
                                 onChange={handleInputChange}
-                                className="w-4 h-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500"
+                                className="w-5 h-5 accent-brand-600 rounded border-slate-300"
                             />
-                            <label htmlFor="is_refundable" className="label mb-0 ml-2">
-                                Is Fee Refundable?
-                            </label>
-                        </div>
+                            <span className="text-[15px] text-slate-900">Money can be given back (refundable)</span>
+                        </label>
 
-                        {/* Description */}
-                        <div>
-                            <label className="label">
-                                Description
-                            </label>
+                        <Field label="Note (optional)" htmlFor="ft-desc">
                             <textarea
+                                id="ft-desc"
                                 name="description"
                                 value={formData.description}
                                 onChange={handleInputChange}
-                                rows={3}
+                                rows={2}
                                 className="input"
-                                placeholder="Optional description"
                             />
-                        </div>
+                        </Field>
+                    </div>
+                </div>
 
-                        {/* Form Buttons */}
-                        <div className="flex justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={resetForm}
-                                className="btn-secondary"
-                            >
-                                Reset
-                            </button>
-                            <button
-                                type="submit"
-                                className="btn-success"
-                            >
-                                ✓ Save Fee Type
-                            </button>
-                        </div>
-                    </form>
+                <ActionBar note={!formData.fee_type.trim() ? 'Type the name of the fee' : undefined}>
+                    <Button variant="secondary" size="lg" onClick={resetForm}>Cancel</Button>
+                    <Button type="submit" size="lg" loading={saving} disabled={!formData.fee_type.trim()}>
+                        Save fee type
+                    </Button>
+                </ActionBar>
+            </form>
+        );
+    }
+
+    /* ------------------------------------------------------------ List */
+    const q = search.trim().toLowerCase();
+    const shown = q
+        ? feeTypes.filter(ft => [ft.fee_type, ft.display_name, ft.category].some(v => (v || '').toLowerCase().includes(q)))
+        : feeTypes;
+
+    const actions = (ft: FeeType) => (
+        <>
+            <button type="button" onClick={() => handleEdit(ft)} className="btn-soft btn-sm">
+                <Pencil className="w-4 h-4" /> Edit
+            </button>
+            <button type="button" onClick={() => ft.id && handleDelete(ft.id)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50">
+                <Trash2 className="w-4 h-4" /> Delete
+            </button>
+        </>
+    );
+
+    const columns: Column<FeeType>[] = [
+        {
+            key: 'fee_type', header: 'Fee', primary: true,
+            render: ft => (
+                <span>
+                    {ft.fee_type}
+                    {ft.display_name && ft.display_name !== ft.fee_type && (
+                        <span className="block text-xs font-normal text-slate-500">On receipt: {ft.display_name}</span>
+                    )}
+                </span>
+            ),
+        },
+        { key: 'fee_type_group', header: 'Who pays', secondary: true, render: ft => groupLabel(ft.fee_type_group) },
+        { key: 'type', header: 'How paid', render: ft => typeLabel(ft.type) },
+        { key: 'category', header: 'Category', render: ft => ft.category || '—' },
+        {
+            key: 'is_refundable', header: 'Refundable',
+            render: ft => <span className={ft.is_refundable ? 'badge-success' : 'badge-neutral'}>{ft.is_refundable ? 'Yes' : 'No'}</span>,
+        },
+        {
+            key: 'branch', header: 'Branch',
+            render: ft => <span className={!ft.branch || ft.branch === 'All' ? 'badge-brand' : 'badge-neutral'}>{ft.branch || 'All'}</span>,
+        },
+        { key: 'actions', header: '', hideOnMobile: true, align: 'right', render: ft => <div className="flex justify-end gap-2">{actions(ft)}</div> },
+    ];
+
+    return (
+        <div className="max-w-6xl mx-auto space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Fee types</h2>
+                    <Intro>The names of the fees your school takes, like Tuition fee or Bus fee.</Intro>
+                </div>
+                <Button size="lg" icon={<Plus className="w-5 h-5" />} onClick={() => { resetForm(); setShowForm(true); }}>
+                    Add fee type
+                </Button>
+            </div>
+
+            {feeTypes.length > 6 && (
+                <div className="relative">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                        type="search"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search fee types"
+                        aria-label="Search fee types"
+                        className="input pl-9"
+                    />
                 </div>
             )}
 
-            {/* Fee Types Table */}
-            <div className="card overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                            <tr>
-                                <th className="px-6 py-3 text-left">
-                                    Fee Type
-                                </th>
-                                <th className="px-6 py-3 text-left">
-                                    Branch
-                                </th>
-                                <th className="px-6 py-3 text-left">
-                                    Category
-                                </th>
-                                <th className="px-6 py-3 text-left">
-                                    Fee Type Group
-                                </th>
-                                <th className="px-6 py-3 text-left">
-                                    Type
-                                </th>
-                                <th className="px-6 py-3 text-left">
-                                    Display Name
-                                </th>
-                                <th className="px-6 py-3 text-left">
-                                    Fee Refundable
-                                </th>
-                                <th className="px-6 py-3 text-left">
-                                    Action
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-slate-100">
-                            {feeTypes.length === 0 ? (
-                                <tr>
-                                    <td colSpan={8}>
-                                        <EmptyState compact title="No fee types found" description='Click "Add New Fee Type" to create one.' />
-                                    </td>
-                                </tr>
-                            ) : (
-                                feeTypes.map((feeType) => (
-                                    <tr key={feeType.id} className="hover:bg-slate-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                                            {feeType.fee_type}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                                            <span className={!feeType.branch || feeType.branch === 'All' ? 'badge-brand' : 'badge-neutral'}>
-                                                {feeType.branch || 'All'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                                            {feeType.category || '-'}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                                            {feeType.fee_type_group || '-'}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                                            <span className="badge-brand">
-                                                {feeType.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                                            {feeType.display_name || '-'}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                                            <span className={feeType.is_refundable ? 'badge-success' : 'badge-warning'}>
-                                                {feeType.is_refundable ? 'Yes' : 'No'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => handleEdit(feeType)}
-                                                    className="btn-soft btn-sm"
-                                                >
-                                                    ✎ Edit
-                                                </button>
-                                                <button
-                                                    onClick={() => feeType.id && handleDelete(feeType.id)}
-                                                    className="btn btn-sm text-red-600 bg-red-50 hover:bg-red-100"
-                                                >
-                                                    🗑 Delete
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <DataList
+                columns={columns}
+                rows={shown}
+                rowKey={(ft, i) => ft.id ?? i}
+                emptyTitle={q ? 'No fee types match your search' : 'No fee types yet'}
+                emptyHint={q ? undefined : 'Tap "Add fee type" to add the first one.'}
+                mobileActions={actions}
+            />
+
+            {isSpecificBranch && (
+                <CopyToBranches
+                    what="all fee types"
+                    branchesByLocation={branchesByLocation}
+                    selected={copyTargets}
+                    onToggle={toggleCopyTarget}
+                    onCopy={handleCopy}
+                    copying={copying}
+                    open={isCopyDropdownOpen}
+                    onOpenChange={setIsCopyDropdownOpen}
+                />
+            )}
         </div>
     );
 };

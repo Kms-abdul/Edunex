@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Alert, EmptyState, LoadingState } from './ui';
+import { Alert, EmptyState, Field, LoadingState } from './ui';
+import { Intro, prettyDate } from './fee-setup/shared';
 
 interface Installment {
     id: number;
@@ -25,6 +26,7 @@ const UpdateRebateDate: React.FC = () => {
     const [successMessage, setSuccessMessage] = useState('');
     const [newDates, setNewDates] = useState<Record<number, string>>({});
     const [savingId, setSavingId] = useState<number | null>(null);
+    const [feeFilter, setFeeFilter] = useState('');
 
     const branch = localStorage.getItem('currentBranch') || 'All';
     const academicYear = localStorage.getItem('academicYear') || '';
@@ -36,7 +38,7 @@ const UpdateRebateDate: React.FC = () => {
     const fetchInstallments = async () => {
         try {
             setLoading(true);
-            const response = await api.get(`/installment-schedule?branch=${branch}`);
+            const response = await api.get(`/installment-schedule?branch=${encodeURIComponent(branch)}`);
 
             // Handle both response formats safely
             const installmentsData = Array.isArray(response.data)
@@ -66,7 +68,7 @@ const UpdateRebateDate: React.FC = () => {
     const handleSave = async (inst: Installment) => {
         const newDate = newDates[inst.id];
         if (!newDate) {
-            setError('Please select a new date before saving.');
+            setError('Choose the new date first.');
             setTimeout(() => setError(''), 3000);
             return;
         }
@@ -85,7 +87,7 @@ const UpdateRebateDate: React.FC = () => {
 
             const response = await api.put('/update-rebate-date', payload);
 
-            setSuccessMessage(`Success: ${response.data.message}`);
+            setSuccessMessage(`Saved. ${inst.title}: students now pay by ${prettyDate(newDate)}.${response.data.message ? ` (${response.data.message})` : ''}`);
             setTimeout(() => setSuccessMessage(''), 5001);
 
             // Clear the local state for this row
@@ -105,91 +107,79 @@ const UpdateRebateDate: React.FC = () => {
     };
 
     if (loading) {
-        return <div className="p-6"><LoadingState label="Loading installments..." /></div>;
+        return <LoadingState label="Loading installments…" />;
     }
 
+    const feeNames = Array.from(new Set(installments.map(i => i.fee_type_name || '').filter(Boolean)));
+    const shown = feeFilter ? installments.filter(i => (i.fee_type_name || '') === feeFilter) : installments;
+    const branchLabel = branch === 'All' || branch === 'All Branches' ? 'All branches' : branch;
+
     return (
-        <div className="p-6 max-w-6xl mx-auto">
-            <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 flex items-center">
-                <span className="text-brand-600 mr-2">📅</span> Update Rebate Date
-            </h2>
-
-            {error && (
-                <Alert tone="error" className="mb-6">{error}</Alert>
-            )}
-
-            {successMessage && (
-                <Alert tone="success" className="mb-6">{successMessage}</Alert>
-            )}
-
-            <div className="card overflow-hidden">
-                <div className="p-4 bg-slate-50 border-b border-slate-200">
-                    <p className="text-sm text-slate-500">
-                        Update the due date (rebate date) for student fees corresponding to each installment in the current branch <strong>({branch})</strong> and academic year <strong>({academicYear})</strong>.
-                        Note: This will not change the installment definition's Last Pay Date, but it will update the actual due dates for all students assigned this fee.
-                    </p>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white">
-                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                            <tr>
-                                <th className="px-4 py-3 text-left border-b border-slate-200">Title</th>
-                                <th className="px-4 py-3 text-left border-b border-slate-200">Fee Type</th>
-                                <th className="px-4 py-3 text-left border-b border-slate-200">Start Date</th>
-                                <th className="px-4 py-3 text-left border-b border-slate-200">End Date</th>
-                                <th className="px-4 py-3 text-left border-b border-slate-200">Original Cutoff Date</th>
-                                <th className="px-4 py-3 text-left border-b border-slate-200">New Rebate Date</th>
-                                <th className="px-4 py-3 text-center border-b border-slate-200">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {installments.length === 0 ? (
-                                <tr>
-                                    <td colSpan={7}>
-                                        <EmptyState compact title="No installments found for the current branch and academic year." />
-                                    </td>
-                                </tr>
-                            ) : (
-                                installments.map(inst => (
-                                    <tr key={inst.id} className="hover:bg-slate-50 border-b border-slate-100 last:border-b-0">
-                                        <td className="px-4 py-3 text-sm text-slate-800 font-medium">
-                                            {inst.title}
-                                            {inst.is_admission && <span className="ml-2 badge-success">Admission</span>}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-slate-600">{inst.fee_type_name || '-'}</td>
-                                        <td className="px-4 py-3 text-sm text-slate-600">
-                                            {new Date(inst.start_date).toLocaleDateString('en-GB')}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-slate-600">
-                                            {new Date(inst.end_date).toLocaleDateString('en-GB')}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-slate-600">
-                                            {new Date(inst.last_pay_date).toLocaleDateString('en-GB')}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm">
-                                            <input
-                                                type="date"
-                                                value={newDates[inst.id] || ''}
-                                                onChange={(e) => handleDateChange(inst.id, e.target.value)}
-                                                className="input"
-                                            />
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <button
-                                                onClick={() => handleSave(inst)}
-                                                disabled={!newDates[inst.id] || savingId === inst.id}
-                                                className={`btn-primary btn-sm ${savingId === inst.id ? 'cursor-wait' : ''}`}
-                                            >
-                                                {savingId === inst.id ? 'Saving...' : 'Update'}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+        <div className="max-w-5xl mx-auto space-y-4">
+            <div>
+                <h2 className="text-lg font-semibold text-slate-900">Last date to pay</h2>
+                <Intro>
+                    Move the last date to pay for an installment. It changes the date for every student who has this fee
+                    in <strong>{branchLabel}</strong>{academicYear ? <> for <strong>{academicYear}</strong></> : null}.
+                    The installment setup itself is not changed.
+                </Intro>
             </div>
+
+            {error && <Alert tone="error" onClose={() => setError('')}>{error}</Alert>}
+            {successMessage && <Alert tone="success" onClose={() => setSuccessMessage('')}>{successMessage}</Alert>}
+
+            {feeNames.length > 1 && (
+                <Field label="Show installments of" htmlFor="urd-filter" className="sm:max-w-xs">
+                    <select id="urd-filter" value={feeFilter} onChange={e => setFeeFilter(e.target.value)} className="input">
+                        <option value="">All fees</option>
+                        {feeNames.map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                </Field>
+            )}
+
+            {shown.length === 0 ? (
+                <div className="card">
+                    <EmptyState compact title="No installments found" description="There are no installments for this branch and year." />
+                </div>
+            ) : (
+                <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {shown.map(inst => (
+                        <li key={inst.id} className="card">
+                            <div className="card-body space-y-3">
+                                <div>
+                                    <p className="text-[15px] font-semibold text-slate-900 break-words">
+                                        {inst.title}
+                                        {inst.is_admission && <span className="ml-2 badge-success">Admission</span>}
+                                    </p>
+                                    <p className="text-sm text-slate-500">
+                                        {inst.fee_type_name || 'Fee'} · {prettyDate(inst.start_date)} – {prettyDate(inst.end_date)}
+                                    </p>
+                                    <p className="text-sm text-slate-700 mt-1">Set up last date: <strong>{prettyDate(inst.last_pay_date)}</strong></p>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                                    <Field label="New last date to pay" htmlFor={`urd-${inst.id}`} className="flex-1">
+                                        <input
+                                            id={`urd-${inst.id}`}
+                                            type="date"
+                                            value={newDates[inst.id] || ''}
+                                            onChange={(e) => handleDateChange(inst.id, e.target.value)}
+                                            className="input"
+                                        />
+                                    </Field>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSave(inst)}
+                                        disabled={!newDates[inst.id] || savingId === inst.id}
+                                        className={`btn-primary min-h-[44px] ${savingId === inst.id ? 'cursor-wait' : ''}`}
+                                    >
+                                        {savingId === inst.id ? 'Saving…' : 'Save date'}
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 };
