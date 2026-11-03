@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { LoadingState } from './ui/States';
 import Header from './Header';
 import Sidebar from './Sidebar';
@@ -8,6 +8,7 @@ import FinancialLayout from './FinancialLayout';
 import HRLayout from './HRLayout';
 import { useNavigationHistory } from '../hooks/useNavigationHistory';
 import { Page } from '../App';
+import { setIntent } from '../utils/intent';
 
 // Pages are code-split: each module downloads only when it is first opened.
 const Profile = lazy(() => import('./Profile'));
@@ -102,6 +103,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
+
+  // Old page names that never had their own screen: send people to where that job lives now
+  useEffect(() => {
+    const moved: Partial<Record<Page, [Page, string?]>> = {
+      'create-student': ['student-administration', 'addStudent'],
+      'import-student-data': ['student-administration', 'import'],
+      'attendance-report': ['student-attendance', 'absent-report'],
+      'document-administration': ['document-management'],
+      'student-document-management': ['document-management'],
+    };
+    const target = moved[currentPage];
+    if (target) {
+      if (target[1]) setIntent(target[0], target[1]);
+      window.location.replace(`#${target[0]}`);
+    }
+  }, [currentPage]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-muted">
