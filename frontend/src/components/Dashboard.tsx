@@ -176,7 +176,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
               {currentPage === 'timetable' && <Timetable />}
               {currentPage === 'online-class' && <OnlineClass />}
               {currentPage === 'setup' && <SetupSchool navigateTo={navigateTo} />}
-              {currentPage === 'classes-management' && <ClassesManagement />}
+              {currentPage === 'classes-management' && <ClassesManagement navigateTo={navigateTo} />}
               {currentPage === 'student-attendance' && <StudentAttendance navigateTo={navigateTo} />}
               {currentPage === 'student-administration' && <StudentAdministration navigateTo={navigateTo} />}
               {currentPage === 'configuration' && <Configuration navigateTo={navigateTo} />}

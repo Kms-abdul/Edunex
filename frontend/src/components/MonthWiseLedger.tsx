@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { notify } from './ui/feedback';
 import { EmptyState, LoadingState } from './ui';
 
 interface LedgerRow {
@@ -101,6 +103,25 @@ const MonthWiseLedger: React.FC<MonthWiseLedgerProps> = ({ onMonthClick }) => {
         return ledgerData.slice(0, lastActiveIdx + 1);
     }, [ledgerData]);
 
+    const handleExportExcel = () => {
+        if (activeLedgerData.length === 0) {
+            notify.warning('There is no ledger data to export.');
+            return;
+        }
+        const branchName = branches.find(b => String(b.id) === String(selectedBranch))?.branch_name || selectedBranch;
+        const rows = activeLedgerData.map(r => ({
+            'Particulars': r.particulars,
+            'Debit (Allocated)': Number(r.debit.toFixed(2)),
+            'Credit (Spent)': Number(r.credit.toFixed(2)),
+            'Cash in hand': Number(r.cash_in_hand.toFixed(2)),
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [{ wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 16 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Cash Ledger');
+        XLSX.writeFile(wb, `Month_Wise_Cash_Ledger_${String(branchName).replace(/\s+/g, '_')}_${academicYear}.xlsx`);
+    };
+
     return (
         <div className="space-y-6">
             <h2 className="page-title">
@@ -134,7 +155,12 @@ const MonthWiseLedger: React.FC<MonthWiseLedgerProps> = ({ onMonthClick }) => {
                                 <option value="2027-2028">2027-2028</option>
                             </select>
                         </div>
-                        <button className="btn-secondary btn-sm text-emerald-700">
+                        <button
+                            type="button"
+                            onClick={handleExportExcel}
+                            disabled={loading || activeLedgerData.length === 0}
+                            className="btn-secondary btn-sm text-emerald-700"
+                        >
                             <FileSpreadsheet size={16} /> Excel
                         </button>
                     </div>

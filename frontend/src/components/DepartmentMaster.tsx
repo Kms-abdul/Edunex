@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
+import { useAuth } from '../contexts/AuthContext';
 import { Alert, LoadingState, EmptyState, Badge } from './ui';
 
 interface Department {
@@ -16,6 +17,8 @@ export const DepartmentMaster: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [editingId, setEditingId] = useState<number | null>(null);
+    const { hasPermission } = useAuth();
+    const canEdit = hasPermission('hr.hr.departments', 'write');
 
 
     const [form, setForm] = useState({
@@ -44,12 +47,25 @@ export const DepartmentMaster: React.FC = () => {
         fetchData();
     }, [fetchData]);
 
+    const handleEdit = (d: Department) => {
+        setEditingId(d.id);
+        setMsg(null);
+        setForm({
+            department_code: d.department_code,
+            department_name: d.department_name,
+            description: d.description || '',
+            display_order: d.display_order || 0,
+            status: d.status || 'ACTIVE'
+        });
+        // The app scrolls inside the main panel, not the window
+        document.getElementById('department-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             if (editingId) {
                 await api.put(`/hr/departments/${editingId}`, form);
-                setMsg({ type: 'success', text: 'Department updated successfully' });
             } else {
                 await api.post('/hr/departments', form);
             }
@@ -82,7 +98,7 @@ export const DepartmentMaster: React.FC = () => {
                 </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <form id="department-form" onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 <div>
                     <label className="label">Code *</label>
                     <input type="text" required value={form.department_code} onChange={e => setForm({ ...form, department_code: e.target.value.replace(/\D/g, '').replace(/^0+/, '') })} disabled={!!editingId} className="input" />
@@ -110,11 +126,12 @@ export const DepartmentMaster: React.FC = () => {
                             <th className="px-3 py-2.5 border-b border-slate-200">Code</th>
                             <th className="px-3 py-2.5 border-b border-slate-200">Name</th>
                             <th className="px-3 py-2.5 border-b border-slate-200">Status</th>
+                            {canEdit && <th className="px-3 py-2.5 border-b border-slate-200 text-right">Actions</th>}
                         </tr>
                     </thead>
                     <tbody>
-                        {loading ? <tr><td colSpan={3}><LoadingState label="Loading departments…" /></td></tr> :
-                            departments.length === 0 ? <tr><td colSpan={3}><EmptyState compact title="No departments yet" description="Add a department using the form above." /></td></tr> :
+                        {loading ? <tr><td colSpan={canEdit ? 4 : 3}><LoadingState label="Loading departments…" /></td></tr> :
+                            departments.length === 0 ? <tr><td colSpan={canEdit ? 4 : 3}><EmptyState compact title="No departments yet" description="Add a department using the form above." /></td></tr> :
                             departments.map(d => (
                                 <tr key={d.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                                     <td className="px-3 py-2.5">{d.department_code}</td>
@@ -122,6 +139,11 @@ export const DepartmentMaster: React.FC = () => {
                                     <td className="px-3 py-2.5">
                                         <Badge tone={d.status === 'ACTIVE' ? 'success' : 'danger'}>{d.status}</Badge>
                                     </td>
+                                    {canEdit && (
+                                        <td className="px-3 py-2.5 text-right">
+                                            <button type="button" onClick={() => handleEdit(d)} className="btn-ghost btn-sm">Edit</button>
+                                        </td>
+                                    )}
                                 </tr>
                             ))
                         }

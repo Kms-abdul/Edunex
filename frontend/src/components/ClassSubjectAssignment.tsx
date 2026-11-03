@@ -336,8 +336,7 @@ const ClassSubjectAssignment: React.FC = () => {
             await api.post("/academic/manage-subject-assignment/bulk", {
                 updates: updates,
                 academic_year_id: selectedYear,
-                branch_id: selectedBranch,
-                location_id: 1
+                branch_id: selectedBranch
             });
 
             // On success, update Initial to match Current

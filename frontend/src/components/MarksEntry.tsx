@@ -249,7 +249,6 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
             branch: selectedBranch,
             class_id: selectedClass,
             section: selectedSection, // optional context
-            user_id: 1, // TODO: Get from auth context
             marks: students.map(s => ({
                 student_id: s.student_id,
                 value: s.is_absent ? "AB" : s.marks_obtained

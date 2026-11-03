@@ -1030,7 +1030,7 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
     void handleUpload;
 
     const handleSave = async () => {
-        if (Object.keys(attendanceData).length === 0) return;
+        if (saving || Object.keys(attendanceData).length === 0) return;
         setSaving(true);
         try {
             // Transform flat map back to API payload
@@ -1196,14 +1196,14 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                                     <div className="flex gap-2">
                                         <button
                                             onClick={handleReset}
-                                            disabled={loading || Object.keys(attendanceData).length === 0}
+                                            disabled={loading || saving || Object.keys(attendanceData).length === 0}
                                             className="btn-secondary"
                                         >
                                             Reset Changes
                                         </button>
                                         <button
                                             onClick={handleSave}
-                                            disabled={loading || students.every((s: any) => s.is_locked)}
+                                            disabled={loading || saving || students.every((s: any) => s.is_locked)}
                                             className="btn-success"
                                         >
                                             {saving ? "Saving..." : "Save All Changes"}

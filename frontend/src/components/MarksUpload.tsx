@@ -244,7 +244,6 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
                     academic_year: academicYear,
                     branch: selectedBranch,
                     class_id: selectedClass,
-                    user_id: 1, // TODO: Auth
                     marks: pendingUpdates
                 };
 

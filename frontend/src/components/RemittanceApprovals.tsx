@@ -23,7 +23,7 @@ const RemittanceApprovals: React.FC = () => {
 
   const getHeaders = () => {
     const token = localStorage.getItem('token') || '';
-    const globalYear = localStorage.getItem('academicYear') || '2024-2025';
+    const globalYear = localStorage.getItem('academicYear') || '2026-2027';
     return {
       'Authorization': `Bearer ${token}`,
       'X-Academic-Year': globalYear

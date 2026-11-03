@@ -411,6 +411,8 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
     const [chequeNo, setChequeNo] = useState('');
     const [bankName, setBankName] = useState('');
     const [chequeDate, setChequeDate] = useState('');
+    // When ticked, mode/date/bank carry over to the next payment (cheque no. and txn ID never do)
+    const [keepPaymentDetails, setKeepPaymentDetails] = useState(false);
 
     useEffect(() => {
         const fetchClasses = async () => {
@@ -489,7 +491,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
             } else {
                 setInstallments([]);
             }
-            handleReset();
+            handleReset({ keepPaymentDetails });
             setSelectedConcession('0');
             setAppliedConcession(0);
             setItemConcessions({});
@@ -677,7 +679,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
         setPaidInput(String(totalPaying));
     }, [totalPaying]);
 
-    const handleReset = () => {
+    const handleReset = (options: { keepPaymentDetails?: boolean } = {}) => {
         setSelectedIds([]);
         setSelectedConcession('0');
         setAppliedConcession(0);
@@ -687,13 +689,15 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
         setSelectedFeeType('all');
         setSchoolReceiptNo('');
         setPaymentNote('');
-        setPaymentMode('Cash');
-        setPaymentDate(new Date().toISOString().split('T')[0]);
         setTransactionId('');
-        setTransactionIdDescription('');
         setChequeNo('');
-        setBankName('');
-        setChequeDate('');
+        if (!options.keepPaymentDetails) {
+            setPaymentMode('Cash');
+            setPaymentDate(new Date().toISOString().split('T')[0]);
+            setTransactionIdDescription('');
+            setBankName('');
+            setChequeDate('');
+        }
     };
 
     const handleTakeFee = async () => {
@@ -843,7 +847,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
     const handleCloseReceipt = () => {
         setShowReceipt(false);
         setReceiptData(null);
-        handleReset();
+        handleReset({ keepPaymentDetails });
     };
 
     const RupeeIcon = () => <span className="font-sans">₹</span>;
@@ -915,14 +919,8 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                         ))}
                                     </select>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                    <button className="btn-secondary btn-sm">
-                                        Download QR
-                                    </button>
-                                    <button className="btn-primary btn-sm">
-                                        Student
-                                    </button>
-                                </div>
+                                {/* "Download QR" and "Student" buttons hidden: they had no action and the
+                                    backend has no QR endpoint yet. Restore here once those features exist. */}
                             </div>
 
                             {selectedStudent && (
@@ -1259,6 +1257,8 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                     <input
                                         id="keep-details"
                                         type="checkbox"
+                                        checked={keepPaymentDetails}
+                                        onChange={e => setKeepPaymentDetails(e.target.checked)}
                                         className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500"
                                     />
                                     <label htmlFor="keep-details" className="label mb-0 ml-2">
@@ -1274,7 +1274,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                         Collect Fee
                                     </button>
                                     <button
-                                        onClick={handleReset}
+                                        onClick={() => handleReset()}
                                         className="btn-secondary"
                                     >
                                         Reset

@@ -246,7 +246,14 @@ const ConcessionMaster: React.FC = () => {
             fetchConcessions();
         } catch (error: any) {
             console.error("Error deleting concession:", error);
-            notify("Student record exist for this concession,Cannot delete");
+            const status = error?.response?.status;
+            const serverMsg: string = error?.response?.data?.error || '';
+            // A 500 here is almost always a foreign-key violation: students still use this concession.
+            if (status === 500 && /foreign key|integrity|constraint|violates/i.test(serverMsg)) {
+                notify.error("This concession is assigned to students, so it can't be deleted.");
+            } else {
+                notify.error(serverMsg || "Failed to delete concession. Please try again.");
+            }
         }
     };
 

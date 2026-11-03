@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
+import { useAuth } from '../contexts/AuthContext';
 import { notify, confirmDialog } from './ui/feedback';
 import { PageHeader, LoadingState, EmptyState } from './ui';
 
@@ -37,7 +38,11 @@ interface ClassesManagementProps {
     navigateTo?: (page: any) => void;
 }
 
-const ClassesManagement: React.FC<ClassesManagementProps> = () => {
+const SOON = 'Coming soon — not available yet';
+
+const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => {
+    const { hasPermission } = useAuth();
+    const canOpenTimetable = !!navigateTo && hasPermission('academics.timetable.subject-teacher-assignment', 'read');
     const [viewMode, setViewMode] = useState<'list' | 'create'>('list');
     const [selectedClass, setSelectedClass] = useState<string>('all');
     const [selectedSection, setSelectedSection] = useState<string>('all');
@@ -220,9 +225,17 @@ const ClassesManagement: React.FC<ClassesManagementProps> = () => {
     };
 
 
+    const classOptions = Array.from(new Set(classes.map(c => c.class_name))).filter(Boolean);
+    const sectionOptions = Array.from(new Set(classes.flatMap(c => [
+        ...(c.sections || []).map(sec => sec.name),
+        ...(c.section ? [c.section] : []),
+    ]))).filter(Boolean).sort();
+
     const filteredClasses = classes.filter(cls => {
-        const classMatch = selectedClass === 'all' || cls.class_name.includes(selectedClass);
-        const sectionMatch = selectedSection === 'all' || cls.section === selectedSection;
+        const classMatch = selectedClass === 'all' || cls.class_name === selectedClass;
+        const sectionMatch = selectedSection === 'all'
+            || cls.section === selectedSection
+            || (cls.sections || []).some(sec => sec.name === selectedSection);
         return classMatch && sectionMatch;
     });
 
@@ -384,10 +397,12 @@ const ClassesManagement: React.FC<ClassesManagementProps> = () => {
                                 </svg>}
                         actions={(
                         <>
-                            <button className="btn-ghost text-brand-600">
-                                Get Help
-                            </button>
-                            <button className="btn-primary">
+                            {navigateTo && (
+                                <button type="button" onClick={() => navigateTo('staffsupport')} className="btn-ghost text-brand-600">
+                                    Get Help
+                                </button>
+                            )}
+                            <button type="button" className="btn-primary" disabled title={SOON}>
                                 Assign Class Teachers
                             </button>
                             <button
@@ -425,6 +440,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = () => {
                                     className="input"
                                 >
                                     <option value="all">All classes</option>
+                                    {classOptions.map(name => <option key={name} value={name}>{name}</option>)}
 
                                 </select>
                             </div>
@@ -437,17 +453,18 @@ const ClassesManagement: React.FC<ClassesManagementProps> = () => {
                                     onChange={(e) => setSelectedSection(e.target.value)}
                                     className="input"
                                 >
-                                    <option value="all">Class Group</option>
+                                    <option value="all">All sections</option>
+                                    {sectionOptions.map(name => <option key={name} value={name}>{name}</option>)}
 
                                 </select>
                             </div>
-                            <div className="flex items-end">
-                                <button className="btn-success">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                </button>
-                            </div>
+                            {(selectedClass !== 'all' || selectedSection !== 'all') && (
+                                <div className="flex items-end">
+                                    <button type="button" onClick={() => { setSelectedClass('all'); setSelectedSection('all'); }} className="btn-secondary">
+                                        Clear filters
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -480,13 +497,19 @@ const ClassesManagement: React.FC<ClassesManagementProps> = () => {
                                             <td className="px-6 py-4 text-sm text-gray-900 font-medium">{cls.total_students}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex gap-2">
-                                                    <button className="btn-primary btn-sm">
+                                                    <button type="button" className="btn-primary btn-sm" disabled title={SOON}>
                                                         Assign Roll No
                                                     </button>
-                                                    <button className="btn-warn btn-sm">
+                                                    <button
+                                                        type="button"
+                                                        className="btn-warn btn-sm"
+                                                        disabled={!canOpenTimetable}
+                                                        title={canOpenTimetable ? 'Open Timetable › Subject Teacher Assignment' : 'You need Subject Teacher Assignment access'}
+                                                        onClick={() => navigateTo?.('timetable')}
+                                                    >
                                                         Assign Subject Teacher
                                                     </button>
-                                                    <button className="btn-warn btn-sm">
+                                                    <button type="button" className="btn-warn btn-sm" disabled title={SOON}>
                                                         Assign Class Monitor
                                                     </button>
                                                 </div>

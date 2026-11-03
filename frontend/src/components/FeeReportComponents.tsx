@@ -2354,9 +2354,7 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const isAdmin = hasPermission(user, 'fees.fee.take-fee', 'delete'); // Usually, if they can delete/cancel, they can edit
-    
-    // DEBUG: Remove after testing
-    console.log('Detected PBAC permission for editing receipts:', isAdmin);
+
 
     const paymentModes = ["Cash", "UPI", "Card", "Bank Transfer", "Cheque"];
 
