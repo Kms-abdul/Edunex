@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api, { remittanceApi } from '../api';
 import PageHeader from './ui/PageHeader';
 import { notify } from './ui/feedback';
+import { Alert, EmptyState } from './ui';
 
 interface DenominationRow {
   denomination: number;
@@ -320,14 +321,14 @@ const RemittanceDeposit: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-4 space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <PageHeader
         icon={<span className="font-semibold">₹</span>}
         title="Cash Remittance Deposit & Day Closing"
         subtitle="Audit-Proof Financial Workflow • Direct Remittance to Corporate Office"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <label className="label !mb-0">Branch:</label>
             <select
               value={selectedBranch}
@@ -352,20 +353,16 @@ const RemittanceDeposit: React.FC = () => {
       />
 
       {message && (
-        <div className={`p-4 rounded-lg shadow font-medium flex items-center justify-between ${message.type === 'success'
-          ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
-          : 'bg-rose-50 text-rose-800 border border-rose-300'
-          }`}>
-          <span>{message.text}</span>
-          <button onClick={() => setMessage(null)} className="font-bold ml-4 text-sm uppercase opacity-60 hover:opacity-100">✕</button>
-        </div>
+        <Alert tone={message.type === 'success' ? 'success' : 'error'} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
       )}
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 gap-6">
+      <div className="flex border-b border-slate-200 gap-6 overflow-x-auto">
         <button
           onClick={() => setActiveTab('deposit')}
-          className={`py-3 px-1 font-semibold text-sm border-b-2 transition-all ${activeTab === 'deposit'
+          className={`py-3 px-1 font-semibold text-sm border-b-2 transition-all whitespace-nowrap ${activeTab === 'deposit'
             ? 'border-brand-600 text-brand-600'
             : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
@@ -374,14 +371,14 @@ const RemittanceDeposit: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveTab('history')}
-          className={`py-3 px-1 font-semibold text-sm border-b-2 transition-all flex items-center gap-2 ${activeTab === 'history'
+          className={`py-3 px-1 font-semibold text-sm border-b-2 transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'history'
             ? 'border-brand-600 text-brand-600'
             : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
         >
           📜 Remittance History & Status
           {recentRemittances.filter(r => r.status === 'Pending').length > 0 && (
-            <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-xs font-bold border border-amber-300">
+            <span className="badge-warning">
               {recentRemittances.filter(r => r.status === 'Pending').length} Pending
             </span>
           )}
@@ -396,7 +393,7 @@ const RemittanceDeposit: React.FC = () => {
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Opening Balance</span>
               <div className="mt-3 flex items-baseline justify-between">
                 <span className="text-3xl font-extrabold text-slate-800">₹{(cashPosition.opening_balance || 0).toLocaleString()}</span>
-                <span className="text-xs font-semibold px-2 py-1 bg-slate-100 text-slate-600 rounded-full">Yesterday Closing</span>
+                <span className="badge-neutral">Yesterday Closing</span>
               </div>
               <p className="text-xs text-slate-500 mt-2">Yesterday's closing cash carry-forward</p>
             </div>
@@ -404,8 +401,8 @@ const RemittanceDeposit: React.FC = () => {
             <div className="card p-5 flex flex-col justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Today Collections</span>
               <div className="mt-3 flex items-baseline justify-between">
-                <span className="text-3xl font-extrabold text-blue-600">₹{(cashPosition.today_collection || 0).toLocaleString()}</span>
-                <span className="text-xs font-semibold px-2 py-1 bg-blue-50 text-blue-700 rounded-full">Cash Fee</span>
+                <span className="text-3xl font-extrabold text-brand-600">₹{(cashPosition.today_collection || 0).toLocaleString()}</span>
+                <span className="badge-brand">Cash Fee</span>
               </div>
               <p className="text-xs text-slate-500 mt-2">Today's collection of fee in cash mode</p>
             </div>
@@ -427,7 +424,7 @@ const RemittanceDeposit: React.FC = () => {
           {/* Form & Denomination Grid */}
           <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Column: Deposit Parameters */}
-            <div className="lg:col-span-6 card p-6 space-y-5 flex flex-col justify-between">
+            <div className="lg:col-span-6 card p-5 space-y-5 flex flex-col justify-between">
               <div>
                 <h3 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
                   <span>🏦</span> Deposit Instructions & Details
@@ -457,7 +454,7 @@ const RemittanceDeposit: React.FC = () => {
                         placeholder="0"
                         value={depositAmount}
                         onChange={(e) => setDepositAmount(e.target.value)}
-                        className={`w-full pl-8 pr-4 py-2.5 border rounded-lg shadow-sm font-black text-lg outline-none focus:ring-2 ${depositVal > cashPosition.cash_in_hand ? 'border-rose-500 text-rose-700 focus:ring-rose-500 bg-rose-50/50' : 'border-slate-300 text-slate-900 focus:ring-blue-500'
+                        className={`w-full pl-8 pr-4 py-2.5 border rounded-lg shadow-sm font-black text-lg outline-none focus:ring-2 ${depositVal > cashPosition.cash_in_hand ? 'border-rose-500 text-rose-700 focus:ring-rose-500 bg-rose-50/50' : 'border-slate-300 text-slate-900 focus:ring-brand-500'
                           }`}
                         required
                       />
@@ -484,7 +481,7 @@ const RemittanceDeposit: React.FC = () => {
                         type="button"
                         onClick={() => setDepositType('Corporate Office')}
                         className={`p-3 rounded-lg border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${depositType === 'Corporate Office'
-                          ? 'border-blue-600 bg-blue-50 text-blue-800 shadow-sm'
+                          ? 'border-brand-600 bg-brand-50 text-brand-800 shadow-sm'
                           : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                           }`}
                       >
@@ -569,7 +566,7 @@ const RemittanceDeposit: React.FC = () => {
                         onChange={(e) => setAttachment(e.target.files ? e.target.files[0] : null)}
                         className="hidden"
                       />
-                      <label htmlFor="slip-upload" className="cursor-pointer text-sm font-semibold text-blue-600 hover:text-blue-800 block">
+                      <label htmlFor="slip-upload" className="cursor-pointer text-sm font-semibold text-brand-600 hover:text-brand-800 block">
                         {attachment ? (
                           <span className="text-emerald-700 font-bold flex items-center justify-center gap-2">
                             📎 Selected: {attachment.name}
@@ -615,10 +612,10 @@ const RemittanceDeposit: React.FC = () => {
             </div>
 
             {/* Right Column: Denomination Breakdown */}
-            <div className="lg:col-span-6 card p-6">
+            <div className="lg:col-span-6 card p-5">
               <h3 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-3 flex items-center justify-between">
                 <span className="flex items-center gap-2">💵 Currency Denomination Counter</span>
-                <span className={`text-xs px-2.5 py-1 rounded-full font-extrabold ${isDenomMatch && depositVal > 0 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'}`}>
+                <span className={isDenomMatch && depositVal > 0 ? 'badge-success' : 'badge-warning'}>
                   {isDenomMatch && depositVal > 0 ? '✓ Balanced' : '⚖ Requires Balance'}
                 </span>
               </h3>
@@ -667,9 +664,9 @@ const RemittanceDeposit: React.FC = () => {
             </div>
           </form>
 
-          {/* Unremitted Cash Receipts Table (Audit View) */}
+          {/* Unremitted Cash Receipts Table (Audit View) — currently disabled; wrapper card removed so no empty box renders.
           <div className="card p-6">
-            {/*<div className="flex items-center justify-between border-b pb-3 mb-4">
+            <div className="flex items-center justify-between border-b pb-3 mb-4">
               <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
                 <span>📋</span> Active Cash Fee Receipts Contributing to Balance ({cashPosition.unremitted_receipts.length})
               </h3>
@@ -705,13 +702,14 @@ const RemittanceDeposit: React.FC = () => {
                   </tbody>
                 </table>
               </div>
-            )}*/}
+            )}
           </div>
+          */}
         </div>
       ) : (
         /* History Tab */
-        <div className="card p-6 space-y-4">
-          <div className="flex justify-between items-center border-b pb-3">
+        <div className="card p-5 space-y-4">
+          <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-100 pb-3">
             <h3 className="text-base font-semibold text-slate-900">Branch Remittance History</h3>
             <button
               onClick={() => fetchRecentRemittances()}
@@ -722,9 +720,7 @@ const RemittanceDeposit: React.FC = () => {
           </div>
 
           {recentRemittances.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 font-medium bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
-              No cash remittances found for this branch.
-            </div>
+            <EmptyState title="No cash remittances found" description="No cash remittances found for this branch." />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-sm">
@@ -742,10 +738,9 @@ const RemittanceDeposit: React.FC = () => {
                 <tbody className="divide-y divide-slate-100 font-medium">
                   {recentRemittances.map((rem) => (
                     <tr key={rem.id} className="hover:bg-slate-50 transition">
-                      <td className="p-3 font-extrabold text-blue-700">{rem.remittance_no}</td>
+                      <td className="p-3 font-extrabold text-brand-700">{rem.remittance_no}</td>
                       <td className="p-3 text-xs">
-                        <span className={`px-2 py-0.5 rounded font-bold uppercase inline-block ${rem.deposit_type === 'Bank' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-blue-50 text-blue-800 border border-blue-200'
-                          }`}>
+                        <span className={`uppercase ${rem.deposit_type === 'Bank' ? 'badge-success' : 'badge-brand'}`}>
                           {rem.deposit_type === 'Bank' ? '🏦 Bank' : '🏢 Corporate Office'}
                         </span>
                         {rem.deposit_type === 'Bank' && rem.bank_name && (
@@ -763,12 +758,12 @@ const RemittanceDeposit: React.FC = () => {
                       <td className="p-3 text-right font-black text-slate-900">₹{rem.deposit_amount.toLocaleString()}</td>
                       <td className="p-3 text-right text-slate-600">₹{rem.remaining_cash.toLocaleString()}</td>
                       <td className="p-3 text-center">
-                        <span className={`px-3 py-1 rounded-full text-xs font-extrabold inline-block ${rem.status === 'Approved'
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        <span className={rem.status === 'Approved'
+                          ? 'badge-success'
                           : rem.status === 'Rejected'
-                            ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                            : 'bg-amber-100 text-amber-800 border border-amber-300 animate-pulse'
-                          }`}>
+                            ? 'badge-danger'
+                            : 'badge-warning'
+                          }>
                           {rem.status === 'Approved' ? '✓ Approved' : rem.status === 'Rejected' ? '✕ Rejected' : '⌛ Pending HO Review'}
                         </span>
                       </td>
@@ -800,8 +795,8 @@ const RemittanceDeposit: React.FC = () => {
       )}
 
       {printModalData && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto no-print">
-          <div className="card max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 overflow-y-auto no-print">
+          <div className="card max-w-2xl w-full max-h-[90vh] flex flex-col shadow-pop overflow-hidden">
             <div className="card-header no-print">
               <h3 className="font-semibold text-base text-slate-900 flex items-center gap-2">
                 <span>🖨️</span> Remittance Deposit Voucher Preview

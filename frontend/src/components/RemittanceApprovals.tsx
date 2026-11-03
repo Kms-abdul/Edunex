@@ -3,6 +3,7 @@ import { remittanceApi } from '../api';
 import { API_URL } from '../config';
 import PageHeader from './ui/PageHeader';
 import { notify } from './ui/feedback';
+import { Alert, EmptyState, LoadingState } from './ui';
 
 const RemittanceApprovals: React.FC = () => {
   const [branches, setBranches] = useState<any[]>([]);
@@ -121,7 +122,7 @@ const RemittanceApprovals: React.FC = () => {
   const approvedAmount = remittances.filter(r => r.status === 'Approved').reduce((sum, r) => sum + r.deposit_amount, 0);
 
   return (
-    <div className="max-w-7xl mx-auto p-4 space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <PageHeader
         title="Head Office Remittance Approvals"
@@ -144,11 +145,9 @@ const RemittanceApprovals: React.FC = () => {
       />
 
       {message && (
-        <div className={`p-4 rounded-lg shadow font-semibold flex items-center justify-between ${message.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-300' : 'bg-rose-50 text-rose-800 border border-rose-300'
-          }`}>
-          <span>{message.text}</span>
-          <button onClick={() => setMessage(null)} className="font-extrabold text-sm ml-4 uppercase opacity-60 hover:opacity-100">✕</button>
-        </div>
+        <Alert tone={message.type === 'success' ? 'success' : 'error'} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
       )}
 
       {/* KPI Stats Strip */}
@@ -180,7 +179,7 @@ const RemittanceApprovals: React.FC = () => {
 
       {/* Filter Toolbar */}
       <div className="card p-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="label !mb-0 mr-1">Status:</span>
           {['Pending', 'Approved', 'Rejected', 'All'].map((s) => (
             <button
@@ -193,7 +192,7 @@ const RemittanceApprovals: React.FC = () => {
           ))}
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
           <span>Date Range:</span>
           <input
             type="date"
@@ -222,13 +221,9 @@ const RemittanceApprovals: React.FC = () => {
       {/* Main Approvals Table */}
       <div className="card overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-slate-500 font-semibold">
-            ⏳ Loading branch cash remittances...
-          </div>
+          <LoadingState label="Loading branch cash remittances..." />
         ) : remittances.length === 0 ? (
-          <div className="p-16 text-center text-slate-400 font-semibold bg-slate-50/40">
-            No remittances found matching your filters.
-          </div>
+          <EmptyState title="No remittances found" description="No remittances found matching your filters." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-sm">
@@ -248,7 +243,7 @@ const RemittanceApprovals: React.FC = () => {
               <tbody className="divide-y divide-slate-100 font-medium">
                 {remittances.map((rem) => (
                   <tr key={rem.id} className="hover:bg-slate-50 transition">
-                    <td className="py-3.5 px-4 font-black text-blue-700">{rem.remittance_no}</td>
+                    <td className="py-3.5 px-4 font-black text-brand-700">{rem.remittance_no}</td>
                     <td className="py-3.5 px-4 font-bold text-slate-800">{rem.branch_name}</td>
                     <td className="py-3.5 px-4 text-slate-600">{rem.business_date}</td>
                     <td className="py-3.5 px-4">
@@ -302,8 +297,8 @@ const RemittanceApprovals: React.FC = () => {
 
       {/* Detailed Review & Denomination Modal */}
       {selectedItem && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="card shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="card shadow-pop max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="card-header !px-6">
               <div>
@@ -321,7 +316,7 @@ const RemittanceApprovals: React.FC = () => {
             {/* Modal Body */}
             <div className="p-6 space-y-6">
               {/* Top Financial Breakdown */}
-              <div className="grid grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <div>
                   <span className="text-[11px] uppercase text-slate-500 font-extrabold block">System Hand Cash</span>
                   <span className="text-lg font-black text-slate-700">₹{selectedItem.cash_in_hand.toLocaleString()}</span>
@@ -337,13 +332,13 @@ const RemittanceApprovals: React.FC = () => {
               </div>
 
               {/* Deposit Type & Details */}
-              <div className={`p-4 rounded-xl border flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between ${selectedItem.deposit_type === 'Bank' ? 'bg-emerald-50 border-emerald-200' : 'bg-blue-50 border-blue-200'}`}>
+              <div className={`p-4 rounded-xl border flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between ${selectedItem.deposit_type === 'Bank' ? 'bg-emerald-50 border-emerald-200' : 'bg-brand-50 border-brand-200'}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`text-4xl ${selectedItem.deposit_type === 'Bank' ? 'text-emerald-600' : 'text-blue-600'}`}>
+                  <div className={`text-4xl ${selectedItem.deposit_type === 'Bank' ? 'text-emerald-600' : 'text-brand-600'}`}>
                     {selectedItem.deposit_type === 'Bank' ? '🏦' : '🏢'}
                   </div>
                   <div>
-                    <h3 className={`text-sm font-extrabold uppercase ${selectedItem.deposit_type === 'Bank' ? 'text-emerald-800' : 'text-blue-800'}`}>
+                    <h3 className={`text-sm font-extrabold uppercase ${selectedItem.deposit_type === 'Bank' ? 'text-emerald-800' : 'text-brand-800'}`}>
                       {selectedItem.deposit_type === 'Bank' ? 'Bank Deposit' : 'Corporate Office Deposit'}
                     </h3>
                     <p className="text-xs text-slate-600 font-semibold mt-1">
@@ -372,7 +367,8 @@ const RemittanceApprovals: React.FC = () => {
                     <span>💵</span> Submitted Denomination Breakdown
                   </h4>
                   {selectedItem.denominations && selectedItem.denominations.length > 0 ? (
-                    <table className="w-full text-xs text-left border">
+                    <div className="overflow-x-auto rounded-lg border border-slate-200">
+                    <table className="w-full text-xs text-left">
                       <thead className="bg-slate-50 font-semibold text-slate-600">
                         <tr>
                           <th className="p-2">Note</th>
@@ -380,7 +376,7 @@ const RemittanceApprovals: React.FC = () => {
                           <th className="p-2 text-right">Amount (₹)</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y">
+                      <tbody className="divide-y divide-slate-100">
                         {selectedItem.denominations.map((d: any, i: number) => (
                           <tr key={i} className="font-medium">
                             <td className="p-2 font-bold">₹ {d.denomination}</td>
@@ -390,6 +386,7 @@ const RemittanceApprovals: React.FC = () => {
                         ))}
                       </tbody>
                     </table>
+                    </div>
                   ) : (
                     <p className="text-xs text-slate-400 italic">No note breakdown entered.</p>
                   )}

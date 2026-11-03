@@ -3,6 +3,7 @@ import { FileSpreadsheet, ChevronRight } from 'lucide-react';
 import { API_URL } from '../config';
 import MonthWiseLedger from './MonthWiseLedger';
 import DetailedLedger from './DetailedLedger';
+import { Spinner, EmptyState } from './ui';
 
 interface BranchWiseRow {
     branch_id: number;
@@ -48,13 +49,7 @@ const PettyCashReport: React.FC = () => {
     const [branchDetails, setBranchDetails] = useState<BranchDetail[]>([]);
     const [showDetails, setShowDetails] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(false);
-    const [user, setUser] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<'summary' | 'month-ledger' | 'details-ledger'>('summary');
-
-    useEffect(() => {
-        const u = localStorage.getItem('user');
-        if (u) setUser(JSON.parse(u));
-    }, []);
 
     const getHeaders = (): Record<string, string> => {
         const token = localStorage.getItem('token') || '';
@@ -212,28 +207,28 @@ const PettyCashReport: React.FC = () => {
     const [selectedDetailMonth, setSelectedDetailMonth] = useState<string | undefined>();
 
     return (
-        <div className="p-4 bg-gray-50 min-h-full">
+        <div className="space-y-6">
             {/* Header */}
-            <h2 className="text-xl font-semibold text-blue-700 mb-4">
+            <h2 className="page-title">
                 Petty-Cash Report
             </h2>
 
             {/* Tabs */}
-            <div className="flex border-b mb-6 bg-white overflow-x-auto shadow-sm rounded-t">
+            <div className="segmented max-w-full overflow-x-auto">
                 <button
-                    className={`btn ${activeTab === 'summary' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'}`}
+                    className={`segmented-item whitespace-nowrap ${activeTab === 'summary' ? 'segmented-item-active' : ''}`}
                     onClick={() => setActiveTab('summary')}
                 >
                     Expense Summary
                 </button>
                 <button
-                    className={`btn ${activeTab === 'month-ledger' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'}`}
+                    className={`segmented-item whitespace-nowrap ${activeTab === 'month-ledger' ? 'segmented-item-active' : ''}`}
                     onClick={() => setActiveTab('month-ledger')}
                 >
                     Month Wise Cash Ledger
                 </button>
                 <button
-                    className={`btn ${activeTab === 'details-ledger' ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'}`}
+                    className={`segmented-item whitespace-nowrap ${activeTab === 'details-ledger' ? 'segmented-item-active' : ''}`}
                     onClick={() => {
                         setSelectedDetailMonth(undefined);
                         setActiveTab('details-ledger');
@@ -260,13 +255,13 @@ const PettyCashReport: React.FC = () => {
                 <>
                     {/* Branch Wise Expenses Section */}
 
-                    <div className="card mb-6">
-                        <div className="flex flex-wrap items-center justify-between p-3 border-b">
+                    <div className="card overflow-hidden mb-6">
+                        <div className="card-header flex-wrap">
                             <div className="flex items-center gap-2">
-                                <span className="text-blue-600 font-medium cursor-pointer">📊 Branch Wise Expenses</span>
+                                <span className="text-base font-semibold text-slate-900">📊 Branch Wise Expenses</span>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <span className="font-medium">FY:</span>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <span className="text-sm font-medium text-slate-700">FY:</span>
                                 <select
                                     className="input w-auto"
                                     value={academicYear}
@@ -274,18 +269,18 @@ const PettyCashReport: React.FC = () => {
                                 >
                                     {academicYears.map(y => <option key={y} value={y}>{y}</option>)}
                                 </select>
-                                <span className="text-sm text-gray-600">
+                                <span className="text-sm text-slate-500">
                                     Note: <span className="text-red-600 font-medium">Only voucher type payments will be shown</span>
                                 </span>
                             </div>
-                            <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                            <div className="badge-brand">
                                 as on {currentDateTime}
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto rounded-lg border border-slate-200">
+                        <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="">
+                                <thead className="bg-slate-50">
                                     <tr>
                                         <th className="text-left p-2 border">Branch</th>
                                         {activeMonths.map(m => (
@@ -296,10 +291,10 @@ const PettyCashReport: React.FC = () => {
                                 </thead>
                                 <tbody>
                                     {branchWise.length === 0 && !loading && (
-                                        <tr><td colSpan={activeMonths.length + 2} className="text-center p-4 text-gray-500">No data</td></tr>
+                                        <tr><td colSpan={activeMonths.length + 2}><EmptyState compact title="No data" /></td></tr>
                                     )}
                                     {branchWise.map((row) => (
-                                        <tr key={row.branch_id} className="hover:bg-blue-50">
+                                        <tr key={row.branch_id} className="hover:bg-slate-50">
                                             <td className="p-2 border">
                                                 <button
                                                     className="text-blue-600 hover:underline flex items-center gap-1"
@@ -324,13 +319,13 @@ const PettyCashReport: React.FC = () => {
                     </div>
 
                     {/* Ledger Head Expenses Section */}
-                    <div className="card mb-6">
-                        <div className="flex flex-wrap items-center justify-between p-3 border-b">
+                    <div className="card overflow-hidden mb-6">
+                        <div className="card-header flex-wrap">
                             <div className="flex items-center gap-2">
-                                <span className="text-blue-600 font-medium">📒 Ledger Head Expenses</span>
+                                <span className="text-base font-semibold text-slate-900">📒 Ledger Head Expenses</span>
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium">FY:</span>
+                                <span className="text-sm font-medium text-slate-700">FY:</span>
                                 <select
                                     className="input w-auto"
                                     value={academicYear}
@@ -348,18 +343,18 @@ const PettyCashReport: React.FC = () => {
                                 </select>
                             </div>
                             <div className="flex flex-col items-end">
-                                <span className="text-sm text-gray-600">
+                                <span className="text-sm text-slate-500">
                                     Note: <span className="text-red-600 font-medium">Only voucher type payments will be shown</span>
                                 </span>
-                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded mt-1">
+                                <span className="badge-brand mt-1">
                                     as on {currentDateTime}
                                 </span>
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto rounded-lg border border-slate-200">
+                        <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="">
+                                <thead className="bg-slate-50">
                                     <tr>
                                         <th className="text-left p-2 border">Ledger Head</th>
                                         {activeMonths.map(m => (
@@ -370,10 +365,10 @@ const PettyCashReport: React.FC = () => {
                                 </thead>
                                 <tbody>
                                     {ledgerHead.length === 0 && !loading && (
-                                        <tr><td colSpan={activeMonths.length + 2} className="text-center p-4 text-gray-500">No data</td></tr>
+                                        <tr><td colSpan={activeMonths.length + 2}><EmptyState compact title="No data" /></td></tr>
                                     )}
                                     {ledgerHead.map((row) => (
-                                        <tr key={row.ledger_id} className="hover:bg-blue-50">
+                                        <tr key={row.ledger_id} className="hover:bg-slate-50">
                                             <td className="p-2 border font-medium">
                                                 <button
                                                     className="text-blue-700 hover:underline"
@@ -399,9 +394,9 @@ const PettyCashReport: React.FC = () => {
 
                     {/* Branch Expense Details Modal/Section */}
                     {showDetails && (
-                        <div className="card mb-6">
-                            <div className="flex items-center justify-between p-3 border-b">
-                                <h3 className="text-lg font-semibold text-blue-700">Branch Expenses Details</h3>
+                        <div className="card overflow-hidden mb-6">
+                            <div className="card-header flex-wrap">
+                                <h3 className="text-base font-semibold text-slate-900">Branch Expenses Details</h3>
                                 <div className="flex gap-2">
                                     <button
                                         className="btn-success"
@@ -417,9 +412,9 @@ const PettyCashReport: React.FC = () => {
                                     </button>
                                 </div>
                             </div>
-                            <div className="overflow-x-auto rounded-lg border border-slate-200">
+                            <div className="overflow-x-auto">
                                 <table className="w-full text-xs">
-                                    <thead className="">
+                                    <thead className="bg-slate-50">
                                         <tr>
                                             <th className="p-2 border">S.No</th>
                                             <th className="p-2 border">Date</th>
@@ -439,10 +434,10 @@ const PettyCashReport: React.FC = () => {
                                     </thead>
                                     <tbody>
                                         {branchDetails.length === 0 && (
-                                            <tr><td colSpan={14} className="text-center p-4 text-gray-500">No data</td></tr>
+                                            <tr><td colSpan={14}><EmptyState compact title="No data" /></td></tr>
                                         )}
                                         {branchDetails.map((d) => (
-                                            <tr key={d.sno} className="hover:bg-blue-50">
+                                            <tr key={d.sno} className="hover:bg-slate-50">
                                                 <td className="p-2 border text-center">{d.sno}</td>
                                                 <td className="p-2 border">{d.date}</td>
                                                 <td className="p-2 border text-blue-700">{d.branch_name}</td>
@@ -460,7 +455,7 @@ const PettyCashReport: React.FC = () => {
                                             </tr>
                                         ))}
                                         {branchDetails.length > 0 && (
-                                            <tr className="">
+                                            <tr className="bg-slate-50 font-semibold">
                                                 <td colSpan={13} className="p-2 border text-right">Total</td>
                                                 <td className="p-2 border text-right">
                                                     {formatAmount(branchDetails.reduce((s, d) => s + d.amount, 0))}
@@ -476,7 +471,7 @@ const PettyCashReport: React.FC = () => {
                 </>
             )}
 
-            {loading && <div className="text-center p-4 text-gray-500">Loading...</div>}
+            {loading && <div className="flex items-center justify-center gap-2 p-4 text-sm text-slate-500"><Spinner size="sm" /> Loading...</div>}
         </div>
     );
 };

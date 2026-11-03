@@ -3,6 +3,7 @@ import { API_URL } from '../config';
 import { FileSpreadsheet, RefreshCw, Calendar, ArrowLeft, Filter, Wallet, ArrowRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import PageHeader from './ui/PageHeader';
+import { Alert, EmptyState, LoadingState } from './ui';
 
 interface MonthLedgerRow {
   particulars: string;
@@ -250,7 +251,7 @@ const ReconciliationDashboard: React.FC = () => {
   }, [academicYear, monthData]);
 
   return (
-    <div className="max-w-7xl mx-auto p-4 space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <PageHeader
         icon={<Wallet className="w-5 h-5" />}
@@ -265,7 +266,7 @@ const ReconciliationDashboard: React.FC = () => {
       />
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={() => setActiveTab('month-ledger')}
           className={activeTab === 'month-ledger' ? 'btn-primary' : 'btn-secondary'}
@@ -284,11 +285,11 @@ const ReconciliationDashboard: React.FC = () => {
 
       {/* Tab Content Card with clean visual gap after tabs */}
       <div className="card overflow-hidden">
-        <div className="p-6">
+        <div className="p-5">
           {error && (
-            <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-medium">
+            <Alert tone="error" className="mb-4">
               {error}
-            </div>
+            </Alert>
           )}
 
           {/* TAB 1: Month Wise Cash Ledger */}
@@ -339,21 +340,18 @@ const ReconciliationDashboard: React.FC = () => {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-150 font-medium">
+                  <tbody className="divide-y divide-slate-100 font-medium">
                     {loading && (
                       <tr>
-                        <td colSpan={4} className="text-center py-12 text-slate-500">
-                          <div className="flex items-center justify-center gap-2">
-                            <RefreshCw className="w-5 h-5 animate-spin text-blue-600" />
-                            <span>Calculating month-wise cash positions...</span>
-                          </div>
+                        <td colSpan={4}>
+                          <LoadingState label="Calculating month-wise cash positions..." />
                         </td>
                       </tr>
                     )}
                     {!loading && activeMonthLedgerData.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="text-center py-12 text-slate-400">
-                          No cash ledger records found for this branch and academic year.
+                        <td colSpan={4}>
+                          <EmptyState compact title="No cash ledger records found" description="No cash ledger records found for this branch and academic year." />
                         </td>
                       </tr>
                     )}
@@ -495,21 +493,18 @@ const ReconciliationDashboard: React.FC = () => {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-150 font-medium text-slate-700">
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                     {loading && (
                       <tr>
-                        <td colSpan={9} className="text-center py-12 text-slate-500">
-                          <div className="flex items-center justify-center gap-2">
-                            <RefreshCw className="w-5 h-5 animate-spin text-blue-600" />
-                            <span>Loading daily cash ledger transactions...</span>
-                          </div>
+                        <td colSpan={9}>
+                          <LoadingState label="Loading daily cash ledger transactions..." />
                         </td>
                       </tr>
                     )}
                     {!loading && detailData.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="text-center py-12 text-slate-400">
-                          No transaction details found for the selected filter.
+                        <td colSpan={9}>
+                          <EmptyState compact title="No transaction details found" description="No transaction details found for the selected filter." />
                         </td>
                       </tr>
                     )}

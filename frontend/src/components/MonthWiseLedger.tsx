@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { FileSpreadsheet } from 'lucide-react';
+import { EmptyState, LoadingState } from './ui';
 
 interface LedgerRow {
     particulars: string;
@@ -101,18 +102,18 @@ const MonthWiseLedger: React.FC<MonthWiseLedgerProps> = ({ onMonthClick }) => {
     }, [ledgerData]);
 
     return (
-        <div className="p-4 bg-gray-50 min-h-full space-y-6">
-            <h2 className="text-xl font-semibold text-blue-700 mb-4">
+        <div className="space-y-6">
+            <h2 className="page-title">
                 Month wise cash ledger
             </h2>
-            <div className="card p-4">
-                <div className="flex flex-wrap items-center justify-between mb-6 pb-2 border-b">
+            <div className="card overflow-hidden">
+                <div className="card-header flex-wrap">
                     <div className="flex items-center gap-2">
-                        <span className="text-blue-600 font-medium">📅 Month wise cash ledger</span>
+                        <span className="text-base font-semibold text-slate-900">📅 Month wise cash ledger</span>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm text-gray-700">Branch:</span>
+                            <span className="font-medium text-sm text-slate-700">Branch:</span>
                             <select
                                 className="input w-auto"
                                 value={selectedBranch}
@@ -122,7 +123,7 @@ const MonthWiseLedger: React.FC<MonthWiseLedgerProps> = ({ onMonthClick }) => {
                             </select>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm text-gray-700">FY:</span>
+                            <span className="font-medium text-sm text-slate-700">FY:</span>
                             <select
                                 className="input w-auto"
                                 value={academicYear}
@@ -133,15 +134,15 @@ const MonthWiseLedger: React.FC<MonthWiseLedgerProps> = ({ onMonthClick }) => {
                                 <option value="2027-2028">2027-2028</option>
                             </select>
                         </div>
-                        <button className="btn btn-sm text-sm bg-green-50 text-green-700 hover:bg-green-100 border border-green-200">
+                        <button className="btn-secondary btn-sm text-emerald-700">
                             <FileSpreadsheet size={16} /> Excel
                         </button>
                     </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="">
+                        <thead className="bg-slate-50">
                             <tr>
                                 <th className="p-3 border">Particulars</th>
                                 <th className="p-3 border text-right">Debit (Allocated)</th>
@@ -152,20 +153,20 @@ const MonthWiseLedger: React.FC<MonthWiseLedgerProps> = ({ onMonthClick }) => {
                         <tbody>
                             {activeLedgerData.length === 0 && !loading && (
                                 <tr>
-                                    <td colSpan={4} className="text-center p-6 text-gray-500">No data available for the selected branch and FY.</td>
+                                    <td colSpan={4}><EmptyState compact title="No data available" description="No data available for the selected branch and FY." /></td>
                                 </tr>
                             )}
                             {loading && (
                                 <tr>
-                                    <td colSpan={4} className="text-center p-6 text-gray-500">Loading ledger data...</td>
+                                    <td colSpan={4}><LoadingState label="Loading ledger data..." /></td>
                                 </tr>
                             )}
                             {activeLedgerData.map((row, idx) => (
-                                <tr key={idx} className={row.is_opening ? 'bg-blue-50 font-medium' : 'hover:bg-gray-50'}>
+                                <tr key={idx} className={row.is_opening ? 'bg-brand-50 font-medium' : 'hover:bg-slate-50'}>
                                     <td className="p-3 border">
                                         {onMonthClick && !row.is_opening ? (
                                             <button
-                                                className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                                className="text-brand-600 hover:text-brand-800 hover:underline font-medium"
                                                 onClick={() => onMonthClick(row.particulars)}
                                             >
                                                 {row.particulars}
@@ -180,7 +181,7 @@ const MonthWiseLedger: React.FC<MonthWiseLedgerProps> = ({ onMonthClick }) => {
                                     <td className="p-3 border text-right text-rose-600">
                                         {row.credit > 0 ? `₹ ${row.credit.toFixed(2)}` : '-'}
                                     </td>
-                                    <td className={`p-3 border text-right font-semibold ${row.cash_in_hand < 0 ? 'text-red-600' : 'text-blue-700'}`}>
+                                    <td className={`p-3 border text-right font-semibold ${row.cash_in_hand < 0 ? 'text-red-600' : 'text-brand-700'}`}>
                                         ₹ {row.cash_in_hand.toFixed(2)}
                                     </td>
                                 </tr>

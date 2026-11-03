@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { API_URL } from '../config';
 import { confirmDialog } from './ui/feedback';
+import { Alert, EmptyState } from './ui';
 
 const PettyCashApproval: React.FC = () => {
     const globalYear = localStorage.getItem('academicYear') || '2026-2027';
@@ -105,14 +106,14 @@ const PettyCashApproval: React.FC = () => {
     const rejectedAllocations = allocations.filter(a => a.approval_status === 'Rejected');
 
     const renderTransactionTable = (title: string, txns: any[], showActions: boolean) => (
-        <div className="card mb-6">
-            <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-800">{title}</h3>
-                <span className="text-sm text-gray-500">{txns.length} entries</span>
+        <div className="card overflow-hidden mb-6">
+            <div className="card-header">
+                <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+                <span className="text-sm text-slate-500">{txns.length} entries</span>
             </div>
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                    <thead className="">
+                    <thead className="bg-slate-50">
                         <tr>
                             <th className="p-3 border">Date</th>
                             <th className="p-3 border">Voucher</th>
@@ -126,26 +127,26 @@ const PettyCashApproval: React.FC = () => {
                     <tbody>
                         {txns.length === 0 && (
                             <tr>
-                                <td colSpan={showActions ? 7 : 6} className="text-center p-4 text-gray-500">No records found.</td>
+                                <td colSpan={showActions ? 7 : 6}><EmptyState compact title="No records found." /></td>
                             </tr>
                         )}
                         {txns.map(t => (
-                            <tr key={t.id} className="hover:bg-gray-50 border-b">
+                            <tr key={t.id} className="hover:bg-slate-50 border-b border-slate-100">
                                 <td className="p-3 border">{t.transaction_date}</td>
                                 <td className="p-3 border">{t.voucher_name}</td>
                                 <td className="p-3 border">
-                                    <span className={`px-2 py-1 rounded text-xs ${t.voucher_type === 'Received' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                    <span className={t.voucher_type === 'Received' ? 'badge-success' : 'badge-danger'}>
                                         {t.voucher_type}
                                     </span>
                                 </td>
                                 <td className="p-3 border">{t.ledger_name}</td>
                                 <td className="p-3 border text-right font-semibold">₹{Number(t.amount).toFixed(2)}</td>
                                 <td className="p-3 border text-center">
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                        t.approval_status === 'Approved' ? 'bg-green-100 text-green-800' :
-                                        t.approval_status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                                        'bg-yellow-100 text-yellow-800'
-                                    }`}>
+                                    <span className={
+                                        t.approval_status === 'Approved' ? 'badge-success' :
+                                        t.approval_status === 'Rejected' ? 'badge-danger' :
+                                        'badge-warning'
+                                    }>
                                         {t.approval_status || 'Pending'}
                                     </span>
                                 </td>
@@ -176,14 +177,14 @@ const PettyCashApproval: React.FC = () => {
     );
 
     const renderAllocationTable = (title: string, allcs: any[], showActions: boolean) => (
-        <div className="card mb-6">
-            <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-800">{title}</h3>
-                <span className="text-sm text-gray-500">{allcs.length} entries</span>
+        <div className="card overflow-hidden mb-6">
+            <div className="card-header">
+                <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+                <span className="text-sm text-slate-500">{allcs.length} entries</span>
             </div>
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                    <thead className="">
+                    <thead className="bg-slate-50">
                         <tr>
                             <th className="p-3 border">Date</th>
                             <th className="p-3 border">Branch</th>
@@ -196,21 +197,21 @@ const PettyCashApproval: React.FC = () => {
                     <tbody>
                         {allcs.length === 0 && (
                             <tr>
-                                <td colSpan={showActions ? 6 : 5} className="text-center p-4 text-gray-500">No records found.</td>
+                                <td colSpan={showActions ? 6 : 5}><EmptyState compact title="No records found." /></td>
                             </tr>
                         )}
                         {allcs.map(a => (
-                            <tr key={a.id} className="hover:bg-gray-50 border-b">
+                            <tr key={a.id} className="hover:bg-slate-50 border-b border-slate-100">
                                 <td className="p-3 border">{a.allocation_date}</td>
                                 <td className="p-3 border">{a.branch_name}</td>
-                                <td className="p-3 border text-green-600 font-semibold">₹{Number(a.amount).toFixed(2)}</td>
+                                <td className="p-3 border text-emerald-600 font-semibold">₹{Number(a.amount).toFixed(2)}</td>
                                 <td className="p-3 border">{a.remarks}</td>
                                 <td className="p-3 border text-center">
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                        a.approval_status === 'Approved' ? 'bg-green-100 text-green-800' :
-                                        a.approval_status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                                        'bg-yellow-100 text-yellow-800'
-                                    }`}>
+                                    <span className={
+                                        a.approval_status === 'Approved' ? 'badge-success' :
+                                        a.approval_status === 'Rejected' ? 'badge-danger' :
+                                        'badge-warning'
+                                    }>
                                         {a.approval_status || 'Pending'}
                                     </span>
                                 </td>
@@ -241,29 +242,29 @@ const PettyCashApproval: React.FC = () => {
     );
 
     return (
-        <div className="p-4 bg-gray-50 min-h-full space-y-6">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="page-title">
                     Petty Cash Approval
                 </h2>
             </div>
             
             {message && (
-                <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+                <Alert tone={message.startsWith('Successfully') ? 'success' : 'error'} onClose={() => setMessage('')}>
                     {message}
-                </div>
+                </Alert>
             )}
 
             {/* Tabs */}
-            <div className="flex border-b border-gray-200 mb-6">
+            <div className="segmented max-w-full overflow-x-auto">
                 <button
-                    className={`btn btn-lg ${ activeTab === 'expenses' ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50' }`}
+                    className={`segmented-item whitespace-nowrap ${activeTab === 'expenses' ? 'segmented-item-active' : ''}`}
                     onClick={() => setActiveTab('expenses')}
                 >
                     Petty Cash Expenses
                 </button>
                 <button
-                    className={`btn btn-lg ${ activeTab === 'funds' ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50' }`}
+                    className={`segmented-item whitespace-nowrap ${activeTab === 'funds' ? 'segmented-item-active' : ''}`}
                     onClick={() => setActiveTab('funds')}
                 >
                     Fund Allocations

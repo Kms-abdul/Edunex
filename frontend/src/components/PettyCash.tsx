@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { hasPermission } from '../utils/permissions';
 import { notify } from './ui/feedback';
+import { LoadingState, EmptyState, Alert } from './ui';
 
 
 interface Ledger {
@@ -152,10 +153,6 @@ const PettyCash: React.FC = () => {
     setExpandedMonths(prev => ({ ...prev, [monthStr]: !prev[monthStr] }));
   };
 
-  const handlePrint = (txn: PettyCashTxn) => {
-    setSelectedReceipt(txn);
-  };
-
   // Group transactions by month-year
   const groupedTransactions: Record<string, PettyCashTxn[]> = {};
   transactions.forEach(txn => {
@@ -171,36 +168,36 @@ const PettyCash: React.FC = () => {
   const grandTotal = formData.items.reduce((sum, item) => sum + (parseFloat(item.amount as string) || 0), 0);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6">
       {/* Cash In Hand Summary Section */}
-      <div className="card print:hidden border-l-4 border-blue-600">
+      <div className="card print:hidden border-l-4 border-brand-600">
         <div className="p-4 flex flex-col md:flex-row items-center justify-between">
           <div className="flex items-center space-x-4 mb-4 md:mb-0">
-            <div className="bg-blue-50 p-3 rounded-full">
+            <div className="bg-brand-50 p-3 rounded-full">
               <span className="text-2xl">💰</span>
             </div>
             <div>
-              <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Cash In Hand</p>
-              <h3 className={`text-xl font-semibold text-slate-900 tracking-tight ${summary.net_amount < 0 ? 'text-red-600' : 'text-blue-700'}`}>
+              <p className="text-sm text-slate-500 font-medium uppercase tracking-wider">Cash In Hand</p>
+              <h3 className={`text-xl font-semibold text-slate-900 tracking-tight ${summary.net_amount < 0 ? 'text-red-600' : 'text-brand-700'}`}>
                 ₹ {summary.net_amount?.toFixed(2) ?? '0.00'}
               </h3>
             </div>
           </div>
           <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-8">
             <div className="text-right md:text-left">
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Allocated</p>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Allocated</p>
               <p className="text-lg font-semibold text-emerald-600">₹ {summary.total_allocated?.toFixed(2) || '0.00'}</p>
             </div>
             <div className="text-right md:text-left">
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Spent</p>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Spent</p>
               <p className="text-lg font-semibold text-rose-600">₹ {summary.total_payment?.toFixed(2) || '0.00'}</p>
             </div>
           </div>
         </div>
       </div>
       {/* Form Section */}
-      <div className="card p-6 print:hidden">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">New Petty Cash Entry</h2>
+      <div className="card p-5 print:hidden">
+        <h2 className="text-base font-semibold text-slate-900 mb-4">New Petty Cash Entry</h2>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
@@ -238,10 +235,10 @@ const PettyCash: React.FC = () => {
           </div>
 
           <div className="flex flex-col">
-            <label className="text-sm text-gray-600 mb-1 flex justify-between items-center">
+            <label className="label flex justify-between items-center">
               <span>Ledger</span>
               {isAccountant && (
-                <button type="button" onClick={() => setShowLedgerModal(true)} className="text-blue-600 text-xs hover:underline">+ Add Ledger</button>
+                <button type="button" onClick={() => setShowLedgerModal(true)} className="text-brand-600 text-xs hover:underline">+ Add Ledger</button>
               )}
             </label>
             <select name="ledger_id" value={formData.ledger_id} onChange={handleInputChange} className="input w-auto" required>
@@ -257,13 +254,13 @@ const PettyCash: React.FC = () => {
             <input type="text" name="paid_to" value={formData.paid_to} onChange={handleInputChange} className="input w-auto" placeholder="Name" />
           </div>
 
-          <div className="lg:col-span-4 mt-4 border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <div className="md:col-span-2 lg:col-span-4 mt-4 border border-slate-200 rounded-lg p-4 bg-slate-50">
             <div className="flex justify-between items-center mb-4">
-              <label className="text-md font-semibold text-gray-800">Items to Add</label>
+              <label className="text-base font-semibold text-slate-900">Items to Add</label>
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, items: [...formData.items, { item_name: '', amount: '' }] })}
-                className="text-blue-600 text-sm hover:text-blue-800 font-medium flex items-center"
+                className="btn-ghost btn-sm"
               >
                 + Add Item
               </button>
@@ -311,7 +308,7 @@ const PettyCash: React.FC = () => {
             </div>
 
             <div className="flex justify-end items-center mt-6 pr-8">
-              <span className="font-semibold text-gray-600 mr-4 uppercase text-sm tracking-wider">Total Amount</span>
+              <span className="font-semibold text-slate-600 mr-4 uppercase text-sm tracking-wider">Total Amount</span>
               <span className="font-bold text-2xl text-emerald-600 w-32 text-right border-t-2 border-emerald-200 pt-2">
                 ₹{grandTotal.toFixed(2)}
               </span>
@@ -330,7 +327,7 @@ const PettyCash: React.FC = () => {
 
           <div className="flex flex-col">
             <label className="label">Approved By</label>
-            <div className="flex items-center space-x-4 h-10 border p-2 rounded">
+            <div className="flex items-center space-x-4 h-10 border border-slate-300 p-2 rounded-lg">
               <label className="flex items-center text-sm">
                 <input
                   type="checkbox"
@@ -372,7 +369,7 @@ const PettyCash: React.FC = () => {
             </select>
           </div>
 
-          <div className="lg:col-span-4 flex justify-end mt-2">
+          <div className="md:col-span-2 lg:col-span-4 flex justify-end mt-2">
             <button type="submit" className="btn-success">Save Transaction</button>
           </div>
 
@@ -381,35 +378,35 @@ const PettyCash: React.FC = () => {
 
       {/* Accordion List */}
       <div className="card overflow-hidden print:hidden">
-        <div className="p-4 bg-gray-50 border-b">
-          <h2 className="text-xl font-semibold text-gray-800">Petty Cash Transactions History</h2>
+        <div className="card-header">
+          <h2 className="text-base font-semibold text-slate-900">Petty Cash Transactions History</h2>
         </div>
 
         {loading ? (
-          <div className="p-6 text-center text-gray-500">Loading transactions...</div>
+          <LoadingState label="Loading transactions..." />
         ) : error ? (
-          <div className="p-6 text-center text-red-500">{error}</div>
+          <div className="p-4"><Alert tone="error" onRetry={fetchTransactions}>{error}</Alert></div>
         ) : Object.keys(groupedTransactions).length === 0 ? (
-          <div className="p-6 text-center text-gray-500">No transactions found for the current branch and academic year.</div>
+          <EmptyState compact title="No transactions found" description="No transactions found for the current branch and academic year." />
         ) : (
-          <div className="divide-y">
+          <div className="divide-y divide-slate-200">
             {Object.entries(groupedTransactions).map(([monthYear, txns]) => (
               <div key={monthYear} className="w-full">
                 <button
                   onClick={() => toggleMonth(monthYear)}
                   className="btn-secondary w-full justify-between text-left"
                 >
-                  <span className="font-semibold text-gray-700">{monthYear}</span>
+                  <span className="font-semibold text-slate-700">{monthYear}</span>
                   <span className="flex items-center space-x-4">
-                    <span className="text-sm text-gray-500">{txns.length} entries</span>
-                    <span className="text-lg text-gray-400">{expandedMonths[monthYear] ? '▲' : '▼'}</span>
+                    <span className="text-sm text-slate-500">{txns.length} entries</span>
+                    <span className="text-lg text-slate-400">{expandedMonths[monthYear] ? '▲' : '▼'}</span>
                   </span>
                 </button>
 
                 {expandedMonths[monthYear] && (
                   <div className="overflow-x-auto p-4">
                     <table className="w-full text-sm text-left">
-                      <thead className="">
+                      <thead>
                         <tr>
                           <th className="px-4 py-2">Date</th>
                           <th className="px-4 py-2">Voucher Name</th>
@@ -424,11 +421,11 @@ const PettyCash: React.FC = () => {
                       </thead>
                       <tbody>
                         {txns.map(t => (
-                          <tr key={t.id} className="border-b hover:bg-gray-50">
+                          <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50">
                             <td className="px-4 py-2 whitespace-nowrap">{t.transaction_date}</td>
                             <td className="px-4 py-2">{t.voucher_name}</td>
                             <td className="px-4 py-2">
-                              <span className={`px-2 py-1 rounded text-xs ${t.voucher_type === 'Received' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                              <span className={t.voucher_type === 'Received' ? 'badge-success' : 'badge-danger'}>
                                 {t.voucher_type}
                               </span>
                             </td>
@@ -437,16 +434,16 @@ const PettyCash: React.FC = () => {
                             <td className="px-4 py-2">{t.payment_mode}</td>
                             <td className="px-4 py-2 text-right font-medium">₹{Number(t.amount).toFixed(2)}</td>
                             <td className="px-4 py-2 text-center">
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                t.approval_status === 'Approved' ? 'bg-green-100 text-green-800' :
-                                t.approval_status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                                'bg-yellow-100 text-yellow-800'
-                              }`}>
+                              <span className={
+                                t.approval_status === 'Approved' ? 'badge-success' :
+                                t.approval_status === 'Rejected' ? 'badge-danger' :
+                                'badge-warning'
+                              }>
                                 {t.approval_status || 'Pending'}
                               </span>
                             </td>
                             <td className="px-4 py-2 text-center">
-                              <button onClick={() => setSelectedReceipt(t)} className="btn-secondary btn-sm text-blue-600 hover:text-blue-800 border-blue-600" title="View Details">
+                              <button onClick={() => setSelectedReceipt(t)} className="btn-secondary btn-sm" title="View Details">
                                 View Details
                               </button>
                             </td>
@@ -466,7 +463,7 @@ const PettyCash: React.FC = () => {
       {showLedgerModal && (
         <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
           <div className="card shadow-pop p-6 w-full max-w-md">
-            <h3 className="text-xl font-semibold mb-4">Add New Ledger</h3>
+            <h3 className="text-base font-semibold text-slate-900 mb-4">Add New Ledger</h3>
             <form onSubmit={handleCreateLedger} className="space-y-4">
               <div>
                 <label className="label">Ledger Name</label>
@@ -500,7 +497,7 @@ const PettyCash: React.FC = () => {
 
       {/* View Details Modal */}
       {selectedReceipt && (
-        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300 print:absolute print:inset-0 print:bg-white print:p-0 print:z-auto">
+        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50 p-4 transition-all duration-300 print:absolute print:inset-0 print:bg-white print:p-0 print:z-auto">
           <div className="card shadow-pop w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col transform transition-all print:shadow-none print:max-h-none print:rounded-none">
             {/* Header */}
             <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center text-slate-900 print:bg-none print:bg-white print:text-black print:border-b-2 print:border-gray-800">
@@ -620,8 +617,8 @@ const PettyCash: React.FC = () => {
             </div>
 
             {/* Footer */}
-            <div className="bg-gray-50 px-6 py-4 border-t flex justify-end space-x-3 print:hidden">
-              <button onClick={() => window.print()} className="btn-primary border-transparent">
+            <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end space-x-3 print:hidden">
+              <button onClick={() => window.print()} className="btn-primary">
                 Print Receipt
               </button>
               <button onClick={() => setSelectedReceipt(null)} className="btn-secondary">

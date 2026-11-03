@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
+import { Alert, EmptyState } from './ui';
 
 const FundAllocation: React.FC = () => {
     const globalYear = localStorage.getItem('academicYear') || '2026-2027';
@@ -94,13 +95,21 @@ const FundAllocation: React.FC = () => {
     };
 
     return (
-        <div className="p-4 bg-gray-50 min-h-full space-y-6">
-            <h2 className="text-xl font-semibold text-blue-700 mb-4">
+        <div className="space-y-6">
+            <h2 className="page-title">
                 Fund Allocation
             </h2>
-            <div className="card p-6">
-                <h3 className="text-lg font-medium text-gray-800 mb-4">New Fund Allocation</h3>
-                {message && <div className="mb-4 text-blue-600 font-medium">{message}</div>}
+            <div className="card p-5">
+                <h3 className="text-base font-semibold text-slate-900 mb-4">New Fund Allocation</h3>
+                {message && (
+                    <Alert
+                        tone={message === 'Fund Allocation successful!' ? 'success' : 'error'}
+                        onClose={() => setMessage('')}
+                        className="mb-4"
+                    >
+                        {message}
+                    </Alert>
+                )}
 
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div>
@@ -161,7 +170,7 @@ const FundAllocation: React.FC = () => {
                             rows={1}
                         ></textarea>
                     </div>
-                    <div className="lg:col-span-5 flex justify-end">
+                    <div className="md:col-span-2 lg:col-span-5 flex justify-end">
                         <button
                             type="submit"
                             disabled={loading}
@@ -173,13 +182,13 @@ const FundAllocation: React.FC = () => {
                 </form>
             </div>
 
-            <div className="card">
-                <div className="p-4 border-b">
-                    <h3 className="text-lg font-medium text-gray-800">Recent Allocations</h3>
+            <div className="card overflow-hidden">
+                <div className="card-header">
+                    <h3 className="text-base font-semibold text-slate-900">Recent Allocations</h3>
                 </div>
-                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="">
+                        <thead className="bg-slate-50">
                             <tr>
                                 <th className="p-3 border">Date</th>
                                 <th className="p-3 border">Branch</th>
@@ -192,20 +201,20 @@ const FundAllocation: React.FC = () => {
                         <tbody>
                             {allocations.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="text-center p-4 text-gray-500">No allocations found.</td>
+                                    <td colSpan={6}><EmptyState compact title="No allocations found." /></td>
                                 </tr>
                             )}
                             {allocations.map(a => (
-                                <tr key={a.id} className="hover:bg-gray-50">
+                                <tr key={a.id} className="hover:bg-slate-50">
                                     <td className="p-3 border">{a.allocation_date}</td>
                                     <td className="p-3 border">{a.branch_name}</td>
-                                    <td className="p-3 border text-green-600 font-semibold">₹{Number(a.amount).toFixed(2)}</td>
+                                    <td className="p-3 border text-emerald-600 font-semibold">₹{Number(a.amount).toFixed(2)}</td>
                                     <td className="p-3 border text-center">
-                                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                            a.approval_status === 'Approved' ? 'bg-green-100 text-green-800' :
-                                            a.approval_status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                                            'bg-yellow-100 text-yellow-800'
-                                        }`}>
+                                        <span className={
+                                            a.approval_status === 'Approved' ? 'badge-success' :
+                                            a.approval_status === 'Rejected' ? 'badge-danger' :
+                                            'badge-warning'
+                                        }>
                                             {a.approval_status || 'Pending'}
                                         </span>
                                     </td>
