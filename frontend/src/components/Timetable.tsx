@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { CalendarClock, Trash2, Plus, Copy, Check, X, Printer } from "lucide-react";
+import { CalendarClock, Trash2, Plus, Copy, Check, Printer } from "lucide-react";
 import api from "../api";
 import { useAuth } from "../contexts/AuthContext";
+import { PageHeader, LoadingState, EmptyState, Alert } from "./ui";
 
 /* =========================================================================
    Timetable Module — single-file implementation
@@ -247,21 +248,22 @@ const SubjectTeacherAssignmentView: React.FC<{ canWrite: boolean }> = ({ canWrit
         onBranch={ctx.setBranchId} onClass={ctx.setClassId} onSection={ctx.setSectionId} onYear={ctx.setYearName}
       />
 
-      {!ready && <div className="text-gray-400 text-sm py-10 text-center">Select Branch, Class, Section and Academic Year to continue.</div>}
+      {!ready && <EmptyState title="Select Branch, Class, Section and Academic Year to continue." />}
 
       {ready && (
-        <div className="border rounded overflow-hidden">
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="">
+            <thead className="bg-slate-50 text-slate-600">
               <tr>
                 <th className="text-left px-4 py-2">Subject</th>
                 <th className="text-left px-4 py-2">Teacher</th>
               </tr>
             </thead>
             <tbody>
-              {loading && <tr><td colSpan={2} className="px-4 py-6 text-center text-gray-400">Loading...</td></tr>}
+              {loading && <tr><td colSpan={2}><LoadingState /></td></tr>}
               {!loading && rows.length === 0 && (
-                <tr><td colSpan={2} className="px-4 py-6 text-center text-gray-400">No subjects assigned to this class yet.</td></tr>
+                <tr><td colSpan={2}><EmptyState compact title="No subjects assigned to this class yet." /></td></tr>
               )}
               {rows.map((r) => (
                 <tr key={r.subject_id} className="border-t">
@@ -281,9 +283,10 @@ const SubjectTeacherAssignmentView: React.FC<{ canWrite: boolean }> = ({ canWrit
               ))}
             </tbody>
           </table>
+          </div>
 
           {canWrite && rows.length > 0 && (
-            <div className="p-3 bg-gray-50 flex items-center gap-3">
+            <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center gap-3">
               <button onClick={save} disabled={saving} className="btn-primary">
                 {saving ? "Saving..." : "Save Assignments"}
               </button>
@@ -478,7 +481,7 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
         onBranch={ctx.setBranchId} onClass={ctx.setClassId} onSection={ctx.setSectionId} onYear={ctx.setYearName}
       />
 
-      {!ready && <div className="text-gray-400 text-sm py-10 text-center">Select Branch, Class, Section and Academic Year to continue.</div>}
+      {!ready && <EmptyState title="Select Branch, Class, Section and Academic Year to continue." />}
 
       {ready && (
         <>
@@ -488,15 +491,15 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
               <button
                 key={d.code}
                 onClick={() => setDay(d.code)}
-                className={`btn btn-sm border ${day === d.code ? "bg-brand-600 text-white border-brand-600" : "text-gray-600 hover:bg-gray-100"}`}
+                className={day === d.code ? "btn-primary btn-sm" : "btn-secondary btn-sm"}
               >
                 {d.label}
               </button>
             ))}
           </div>
 
-          <div className="flex items-center justify-between mb-3">
-            <label className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap gap-2 items-center justify-between mb-3">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
               <input type="checkbox" checked={isWorkingDay} disabled={!canWrite}
                 onChange={(e) => setIsWorkingDay(e.target.checked)} />
               This is a working day
@@ -509,7 +512,7 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
                     <Copy size={13} /> Copy to Other Days
                   </button>
                   {showDaysPanel && (
-                    <div className="card absolute right-0 z-40 p-3 w-56">
+                    <div className="card shadow-pop absolute right-0 z-40 p-3 w-56">
                       <div className="text-xs font-semibold text-gray-500 mb-1">Select days ({day} stays as source)</div>
                       {DAYS.filter((d) => d.code !== day).map((d) => (
                         <label key={d.code} className="flex items-center gap-2 text-xs py-1">
@@ -527,7 +530,7 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
                     <Copy size={13} /> Copy to Classes/Sections
                   </button>
                   {showSectionsPanel && (
-                    <div className="card absolute right-0 z-40 p-3 w-64 max-h-96 overflow-y-auto">
+                    <div className="card shadow-pop absolute right-0 z-40 p-3 w-64 max-h-96 overflow-y-auto">
                       <div className="text-xs font-semibold text-gray-500 mb-1">Copies the full week (all days built so far). Times &amp; periods only — subject/teacher not included.</div>
                       {coverage.filter((c) => !c.has_structure).length === 0 && (
                         <div className="text-xs text-gray-400 py-1">All sections already have a timetable.</div>
@@ -555,9 +558,9 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
           </div>
 
           {isWorkingDay && (
-            <div className="border rounded overflow-x-auto">
+            <div className="card overflow-x-auto">
               <table className="w-full text-sm min-w-[900px]">
-                <thead className="">
+                <thead className="bg-slate-50 text-slate-600">
                   <tr>
                     <th className="px-2 py-2 text-left w-12">#</th>
                     <th className="px-2 py-2 text-left w-28">Type</th>
@@ -571,9 +574,9 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
                   </tr>
                 </thead>
                 <tbody>
-                  {loading && <tr><td colSpan={9} className="px-4 py-6 text-center text-gray-400">Loading...</td></tr>}
+                  {loading && <tr><td colSpan={9}><LoadingState /></td></tr>}
                   {!loading && slots.length === 0 && (
-                    <tr><td colSpan={9} className="px-4 py-6 text-center text-gray-400">No slots defined for {DAYS.find(d => d.code === day)?.label} yet.</td></tr>
+                    <tr><td colSpan={9}><EmptyState compact title={`No slots defined for ${DAYS.find(d => d.code === day)?.label} yet.`} /></td></tr>
                   )}
                   {slots.map((s, idx) => (
                     <tr key={idx} className="border-t">
@@ -621,7 +624,7 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
                       </td>
                       {canWrite && (
                         <td className="px-2 py-1 text-center">
-                          <button onClick={() => removeSlot(idx)} className="text-red-500 hover:text-red-700">
+                          <button onClick={() => removeSlot(idx)} className="btn-icon h-7 w-7 text-red-500 hover:bg-red-50 hover:text-red-700">
                             <Trash2 size={14} />
                           </button>
                         </td>
@@ -632,7 +635,7 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
               </table>
 
               {canWrite && (
-                <div className="p-3 bg-gray-50 flex flex-wrap items-center gap-3">
+                <div className="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center gap-3">
                   <button onClick={addSlot} className="btn-secondary btn-sm">
                     <Plus size={13} /> Add Slot
                   </button>
@@ -644,13 +647,12 @@ const TimetableBuilderView: React.FC<{ canWrite: boolean }> = ({ canWrite }) => 
               )}
 
               {conflicts.length > 0 && (
-                <div className="m-3 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-                  <div className="font-medium mb-1 flex items-center gap-1"><X size={14} /> Teacher scheduling conflict:</div>
+                <Alert tone="error" title="Teacher scheduling conflict:" className="m-3">
                   <ul className="list-disc pl-5">
                     {conflicts.map((c, i) => <li key={i}>{c}</li>)}
                   </ul>
                   <button onClick={() => save(true)} className="mt-2 text-xs underline text-red-700">Save anyway</button>
-                </div>
+                </Alert>
               )}
             </div>
           )}
@@ -705,11 +707,11 @@ const ViewTimetableView: React.FC = () => {
         onBranch={ctx.setBranchId} onClass={ctx.setClassId} onSection={ctx.setSectionId} onYear={ctx.setYearName}
       />
 
-      {!ready && <div className="text-gray-400 text-sm py-10 text-center">Select Branch, Class, Section and Academic Year to continue.</div>}
-      {loading && <div className="text-gray-400 text-sm py-10 text-center">Loading timetable...</div>}
+      {!ready && <EmptyState title="Select Branch, Class, Section and Academic Year to continue." />}
+      {loading && <LoadingState label="Loading timetable..." />}
 
       {ready && !loading && maxRows === 0 && (
-        <div className="text-gray-400 text-sm py-10 text-center">No timetable built for this class/section yet.</div>
+        <EmptyState title="No timetable built for this class/section yet." />
       )}
 
       {ready && !loading && maxRows > 0 && (
@@ -813,16 +815,16 @@ const MyTimetableView: React.FC = () => {
         </select>
       </div>
 
-      {loading && <div className="text-gray-400 text-sm py-10 text-center">Loading...</div>}
-      {error && <div className="text-red-500 text-sm py-10 text-center">{error}</div>}
+      {loading && <LoadingState />}
+      {error && <Alert tone="error">{error}</Alert>}
 
       {!loading && !error && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {DAYS.map((d) => (
-            <div key={d.code} className="border rounded">
-              <div className="bg-gray-100 px-3 py-2 font-medium text-sm">{d.label}</div>
+            <div key={d.code} className="card overflow-hidden">
+              <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 font-semibold text-sm text-slate-900">{d.label}</div>
               {(!schedule[d.code] || schedule[d.code].length === 0) && (
-                <div className="px-3 py-4 text-xs text-gray-400">No periods scheduled.</div>
+                <div className="px-3 py-4 text-xs text-slate-400">No periods scheduled.</div>
               )}
               {schedule[d.code]?.map((p, i) => (
                 <div key={i} className="px-3 py-2 text-xs border-t">
@@ -876,25 +878,18 @@ const Timetable: React.FC = () => {
         <div className="flex-1 flex flex-col">
           {view === "HOME" && (
             <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-5">
-              <div className="page-header mb-5">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-11 h-11 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center flex-shrink-0 ring-1 ring-inset ring-brand-600/10">
-                    <CalendarClock className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="page-eyebrow">Academics</p>
-                    <h1 className="page-title">Timetable</h1>
-                    <p className="page-subtitle">Subject–teacher assignment, builder and timetable views.</p>
-                  </div>
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  {items.map((item, idx) => (
-                    <button key={idx} onClick={item.onClick} className="btn-primary">
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <PageHeader
+                className="mb-5"
+                eyebrow="Academics"
+                title="Timetable"
+                subtitle="Subject–teacher assignment, builder and timetable views."
+                icon={<CalendarClock className="w-6 h-6" />}
+                actions={items.length > 0 ? items.map((item, idx) => (
+                  <button key={idx} onClick={item.onClick} className="btn-primary">
+                    {item.label}
+                  </button>
+                )) : undefined}
+              />
             </div>
           )}
 

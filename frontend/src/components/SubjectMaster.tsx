@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import api from "../api";
 import { notify, confirmDialog } from './ui/feedback';
+import { PageHeader, Alert, EmptyState } from './ui';
 
 interface Subject {
     id: number;
@@ -200,19 +201,14 @@ const SubjectMaster: React.FC = () => {
     });
 
     return (
-        <div className="card p-6">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-brand-600 flex items-center gap-3">
-                    <span>Subject Master</span>
-                    <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                        Scope: {academicYear}
-                    </span>
-                </h2>
-                
-                {isSpecificBranch && (
+        <div>
+            <PageHeader
+                title="Subject Master"
+                subtitle={`Scope: ${academicYear}`}
+                actions={isSpecificBranch ? (
                     <div className="relative" ref={copyDropdownRef}>
                         <button
-                            className="btn bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
+                            className="btn-secondary"
                             onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
                         >
                             <span>Copy to Branches</span>
@@ -220,36 +216,36 @@ const SubjectMaster: React.FC = () => {
                         </button>
                         {isCopyDropdownOpen && (
                             <div className="card shadow-pop absolute top-10 right-0 w-80 z-50 p-2 max-h-96 overflow-y-auto">
-                                <div className="mb-2 text-sm font-semibold text-gray-700 pb-2 border-b">
+                                <div className="mb-2 text-sm font-semibold text-slate-700 pb-2 border-b border-slate-100">
                                     Select Target Branches
                                 </div>
                                 {Object.keys(branchesByLocation).length === 0 ? (
-                                    <div className="text-gray-500 text-sm p-4 text-center">No other branches available</div>
+                                    <EmptyState compact title="No other branches available" />
                                 ) : (
                                     Object.keys(branchesByLocation).map(loc => (
                                         <div key={loc} className="mb-1">
-                                            <div className="text-sm font-bold text-gray-900 px-3 py-2 bg-gray-50 border-b border-gray-100">
+                                            <div className="text-sm font-semibold text-slate-900 px-3 py-2 bg-slate-50 border-b border-slate-100">
                                                 {loc}
                                             </div>
                                             <div className="py-1">
                                                 {branchesByLocation[loc].map(b => (
-                                                    <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-blue-50 cursor-pointer transition-colors pl-6">
+                                                    <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-brand-50 cursor-pointer transition-colors pl-6">
                                                         <input
                                                             type="checkbox"
                                                             checked={copyTargets.has(String(b.id))}
                                                             onChange={() => toggleCopyTarget(String(b.id))}
-                                                            className="w-4 h-4 accent-blue-600 rounded border-gray-300"
+                                                            className="w-4 h-4 accent-brand-600 rounded border-slate-300"
                                                         />
-                                                        <span className="text-sm text-gray-800 select-none font-medium">{b.name}</span>
+                                                        <span className="text-sm text-slate-800 select-none font-medium">{b.name}</span>
                                                     </label>
                                                 ))}
                                             </div>
                                         </div>
                                     ))
                                 )}
-                                <div className="mt-3 border-t pt-3 flex justify-end gap-2 sticky bottom-0 bg-white pb-1">
+                                <div className="mt-3 border-t border-slate-100 pt-3 flex justify-end gap-2 sticky bottom-0 bg-white pb-1">
                                     <button
-                                        className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded"
+                                        className="btn-ghost btn-sm"
                                         onClick={() => setIsCopyDropdownOpen(false)}
                                     >
                                         Cancel
@@ -265,16 +261,17 @@ const SubjectMaster: React.FC = () => {
                             </div>
                         )}
                     </div>
-                )}
-            </div>
+                ) : undefined}
+            />
 
+            <div className="card p-5">
             {/* Add Subject */}
             {!isSpecificBranch ? (
-                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-md">
-                    <p className="text-sm font-medium">Please select a specific branch from the top menu to add subjects.</p>
-                </div>
+                <Alert tone="warning" className="mb-6">
+                    Please select a specific branch from the top menu to add subjects.
+                </Alert>
             ) : (
-                <div className="flex gap-3 mb-6 items-end">
+                <div className="flex flex-wrap gap-3 mb-6 items-end">
                     <div>
                         <label className="label">Subject Name</label>
                         <input
@@ -307,8 +304,9 @@ const SubjectMaster: React.FC = () => {
             )}
 
             {/* Subject Table */}
-            <table className="w-full text-sm border">
-                <thead className="">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm border border-slate-200">
+                <thead className="bg-slate-50 text-slate-600">
                     <tr>
                         <th className="border px-3 py-2 text-left">Subject Name</th>
                         <th className="border px-3 py-2 text-left">Group</th>
@@ -317,8 +315,15 @@ const SubjectMaster: React.FC = () => {
                     </tr>
                 </thead>
                 <tbody>
+                    {subjects.length === 0 && (
+                        <tr>
+                            <td colSpan={4} className="border px-3 py-2">
+                                <EmptyState compact title="No subjects found" description="Add a subject above to get started." />
+                            </td>
+                        </tr>
+                    )}
                     {subjects.map((s) => (
-                        <tr key={s.id} className={`border-t ${!s.is_active ? 'bg-gray-50' : ''}`}>
+                        <tr key={s.id} className={`border-t ${!s.is_active ? 'bg-slate-50' : ''}`}>
                             <td className="border px-3 py-2">
                                 {editingId === s.id ? (
                                     <input
@@ -327,7 +332,7 @@ const SubjectMaster: React.FC = () => {
                                         className="input"
                                     />
                                 ) : (
-                                    <span className={!s.is_active ? 'text-gray-400' : ''}>{s.subject_name}</span>
+                                    <span className={!s.is_active ? 'text-slate-400' : ''}>{s.subject_name}</span>
                                 )}
                             </td>
 
@@ -342,8 +347,7 @@ const SubjectMaster: React.FC = () => {
                                         <option value="Deeniyath">Deeniyath</option>
                                     </select>
                                 ) : (
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${s.subject_type === 'Deeniyath' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                                        }`}>
+                                    <span className={s.subject_type === 'Deeniyath' ? 'badge-success' : 'badge-brand'}>
                                         {s.subject_type || 'Academic'}
                                     </span>
                                 )}
@@ -353,7 +357,7 @@ const SubjectMaster: React.FC = () => {
                             <td className="border px-3 py-2 text-center">
                                 <button
                                     onClick={() => toggleStatus(s.id, s.is_active)}
-                                    className={`btn w-10 h-5 ${s.is_active ? 'bg-green-500' : 'bg-gray-300' }`}
+                                    className={`relative inline-flex items-center w-10 h-5 px-1 rounded-full transition-colors ${s.is_active ? 'bg-emerald-500' : 'bg-slate-300'}`}
                                     title={s.is_active ? "Click to Deactivate" : "Click to Activate"}
                                 >
                                     <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform ${s.is_active ? 'translate-x-5' : 'translate-x-0'
@@ -365,13 +369,13 @@ const SubjectMaster: React.FC = () => {
                                 {editingId === s.id ? (
                                     <>
                                         <button
-                                            className="text-green-600 hover:text-green-800"
+                                            className="font-medium text-emerald-600 hover:text-emerald-800"
                                             onClick={() => updateSubject(s.id)}
                                         >
                                             Save
                                         </button>
                                         <button
-                                            className="text-gray-500 hover:text-gray-700"
+                                            className="font-medium text-slate-500 hover:text-slate-700"
                                             onClick={() => setEditingId(null)}
                                         >
                                             Cancel
@@ -380,7 +384,7 @@ const SubjectMaster: React.FC = () => {
                                 ) : (
                                     <>
                                         <button
-                                            className="text-blue-600 hover:text-blue-800"
+                                            className="font-medium text-brand-600 hover:text-brand-800"
                                             onClick={() => {
                                                 setEditingId(s.id);
                                                 setEditName(s.subject_name);
@@ -390,7 +394,7 @@ const SubjectMaster: React.FC = () => {
                                             Edit
                                         </button>
                                         <button
-                                            className="text-red-600 hover:text-red-800"
+                                            className="font-medium text-red-600 hover:text-red-800"
                                             onClick={() => deleteSubject(s.id)}
                                         >
                                             Delete
@@ -402,6 +406,8 @@ const SubjectMaster: React.FC = () => {
                     ))}
                 </tbody>
             </table>
+            </div>
+            </div>
         </div>
     );
 };

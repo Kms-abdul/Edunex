@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api";
 import { notify } from './ui/feedback';
+import { PageHeader, LoadingState, EmptyState } from './ui';
 
 interface Student {
     student_id: number;
@@ -203,7 +204,7 @@ const AssignStudentSubjects: React.FC = () => {
     };
 
     const handleSelectAllCheckboxes = (checked: boolean) => {
-        setAssignmentMap(prev => {
+        setAssignmentMap(_prev => {
             const newMap: Record<number, Record<number, boolean>> = {};
             students.forEach(student => {
                 newMap[student.student_id] = {};
@@ -249,15 +250,15 @@ const AssignStudentSubjects: React.FC = () => {
     };
 
     return (
-        <div className="p-6 bg-white min-h-full">
-            <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6">Assign Student-Subjects</h2>
+        <div className="min-h-full">
+            <PageHeader title="Assign Student-Subjects" />
 
             {/* Top Bar / Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 p-4 bg-gray-50 rounded-lg shadow-sm border">
+            <div className="card grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6 p-4">
                 {/* Academic Year (Read Only) */}
                 <div className="flex flex-col">
                     <label className="label">Academic Year</label>
-                    <div className="px-3 py-2 bg-gray-200 rounded text-gray-700 font-medium">
+                    <div className="input bg-slate-50 text-slate-700 font-medium">
                         {academicYear}
                     </div>
                 </div>
@@ -265,7 +266,7 @@ const AssignStudentSubjects: React.FC = () => {
                 {/* Branch (Read Only) */}
                 <div className="flex flex-col">
                     <label className="label">Branch</label>
-                    <div className="px-3 py-2 bg-gray-200 rounded text-gray-700 font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                    <div className="input bg-slate-50 text-slate-700 font-medium whitespace-nowrap overflow-hidden text-ellipsis">
                         {branch}
                     </div>
                 </div>
@@ -305,22 +306,22 @@ const AssignStudentSubjects: React.FC = () => {
                 <div className="flex flex-col">
                     <label className="label">Subject Type</label>
                     <div className="flex items-center space-x-4 h-full">
-                        <label className="flex items-center cursor-pointer">
+                        <label className="flex items-center cursor-pointer text-sm text-slate-700">
                             <input
                                 type="radio"
                                 name="subjectType"
-                                className="mr-2"
+                                className="mr-2 accent-brand-600"
                                 value="Academic"
                                 checked={subjectType === "Academic"}
                                 onChange={(e) => setSubjectType(e.target.value)}
                             />
                             Academic
                         </label>
-                        <label className="flex items-center cursor-pointer">
+                        <label className="flex items-center cursor-pointer text-sm text-slate-700">
                             <input
                                 type="radio"
                                 name="subjectType"
-                                className="mr-2"
+                                className="mr-2 accent-brand-600"
                                 value="Deeniyath"
                                 checked={subjectType === "Deeniyath"}
                                 onChange={(e) => setSubjectType(e.target.value)}
@@ -333,16 +334,16 @@ const AssignStudentSubjects: React.FC = () => {
 
             {/* Grid */}
             {loading ? (
-                <div className="text-center py-10 text-gray-500">Loading data...</div>
+                <div className="card"><LoadingState label="Loading data..." /></div>
             ) : (
                 students.length === 0 ? (
-                    <div className="text-center py-10 text-gray-400 bg-gray-50 rounded border border-dashed">
-                        No students found or no class selected.
+                    <div className="card">
+                        <EmptyState title="No students found or no class selected." />
                     </div>
                 ) : (
-                    <div className="overflow-x-auto shadow-md rounded-lg border border-gray-200">
+                    <div className="card overflow-hidden"><div className="overflow-x-auto">
                         <table className="min-w-full bg-white text-sm">
-                            <thead className="">
+                            <thead className="bg-slate-50 text-slate-600">
                                 <tr>
                                     <th className="py-3 px-4 text-left w-16">S.No</th>
                                     <th className="py-3 px-4 text-left w-48 sticky left-0 z-10 bg-slate-50">Student Name</th>
@@ -354,7 +355,7 @@ const AssignStudentSubjects: React.FC = () => {
                                                 <span>{sub.subject_name}</span>
                                                 <input
                                                     type="checkbox"
-                                                    className="w-4 h-4 text-indigo-600 rounded bg-gray-700 border-gray-500 focus:ring-indigo-500"
+                                                    className="w-4 h-4 accent-brand-600 rounded"
                                                     onChange={(e) => handleSelectAllColumn(sub.subject_id, e.target.checked)}
                                                     title="Assign this subject to all shown students"
                                                 />
@@ -366,7 +367,7 @@ const AssignStudentSubjects: React.FC = () => {
                                             <span>All</span>
                                             <input
                                                 type="checkbox"
-                                                className="w-4 h-4 text-green-600 rounded bg-gray-700 border-gray-500 focus:ring-green-500"
+                                                className="w-4 h-4 accent-emerald-600 rounded"
                                                 onChange={(e) => handleSelectAllCheckboxes(e.target.checked)}
                                                 title="Select/Deselect all checkboxes"
                                             />
@@ -374,9 +375,9 @@ const AssignStudentSubjects: React.FC = () => {
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody className="text-gray-700">
+                            <tbody className="text-slate-700">
                                 {students.map((student, idx) => (
-                                    <tr key={student.student_id} className={`border-b hover:bg-gray-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                                    <tr key={student.student_id} className={`border-b border-slate-100 hover:bg-slate-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
                                         <td className="py-2 px-4">{idx + 1}</td>
                                         <td className="py-2 px-4 font-medium sticky left-0 z-10 bg-inherit border-r">
                                             {student.name}
@@ -390,7 +391,7 @@ const AssignStudentSubjects: React.FC = () => {
                                                 <td key={sub.subject_id} className="py-2 px-4 text-center">
                                                     <input
                                                         type="checkbox"
-                                                        className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer"
+                                                        className="w-5 h-5 accent-brand-600 rounded cursor-pointer"
                                                         checked={isChecked}
                                                         onChange={() => handleToggle(student.student_id, sub.subject_id)}
                                                     />
@@ -401,7 +402,7 @@ const AssignStudentSubjects: React.FC = () => {
                                         <td className="py-2 px-4 text-center">
                                             <input
                                                 type="checkbox"
-                                                className="w-5 h-5 text-green-600 rounded focus:ring-green-500 cursor-pointer border-2 border-green-200"
+                                                className="w-5 h-5 accent-emerald-600 rounded cursor-pointer"
                                                 onChange={(e) => handleSelectAllRow(student.student_id, e.target.checked)}
                                                 title="Select/Deselect All"
                                             />
@@ -410,24 +411,24 @@ const AssignStudentSubjects: React.FC = () => {
                                 ))}
                             </tbody>
                         </table>
-                    </div>
+                    </div></div>
                 )
             )}
 
             {/* Save Button */}
             {students.length > 0 && (
-                <div className="mt-6 flex justify-end space-x-4">
+                <div className="mt-6 flex justify-end gap-2">
                     <button
                         onClick={() => fetchData()}
                         disabled={saving}
-                        className={`btn text-gray-700 border hover:bg-gray-100 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className="btn-secondary"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className={`btn btn-lg bg-indigo-600 text-white hover:bg-indigo-700 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className="btn-primary btn-lg"
                     >
                         {saving ? "Saving..." : "Save Assignments"}
                     </button>

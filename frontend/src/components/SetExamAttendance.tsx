@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Save, CheckCircle, AlertCircle } from 'lucide-react';
 import api from '../api';
 import { notify } from './ui/feedback';
+import { PageHeader, Alert, LoadingState, EmptyState } from './ui';
 
 interface TestType {
     id: number;
@@ -29,9 +30,9 @@ interface Branch {
 
 const SetExamAttendance: React.FC = () => {
     // --- Context State ---
-    const [academicYear, setAcademicYear] = useState(localStorage.getItem('academicYear') || '');
+    const [academicYear] = useState(localStorage.getItem('academicYear') || '');
     // Removed userRole
-    const [userBranch, setUserBranch] = useState('');
+    const [, setUserBranch] = useState('');
 
     // --- Selection State ---
     const [branches, setBranches] = useState<Branch[]>([]);
@@ -44,7 +45,7 @@ const SetExamAttendance: React.FC = () => {
     const [selectedTestId, setSelectedTestId] = useState<number | null>(null);
 
     // --- Data Loading State ---
-    const [loadingBranches, setLoadingBranches] = useState(false);
+    const [, setLoadingBranches] = useState(false);
     const [loadingClasses, setLoadingClasses] = useState(false);
     const [loadingTests, setLoadingTests] = useState(false);
 
@@ -287,16 +288,16 @@ const SetExamAttendance: React.FC = () => {
 
         return (
             <div className="mb-6">
-                <h4 className="font-bold text-gray-700 mb-3 border-b pb-1">{year}</h4>
+                <h4 className="text-base font-semibold text-slate-900 mb-3 border-b border-slate-100 pb-1">{year}</h4>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     {yearMonths.map(m => (
                         <label
                             key={m.key}
                             className={`
-                                flex items-center gap-3 p-3 rounded border cursor-pointer transition-all
+                                flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all
                                 ${selectedMonths.has(m.key)
-                                    ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200'
-                                    : 'hover:bg-gray-50 border-gray-200'}
+                                    ? 'bg-brand-50 border-brand-200 ring-1 ring-brand-200'
+                                    : 'hover:bg-slate-50 border-slate-200'}
                             
                             
                             
@@ -334,10 +335,10 @@ const SetExamAttendance: React.FC = () => {
                                 type="checkbox"
                                 checked={selectedMonths.has(m.key)}
                                 onChange={() => toggleMonth(m.key)}
-                                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                                className="w-5 h-5 accent-brand-600 rounded"
                             />
                             <div>
-                                <div className="font-medium text-gray-800">{m.name}</div>
+                                <div className="font-medium text-slate-800">{m.name}</div>
                             </div>
                         </label>
                     ))}
@@ -347,19 +348,16 @@ const SetExamAttendance: React.FC = () => {
     };
 
     return (
-        <div className="p-6 max-w-5xl mx-auto">
-            <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 flex items-center gap-2">
-                <Calendar className="text-brand-600" />
-                Set Exam Attendance
-            </h2>
+        <div className="max-w-5xl mx-auto">
+            <PageHeader title="Set Exam Attendance" icon={<Calendar className="w-6 h-6" />} />
 
             {/* Config Area */}
             <div className="card p-6 mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     {/* Academic Year */}
                     <div>
                         <label className="label">Academic Year</label>
-                        <div className="p-2 bg-gray-100 rounded border text-gray-700 font-medium">
+                        <div className="input bg-slate-50 text-slate-700 font-medium">
                             {academicYear}
                         </div>
                     </div>
@@ -417,20 +415,19 @@ const SetExamAttendance: React.FC = () => {
                 </div>
 
                 {/* Info Box */}
-                <div className="bg-blue-50 text-blue-800 p-4 rounded-md text-sm mb-6 flex items-start gap-2">
-                    <AlertCircle size={18} className="mt-0.5" />
+                <Alert tone="info" className="mb-6">
                     <p>
                         Select the months that should be considered for attendance calculation for this specific <strong>Class & Exam</strong>.
                         <br />
                         Allowed range: <strong>Jan 2025 - Dec 2026</strong>. Max selection: <strong>12 months</strong>.
                     </p>
-                </div>
+                </Alert>
 
                 {/* Months Selection */}
                 {selectedTestId && selectedBranch && selectedClass && (
                     <div className="animate-fade-in">
                         <div className="flex justify-between items-center mb-3">
-                            <h3 className="font-semibold text-gray-700">Attendance Months ({selectedMonths.size}/12)</h3>
+                            <h3 className="text-base font-semibold text-slate-900">Attendance Months ({selectedMonths.size}/12)</h3>
                             <button
                                 onClick={toggleAll}
                                 className="text-sm text-red-600 hover:text-red-800 font-medium"
@@ -440,7 +437,7 @@ const SetExamAttendance: React.FC = () => {
                         </div>
 
                         {loadingMapping ? (
-                            <div className="py-8 text-center text-gray-500">Loading settings...</div>
+                            <LoadingState label="Loading settings..." />
                         ) : (
                             <div>
                                 {academicYear.split('-').map(yearStr => {
@@ -451,10 +448,10 @@ const SetExamAttendance: React.FC = () => {
                         )}
 
                         {/* Save Button */}
-                        <div className="mt-8 flex items-center justify-between border-t pt-4">
+                        <div className="mt-8 flex flex-wrap gap-3 items-center justify-between border-t border-slate-100 pt-4">
                             <div>
                                 {message && (
-                                    <span className={`text-sm flex items-center gap-1 ${message.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+                                    <span className={`text-sm flex items-center gap-1 ${message.type === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
                                         {message.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
                                         {message.text}
                                     </span>
@@ -472,9 +469,7 @@ const SetExamAttendance: React.FC = () => {
                 )}
 
                 {(!selectedTestId || !selectedBranch || !selectedClass) && (
-                    <div className="text-center py-10 text-gray-400">
-                        Please select Branch, Class, and Exam to configure attendance.
-                    </div>
+                    <EmptyState compact title="Please select Branch, Class, and Exam to configure attendance." />
                 )}
             </div>
         </div>

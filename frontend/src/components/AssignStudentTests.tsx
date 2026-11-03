@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../api";
 import { Save } from "lucide-react";
 import { notify } from './ui/feedback';
+import { PageHeader, LoadingState, EmptyState, ErrorState } from './ui';
 
 const getNormalizedBranch = (): string => {
     const b = localStorage.getItem('currentBranch') || 'All';
@@ -182,11 +183,12 @@ export default function AssignStudentTests() {
 
     /* ---------------- RENDER ---------------- */
     return (
-        <div className="card p-4 min-h-full flex flex-col">
-            <h2 className="text-xl font-bold mb-4 text-gray-800">Assign Test to Students</h2>
+        <div className="min-h-full flex flex-col">
+            <PageHeader title="Assign Test to Students" />
+            <div className="card p-4 flex-1 flex flex-col">
 
             {/* FILTERS */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded border">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
                 <div>
                     <label className="label">Academic Year</label>
                     <select
@@ -226,14 +228,14 @@ export default function AssignStudentTests() {
             </div>
 
             {/* CONTENT */}
-            {loading && <div className="text-center py-10">Loading Data...</div>}
-            {loadError && <div className="text-center py-10 text-red-600">{loadError}</div>}
+            {loading && <LoadingState label="Loading Data..." />}
+            {loadError && <ErrorState message={loadError} />}
 
             {!loading && !loadError && students.length > 0 && (
                 <>
-                    <div className="overflow-x-auto border rounded shadow-sm flex-1">
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg flex-1">
                         <table className="w-full text-sm text-left border-collapse">
-                            <thead className="sticky top-0">
+                            <thead className="sticky top-0 bg-slate-50 text-slate-600">
                                 <tr>
                                     <th className="px-3 py-2 border w-12 text-center">S.No</th>
                                     <th className="px-3 py-2 border">Student Name</th>
@@ -256,7 +258,7 @@ export default function AssignStudentTests() {
                             </thead>
                             <tbody>
                                 {students.map((s, idx) => (
-                                    <tr key={s.student_id} className="hover:bg-gray-50">
+                                    <tr key={s.student_id} className="hover:bg-slate-50">
                                         <td className="px-3 py-2 border text-center">{idx + 1}</td>
                                         <td className="px-3 py-2 border font-medium">{s.name}</td>
                                         <td className="px-3 py-2 border text-center">{s.section}</td>
@@ -266,7 +268,7 @@ export default function AssignStudentTests() {
                                             <td key={col.class_test_id} className="px-3 py-2 border text-center">
                                                 <input
                                                     type="checkbox"
-                                                    className="w-4 h-4 accent-blue-600"
+                                                    className="w-4 h-4 accent-brand-600"
                                                     checked={isAssigned(s.student_id, col.class_test_id)}
                                                     onChange={e => toggleAssignment(s.student_id, col.class_test_id, e.target.checked)}
                                                 />
@@ -282,14 +284,14 @@ export default function AssignStudentTests() {
                         <button
                             onClick={() => fetchMatrix()}
                             disabled={saving || changes.length === 0}
-                            className={`btn text-gray-700 border hover:bg-gray-100 ${saving || changes.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className="btn-secondary"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={saving || changes.length === 0}
-                            className={`btn text-white ${saving || changes.length === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow'}`}
+                            className="btn-primary"
                         >
                             <Save size={18} />
                             <span>{saving ? "Saving..." : "Save Assignments"}</span>
@@ -299,10 +301,9 @@ export default function AssignStudentTests() {
             )}
 
             {!loading && !loadError && students.length === 0 && filters.class_id && (
-                <div className="text-center py-10 text-gray-500">
-                    No students found or data not loaded. Check filters.
-                </div>
+                <EmptyState title="No students found" description="No students found or data not loaded. Check filters." />
             )}
+            </div>
         </div>
     );
 }

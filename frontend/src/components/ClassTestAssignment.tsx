@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import api from "../api";
-import { AlertTriangle } from "lucide-react";
 import { notify, confirmDialog } from './ui/feedback';
+import { PageHeader, Alert, EmptyState, LoadingState } from './ui';
 
 interface ClassItem {
     id: number;
@@ -32,7 +32,7 @@ interface AcademicYearOption {
 }
 const ClassTestAssignment: React.FC = () => {
     // --- Metadata State ---
-    const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
+    const [, setAcademicYears] = useState<AcademicYearOption[]>([]);
     const [branches, setBranches] = useState<BranchOption[]>([]); // Primarily to map names if needed, or unused if strictly readonly
 
     // --- Selection State ---
@@ -62,7 +62,6 @@ const ClassTestAssignment: React.FC = () => {
     useEffect(() => {
         const fetchMetadata = async () => {
             try {
-                const user = JSON.parse(localStorage.getItem('user') || '{}');
                 const storedYear = localStorage.getItem("academicYear");
                 const storedBranch = localStorage.getItem("currentBranch");
                 const storedLocation = localStorage.getItem("currentLocation");
@@ -390,45 +389,38 @@ const ClassTestAssignment: React.FC = () => {
     if (isAllBranchesMode) {
         return (
             <div className="p-6">
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-                    <div className="flex items-center">
-                        <AlertTriangle className="text-yellow-500 mr-2" size={24} />
-                        <div>
-                            <h3 className="font-bold text-yellow-700">Cannot create tests in "All Branches" mode.</h3>
-                            <p className="text-sm text-yellow-600">Please select a specific branch from the header to create or modify assignments.</p>
-                        </div>
-                    </div>
-                </div>
+                <Alert tone="warning" title={'Cannot create tests in "All Branches" mode.'} className="mb-6">
+                    Please select a specific branch from the header to create or modify assignments.
+                </Alert>
             </div>
         );
     }
 
     return (
-        <div className="card p-2">
-            <div className="flex justify-between items-center mb-2">
-                <h2 className="text-xl font-bold text-gray-800">Assign Tests to Classes</h2>
-            </div>
+        <div>
+            <PageHeader title="Assign Tests to Classes" className="mb-3" />
+            <div className="card p-4">
 
             {/* Filters */}
-            <div className="flex gap-4 mb-2">
+            <div className="flex flex-wrap gap-4 mb-4">
                 <div>
                     <label className="label">Academic Year</label>
-                    <div className="border p-2 rounded bg-gray-100 min-w-[150px] text-gray-700">
+                    <div className="input bg-slate-50 min-w-[150px] text-slate-700">
                         {selectedYear || "Loading..."}
                     </div>
                 </div>
                 <div>
                     <label className="label">Branch</label>
-                    <div className="border p-2 rounded bg-gray-100 min-w-[200px] text-gray-700">
+                    <div className="input bg-slate-50 min-w-[200px] text-slate-700">
                         {selectedBranch || "Loading..."}
                     </div>
                 </div>
             </div>
 
             {/* Matrix */}
-            <div className="border rounded overflow-x-auto mb-4">
+            <div className="border border-slate-200 rounded-lg overflow-x-auto mb-4">
                 <table className="w-full text-sm text-left collapse-borders">
-                    <thead className="">
+                    <thead className="bg-slate-50 text-slate-600">
                         <tr>
                             <th className="p-3 border-r border-slate-200 sticky left-0 z-10 bg-slate-50">Class</th>
                             {testTypes.map(t => (
@@ -436,7 +428,7 @@ const ClassTestAssignment: React.FC = () => {
                                     <div>{t.name}</div>
                                     <input
                                         type="checkbox"
-                                        className="mt-1 w-3 h-3 accent-blue-400 cursor-pointer"
+                                        className="mt-1 w-3 h-3 accent-brand-400 cursor-pointer"
                                         title={`Assign ${t.name} to all classes`}
                                         onClick={(e) => { e.stopPropagation(); toggleColumn(t.id); }}
                                     />
@@ -449,8 +441,8 @@ const ClassTestAssignment: React.FC = () => {
                     </thead>
                     <tbody>
                         {classes.map(cls => (
-                            <tr key={cls.id} className="border-b hover:bg-gray-50">
-                                <td className="p-3 font-semibold text-gray-800 bg-gray-50 sticky left-0 border-r">{cls.name}</td>
+                            <tr key={cls.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                <td className="p-3 font-semibold text-slate-800 bg-slate-50 sticky left-0 border-r">{cls.name}</td>
                                 {testTypes.map(t => {
                                     const key = `${cls.id}-${t.id}`;
                                     const entry = assignmentMap.get(key);
@@ -464,18 +456,18 @@ const ClassTestAssignment: React.FC = () => {
                                                     type="checkbox"
                                                     checked={isChecked}
                                                     onChange={e => handleCheck(cls.id, t.id, e.target.checked)}
-                                                    className="w-4 h-4 accent-purple-600 cursor-pointer"
+                                                    className="w-4 h-4 accent-brand-600 cursor-pointer"
                                                 />
                                                 {isChecked && (
                                                     <div className="flex items-center">
-                                                        <span className="text-gray-500 text-xs mr-1">(</span>
+                                                        <span className="text-slate-500 text-xs mr-1">(</span>
                                                         <input
                                                             type="number"
                                                             value={order || ''}
                                                             onChange={e => handleOrderChange(cls.id, t.id, parseInt(e.target.value) || 0)}
                                                             className="input py-1 px-2 w-8 text-center no-spinner text-xs"
                                                         />
-                                                        <span className="text-gray-500 text-xs ml-1">)</span>
+                                                        <span className="text-slate-500 text-xs ml-1">)</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -486,7 +478,7 @@ const ClassTestAssignment: React.FC = () => {
                                 <td className="p-2 border-r text-center">
                                     <input
                                         type="checkbox"
-                                        className="w-4 h-4 accent-blue-600 cursor-pointer"
+                                        className="w-4 h-4 accent-brand-600 cursor-pointer"
                                         title={`Assign all tests to ${cls.name}`}
                                         onClick={(e) => { e.stopPropagation(); toggleRow(cls.id); }}
                                     />
@@ -495,11 +487,11 @@ const ClassTestAssignment: React.FC = () => {
                         ))}
                     </tbody>
                 </table>
-                {loading && <div className="p-4 text-center">Loading...</div>}
-                {!loading && classes.length === 0 && <div className="p-4 text-center">No data. Please verify Academic Year and Branch selection.</div>}
+                {loading && <LoadingState />}
+                {!loading && classes.length === 0 && <EmptyState compact title="No data" description="Please verify Academic Year and Branch selection." />}
             </div>
 
-            <div className="flex justify-between items-center">
+            <div className="flex flex-wrap gap-3 justify-between items-center">
                 {/* Copy Button */}
                 <div className="relative" ref={copyDropdownRef}>
                     <button
@@ -510,14 +502,14 @@ const ClassTestAssignment: React.FC = () => {
                     </button>
                     {isCopyDropdownOpen && (
                         <div className="card shadow-pop absolute left-full top-0 ml-2 w-72 z-20 max-h-80 overflow-y-auto">
-                            <div className="p-2 border-b font-bold bg-gray-50">Select Target Branches</div>
+                            <div className="p-2 border-b border-slate-100 text-sm font-semibold text-slate-700 bg-slate-50">Select Target Branches</div>
                             {Object.keys(branchesByLocation).map(loc => (
                                 <div key={loc}>
-                                    <div className="bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600 uppercase">{loc}</div>
+                                    <div className="bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 uppercase">{loc}</div>
                                     {branchesByLocation[loc].map(b => {
                                         const compositeKey = `${b.name}|${b.location_name}`;
                                         return (
-                                            <label key={b.id} className="flex items-center gap-2 px-3 py-2 hover:bg-blue-50 cursor-pointer">
+                                            <label key={b.id} className="flex items-center gap-2 px-3 py-2 hover:bg-brand-50 cursor-pointer">
                                                 <input
                                                     type="checkbox"
                                                     checked={copyTargets.has(compositeKey)}
@@ -528,13 +520,13 @@ const ClassTestAssignment: React.FC = () => {
                                                         setCopyTargets(s);
                                                     }}
                                                 />
-                                                <span className="text-sm">{b.name}</span>
+                                                <span className="text-sm text-slate-700">{b.name}</span>
                                             </label>
                                         );
                                     })}
                                 </div>
                             ))}
-                            <div className="p-2 border-t flex justify-end">
+                            <div className="p-2 border-t border-slate-100 flex justify-end">
                                 <button
                                     onClick={handleCopy}
                                     disabled={copying || copyTargets.size === 0}
@@ -546,11 +538,11 @@ const ClassTestAssignment: React.FC = () => {
                         </div>
                     )}
                 </div>
-                <div className="flex gap-4 justify-end">
+                <div className="flex gap-2 justify-end">
                     <button
                         onClick={() => fetchMatrix()}
                         disabled={saving}
-                        className={`btn text-blue-700 border hover:bg-blue-100 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className="btn-secondary"
                     >
                         Cancel
                     </button>
@@ -562,6 +554,7 @@ const ClassTestAssignment: React.FC = () => {
                         {saving ? 'Saving...' : 'Save Test'}
                     </button>
                 </div>
+            </div>
             </div>
         </div>
     );

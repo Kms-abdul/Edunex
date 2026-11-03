@@ -19,7 +19,6 @@ interface ReportCardProps {
 // ─────────────────────────────────────────────────────────────────────────────
 const STATIC_RIGHT_LOGO: string = RightLogo;
 
-const GRADE_LABELS = ['E', 'D', 'C2', 'C1', 'B2', 'B1', 'A2', 'A1'] as const;
 
 const GRADE_HEADER_COLORS: Record<string, string> = {
   E: '#dc2626', D: '#dc2626',

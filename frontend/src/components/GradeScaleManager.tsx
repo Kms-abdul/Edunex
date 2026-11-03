@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Edit, Trash2, Plus, Save, RotateCcw, AlertCircle, Check, X } from 'lucide-react';
+import { Edit, Trash2, Plus, Save, RotateCcw, Check, X } from 'lucide-react';
 import { notify, confirmDialog } from './ui/feedback';
+import { Alert, EmptyState } from './ui';
 
 interface GradeScaleDetail {
     id?: number;
@@ -26,8 +27,8 @@ const GradeScaleManager: React.FC = () => {
     const [academicYear, setAcademicYear] = useState<string>('');
     const [branch, setBranch] = useState<string>('');
     const [location, setLocation] = useState<string>('Hyderabad'); // Default
-    const [academicYears, setAcademicYears] = useState<any[]>([]);
-    const [branches, setBranches] = useState<any[]>([]);
+    const [, setAcademicYears] = useState<any[]>([]);
+    const [, setBranches] = useState<any[]>([]);
     const [availableClasses, setAvailableClasses] = useState<any[]>([]);
 
     // Data State
@@ -354,15 +355,15 @@ const GradeScaleManager: React.FC = () => {
     return (
         <div className="flex flex-col gap-6 h-full">
             {/* Context Header */}
-            <div className="bg-blue-50 p-4 rounded border border-blue-100 flex justify-between items-center text-sm text-blue-800">
-                <div className="flex gap-6">
+            <div className="bg-brand-50 p-4 rounded-xl border border-brand-100 flex flex-wrap gap-3 justify-between items-center text-sm text-brand-800">
+                <div className="flex flex-wrap gap-x-6 gap-y-2 items-center">
                     <span><strong>Academic Year:</strong> {academicYear || 'Loading...'}</span>
                     {/* Branch is still relevant for user context, but Scale is Location Wide */}
                     <span><strong>User Branch:</strong> {branch || 'Loading...'}</span>
-                    <span className="bg-blue-200 px-2 py-0.5 rounded text-blue-900 font-bold">Scope: {location} (All Branches)</span>
+                    <span className="badge-brand">Scope: {location} (All Branches)</span>
                 </div>
                 <div>
-                    {!academicYear || !branch ? <span className="text-red-500 font-bold">Context Missing! Check Header.</span> : null}
+                    {!academicYear || !branch ? <span className="badge-danger">Context Missing! Check Header.</span> : null}
                 </div>
             </div>
 
@@ -375,7 +376,7 @@ const GradeScaleManager: React.FC = () => {
                     {/* Form */}
                     <div className="card p-5">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
                                 Grade Scale Master
                             </h3>
                         </div>
@@ -394,12 +395,12 @@ const GradeScaleManager: React.FC = () => {
 
                             <div>
                                 <label className="label">Classes <span className="text-red-500">*</span></label>
-                                <div className="border rounded p-2 max-h-32 overflow-y-auto bg-gray-50 flex flex-wrap gap-2">
+                                <div className="border border-slate-200 rounded-lg p-2 max-h-32 overflow-y-auto bg-slate-50 flex flex-wrap gap-2">
                                     {availableClasses.map(c => (
-                                        <label key={c.id} className="flex items-center space-x-2 bg-white px-2 py-1 rounded border shadow-sm cursor-pointer hover:bg-gray-100">
+                                        <label key={c.id} className="flex items-center space-x-2 bg-white px-2 py-1 rounded-md border border-slate-200 shadow-sm cursor-pointer hover:bg-slate-100">
                                             <input
                                                 type="checkbox"
-                                                className="rounded text-blue-600 focus:ring-blue-500"
+                                                className="rounded accent-brand-600"
                                                 checked={selectedClasses.includes(c.id)}
                                                 onChange={(e) => {
                                                     if (e.target.checked) {
@@ -412,7 +413,7 @@ const GradeScaleManager: React.FC = () => {
                                             <span className="text-sm">{c.class_name}</span>
                                         </label>
                                     ))}
-                                    {availableClasses.length === 0 && <span className="text-sm text-gray-500">No classes found.</span>}
+                                    {availableClasses.length === 0 && <span className="text-sm text-slate-500">No classes found.</span>}
                                 </div>
                             </div>
 
@@ -438,14 +439,10 @@ const GradeScaleManager: React.FC = () => {
                             </div>
 
                             {error && (
-                                <div className="p-2 bg-red-50 text-red-600 text-sm rounded flex items-center gap-2">
-                                    <AlertCircle size={14} /> {error}
-                                </div>
+                                <Alert tone="error">{error}</Alert>
                             )}
                             {success && (
-                                <div className="p-2 bg-green-50 text-green-600 text-sm rounded">
-                                    {success}
-                                </div>
+                                <Alert tone="success">{success}</Alert>
                             )}
 
                             <div className="flex gap-2 justify-end pt-2">
@@ -468,11 +465,11 @@ const GradeScaleManager: React.FC = () => {
 
                     {/* List */}
                     <div className="card p-5 flex-1">
-                        <h3 className="font-semibold text-gray-700 mb-4 pb-2 border-b">Grade Scale List</h3>
+                        <h3 className="text-base font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">Grade Scale List</h3>
 
                         <div className="overflow-auto max-h-[400px]">
                             <table className="w-full text-sm">
-                                <thead className="">
+                                <thead className="bg-slate-50 text-slate-600">
                                     <tr>
                                         <th className="p-2 text-left">Scale Name</th>
                                         <th className="p-2 text-left">Classes</th>
@@ -481,12 +478,12 @@ const GradeScaleManager: React.FC = () => {
                                 </thead>
                                 <tbody>
                                     {scales.length === 0 ? (
-                                        <tr><td colSpan={3} className="p-4 text-center text-gray-500">No scales found.</td></tr>
+                                        <tr><td colSpan={3}><EmptyState compact title="No scales found." /></td></tr>
                                     ) : (
                                         scales.map((s: any) => (
-                                            <tr key={s.id} className={`border-b hover:bg-gray-50 ${selectedScaleId === s.id ? 'bg-blue-50' : ''}`}>
+                                            <tr key={s.id} className={`border-b border-slate-100 hover:bg-slate-50 ${selectedScaleId === s.id ? 'bg-brand-50' : ''}`}>
                                                 <td className="p-2 font-medium">{s.scale_name}</td>
-                                                <td className="p-2 text-xs text-gray-600 truncate max-w-[150px]" title={s.classes?.map((c: any) => c.class_name).join(', ')}>
+                                                <td className="p-2 text-xs text-slate-600 truncate max-w-[150px]" title={s.classes?.map((c: any) => c.class_name).join(', ')}>
                                                     {s.classes && s.classes.length > 0
                                                         ? s.classes.map((c: any) => c.class_name).join(', ')
                                                         : 'None'}
@@ -494,14 +491,14 @@ const GradeScaleManager: React.FC = () => {
                                                 <td className="p-2 flex justify-end gap-2">
                                                     <button
                                                         onClick={() => loadScale(s.id)}
-                                                        className="btn bg-blue-100 text-blue-600 hover:bg-blue-200"
+                                                        className="btn-soft btn-sm"
                                                         title="Edit"
                                                     >
                                                         <Edit size={14} />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(s.id)}
-                                                        className="btn bg-red-100 text-red-600 hover:bg-red-200"
+                                                        className="btn btn-sm bg-red-50 text-red-600 hover:bg-red-100"
                                                         title="Delete"
                                                     >
                                                         <Trash2 size={14} />
@@ -521,15 +518,15 @@ const GradeScaleManager: React.FC = () => {
                 <div className="w-full md:w-2/3">
                     <div className="card p-5 min-h-[500px]">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                                <span className="w-2 h-6 bg-gray-600 rounded-sm"></span>
+                            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                                <span className="w-2 h-6 bg-brand-600 rounded-sm"></span>
                                 {selectedScaleId ? scaleName : 'Grade Scale Details'}
-                                {selectedScaleId && <span className="text-sm text-gray-500 font-normal ml-2">(Total Marks: {totalMarks})</span>}
+                                {selectedScaleId && <span className="text-sm text-slate-500 font-normal ml-2">(Total Marks: {totalMarks})</span>}
                             </h3>
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleAddDetailRow}
-                                    className={`btn text-white ${selectedScaleId ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'}`}
+                                    className="btn-primary"
                                     title={selectedScaleId ? "Add Row" : "Select a scale to add rows"}
                                     disabled={!selectedScaleId}
                                 >
@@ -540,7 +537,7 @@ const GradeScaleManager: React.FC = () => {
 
                         <div className="overflow-x-auto rounded-lg border border-slate-200">
                             <table className="w-full text-sm">
-                                <thead className="">
+                                <thead className="bg-slate-50 text-slate-600">
                                     <tr>
                                         <th className="p-3 text-center w-16">S.No</th>
                                         <th className="p-3 text-center w-24">Grade</th>
@@ -553,10 +550,14 @@ const GradeScaleManager: React.FC = () => {
                                 <tbody>
                                     {details.length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} className="p-8 text-center text-gray-400">
-                                                {!selectedScaleId
-                                                    ? "Please select/edit a Grade Scale from the list to manage details."
-                                                    : "No grades added yet. Click + to add."}
+                                            <td colSpan={6}>
+                                                <EmptyState
+                                                    compact
+                                                    title={!selectedScaleId ? "No grade scale selected" : "No grades added yet"}
+                                                    description={!selectedScaleId
+                                                        ? "Please select/edit a Grade Scale from the list to manage details."
+                                                        : "No grades added yet. Click + to add."}
+                                                />
                                             </td>
                                         </tr>
                                     ) : (
@@ -565,8 +566,8 @@ const GradeScaleManager: React.FC = () => {
                                             const currentData = isEditing && tempRowData ? tempRowData : row;
 
                                             return (
-                                                <tr key={idx} className={`border-b hover:bg-gray-50 ${isEditing ? 'bg-blue-50' : ''}`}>
-                                                    <td className="p-2 text-center text-gray-500">
+                                                <tr key={idx} className={`border-b border-slate-100 hover:bg-slate-50 ${isEditing ? 'bg-brand-50' : ''}`}>
+                                                    <td className="p-2 text-center text-slate-500">
                                                         {idx + 1}
                                                     </td>
                                                     <td className="p-2 text-center">
@@ -579,7 +580,7 @@ const GradeScaleManager: React.FC = () => {
                                                                 placeholder="A1"
                                                             />
                                                         ) : (
-                                                            <span className="font-medium text-gray-700">{row.grade}</span>
+                                                            <span className="font-medium text-slate-700">{row.grade}</span>
                                                         )}
                                                     </td>
                                                     <td className="p-2 text-center">
@@ -591,7 +592,7 @@ const GradeScaleManager: React.FC = () => {
                                                                 onChange={e => handleTempChange('min_marks', e.target.value)}
                                                             />
                                                         ) : (
-                                                            <span className="text-gray-600">{row.min_marks}</span>
+                                                            <span className="text-slate-600">{row.min_marks}</span>
                                                         )}
 
                                                     </td>
@@ -604,7 +605,7 @@ const GradeScaleManager: React.FC = () => {
                                                                 onChange={e => handleTempChange('max_marks', e.target.value)}
                                                             />
                                                         ) : (
-                                                            <span className="text-gray-600">{row.max_marks}</span>
+                                                            <span className="text-slate-600">{row.max_marks}</span>
                                                         )}
                                                     </td>
                                                     <td className="p-2 text-left">
@@ -617,7 +618,7 @@ const GradeScaleManager: React.FC = () => {
                                                                 placeholder="Grade Description"
                                                             />
                                                         ) : (
-                                                            <span className="text-gray-600">{row.description}</span>
+                                                            <span className="text-slate-600">{row.description}</span>
                                                         )}
                                                     </td>
                                                     <td className="p-2 text-center flex justify-center gap-2">
@@ -625,14 +626,14 @@ const GradeScaleManager: React.FC = () => {
                                                             <>
                                                                 <button
                                                                     onClick={handleSaveEdit}
-                                                                    className="btn-success"
+                                                                    className="btn-success btn-sm"
                                                                     title="Save Changes"
                                                                 >
                                                                     <Check size={16} />
                                                                 </button>
                                                                 <button
                                                                     onClick={handleCancelEdit}
-                                                                    className="btn-danger"
+                                                                    className="btn-danger btn-sm"
                                                                     title="Cancel Changes"
                                                                 >
                                                                     <X size={16} />
@@ -642,14 +643,14 @@ const GradeScaleManager: React.FC = () => {
                                                             <>
                                                                 <button
                                                                     onClick={() => handleStartEdit(idx)}
-                                                                    className="btn bg-blue-100 text-blue-600 hover:bg-blue-200"
+                                                                    className="btn-soft btn-sm"
                                                                     title="Edit Row"
                                                                 >
                                                                     <Edit size={14} />
                                                                 </button>
                                                                 <button
                                                                     onClick={() => handleRemoveDetailRow(idx)}
-                                                                    className="btn bg-red-100 text-red-600 hover:bg-red-200"
+                                                                    className="btn btn-sm bg-red-50 text-red-600 hover:bg-red-100"
                                                                     title="Remove Row"
                                                                 >
                                                                     <Trash2 size={14} />

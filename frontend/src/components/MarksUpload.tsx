@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
 import api from "../api";
-import { Upload, FileDown, AlertCircle } from "lucide-react";
+import { Upload, FileDown } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { notify } from './ui/feedback';
+import { PageHeader, Alert } from './ui';
 
 interface MarksUploadProps { }
 
 const MarksUpload: React.FC<MarksUploadProps> = () => { 
     // --- State ---
     const [academicYear, setAcademicYear] = useState<string>("");
-    const [branches, setBranches] = useState<any[]>([]);
+    const [, setBranches] = useState<any[]>([]);
     const [selectedBranch, setSelectedBranch] = useState<string>("");
     const [classes, setClasses] = useState<any[]>([]);
     const [selectedClass, setSelectedClass] = useState<string>("");
-    const [sections, setSections] = useState<string[]>([]);
-    const [selectedSection, setSelectedSection] = useState<string>("");
+    const [selectedSection] = useState<string>("");
 
     const [tests, setTests] = useState<any[]>([]);
     const [selectedTestId, setSelectedTestId] = useState<string>("");
@@ -24,7 +24,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
 
     const [students, setStudents] = useState<any[]>([]); // For template generation
     const [subjectTotalMarks, setSubjectTotalMarks] = useState<number>(0);
-    const [gradingScale, setGradingScale] = useState<any[]>([]);
+    const [, setGradingScale] = useState<any[]>([]);
     const [activeClassTestId, setActiveClassTestId] = useState<number | null>(null);
 
     const [loading, setLoading] = useState(false);
@@ -249,7 +249,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
                 };
 
                 api.post(`/marks/entry/subject`, payload)
-                    .then(res => {
+                    .then(() => {
                         setMessage({ type: 'success', text: `Successfully saved marks for ${pendingUpdates.length} students!` });
                     })
                     .catch(err => {
@@ -268,11 +268,15 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
     };
 
     return (
-        <div className="p-4">
+        <div>
+            <PageHeader
+                title="Import Subject Marks"
+                icon={<Upload className="w-6 h-6" />}
+            />
+
             {/* Instructions Box */}
-            <div className="mb-6 bg-rose-50 border border-rose-200 p-4 rounded text-sm text-gray-700">
-                <h3 className="text-red-600 font-bold mb-2">Important!!</h3>
-                <p className="mb-1 text-gray-800 font-medium">Note :Please read the following instructions:</p>
+            <Alert tone="warning" title="Important!!" className="mb-6">
+                <p className="mb-1 font-medium">Note :Please read the following instructions:</p>
                 <ul className="list-decimal pl-5 space-y-1">
                     <li>Please don't make any changes in given template.</li>
                     <li>Only 80 records are accepted in the list at a time.</li>
@@ -280,12 +284,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
                     <li>For Ispresent column enter score for Absent  use 'AB' in Marks column</li>
                     <li>In mark column you can enter mark, grade and absent remark.</li>
                 </ul>
-            </div>
-
-            <h2 className="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
-                <Upload size={24} className="text-blue-600" />
-                Import Subject Marks
-            </h2>
+            </Alert>
 
             <div className="card p-4 mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -332,7 +331,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
                 </div>
 
                 {/* Upload Section */}
-                <div className="flex flex-col md:flex-row items-end gap-4 border-t pt-4">
+                <div className="flex flex-col md:flex-row items-end gap-4 border-t border-slate-100 pt-4">
                     <div className="flex-1 w-full">
                         <label className="label">Browse for the excel sheet:</label>
                         <div className="flex gap-2">
@@ -363,7 +362,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
                         type="button"
                         onClick={handleTriggerUpload}
                         disabled={saving || !selectedTestId || !selectedSubjectId}
-                        className={`btn bg-blue-500 text-white hover:bg-blue-600 ${saving || !selectedTestId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className="btn-primary"
                     >
                         {saving ? "Uploading..." : "Upload Excel"}
                     </button>
@@ -372,7 +371,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
                         type="button"
                         onClick={handleDownloadTemplate}
                         disabled={loading || !selectedTestId || students.length === 0}
-                        className={`btn bg-emerald-500 text-white hover:bg-emerald-600 ${students.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className="btn-success"
                     >
                         <FileDown size={18} />
                         Download Template
@@ -382,10 +381,9 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
 
             {/* Message */}
             {message && (
-                <div className={`p-3 rounded mb-4 flex items-center gap-2 ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                    {message.type === 'error' ? <AlertCircle size={18} /> : <Upload size={18} />}
+                <Alert tone={message.type === 'error' ? 'error' : 'success'} className="mb-4">
                     {message.text}
-                </div>
+                </Alert>
             )}
         </div>
     );

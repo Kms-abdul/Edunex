@@ -3,6 +3,7 @@ import api from "../api";
 import { Copy, Save } from "lucide-react";
 import CopySubjectTestModal from "./CopySubjectTestModal";
 import { notify } from './ui/feedback';
+import { PageHeader, LoadingState, EmptyState } from './ui';
 
 interface SubjectRow {
     subject_id: number;
@@ -197,22 +198,23 @@ export default function AssignSubjectTests() {
 
     /* ---------------- RENDER ---------------- */
     return (
-        <div className="card p-6 min-h-full">
+        <div className="min-h-full">
             {/* HEADER */}
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Assign Subjects to Test</h2>
-                {classTestId && (
+            <PageHeader
+                title="Assign Subjects to Test"
+                actions={classTestId ? (
                     <button
                         onClick={() => setIsCopyModalOpen(true)}
                         className="btn-primary"
                     >
                         <Copy size={16} /> <span>Copy Structure</span>
                     </button>
-                )}
-            </div>
+                ) : undefined}
+            />
+            <div className="card p-6">
 
             {/* FILTERS */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 bg-gray-50 p-4 rounded border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
                 {/* Academic Year */}
                 <div>
                     <label className="label">Academic Year</label>
@@ -284,25 +286,25 @@ export default function AssignSubjectTests() {
 
             {/* MAIN CONTENT */}
             {loading ? (
-                <div className="text-center py-10">Loading Matrix...</div>
+                <LoadingState label="Loading Matrix..." />
             ) : !classTestId ? (
-                <div className="text-center py-10 text-gray-500 italic">Select filters to view assignment matrix</div>
+                <EmptyState title="Select filters to view assignment matrix" />
             ) : (
                 <div>
                     {/* Validation INFO */}
-                    <div className="flex justify-between items-center mb-2 px-2">
-                        <div className="text-sm">
+                    <div className="flex flex-wrap gap-2 justify-between items-center mb-2 px-2">
+                        <div className="text-sm text-slate-600">
                             Test Max Marks: <span className="font-bold">{testMaxMarks}</span>
                         </div>
-                        <div className={`text-sm ${calculateTotal() > testMaxMarks ? 'text-red-600 font-bold' : 'text-green-600'}`}>
+                        <div className={`text-sm ${calculateTotal() > testMaxMarks ? 'text-red-600 font-bold' : 'text-emerald-600'}`}>
                             Total Assigned: {calculateTotal()}
                         </div>
                     </div>
 
                     {/* TABLE */}
-                    <div className="overflow-x-auto border rounded shadow-sm">
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
                         <table className="w-full text-sm text-left">
-                            <thead className="">
+                            <thead className="bg-slate-50 text-slate-600">
                                 <tr>
                                     <th className="px-4 py-3">Subject Name</th>
                                     <th className="px-4 py-3">Type</th>
@@ -311,15 +313,18 @@ export default function AssignSubjectTests() {
                                     <th className="px-4 py-3 w-32">Order</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y">
+                            <tbody className="divide-y divide-slate-100">
+                                {subjects.length === 0 && (
+                                    <tr><td colSpan={5}><EmptyState compact title="No subjects found" /></td></tr>
+                                )}
                                 {subjects.map((s, idx) => (
-                                    <tr key={s.subject_id} className={`hover:bg-gray-50 ${s.assigned ? 'bg-blue-50' : ''}`}>
+                                    <tr key={s.subject_id} className={`hover:bg-slate-50 ${s.assigned ? 'bg-brand-50' : ''}`}>
                                         <td className="px-4 py-2 font-medium">{s.subject_name}</td>
-                                        <td className="px-4 py-2 text-gray-500">{s.subject_type}</td>
+                                        <td className="px-4 py-2 text-slate-500">{s.subject_type}</td>
                                         <td className="px-4 py-2 text-center">
                                             <input
                                                 type="checkbox"
-                                                className="w-5 h-5 accent-blue-600"
+                                                className="w-5 h-5 accent-brand-600"
                                                 checked={s.assigned}
                                                 onChange={(e) => updateSubject(idx, 'assigned', e.target.checked)}
                                             />
@@ -327,7 +332,7 @@ export default function AssignSubjectTests() {
                                         <td className="px-4 py-2">
                                             <input
                                                 type="number"
-                                                className={`input ${!s.assigned ? 'bg-gray-100' : ''}`}
+                                                className={`input ${!s.assigned ? 'bg-slate-100' : ''}`}
                                                 disabled={!s.assigned}
                                                 value={s.max_marks ?? ''}
                                                 onChange={(e) => updateSubject(idx, 'max_marks', Number(e.target.value))}
@@ -336,7 +341,7 @@ export default function AssignSubjectTests() {
                                         <td className="px-4 py-2">
                                             <input
                                                 type="number"
-                                                className={`input ${!s.assigned ? 'bg-gray-100' : ''}`}
+                                                className={`input ${!s.assigned ? 'bg-slate-100' : ''}`}
                                                 disabled={!s.assigned}
                                                 value={s.subject_order ?? ''}
                                                 onChange={(e) => updateSubject(idx, 'subject_order', Number(e.target.value))}
@@ -349,7 +354,7 @@ export default function AssignSubjectTests() {
                     </div>
 
                     {/* ACTION BAR */}
-                    <div className="mt-6 flex justify-end">
+                    <div className="mt-6 flex justify-end gap-2">
                         <button
                             onClick={() => loadMatrix()}
                             disabled={saving}
@@ -378,6 +383,7 @@ export default function AssignSubjectTests() {
                 currentClass={filters.class_id}
                 currentTest={filters.test_id}
             />
+            </div>
         </div>
     );
 }

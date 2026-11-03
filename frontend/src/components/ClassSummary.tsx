@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-  import { SearchIcon } from './icons'; 
+import { LoadingState, EmptyState } from './ui';
 import CreateStudent from './CreateStudent';
 
 // ---------------------------------------------------------------------------
@@ -45,11 +45,11 @@ interface StudentMinimal {
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+const ClassSummary: React.FC<{ onBack: () => void }> = () => {
 
     // State
     const [summary, setSummary] = useState<SummaryResponse | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [, setLoading] = useState(false);
 
     // Filters
     const [statusFilter, setStatusFilter] = useState('All'); // All, Active, Inactive, TC
@@ -174,7 +174,7 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const recordCount = students.length;
 
     const renderLeftSidebar = () => {
-        if (!summary) return <div>Loading inputs...</div>;
+        if (!summary) return <div className="card h-full"><LoadingState label="Loading inputs..." /></div>;
 
         const filters = ['All', 'Active', 'Inactive', 'TC'];
 
@@ -236,10 +236,10 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                 <tr
                                     key={c.name}
                                     onClick={() => { setSelectedClass(c.name); setSelectedSection(null); }}
-                                    className={`cursor-pointer transition-colors ${selectedClass === c.name ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                                    className={`cursor-pointer transition-colors ${selectedClass === c.name ? 'bg-brand-50' : 'hover:bg-slate-50'}`}
                                 >
-                                    <td className={`px-3 py-2.5 font-medium ${selectedClass === c.name ? 'text-blue-700' : 'text-gray-700'}`}>{c.name}</td>
-                                    <td className={`px-3 py-2.5 text-right font-semibold ${selectedClass === c.name ? 'text-blue-700' : 'text-blue-500'}`}>{c.count}</td>
+                                    <td className={`px-3 py-2.5 font-medium ${selectedClass === c.name ? 'text-brand-700' : 'text-slate-700'}`}>{c.name}</td>
+                                    <td className={`px-3 py-2.5 text-right font-semibold ${selectedClass === c.name ? 'text-brand-700' : 'text-brand-500'}`}>{c.count}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -251,8 +251,8 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
     const renderMiddleSidebar = () => {
         if (!selectedClass || !selectedClassObject) return (
-            <div className="card h-full flex items-center justify-center text-gray-400 text-sm p-4 text-center print:hidden">
-                <span className="italic">Select Class</span>
+            <div className="card h-full flex items-center justify-center print:hidden">
+                <EmptyState compact title="Select Class" />
             </div>
         );
 
@@ -302,7 +302,7 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                     className={`cursor-pointer transition-colors ${selectedSection === s.name ? 'bg-lime-100 border-l-4 border-lime-500' : 'hover:bg-green-50 border-l-4 border-transparent'}`}
                                 >
                                     <td className="px-3 py-2.5 font-semibold text-gray-700">{s.name}</td>
-                                    <td className="px-3 py-2.5 text-right text-blue-600 font-bold">{s.count}</td>
+                                    <td className="px-3 py-2.5 text-right text-brand-600 font-bold">{s.count}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -312,22 +312,11 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         );
     };
 
-    // Pagination placeholder (Functional in logic but not connected to backend for now)
-    const renderPagination = () => (
-        <div className="flex items-center gap-1">
-            <button className="btn-success btn-sm w-8 h-8" title="First">«</button>
-            <button className="btn-warn btn-sm w-8 h-8" title="Prev">‹ 1</button>
-            <div className="flex items-center justify-center w-8 h-8 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold border border-yellow-300">10</div>
-            <button className="btn-success btn-sm w-8 h-8" title="Next">N</button>
-            <button className="btn-warn btn-sm w-8 h-8" title="PerPage">10</button>
-        </div>
-    );
-
     const renderStudentList = () => {
         if (viewMode === 'create') {
             return (
                 <div className="card h-full p-4 overflow-y-auto">
-                    <button onClick={() => setViewMode('summary')} className="mb-4 text-sm text-blue-600 hover:underline">← Back to List</button>
+                    <button onClick={() => setViewMode('summary')} className="mb-4 btn-ghost btn-sm">← Back to List</button>
                     <CreateStudent mode="create" onSave={() => { setViewMode('summary'); fetchStudents(); fetchSummary(); }} onCancel={() => setViewMode('summary')} />
                 </div>
             )
@@ -339,31 +328,31 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 {/* Main Content Card */}
                 <div className="card flex-1 flex flex-col overflow-hidden print:shadow-none print:h-auto">
                     {/* Sub Header */}
-                    <div className="p-3 bg-violet-50 border-b flex justify-between items-center flex-wrap gap-2 print:bg-white print:border-none">
-                        <div className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                    <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center flex-wrap gap-2 print:bg-white print:border-none">
+                        <div className="text-base font-semibold text-slate-900 flex items-center gap-2">
                             {selectedClass || "All Classes"} {selectedSection || ""}
-                            <span className="text-gray-500 font-normal text-base ml-2">Records : {recordCount}</span>
+                            <span className="text-sm text-slate-500 font-normal ml-2">Records : {recordCount}</span>
                         </div>
 
-                        <div className="flex items-center gap-4 print:hidden">
+                        <div className="flex flex-wrap items-center gap-4 print:hidden">
                             {/* Gender Stats instead of Pagination */}
                             <div className="flex items-center gap-2 text-sm font-medium">
-                                <div className="px-3 py-1 bg-green-500 text-white rounded shadow-sm">
+                                <div className="badge-success text-xs px-3 py-1">
                                     Males: {totalMales}
                                 </div>
-                                <div className="px-3 py-1 bg-orange-400 text-white rounded shadow-sm">
+                                <div className="badge-warning text-xs px-3 py-1">
                                     Females: {totalFemales}
                                 </div>
                             </div>
 
                             <div className="flex items-center gap-2 ml-4">
-                                <button title="Excel" onClick={exportToExcel} className="text-green-600 hover:text-green-800"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></button>
-                                <button title="PDF" onClick={handlePrint} className="text-red-500 hover:text-red-700"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg></button>
+                                <button title="Excel" onClick={exportToExcel} className="btn-icon h-8 w-8 text-emerald-600 hover:text-emerald-800"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></button>
+                                <button title="PDF" onClick={handlePrint} className="btn-icon h-8 w-8 text-red-500 hover:text-red-700"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg></button>
                             </div>
 
                             <div className="relative">
                                 <input
-                                    className="input border-purple-200 rounded-full w-48"
+                                    className="input rounded-full w-48"
                                     placeholder="Search"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
@@ -375,7 +364,7 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     {/* Table */}
                     <div className="flex-1 overflow-auto print:overflow-visible">
                         <table className="min-w-full text-sm divide-y divide-gray-200">
-                            <thead className="print:bg-white print:border-b-2 print:border-black">
+                            <thead className="bg-slate-50 text-slate-600 print:bg-white print:border-b-2 print:border-black">
                                 <tr>
                                     <th className="px-4 py-3 text-left w-12">#</th>
                                     <th className="px-4 py-3 text-left">Roll</th>
@@ -389,15 +378,14 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white">
                                 {studentLoading ? (
-                                    <tr><td colSpan={7} className="p-8 text-center text-gray-500">Loading students data...</td></tr>
+                                    <tr><td colSpan={8}><LoadingState label="Loading students data..." /></td></tr>
                                 ) : students.length === 0 ? (
-                                    <tr><td colSpan={7} className="p-8 text-center text-gray-500 flex flex-col items-center">
-                                        <span className="text-lg">No students found</span>
-                                        <span className="text-xs">Try adjusting filters or search</span>
+                                    <tr><td colSpan={8}>
+                                        <EmptyState compact title="No students found" description="Try adjusting filters or search" />
                                     </td></tr>
                                 ) : (
                                     students.map((s, index) => (
-                                        <tr key={s.id} className="hover:bg-blue-50 group transition-colors">
+                                        <tr key={s.id} className="hover:bg-brand-50 group transition-colors">
                                             <td className="px-4 py-3 font-mono text-gray-500">{index + 1}</td>
                                             <td className="px-4 py-3 text-gray-600 font-medium">{s.rollNo || '-'}</td>
                                             <td className="px-4 py-3">
@@ -411,7 +399,7 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                                 )}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <div className="font-medium text-blue-600 group-hover:underline cursor-pointer">{s.name}</div>
+                                                <div className="font-medium text-brand-600 group-hover:underline cursor-pointer">{s.name}</div>
                                                 {s.status === 'Inactive' && <div className="text-xs text-red-500 mt-0.5">(InActive)</div>}
                                             </td>
                                             <td className="px-4 py-3 text-gray-700 font-semibold">{s.class} {s.section}</td>
@@ -430,7 +418,7 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     };
 
     return (
-        <div className="flex h-full gap-4 p-4 overflow-hidden bg-gray-100 print:bg-white print:p-0 print:h-auto print:overflow-visible">
+        <div className="flex h-full gap-4 p-4 overflow-hidden bg-surface-muted print:bg-white print:p-0 print:h-auto print:overflow-visible">
             {/* Left Sidebar - 20% */}
             <div className="w-1/5 min-w-[200px] flex-shrink-0 print:hidden">
                 {renderLeftSidebar()}

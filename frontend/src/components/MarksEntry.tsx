@@ -3,6 +3,7 @@ import api from "../api";
 import { Save, FileDown } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { notify } from './ui/feedback';
+import { PageHeader, Alert, Badge } from './ui';
 
 
  
@@ -50,7 +51,7 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
 
         if (userStr) {
             try {
-                const user = JSON.parse(userStr);
+                JSON.parse(userStr);
                 const selected = localStorage.getItem("currentBranch");
                 if (selected && selected !== "All Locations") {
                     storedBranch = selected;
@@ -256,7 +257,7 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
         };
 
         api.post(`/marks/entry/subject`, payload)
-            .then(res => {
+            .then(() => {
                 setMessage({ type: 'success', text: "Marks saved successfully!" });
                 // Optional: reload data to verify?
             })
@@ -312,11 +313,11 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
     // I will write the full component now including that state.
 
     return (
-        <div className="p-4">
-            <h2 className="text-xl font-bold text-gray-700 mb-4 border-b pb-2">Enter Subject Marks</h2>
+        <div>
+            <PageHeader title="Enter Subject Marks" />
 
             {/* Filters */}
-            <div className="card grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 p-4">
+            <div className="card grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6 p-4">
                 {/* Branch */}
                 <div>
                     <label className="label">Branch</label>
@@ -397,25 +398,26 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
 
             {/* Message */}
             {message && (
-                <div className={`p-3 rounded mb-4 ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                <Alert tone={message.type === 'error' ? 'error' : 'success'} className="mb-4">
                     {message.text}
-                </div>
+                </Alert>
             )}
 
             {/* Grid */}
             {students.length > 0 && (
                 <div className="card overflow-hidden">
-                    <div className="p-3 bg-gray-50 border-b flex justify-between items-center">
-                        <span className="font-semibold text-gray-700">
+                    <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-2 justify-between items-center">
+                        <span className="text-base font-semibold text-slate-900">
                             Max Marks: {subjectTotalMarks}
                         </span>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-slate-500">
                             Valid inputs: 0-{subjectTotalMarks}, "AB" (Absent)
                         </div>
                     </div>
 
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="">
+                    <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-200">
+                        <thead className="bg-slate-50 text-slate-600">
                             <tr>
                                 <th className="px-6 py-3 text-left">S.No</th>
                                 <th className="px-6 py-3 text-left">Roll No</th>
@@ -426,83 +428,47 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
                                 <th className="px-6 py-3 text-left">Status</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white divide-y divide-slate-100">
                             {students.map((student, index) => (
                                 <tr key={student.student_id}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{student.roll_number}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{student.admission_no}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{index + 1}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{student.roll_number}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{student.admission_no}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{student.name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <input
                                             type="text"
                                             value={student.is_absent ? 'AB' : (student.marks_obtained !== null && student.marks_obtained !== undefined ? String(student.marks_obtained).split('.')[0] : '')}
                                             onChange={(e) => handleInputChange(student.student_id, e.target.value)}
                                             onBlur={() => handleInputBlur(student.student_id)}
-                                            className={`input w-24 
-                                                ${student.is_absent ? 'bg-red-50 border-red-300 text-red-700 font-bold' : 'border-gray-300'}
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            
-                                            `}
+                                            className={`input w-24 ${student.is_absent ? 'bg-red-50 border-red-300 text-red-700 font-bold' : ''}`}
                                             placeholder="-"
                                         />
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-bold">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-bold">
                                         {student.grade || '-'}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         {student.is_absent ? (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                Absent
-                                            </span>
+                                            <Badge tone="danger">Absent</Badge>
                                         ) : (student.marks_obtained !== '' && student.marks_obtained !== null && student.marks_obtained !== undefined) ? (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                Present
-                                            </span>
+                                            <Badge tone="success">Present</Badge>
                                         ) : (
-                                            <span className="text-gray-400">-</span>
+                                            <span className="text-slate-400">-</span>
                                         )}
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
+                    </div>
 
-                    <div className="p-4 bg-gray-50 border-t flex justify-end space-x-3">
+                    <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-end gap-2">
                         <button
                             type="button"
                             onClick={handleCancel}
                             disabled={saving}
-                            className={`btn bg-gray-500 text-white hover:bg-gray-600 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className="btn-secondary"
                         >
                             Cancel
                         </button>
@@ -512,7 +478,7 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
                             type="button"
                             onClick={handleDownloadExcel}
                             disabled={saving || students.length === 0}
-                            className={`btn bg-blue-500 text-white hover:bg-blue-600 ${saving || students.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className="btn-soft"
                         >
                             <FileDown size={18} />
                             Download Excel
@@ -522,7 +488,7 @@ const MarksEntry: React.FC<MarksEntryProps> = () => {
                             type="button"
                             onClick={handleSave}
                             disabled={saving}
-                            className={`btn bg-green-600 text-white hover:bg-green-700 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className="btn-success"
                         >
                             <Save size={18} />
                             {saving ? "Saving..." : "Save Marks"}

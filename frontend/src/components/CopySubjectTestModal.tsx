@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import { notify, confirmDialog } from './ui/feedback';
+import { LoadingState, EmptyState } from './ui';
 
 interface CopySubjectTestModalProps {
     isOpen: boolean;
@@ -130,15 +131,15 @@ export default function CopySubjectTestModal({
 
     return (
         <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
-            <div className="bg-white rounded p-6 w-[500px] max-h-[80vh] flex flex-col">
+            <div className="card shadow-pop p-6 w-[500px] max-w-[calc(100vw-2rem)] max-h-[80vh] flex flex-col">
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-bold">Copy Assignments</h3>
-                    <button onClick={onClose} className="text-gray-500 text-xl font-bold">&times;</button>
+                    <h3 className="text-base font-semibold text-slate-900">Copy Assignments</h3>
+                    <button onClick={onClose} className="btn-icon h-8 w-8 text-xl font-bold" aria-label="Close">&times;</button>
                 </div>
 
                 {/* Mode Selection */}
                 <div className="mb-4">
-                    <label className="block text-sm font-medium mb-1">Copy Mode</label>
+                    <label className="label">Copy Mode</label>
                     <select
                         className="input"
                         value={copyMode}
@@ -151,14 +152,14 @@ export default function CopySubjectTestModal({
                 </div>
 
                 {/* Target Selection */}
-                <div className="flex-1 overflow-auto border p-2 rounded mb-4">
+                <div className="flex-1 overflow-auto border border-slate-200 p-2 rounded-lg mb-4">
                     {loading ? (
-                        <p>Loading targets...</p>
+                        <LoadingState label="Loading targets..." className="py-6" />
                     ) : options.length === 0 ? (
-                        <p className="text-gray-500">No targets found.</p>
+                        <EmptyState compact title="No targets found." />
                     ) : (
                         <div className="space-y-2">
-                            <div className="flex items-center space-x-2 pb-2 border-b">
+                            <div className="flex items-center space-x-2 pb-2 border-b border-slate-100">
                                 <input
                                     type="checkbox"
                                     checked={selectedTargets.length === options.length}

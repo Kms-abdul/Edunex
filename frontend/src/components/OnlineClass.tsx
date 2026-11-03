@@ -3,6 +3,7 @@ import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { OnlineClassItem } from '../types';
 import PageHeader from './ui/PageHeader';
+import { Alert, EmptyState, LoadingState, Spinner } from './ui';
 import { notify, confirmDialog } from './ui/feedback';
 
 // start_datetime is stored as a plain wall-clock string (e.g. "2026-09-01T12:55:00")
@@ -199,12 +200,11 @@ const OnlineClass: React.FC = () => {
         }
       />
 
-      {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>}
+      {error && <Alert tone="error" className="mb-4">{error}</Alert>}
             {rowError && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex justify-between items-center">
-          <span>{rowError}</span>
-          <button onClick={() => setRowError(null)} className="text-red-500 hover:text-red-700 font-bold px-2">✕</button>
-        </div>
+        <Alert tone="error" className="mb-4" onClose={() => setRowError(null)}>
+          {rowError}
+        </Alert>
       )}
 
       <div className="mb-4 card flex flex-wrap items-end gap-3 p-3">
@@ -246,20 +246,20 @@ const OnlineClass: React.FC = () => {
             Clear filters
           </button>
         )}
-        <div className="ml-auto flex border border-slate-300 rounded-lg overflow-hidden shadow-sm">
+        <div className="ml-auto segmented">
           <button
             onClick={() => setViewMode('list')}
-            className={`px-3 py-1.5 text-sm font-medium ${viewMode === 'list' ? 'bg-brand-600 text-brand-contrast' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+            className={`segmented-item ${viewMode === 'list' ? 'segmented-item-active' : ''}`}
           >List</button>
           <button
             onClick={() => setViewMode('calendar')}
-            className={`px-3 py-1.5 text-sm font-medium ${viewMode === 'calendar' ? 'bg-brand-600 text-brand-contrast' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+            className={`segmented-item ${viewMode === 'calendar' ? 'segmented-item-active' : ''}`}
           >Calendar</button>
         </div>
       </div>
 
       {viewMode === 'calendar' && (
-        <div className="mb-4 card flex items-center gap-3 p-3">
+        <div className="mb-4 card flex flex-wrap items-center gap-3 p-3">
           <button onClick={() => setCalendarDate((d) => shiftDay(d, -1))} className="btn-secondary btn-sm">‹ Prev</button>
           <input type="date" value={calendarDate} onChange={(e) => setCalendarDate(e.target.value)} className="input !w-auto" />
           <button onClick={() => setCalendarDate((d) => shiftDay(d, 1))} className="btn-secondary btn-sm">Next ›</button>
@@ -269,6 +269,7 @@ const OnlineClass: React.FC = () => {
 
             {viewMode === 'list' && (
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
@@ -282,9 +283,9 @@ const OnlineClass: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-slate-100">
                         {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">Loading...</td></tr>
+              <tr><td colSpan={6}><LoadingState /></td></tr>
             ) : displayedClasses.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">No online classes found.</td></tr>
+              <tr><td colSpan={6}><EmptyState compact title="No online classes found." /></td></tr>
             ) : (
               displayedClasses.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-50">
@@ -333,11 +334,12 @@ const OnlineClass: React.FC = () => {
             )}
                     </tbody>
         </table>
+        </div>
       </div>
       )}
 
       {viewMode === 'list' && totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+        <div className="mt-4 flex flex-wrap gap-2 items-center justify-between text-sm text-slate-600">
           <span>Page {page} of {totalPages} ({totalCount} classes)</span>
           <div className="flex gap-2">
             <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="btn-secondary btn-sm">Previous</button>
@@ -420,7 +422,7 @@ const DayCalendarView: React.FC<{
   return (
     <div className="card p-4">
       {dayClasses.length === 0 ? (
-        <div className="py-12 text-center text-slate-500 text-sm">No online classes scheduled on this day.</div>
+        <EmptyState title="No online classes scheduled on this day." />
       ) : (
         <div className="relative flex" style={{ height: `${(DAY_END_HOUR - DAY_START_HOUR) * 56}px` }}>
           <div className="w-16 flex-shrink-0 relative text-xs text-slate-400">
@@ -624,14 +626,14 @@ const ScheduleClassModal: React.FC<ScheduleClassModalProps> = ({ onClose, onSche
         </div>
         <div className="card-body space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+            <Alert tone="error">
               {error}
               {conflicts && (
                 <ul className="list-disc pl-5 mt-1">
                   {conflicts.map((c, i) => <li key={i}>{c}</li>)}
                 </ul>
               )}
-            </div>
+            </Alert>
           )}
 
           <div>
@@ -691,9 +693,9 @@ const ScheduleClassModal: React.FC<ScheduleClassModalProps> = ({ onClose, onSche
                   )}
                 </>
               ) : teachersLoading ? (
-                <div className="w-full px-3 py-2 border rounded-lg bg-slate-50 text-slate-400 text-sm">Loading...</div>
+                <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-400 text-sm flex items-center gap-2"><Spinner size="sm" /> Loading...</div>
               ) : selfTeacher?.is_teacher ? (
-                <div className="w-full px-3 py-2 border rounded-lg bg-slate-50 text-slate-700 text-sm">
+                <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-700 text-sm">
                   {selfTeacher.name} <span className="text-xs text-slate-400">(you)</span>
                 </div>
               ) : (
@@ -876,7 +878,7 @@ const CancelClassModal: React.FC<CancelClassModalProps> = ({ classItem, onClose,
         </div>
         <div className="card-body space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
+            <Alert tone="error">{error}</Alert>
           )}
           <p className="text-sm text-slate-600">
                         You're about to cancel <span className="font-medium text-slate-900">"{classItem.title}"</span> scheduled for{' '}
@@ -966,14 +968,14 @@ const RescheduleClassModal: React.FC<RescheduleClassModalProps> = ({ classItem, 
         </div>
         <div className="card-body space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+            <Alert tone="error">
               {error}
               {conflicts && (
                 <ul className="list-disc pl-5 mt-1">
                   {conflicts.map((c, i) => <li key={i}>{c}</li>)}
                 </ul>
               )}
-            </div>
+            </Alert>
           )}
           <p className="text-sm text-slate-600">
             Rescheduling <span className="font-medium text-slate-900">"{classItem.title}"</span>
@@ -1181,18 +1183,18 @@ const ZoomSettingsModal: React.FC<ZoomSettingsModalProps> = ({ onClose }) => {
         </div>
         <div className="card-body space-y-4 max-h-[70vh] overflow-y-auto">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
+            <Alert tone="error">{error}</Alert>
           )}
           {success && (
-            <div className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">{success}</div>
+            <Alert tone="success">{success}</Alert>
           )}
 
           <div>
             <h3 className="text-sm font-semibold text-slate-700 mb-2">Configured Accounts</h3>
             {loadingList ? (
-              <p className="text-sm text-slate-500">Loading...</p>
+              <div className="flex items-center gap-2 text-sm text-slate-500"><Spinner size="sm" /> Loading...</div>
             ) : existing.length === 0 ? (
-              <p className="text-sm text-slate-500">No Zoom account configured yet.</p>
+              <EmptyState compact title="No Zoom account configured yet." />
             ) : (
               <div className="border rounded-lg divide-y">
                 {existing.map((r) => (

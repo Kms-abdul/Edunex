@@ -3,6 +3,7 @@ import api from "../api";
 import { Save, Edit, FileDown } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { notify } from './ui/feedback';
+import { PageHeader, Alert } from './ui';
 
 // --- Types ---
 interface Student {
@@ -31,7 +32,7 @@ interface MarksData {
 const MarksEntryAllSubjects: React.FC = () => {
     // --- State ---
     const [academicYear, setAcademicYear] = useState<string>("");
-    const [branches, setBranches] = useState<any[]>([]);
+    const [, setBranches] = useState<any[]>([]);
     const [selectedBranch, setSelectedBranch] = useState<string>("");
 
     // Filters
@@ -107,7 +108,7 @@ const MarksEntryAllSubjects: React.FC = () => {
         if (!clsObj) { setSections([]); return; }
         api.get(`/sections?class=${clsObj.class_name}`)
             .then(res => setSections(res.data.sections || []))
-            .catch(err => setSections([]));
+            .catch(() => setSections([]));
     }, [selectedClass, classes]);
 
     // --- Fetch Tests & Subjects ---
@@ -387,11 +388,11 @@ const MarksEntryAllSubjects: React.FC = () => {
     };
 
     return (
-        <div className="p-4">
-            <h2 className="text-xl font-bold text-gray-700 mb-4 border-b pb-2">Enter All Subject Marks</h2>
+        <div>
+            <PageHeader title="Enter All Subject Marks" />
 
             {/* --- FILTERS --- */}
-            <div className="card p-4 mb-6 grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="card p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
                 {/* Class */}
                 <div>
                     <label className="label">Class</label>
@@ -454,9 +455,9 @@ const MarksEntryAllSubjects: React.FC = () => {
                             {selectedSubjectIds.length === filteredSubjects.length && filteredSubjects.length > 0 ? `All ${selectedSubjectType === 'All' ? '' : selectedSubjectType} Subjects` : `${selectedSubjectIds.length} Selected`}
                         </button>
                         {/* Simple Dropdown for Multi-select */}
-                        <div className="absolute hidden group-hover:block z-10 w-full bg-white border shadow-lg max-h-60 overflow-y-auto p-2">
+                        <div className="absolute hidden group-hover:block z-10 w-full bg-white border border-slate-200 rounded-lg shadow-pop max-h-60 overflow-y-auto p-2">
                             {filteredSubjects.map(s => (
-                                <label key={s.id} className="flex items-center space-x-2 p-1 hover:bg-gray-50 cursor-pointer">
+                                <label key={s.id} className="flex items-center space-x-2 p-1 rounded hover:bg-slate-50 cursor-pointer">
                                     <input
                                         type="checkbox"
                                         checked={selectedSubjectIds.includes(s.id)}
@@ -467,9 +468,9 @@ const MarksEntryAllSubjects: React.FC = () => {
                                                 setSelectedSubjectIds(prev => prev.filter(id => id !== s.id));
                                             }
                                         }}
-                                        className="rounded text-blue-600"
+                                        className="rounded accent-brand-600"
                                     />
-                                    <span className="text-sm text-gray-700">{s.subject_name}</span>
+                                    <span className="text-sm text-slate-700">{s.subject_name}</span>
                                 </label>
                             ))}
                         </div>
@@ -490,24 +491,24 @@ const MarksEntryAllSubjects: React.FC = () => {
 
             {/* --- MESSAGE --- */}
             {message && (
-                <div className={`p-3 rounded mb-4 ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                <Alert tone={message.type === 'error' ? 'error' : 'success'} className="mb-4">
                     {message.text}
-                </div>
+                </Alert>
             )}
 
             {/* --- TABLE --- */}
             {students.length > 0 && (
                 <div className="card overflow-hidden">
-                    <div className="p-3 bg-gray-50 border-b flex justify-between items-center">
-                        <div className="font-bold text-gray-700">Student Marks</div>
+                    <div className="card-header bg-slate-50">
+                        <div className="text-base font-semibold text-slate-900">Student Marks</div>
                     </div>
 
-                    <div className="overflow-x-auto rounded-lg border border-slate-200">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="">
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-slate-200">
+                            <thead className="bg-slate-50 text-slate-600">
                                 <tr>
-                                    <th className="px-4 py-3 text-left sticky left-0 z-10">S.no</th>
-                                    <th className="px-4 py-3 text-left sticky left-12 z-10">Student Name</th>
+                                    <th className="px-4 py-3 text-left sticky left-0 z-10 bg-slate-50">S.no</th>
+                                    <th className="px-4 py-3 text-left sticky left-12 z-10 bg-slate-50">Student Name</th>
                                     <th className="px-4 py-3 text-left">Roll No</th>
                                     <th className="px-4 py-3 text-left">Adm No</th>
 
@@ -524,7 +525,7 @@ const MarksEntryAllSubjects: React.FC = () => {
                                     <th className="px-4 py-3 text-left">Action</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="bg-white divide-y divide-slate-100">
                                 {students.map((student, idx) => {
                                     const sId = student.student_id || (student as any).id;
                                     const isRowEditing = editingRows.has(sId);
@@ -532,10 +533,10 @@ const MarksEntryAllSubjects: React.FC = () => {
 
                                     return (
                                         <tr key={sId}>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 sticky left-0 bg-white">{idx + 1}</td>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-12 bg-white">{student.name}</td>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{student.roll_number}</td>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{student.admission_no}</td>
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500 sticky left-0 bg-white">{idx + 1}</td>
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-900 sticky left-12 bg-white">{student.name}</td>
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500">{student.roll_number}</td>
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500">{student.admission_no}</td>
 
                                             {/* Marks Cells */}
                                             {subjects.filter(s => selectedSubjectIds.includes(s.id)).map(s => {
@@ -556,115 +557,18 @@ const MarksEntryAllSubjects: React.FC = () => {
                                                                 onChange={(e) => handleMarkChange(sId, s.id, e.target.value)}
                                                                 onBlur={() => handleMarkBlur(sId, s.id)}
                                                                 placeholder={!isAssigned ? "-" : ""}
-                                                                className={`input w-16 text-center 
-                                                                ${isAbsent ? 'bg-red-50 text-red-600 font-bold border-red-300' : 'border-gray-300'}
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                ${!isRowEditing || !isAssigned ? 'bg-gray-100' : ''}
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                
-                                                                ${!isAssigned ? 'cursor-not-allowed opacity-50 placeholder-gray-400' : ''}
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            
-                                                            `}
+                                                                className={`input w-16 text-center ${isAbsent ? 'bg-red-50 text-red-600 font-bold border-red-300' : ''}`}
                                                             />
                                                         </div>
                                                     </td>
                                                 );
                                             })}
 
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-500">
                                                 {!isRowEditing ? (
                                                     <button
                                                         onClick={() => handleEditRow(sId)}
-                                                        className="btn-secondary btn-sm text-blue-600 hover:text-blue-800 border-blue-200"
+                                                        className="btn-soft btn-sm"
                                                     >
                                                         <Edit size={14} /> Edit
                                                     </button>

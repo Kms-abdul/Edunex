@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import { notify, confirmDialog } from './ui/feedback';
+import { PageHeader, LoadingState, EmptyState } from './ui';
 
 interface Branch {
     id: number;
@@ -36,7 +37,7 @@ interface ClassesManagementProps {
     navigateTo?: (page: any) => void;
 }
 
-const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => {
+const ClassesManagement: React.FC<ClassesManagementProps> = () => {
     const [viewMode, setViewMode] = useState<'list' | 'create'>('list');
     const [selectedClass, setSelectedClass] = useState<string>('all');
     const [selectedSection, setSelectedSection] = useState<string>('all');
@@ -373,22 +374,19 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
     // List View - First screen
     if (viewMode === 'list') {
         return (
-            <div className="min-h-full bg-gray-50 p-6">
+            <div className="min-h-full bg-surface-muted p-4 sm:p-6">
                 <div className="w-full">
                     {/* Header Section */}
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-purple-600 text-white p-2 rounded-lg">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <PageHeader
+                        title="Classes"
+                        icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                </svg>
-                            </div>
-                            <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Classes</h1>
-                            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                                </svg>}
+                        actions={(
+                        <>
+                            <button className="btn-ghost text-brand-600">
                                 Get Help
                             </button>
-                        </div>
-                        <div className="flex gap-3">
                             <button className="btn-primary">
                                 Assign Class Teachers
                             </button>
@@ -410,12 +408,13 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                 </svg>
                                 Add/Edit Class
                             </button>
-                        </div>
-                    </div>
+                        </>
+                        )}
+                    />
 
                     {/* Filters Section */}
                     <div className="card p-4 mb-6">
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                             <div className="flex-1">
                                 <label className="label">
                                     Class Selection
@@ -454,9 +453,9 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
                     {/* Table Section */}
                     <div className="card overflow-hidden">
-                        <div className="overflow-x-auto rounded-lg border border-slate-200">
+                        <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="">
+                                <thead className="bg-slate-50 text-slate-600">
                                     <tr>
                                         <th className="px-6 py-3 text-left">Class Name</th>
                                         <th className="px-6 py-3 text-left">Class Teacher</th>
@@ -469,7 +468,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                     {filteredClasses.map((cls, index) => (
                                         <tr
                                             key={cls.id}
-                                            className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}
+                                            className={`${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-brand-50 transition-colors`}
                                         >
                                             <td className="px-6 py-4 text-sm font-medium text-gray-900">{cls.class_name}</td>
                                             <td className="px-6 py-4 text-sm text-gray-600">
@@ -499,13 +498,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                         </div>
 
                         {filteredClasses.length === 0 && (
-                            <div className="text-center py-12">
-                                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                </svg>
-                                <h3 className="mt-2 text-sm font-medium text-gray-900">No classes found</h3>
-                                <p className="mt-1 text-sm text-gray-500">Get started by adding a new class.</p>
-                            </div>
+                            <EmptyState title="No classes found" description="Get started by adding a new class." />
                         )}
                     </div>
                 </div>
@@ -514,9 +507,9 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                 {isOrderModalOpen && (
                     <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
                         <div className="card shadow-pop w-full max-w-md">
-                            <div className="flex justify-between items-center p-4 border-b">
-                                <h2 className="text-xl font-bold text-gray-800">Assign Display Order</h2>
-                                <button onClick={() => setIsOrderModalOpen(false)} className="text-gray-500 hover:text-gray-700">
+                            <div className="card-header">
+                                <h2 className="text-base font-semibold text-slate-900">Assign Display Order</h2>
+                                <button onClick={() => setIsOrderModalOpen(false)} className="btn-icon h-8 w-8">
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                             </div>
@@ -535,13 +528,13 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                     </select>
                                 </div>
                                 {orderBranchId && (
-                                    <div className="max-h-96 overflow-y-auto border rounded-lg">
+                                    <div className="max-h-96 overflow-y-auto border border-slate-200 rounded-lg">
                                         {orderClasses.length === 0 ? (
-                                            <div className="p-4 text-center text-gray-500">No classes found</div>
+                                            <EmptyState compact title="No classes found" />
                                         ) : (
-                                            <ul className="divide-y">
+                                            <ul className="divide-y divide-slate-100">
                                                 {orderClasses.map((cls, idx) => (
-                                                    <li key={cls.id} className="flex items-center justify-between p-3 bg-white hover:bg-gray-50">
+                                                    <li key={cls.id} className="flex items-center justify-between p-3 bg-white hover:bg-slate-50">
                                                         <div className="flex items-center gap-3">
                                                             <input
                                                                 type="number"
@@ -558,20 +551,20 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                                                 className="input w-16 text-center"
                                                                 title="Type a number and press Enter or click outside to move"
                                                             />
-                                                            <span className="font-medium text-gray-700">{cls.class_name}</span>
+                                                            <span className="font-medium text-slate-700">{cls.class_name}</span>
                                                         </div>
                                                         <div className="flex gap-1">
                                                             <button
                                                                 onClick={() => moveOrder(idx, 'up')}
                                                                 disabled={idx === 0}
-                                                                className={`btn ${idx === 0 ? 'text-gray-300' : 'text-blue-600 hover:bg-blue-50'}`}
+                                                                className={`btn-icon ${idx === 0 ? 'text-slate-300' : 'text-brand-600 hover:bg-brand-50'}`}
                                                             >
                                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
                                                             </button>
                                                             <button
                                                                 onClick={() => moveOrder(idx, 'down')}
                                                                 disabled={idx === orderClasses.length - 1}
-                                                                className={`btn ${idx === orderClasses.length - 1 ? 'text-gray-300' : 'text-blue-600 hover:bg-blue-50'}`}
+                                                                className={`btn-icon ${idx === orderClasses.length - 1 ? 'text-slate-300' : 'text-brand-600 hover:bg-brand-50'}`}
                                                             >
                                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                                                             </button>
@@ -583,12 +576,12 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                     </div>
                                 )}
                             </div>
-                            <div className="p-4 border-t flex justify-end gap-3 bg-gray-50 rounded-b-lg">
+                            <div className="p-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
                                 <button onClick={() => setIsOrderModalOpen(false)} className="btn-secondary">Cancel</button>
                                 <button
                                     onClick={handleSaveOrder}
                                     disabled={savingOrder || orderClasses.length === 0}
-                                    className={`btn text-white ${savingOrder || orderClasses.length === 0 ? 'bg-purple-400' : 'bg-purple-600 hover:bg-purple-700'}`}
+                                    className="btn-primary"
                                 >
                                     {savingOrder ? 'Saving...' : 'Save Order'}
                                 </button>
@@ -603,34 +596,37 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
     // Create/Edit View - Second screen
     return (
-        <div className="min-h-full bg-gray-50">
+        <div className="min-h-full bg-surface-muted">
             {/* Header */}
-            <div className="bg-white border-b px-6 py-4">
-                <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+            <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-5">
+                <PageHeader
+                    className="mb-5"
+                    title="CREATE CLASS AND SECTION"
+                    icon={<svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" />
-                    </svg>
-                    <h1 className="text-xl font-bold text-gray-800">CREATE CLASS AND SECTION /</h1>
-                    <button
-                        onClick={() => setViewMode('list')}
-                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                    >
-                        Back
-                    </button>
-                </div>
+                    </svg>}
+                    actions={(
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className="btn-secondary"
+                        >
+                            Back
+                        </button>
+                    )}
+                />
             </div>
 
             {/* Main Content - Two Column Layout */}
-            <div className="p-6">
-                <div className="grid grid-cols-2 gap-6">
+            <div className="p-4 sm:p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Left Column - Class Summary */}
                     <div className="card">
-                        <div className="p-4 border-b flex items-center justify-between">
+                        <div className="card-header">
                             <div className="flex items-center gap-2">
                                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                                 </svg>
-                                <h2 className="font-semibold text-gray-800">Class Summary</h2>
+                                <h2 className="text-base font-semibold text-slate-900">Class Summary</h2>
                             </div>
                             <div className="flex items-center gap-2">
 
@@ -649,43 +645,44 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
                                     {isCopyDropdownOpen && (
                                         <div className="card shadow-pop absolute right-0 top-full mt-2 w-72 z-50 max-h-80 overflow-y-auto">
-                                            <div className="sticky top-0 bg-gray-50 px-3 py-2 border-b text-xs font-semibold text-gray-700 uppercase">
+                                            <div className="sticky top-0 bg-slate-50 px-3 py-2 border-b border-slate-100 text-xs font-semibold text-slate-700 uppercase">
                                                 Target Branches
                                             </div>
 
                                             {Object.keys(branchesByLocation).length === 0 ? (
-                                                <div className="p-3 text-center text-sm text-gray-500">
-                                                    {(selectedBranch === 'all' || !selectedBranch)
+                                                <EmptyState
+                                                    compact
+                                                    title={(selectedBranch === 'all' || !selectedBranch)
                                                         ? "Please select a source branch first."
                                                         : "No other branches available"}
-                                                </div>
+                                                />
                                             ) : (
                                                 Object.keys(branchesByLocation).map(loc => (
                                                     <div key={loc}>
-                                                        <div className="px-3 py-1 bg-gray-100 text-xs font-bold text-gray-600">
+                                                        <div className="px-3 py-1 bg-slate-100 text-xs font-semibold text-slate-600">
                                                             {loc}
                                                         </div>
                                                         {branchesByLocation[loc].map(b => (
-                                                            <label key={b.id} className="flex items-center gap-2 px-4 py-2 hover:bg-purple-50 cursor-pointer">
+                                                            <label key={b.id} className="flex items-center gap-2 px-4 py-2 hover:bg-brand-50 cursor-pointer">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={copyTargets.has(String(b.id))}
                                                                     onChange={() => toggleCopyTarget(String(b.id))}
-                                                                    className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                                                    className="w-4 h-4 accent-brand-600 rounded border-slate-300"
                                                                 />
-                                                                <span className="text-sm text-gray-700">{b.branch_name}</span>
+                                                                <span className="text-sm text-slate-700">{b.branch_name}</span>
                                                             </label>
                                                         ))}
                                                     </div>
                                                 ))
                                             )}
 
-                                            <div className="sticky bottom-0 bg-white border-t p-2 flex justify-between items-center">
-                                                <span className="text-xs text-gray-500">{copyTargets.size} selected</span>
+                                            <div className="sticky bottom-0 bg-white border-t border-slate-100 p-2 flex justify-between items-center">
+                                                <span className="text-xs text-slate-500">{copyTargets.size} selected</span>
                                                 <button
                                                     onClick={handleCopyBranchStructure}
                                                     disabled={copying || copyTargets.size === 0}
-                                                    className={`btn btn-sm text-white ${copying || copyTargets.size === 0 ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
+                                                    className="btn-success btn-sm"
                                                 >
                                                     {copying ? "Copying..." : "Confirm Copy"}
                                                 </button>
@@ -696,9 +693,9 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto rounded-lg border border-slate-200">
+                        <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="border-b">
+                                <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                                     <tr>
                                         <th className="px-4 py-2 text-left">Class</th>
                                         <th className="px-4 py-2 text-left">Section</th>
@@ -708,31 +705,29 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                 <tbody className="divide-y divide-gray-200">
                                     {loading ? (
                                         <tr>
-                                            <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
-                                                <div className="flex justify-center items-center">
-                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                                                    <span className="ml-2">Loading classes...</span>
-                                                </div>
+                                            <td colSpan={3}>
+                                                <LoadingState label="Loading classes..." />
                                             </td>
                                         </tr>
                                     ) : classSummary.length === 0 ? (
                                         <tr>
-                                            <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
-                                                No classes found for this branch/year.
+                                            <td colSpan={3}>
+                                                <EmptyState compact title="No classes found for this branch/year." />
                                             </td>
                                         </tr>
                                     ) : (
                                         classSummary.map((cls) => (
-                                            <tr key={cls.id} className="hover:bg-gray-50">
-                                                <td className="px-4 py-3 text-sm text-gray-900">{cls.class_name}</td>
-                                                <td className="px-4 py-3 text-sm text-gray-700">
+                                            <tr key={cls.id} className="hover:bg-slate-50">
+                                                <td className="px-4 py-3 text-sm text-slate-900">{cls.class_name}</td>
+                                                <td className="px-4 py-3 text-sm text-slate-700">
                                                     {cls.sections?.map(s => s.name).join(', ') || '-'}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex gap-2">
                                                         <button
                                                             onClick={() => handleEditClass(cls)}
-                                                            className="btn-primary"
+                                                            className="btn-soft btn-sm"
+                                                            title="Edit"
                                                         >
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -750,11 +745,11 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
                     {/* Right Column - Create Class Form */}
                     <div className="card">
-                        <div className="p-4 border-b flex items-center gap-2">
-                            <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+                        <div className="card-header justify-start gap-2">
+                            <svg className="w-5 h-5 text-slate-700" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" />
                             </svg>
-                            <h2 className="font-semibold text-gray-800">Create Class</h2>
+                            <h2 className="text-base font-semibold text-slate-900">Create Class</h2>
                         </div>
 
                         <div className="p-6 space-y-6">
@@ -785,7 +780,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                     <label className="label">Section</label>
                                     <button
                                         onClick={addSection}
-                                        className="btn-primary w-6 h-6"
+                                        className="btn-primary h-6 w-6 px-0"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
@@ -794,9 +789,9 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
                                 </div>
 
-                                <div className="border rounded overflow-hidden">
+                                <div className="border border-slate-200 rounded-lg overflow-x-auto">
                                     <table className="w-full">
-                                        <thead className="border-b">
+                                        <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                                             <tr>
                                                 <th className="px-3 py-2 text-left">Section Name</th>
                                                 <th className="px-3 py-2 text-left">Student Strength</th>
@@ -828,7 +823,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                                                         <button
                                                             onClick={() => removeSection(section.id)}
                                                             disabled={sections.length === 1}
-                                                            className={`bg-red-500 text-white w-7 h-7 rounded flex items-center justify-center hover:bg-red-600 transition-colors ${sections.length === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            className="btn-danger h-7 w-7 px-0"
                                                         >
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

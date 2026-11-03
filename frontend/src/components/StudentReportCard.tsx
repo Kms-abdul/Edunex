@@ -8,6 +8,7 @@ import {
   HistoricalPerformance
 } from '../reportcardtypes';
 import ReportCard from './ReportCard';
+import { PageHeader, Alert, EmptyState, LoadingState, Spinner } from './ui';
 
 // Import the reusable component
 
@@ -431,7 +432,7 @@ const StudentReportCard: React.FC = () => {
         </h2>
         <button
           onClick={handleReset}
-          className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center"
+          className="btn-ghost btn-sm text-brand-600"
         >
           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -440,7 +441,7 @@ const StudentReportCard: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
         {/* Branch */}
         <div>
           <label className="label">
@@ -479,10 +480,7 @@ const StudentReportCard: React.FC = () => {
             </select>
             {loadingClasses && (
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                <Spinner size="sm" />
               </div>
             )}
           </div>
@@ -509,10 +507,7 @@ const StudentReportCard: React.FC = () => {
             </select>
             {loadingSections && (
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                <Spinner size="sm" />
               </div>
             )}
           </div>
@@ -539,10 +534,7 @@ const StudentReportCard: React.FC = () => {
             </select>
             {loadingTests && (
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                <Spinner size="sm" />
               </div>
             )}
           </div>
@@ -576,15 +568,12 @@ const StudentReportCard: React.FC = () => {
               </select>
               {loadingStudents && (
                 <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                  <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                  <Spinner size="sm" />
                 </div>
               )}
             </div>
             {students.length > 0 && (
-              <label className="flex items-center text-sm text-gray-700 cursor-pointer">
+              <label className="flex items-center text-sm text-slate-700 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={selectAllStudents}
@@ -595,7 +584,7 @@ const StudentReportCard: React.FC = () => {
                       setData(null);
                     }
                   }}
-                  className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="mr-2 h-4 w-4 accent-brand-600 border-slate-300 rounded"
                 />
                 <span className="font-medium">Select All Students ({students.length})</span>
               </label>
@@ -605,7 +594,7 @@ const StudentReportCard: React.FC = () => {
       </div>
 
       {/* Get Report Button */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         {!selectAllStudents ? (
           <button
             type="button"
@@ -674,27 +663,27 @@ const StudentReportCard: React.FC = () => {
         {(selectedClass || selectedSection || selectedTestId || selectedStudentId || selectAllStudents) && (
           <div className="flex flex-wrap gap-2">
             {selectedClass && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              <span className="badge-brand">
                 Class: {classes.find(c => String(c.id) === selectedClass)?.class_name}
               </span>
             )}
             {selectedSection && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+              <span className="badge-brand">
                 Section: {selectedSection}
               </span>
             )}
             {selectedTestId && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <span className="badge-success">
                 Test: {tests.find(t => String(t.test_id) === selectedTestId)?.test_name}
               </span>
             )}
             {selectAllStudents && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+              <span className="badge-warning">
                 All Students ({students.length})
               </span>
             )}
             {selectedStudentId && !selectAllStudents && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+              <span className="badge-warning">
                 Student: {students.find(s => String(s.student_id || s.id) === selectedStudentId)?.name ||
                   students.find(s => String(s.student_id || s.id) === selectedStudentId)?.student_name}
               </span>
@@ -707,33 +696,21 @@ const StudentReportCard: React.FC = () => {
 
   // ============== RENDER EMPTY STATE ==============
   const renderEmptyState = () => (
-    <div className="flex flex-col items-center justify-center py-16 px-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-      <div className="bg-blue-50 rounded-full p-6 mb-6">
-        <svg className="w-16 h-16 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      </div>
-      <h3 className="text-xl font-bold text-gray-900 mb-2">No Report Selected</h3>
-      <p className="text-gray-500 text-center max-w-md mb-4">
-        Please select Class, Section, Test, and Student from the filters above, then click "Get Report" to view the progress report.
-      </p>
-      <div className="flex items-center space-x-2 text-sm text-blue-600">
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span>Tip: All filters are required to generate the report</span>
-      </div>
+    <div className="card">
+      <EmptyState
+        title="No Report Selected"
+        description={<>
+          Please select Class, Section, Test, and Student from the filters above, then click "Get Report" to view the progress report.
+          <span className="block mt-3 text-brand-600">Tip: All filters are required to generate the report</span>
+        </>}
+      />
     </div>
   );
 
   // ============== RENDER LOADING STATE ==============
   const renderLoadingState = () => (
-    <div className="card flex items-center justify-center py-16">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600 font-medium text-lg">Loading Report Data...</p>
-        <p className="text-gray-400 text-sm mt-2">Please wait while we fetch the student report</p>
-      </div>
+    <div className="card">
+      <LoadingState label="Loading Report Data... Please wait while we fetch the student report" className="py-16" />
     </div>
   );
 
@@ -749,27 +726,26 @@ const StudentReportCard: React.FC = () => {
 
     return (
       <div className="mb-8 no-print">
-        <div className="border border-indigo-900 rounded-lg overflow-hidden shadow-sm">
-          <div className="bg-[#1a5276] text-white px-4 py-2 text-sm font-semibold">
+        <div className="card overflow-hidden">
+          <div className="bg-brand-800 text-white px-4 py-2 text-sm font-semibold">
             PREVIOUS YEAR PERFORMANCE
           </div>
           <div className="p-4">
             <div className="space-y-4">
               {previousYears.map((yearData: HistoricalPerformance, idx: number) => (
-                <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="bg-gray-100 px-4 py-2 flex justify-between items-center">
-                    <span className="font-semibold text-gray-700">
+                <div key={idx} className="border border-slate-200 rounded-lg overflow-hidden">
+                  <div className="bg-slate-100 px-4 py-2 flex justify-between items-center">
+                    <span className="font-semibold text-slate-700">
                       {yearData.academicYear} - Class {yearData.class} {yearData.section}
                     </span>
                   </div>
                   <div className="p-3">
                     {yearData.tests.map((test, tIdx: number) => (
                       <div key={tIdx} className="mb-3 last:mb-0">
-                        <h5 className="text-sm font-medium text-indigo-700 mb-2">{test.testName}</h5>
+                        <h5 className="text-sm font-medium text-brand-700 mb-2">{test.testName}</h5>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                           {test.subjects.map((subj, sIdx: number) => (
-                            <div key={sIdx} className={`text-xs p-2 rounded 
-                              ${subj.isAbsent ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                            <div key={sIdx} className={`text-xs p-2 rounded ${subj.isAbsent ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
                               <span className="font-medium">{subj.subject}</span>
                               <span className="float-right">
                                 {subj.isAbsent ? 'AB' : `${subj.securedMarks}/${subj.maxMarks}`}
@@ -779,7 +755,7 @@ const StudentReportCard: React.FC = () => {
                         </div>
                         <div className="mt-2 text-right text-sm">
                           <span className="font-medium">Total: </span>
-                          <span className="text-indigo-600">
+                          <span className="text-brand-600">
                             {test.securedMarks}/{test.totalMarks}
                             ({test.totalMarks > 0 ? Math.round((test.securedMarks / test.totalMarks) * 100) : 0}%)
                           </span>
@@ -798,8 +774,8 @@ const StudentReportCard: React.FC = () => {
 
   // ============== MAIN RENDER ==============
   return (
-    <div className="p-4 student-reports-wrapper">
-      <h2 className="no-print text-xl font-bold text-gray-700 mb-4 border-b pb-2">Student Progress Report</h2>
+    <div className="student-reports-wrapper">
+      <PageHeader className="no-print" title="Student Progress Report" />
 
       {/* Filter Section */}
       <div className="no-print">
@@ -808,18 +784,9 @@ const StudentReportCard: React.FC = () => {
 
       {/* Message Display */}
       {message && (
-        <div className={`no-print p-3 rounded mb-4 flex items-center ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-          {message.type === 'error' ? (
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          )}
+        <Alert tone={message.type === 'error' ? 'error' : 'success'} className="no-print mb-4">
           {message.text}
-        </div>
+        </Alert>
       )}
 
       {/* Report Card Container */}

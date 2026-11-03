@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Pencil, Plus, ToggleLeft, ToggleRight, X, Save } from 'lucide-react';
 import api from '../api';
 import { notify } from './ui/feedback';
+import { PageHeader, LoadingState, EmptyState } from './ui';
 
 interface TestType {
     id: number;
@@ -19,8 +20,6 @@ const TestTypeManager: React.FC = () => {
 
     // Context Filters
     const [academicYear, setAcademicYear] = useState(localStorage.getItem('academicYear') || '');
-    const [branch, setBranch] = useState(localStorage.getItem('currentBranch') || 'All');
-    const [location, setLocation] = useState(localStorage.getItem('currentLocation') || 'Hyderabad');
 
     // Modal
     const [showModal, setShowModal] = useState(false);
@@ -32,14 +31,6 @@ const TestTypeManager: React.FC = () => {
     });
 
     // --- Effects ---
-    useEffect(() => {
-        // Handle User Role / Context initialization similar to ClassFeeStructure if needed
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        if (user.location) {
-            setLocation(user.location);
-        }
-    }, []);
-
     // Initialize Academic Year
     useEffect(() => {
         const initializeAcademicYear = async () => {
@@ -152,24 +143,25 @@ const TestTypeManager: React.FC = () => {
     };
 
     return (
-        <div className="p-6 max-w-6xl mx-auto">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Create-TestType
-                </h2>
-                <button
-                    onClick={openAddModal}
-                    disabled={!academicYear}
-                    className="btn-primary"
-                >
-                    <Plus size={18} /> Add Test Type
-                </button>
-            </div>
+        <div className="max-w-6xl mx-auto">
+            <PageHeader
+                title="Create-TestType"
+                actions={(
+                    <button
+                        onClick={openAddModal}
+                        disabled={!academicYear}
+                        className="btn-primary"
+                    >
+                        <Plus size={18} /> Add Test Type
+                    </button>
+                )}
+            />
 
             {/* Filters */}
             <div className="card flex flex-wrap gap-4 mb-6 p-4">
                 <div>
                     <label className="label">Academic Year</label>
-                    <div className="px-3 py-2 bg-gray-100 rounded text-gray-700 border min-w-[150px]">
+                    <div className="input bg-slate-50 text-slate-700 min-w-[150px]">
                         {academicYear}
                     </div>
                 </div>
@@ -179,8 +171,10 @@ const TestTypeManager: React.FC = () => {
             </div>
 
             {/* List */}
-            <div className="card text-sm">
-                <div className="grid grid-cols-12 bg-gray-100 p-3 font-semibold text-gray-700 border-b">
+            <div className="card overflow-hidden text-sm">
+                <div className="overflow-x-auto">
+                <div className="min-w-[640px]">
+                <div className="grid grid-cols-12 bg-slate-50 p-3 font-semibold text-slate-600 border-b border-slate-200">
                     <div className="col-span-1 text-center">Order</div>
                     <div className="col-span-5">Test Name</div>
                     <div className="col-span-3 text-center">Max Marks (Ref)</div>
@@ -189,49 +183,51 @@ const TestTypeManager: React.FC = () => {
                 </div>
 
                 {loading ? (
-                    <div className="p-8 text-center text-gray-500">Loading...</div>
+                    <LoadingState />
                 ) : testTypes.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">No test types found. Add one to get started.</div>
+                    <EmptyState compact title="No test types found" description="Add one to get started." />
                 ) : (
                     testTypes.map((t, idx) => (
-                        <div key={t.id} className="grid grid-cols-12 p-3 border-b hover:bg-gray-50 items-center">
-                            <div className="col-span-1 text-center font-mono bg-gray-100 rounded mx-2 py-1">
+                        <div key={t.id} className="grid grid-cols-12 p-3 border-b border-slate-100 hover:bg-slate-50 items-center">
+                            <div className="col-span-1 text-center font-mono bg-slate-100 rounded mx-2 py-1">
                                 {t.display_order ?? idx + 1}
                             </div>
-                            <div className="col-span-5 font-medium text-gray-800">
+                            <div className="col-span-5 font-medium text-slate-800">
                                 {t.test_name}
                             </div>
-                            <div className="col-span-3 text-center text-gray-600">
+                            <div className="col-span-3 text-center text-slate-600">
                                 {t.max_marks}
                             </div>
                             <div className="col-span-2 flex justify-center">
                                 <button
                                     onClick={() => toggleStatus(t.id)}
-                                    className={`btn btn-sm ${t.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}
+                                    className={`btn btn-sm ${t.is_active ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                                 >
                                     {t.is_active ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
                                     {t.is_active ? 'Active' : 'Inactive'}
                                 </button>
                             </div>
                             <div className="col-span-1 flex justify-center gap-2">
-                                <button onClick={() => openEditModal(t)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Edit">
+                                <button onClick={() => openEditModal(t)} className="btn-icon h-8 w-8 text-brand-600 hover:bg-brand-50 hover:text-brand-700" title="Edit">
                                     <Pencil size={16} />
                                 </button>
                             </div>
                         </div>
                     ))
                 )}
+                </div>
+                </div>
             </div>
 
             {/* Modal */}
             {showModal && (
                 <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
                     <div className="card shadow-pop w-full max-w-md p-6">
-                        <div className="flex justify-between items-center mb-4 border-b pb-2">
+                        <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
                             <h3 className="text-base font-semibold text-slate-900">
                                 {editingId ? 'Edit Test Type' : 'Add Test Type'}
                             </h3>
-                            <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-red-500">
+                            <button onClick={() => setShowModal(false)} className="btn-icon h-8 w-8">
                                 <X size={20} />
                             </button>
                         </div>
@@ -270,18 +266,18 @@ const TestTypeManager: React.FC = () => {
                                     className="input"
                                     placeholder="Auto"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Leave empty for auto-increment</p>
+                                <p className="text-xs text-slate-500 mt-1">Leave empty for auto-increment</p>
                             </div>
 
-                            <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded border">
+                            <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-200">
                                 <p><strong>Context:</strong> {academicYear} (Global)</p>
                             </div>
                         </div>
 
-                        <div className="mt-6 flex justify-end gap-3 pt-4 border-t">
+                        <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100">
                             <button
                                 onClick={() => setShowModal(false)}
-                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                                className="btn-ghost"
                             >
                                 Cancel
                             </button>

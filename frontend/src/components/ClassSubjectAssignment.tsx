@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import api from "../api";
 import { canWrite } from "../utils/permissions";
 import { notify, confirmDialog } from './ui/feedback';
+import { PageHeader, EmptyState, Spinner } from './ui';
 
 interface Option {
     id: number | string;
@@ -421,8 +422,8 @@ const ClassSubjectAssignment: React.FC = () => {
 
     return (
         <div>
+            <PageHeader title="Class-Subject Assignment" />
             <div className="card p-6 mb-4">
-                <h2 className="text-xl font-semibold mb-4">Class-Subject Assignment</h2>
                 {/* Filters */}
                 <div className="flex flex-wrap gap-4 mb-6 items-end">
                     <div className="w-48">
@@ -466,9 +467,9 @@ const ClassSubjectAssignment: React.FC = () => {
                 </div>
 
                 {/* Matrix Table */}
-                <div className="overflow-x-auto border rounded">
+                <div className="overflow-x-auto border border-slate-200 rounded-lg">
                     <table className="w-full border-collapse text-sm">
-                        <thead className="">
+                        <thead className="bg-slate-50 text-slate-600">
                             <tr>
                                 <th className="border p-2 min-w-[150px] text-left">Subjects \ Classes</th>
                                 {classes.map(c => (
@@ -477,7 +478,7 @@ const ClassSubjectAssignment: React.FC = () => {
                                             <span>{c.name}</span>
                                             <button
                                                 onClick={() => handleCheckAllColumn(c.id)}
-                                                className="btn text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700"
+                                                className="btn-soft btn-sm h-6 px-2 text-[10px]"
                                                 title="Check/Uncheck all subjects for this class"
                                             >
                                                 ✓ All
@@ -490,10 +491,10 @@ const ClassSubjectAssignment: React.FC = () => {
                         </thead>
                         <tbody>
                             {loading && assignments.size === 0 ? (
-                                <tr><td colSpan={classes.length + 2} className="p-4 text-center">Loading Assignments...</td></tr>
+                                <tr><td colSpan={classes.length + 2} className="p-4"><div className="flex items-center justify-center gap-2 text-sm text-slate-500"><Spinner size="sm" /> Loading Assignments...</div></td></tr>
                             ) : filteredSubjects.map(s => (
-                                <tr key={s.id} className="hover:bg-gray-50">
-                                    <td className="border p-2 font-medium bg-gray-50">
+                                <tr key={s.id} className="hover:bg-slate-50">
+                                    <td className="border p-2 font-medium bg-slate-50">
                                         {s.name}
                                     </td>
                                     {classes.map(c => {
@@ -529,10 +530,10 @@ const ClassSubjectAssignment: React.FC = () => {
                     </table>
                 </div>
                 {filteredSubjects.length === 0 && (
-                    <div className="p-4 text-center text-gray-500">No subjects found for selected group.</div>
+                    <EmptyState compact title="No subjects found for selected group." />
                 )}
 
-                <div className="mt-4 flex justify-between items-center">
+                <div className="mt-4 flex flex-wrap gap-3 justify-between items-center">
                     {/* Copy Section Button */}
                     <div>
                         {selectedBranch && selectedBranch !== "All" && (
@@ -547,41 +548,41 @@ const ClassSubjectAssignment: React.FC = () => {
                                 {/* Grouped Dropdown */}
                                 {isCopyDropdownOpen && (
                                     <div className="card shadow-pop absolute left-full top-0 ml-2 w-72 z-20 max-h-80 overflow-y-auto">
-                                        <div className="mb-2 text-sm font-semibold text-gray-700 pb-2 border-b">
+                                        <div className="mb-2 px-3 pt-3 text-sm font-semibold text-slate-700 pb-2 border-b border-slate-100">
                                             Select Target Branches
                                         </div>
                                         {Object.keys(branchesByLocation).length === 0 ? (
-                                            <div className="text-gray-500 text-sm p-4 text-center">No other branches available</div>
+                                            <EmptyState compact title="No other branches available" />
                                         ) : (
                                             Object.keys(branchesByLocation).map(loc => (
                                                 <div key={loc} className="mb-1">
                                                     {/* Header - Clean & Bold */}
-                                                    <div className="text-sm font-bold text-gray-900 px-3 py-2 bg-gray-50 border-b border-gray-100">
+                                                    <div className="text-sm font-semibold text-slate-900 px-3 py-2 bg-slate-50 border-b border-slate-100">
                                                         {loc}
                                                     </div>
                                                     {/* Items - Indented */}
                                                     <div className="py-1">
                                                         {branchesByLocation[loc].map(b => (
-                                                            <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-blue-50 cursor-pointer transition-colors pl-6">
+                                                            <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-brand-50 cursor-pointer transition-colors pl-6">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={copyTargets.has(String(b.id))}
                                                                     onChange={() => toggleCopyTarget(String(b.id))}
-                                                                    className="w-4 h-4 accent-blue-600 rounded border-gray-300"
+                                                                    className="w-4 h-4 accent-brand-600 rounded border-slate-300"
                                                                 />
-                                                                <span className="text-sm text-gray-700">{b.name}</span>
+                                                                <span className="text-sm text-slate-700">{b.name}</span>
                                                             </label>
                                                         ))}
                                                     </div>
                                                 </div>
                                             ))
                                         )}
-                                        <div className="mt-2 pt-2 border-t flex justify-between items-center sticky bottom-0 bg-white">
-                                            <span className="text-xs text-gray-500">{copyTargets.size} selected</span>
+                                        <div className="mt-2 p-3 border-t border-slate-100 flex justify-between items-center sticky bottom-0 bg-white">
+                                            <span className="text-xs text-slate-500">{copyTargets.size} selected</span>
                                             <button
                                                 onClick={handleCopy}
                                                 disabled={copying || copyTargets.size === 0}
-                                                className={`btn btn-sm text-white ${copying || copyTargets.size === 0 ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
+                                                className="btn-success btn-sm"
                                             >
                                                 {copying ? "Copying..." : "Confirm Copy"}
                                             </button>
@@ -592,14 +593,14 @@ const ClassSubjectAssignment: React.FC = () => {
                         )}
                     </div>
 
-                    <div className="flex gap-4 justify-end">
+                    <div className="flex gap-2 justify-end">
                         <button
                             onClick={() => {
                                 // Reset to initial assignments
                                 setAssignments(new Set(initialAssignments));
                             }}
                             disabled={saving}
-                            className={`btn text-white-700 border hover:bg-gray-100 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className="btn-secondary"
                         >
                             Cancel
                         </button>
@@ -607,7 +608,7 @@ const ClassSubjectAssignment: React.FC = () => {
                         <button
                             onClick={handleSave}
                             disabled={saving}
-                            className={`btn text-white ${saving ? 'bg-gray-400' : 'bg-brand-600 hover:bg-blue-600'}`}
+                            className="btn-primary"
                         >
                             {saving ? "Saving..." : "Save Assignments"}
                         </button>

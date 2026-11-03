@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Page } from '../App';
 import { 
     DashboardIcon, 
@@ -18,7 +18,6 @@ interface HRLayoutProps {
 }
 
 const HRLayout: React.FC<HRLayoutProps> = ({ children, currentPage, navigateTo }) => {
-    const [activeTab, setActiveTab] = useState<string>('Dashboard');
     const { hasPermission } = useAuth();
     
     const canAccess = (permission?: string) => {
@@ -83,17 +82,6 @@ const HRLayout: React.FC<HRLayoutProps> = ({ children, currentPage, navigateTo }
         item.page === currentPage || 
         (item.subItems && item.subItems.some(sub => sub.page === currentPage))
     ) || menuItems[0];
-
-    const handleTabClick = (item: typeof menuItems[0]) => {
-        if (item.page) {
-            navigateTo(item.page);
-        } else if (item.subItems && item.subItems.length > 0) {
-            const firstAccessible = item.subItems.find(sub => canAccess(sub.permission));
-            if (firstAccessible) {
-                navigateTo(firstAccessible.page);
-            }
-        }
-    };
 
     return (
         <div className="flex flex-col h-full bg-surface-muted overflow-hidden">
