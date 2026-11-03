@@ -3,8 +3,14 @@ import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { OnlineClassItem } from '../types';
 import PageHeader from './ui/PageHeader';
-import { Alert, EmptyState, LoadingState, Spinner } from './ui';
+import { Alert, EmptyState, LoadingState, Spinner, Badge, Field } from './ui';
 import { notify, confirmDialog } from './ui/feedback';
+import { Dialog } from './school-setup';
+import { Video, CalendarPlus, Settings, SlidersHorizontal, ChevronLeft, ChevronRight, Clock, User, BookOpen } from 'lucide-react';
+
+const platformLabel = (p: string) => (p === 'google_meet' ? 'Google Meet' : p === 'zoom' ? 'Zoom' : p.replace('_', ' '));
+const statusText = (s: string) => (s === 'SCHEDULED' ? 'Coming up' : s === 'CANCELLED' ? 'Cancelled' : s === 'COMPLETED' ? 'Finished' : s);
+const statusTone = (s: string) => (s === 'SCHEDULED' ? 'success' : s === 'CANCELLED' ? 'danger' : 'neutral') as 'success' | 'danger' | 'neutral';
 
 // start_datetime is stored as a plain wall-clock string (e.g. "2026-09-01T12:55:00")
 // representing the time in the class's own `timezone` field — not the viewer's.
@@ -67,7 +73,7 @@ const OnlineClass: React.FC = () => {
   };
 
   const handleGoogleDisconnect = async () => {
-    if (!await confirmDialog("Disconnect your Google account? You won't be able to schedule new Google Meet classes until you reconnect.")) return;
+    if (!await confirmDialog("Disconnect your Google account? You can't plan Google Meet classes until you connect it again.", { tone: 'danger', confirmText: 'Disconnect' })) return;
     try {
       await api.delete('/online-classes/google/disconnect');
       setGoogleStatus({ connected: false });
@@ -157,213 +163,274 @@ const OnlineClass: React.FC = () => {
     }
   };
 
+  const [showFilters, setShowFilters] = useState(false);
+  const [showAccounts, setShowAccounts] = useState(false);
+  const hasFilters = !!(statusFilter || fromDate || toDate);
+  const upcoming = displayedClasses.filter((c) => c.status === 'SCHEDULED');
+  const others = displayedClasses.filter((c) => c.status !== 'SCHEDULED');
+  const showAccountArea = canManageZoomSettings || (googleStatus && !googleStatus.reason);
+
+  const renderCard = (c: OnlineClassItem) => (
+    <li key={c.id} className="card p-4 flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className={`text-[15px] font-semibold text-slate-900 break-words ${c.status === 'CANCELLED' ? 'line-through text-slate-500' : ''}`}>{c.title}</h3>
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-700">
+            <Clock className="w-4 h-4 text-slate-400 flex-shrink-0" />
+            <span>{formatClassDateTime(c.start_datetime, c.timezone)} · {c.duration_minutes} min</span>
+          </p>
+        </div>
+        <Badge tone={statusTone(c.status)}>{statusText(c.status)}</Badge>
+      </div>
+      <div className="text-sm text-slate-600 space-y-1">
+        <p className="flex items-center gap-1.5"><User className="w-4 h-4 text-slate-400 flex-shrink-0" /> {c.teacher_name || 'No teacher'} · {platformLabel(c.platform)}</p>
+        {(c.class_name || c.subject_name) && (
+          <p className="flex items-center gap-1.5">
+            <BookOpen className="w-4 h-4 text-slate-400 flex-shrink-0" />
+            {[c.class_name ? `Class ${c.class_name}${c.section_name ? ` - ${c.section_name}` : ''}` : '', c.subject_name || ''].filter(Boolean).join(' · ')}
+          </p>
+        )}
+        {c.status === 'CANCELLED' && c.cancel_reason && <p className="text-red-600">Reason: {c.cancel_reason}</p>}
+      </div>
+      {c.status === 'SCHEDULED' && (
+        <div className="mt-auto flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => handleJoin(c)}
+            disabled={joiningId === c.id}
+            className="btn-success btn-lg w-full"
+          >
+            <Video className="w-5 h-5" />
+            {joiningId === c.id ? 'Opening…' : 'Join class'}
+          </button>
+          {canWrite && (
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setRescheduleTarget(c)} className="btn-secondary btn-sm">Change time</button>
+              <button type="button" onClick={() => setCancelTarget(c)} className="btn-secondary btn-sm !text-red-600 !border-red-200 hover:!bg-red-50">Cancel class</button>
+            </div>
+          )}
+        </div>
+      )}
+    </li>
+  );
+
   return (
     <div>
       <PageHeader
-        title="Online Classes"
-        subtitle="Schedule and manage Zoom / Google Meet classes"
+        title="Online classes"
+        subtitle="Join a class, or plan one on Zoom or Google Meet."
+        icon={<Video className="w-6 h-6" />}
         actions={
           <>
-          {googleStatus && !googleStatus.reason && (
-            googleStatus.connected ? (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-slate-600">Google: <span className="font-medium text-slate-800">{googleStatus.google_email || 'Connected'}</span></span>
-                <button onClick={handleGoogleDisconnect} className="text-red-600 hover:underline text-sm font-medium">Disconnect</button>
-              </div>
-            ) : (
-              <button
-                onClick={handleGoogleConnect}
-                disabled={googleConnecting}
-                className="btn-secondary"
-              >
-                {googleConnecting ? 'Redirecting...' : 'Connect Google Account'}
+            {showAccountArea && (
+              <button type="button" onClick={() => setShowAccounts((v) => !v)} className="btn-secondary" aria-expanded={showAccounts}>
+                <Settings className="w-4 h-4" /> Accounts
               </button>
-            )
-          )}
-          {canManageZoomSettings && (
-            <button
-              onClick={() => setShowZoomSettings(true)}
-              className="btn-secondary"
-            >
-              Zoom Settings
-            </button>
-          )}
-          {canWrite && (
-            <button
-              onClick={() => setShowScheduleModal(true)}
-              className="btn-primary"
-            >
-              + Schedule Class
-            </button>
-          )}
-                  </>
+            )}
+            {canWrite && (
+              <button type="button" onClick={() => setShowScheduleModal(true)} className="btn-primary">
+                <CalendarPlus className="w-4 h-4" /> Plan a class
+              </button>
+            )}
+          </>
         }
       />
 
+      {showAccounts && showAccountArea && (
+        <div className="card p-4 mb-4 space-y-3">
+          {googleStatus && !googleStatus.reason && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-sm">
+                <div className="font-medium text-slate-900">Google Meet</div>
+                <div className="text-slate-600">
+                  {googleStatus.connected ? <>Connected as {googleStatus.google_email || 'your Google account'}</> : 'Not connected. Connect to plan Google Meet classes.'}
+                </div>
+              </div>
+              {googleStatus.connected ? (
+                <button type="button" onClick={handleGoogleDisconnect} className="btn-secondary btn-sm !text-red-600 !border-red-200 hover:!bg-red-50">Disconnect Google</button>
+              ) : (
+                <button type="button" onClick={handleGoogleConnect} disabled={googleConnecting} className="btn-secondary btn-sm">
+                  {googleConnecting ? 'Opening Google…' : 'Connect Google account'}
+                </button>
+              )}
+            </div>
+          )}
+          {canManageZoomSettings && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 first:border-0 first:pt-0">
+              <div className="text-sm">
+                <div className="font-medium text-slate-900">Zoom</div>
+                <div className="text-slate-600">The school's Zoom account details.</div>
+              </div>
+              <button type="button" onClick={() => setShowZoomSettings(true)} className="btn-secondary btn-sm">Zoom settings</button>
+            </div>
+          )}
+        </div>
+      )}
+
       {error && <Alert tone="error" className="mb-4">{error}</Alert>}
-            {rowError && (
+      {rowError && (
         <Alert tone="error" className="mb-4" onClose={() => setRowError(null)}>
           {rowError}
         </Alert>
       )}
 
-      <div className="mb-4 card flex flex-wrap items-end gap-3 p-3">
-        <div className="flex-1 min-w-[180px]">
-          <label className="label">Search (title or teacher)</label>
-          <input
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            className="input"
-            placeholder="e.g. Ravi Kumar, Algebra"
-          />
+      <div className="mb-4 card p-3 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+          <div className="flex-1 min-w-0">
+            <label className="label" htmlFor="oc-search">Find a class</label>
+            <input
+              id="oc-search"
+              type="search"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="input"
+              placeholder="Class name or teacher"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="segmented flex-1 sm:flex-none">
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`segmented-item flex-1 min-h-[40px] ${viewMode === 'list' ? 'segmented-item-active' : ''}`}
+              >List</button>
+              <button
+                type="button"
+                onClick={() => setViewMode('calendar')}
+                className={`segmented-item flex-1 min-h-[40px] ${viewMode === 'calendar' ? 'segmented-item-active' : ''}`}
+              >One day</button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowFilters((v) => !v)}
+              className={hasFilters ? 'btn-soft' : 'btn-secondary'}
+              aria-expanded={showFilters || hasFilters}
+            >
+              <SlidersHorizontal className="w-4 h-4" /> Filters{hasFilters ? ' (on)' : ''}
+            </button>
+          </div>
         </div>
-        <div>
-          <label className="label">Status</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="input !w-auto"
-          >
-                        <option value="">All</option>
-            <option value="SCHEDULED">Scheduled</option>
-            <option value="CANCELLED">Cancelled</option>
-            <option value="COMPLETED">Completed</option>
-          </select>
-        </div>
-        <div>
-          <label className="label">From</label>
-          <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="input !w-auto" />
-        </div>
-        <div>
-          <label className="label">To</label>
-          <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="input !w-auto" />
-        </div>
-                {(statusFilter || fromDate || toDate || searchText) && (
-          <button
-            onClick={() => { setStatusFilter(''); setFromDate(''); setToDate(''); setSearchText(''); }}
-            className="btn-ghost btn-sm underline"
-          >
-            Clear filters
-          </button>
+
+        {(showFilters || hasFilters) && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-slate-100 pt-3">
+            <Field label="Show" htmlFor="oc-status">
+              <select id="oc-status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input">
+                <option value="">All classes</option>
+                <option value="SCHEDULED">Coming up</option>
+                <option value="CANCELLED">Cancelled</option>
+                <option value="COMPLETED">Finished</option>
+              </select>
+            </Field>
+            {viewMode === 'list' && (
+              <>
+                <Field label="From date" htmlFor="oc-from">
+                  <input id="oc-from" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="input" />
+                </Field>
+                <Field label="To date" htmlFor="oc-to">
+                  <input id="oc-to" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="input" />
+                </Field>
+              </>
+            )}
+            {(hasFilters || searchText) && (
+              <div className="sm:col-span-3">
+                <button
+                  type="button"
+                  onClick={() => { setStatusFilter(''); setFromDate(''); setToDate(''); setSearchText(''); }}
+                  className="btn-ghost btn-sm text-brand-700"
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
+          </div>
         )}
-        <div className="ml-auto segmented">
-          <button
-            onClick={() => setViewMode('list')}
-            className={`segmented-item ${viewMode === 'list' ? 'segmented-item-active' : ''}`}
-          >List</button>
-          <button
-            onClick={() => setViewMode('calendar')}
-            className={`segmented-item ${viewMode === 'calendar' ? 'segmented-item-active' : ''}`}
-          >Calendar</button>
-        </div>
       </div>
 
       {viewMode === 'calendar' && (
-        <div className="mb-4 card flex flex-wrap items-center gap-3 p-3">
-          <button onClick={() => setCalendarDate((d) => shiftDay(d, -1))} className="btn-secondary btn-sm">‹ Prev</button>
-          <input type="date" value={calendarDate} onChange={(e) => setCalendarDate(e.target.value)} className="input !w-auto" />
-          <button onClick={() => setCalendarDate((d) => shiftDay(d, 1))} className="btn-secondary btn-sm">Next ›</button>
-          <button onClick={() => setCalendarDate(getLocalDateString())} className="btn-ghost btn-sm text-brand-600">Today</button>
+        <div className="mb-4 card flex items-center gap-2 p-3">
+          <button type="button" onClick={() => setCalendarDate((d) => shiftDay(d, -1))} className="btn-secondary" aria-label="Day before">
+            <ChevronLeft className="w-4 h-4" /><span className="hidden sm:inline">Day before</span>
+          </button>
+          <input type="date" value={calendarDate} onChange={(e) => setCalendarDate(e.target.value)} className="input flex-1 min-w-0 sm:flex-none sm:w-auto" aria-label="Day" />
+          <button type="button" onClick={() => setCalendarDate((d) => shiftDay(d, 1))} className="btn-secondary" aria-label="Next day">
+            <span className="hidden sm:inline">Next day</span><ChevronRight className="w-4 h-4" />
+          </button>
+          <button type="button" onClick={() => setCalendarDate(getLocalDateString())} className="btn-ghost text-brand-700">Today</button>
         </div>
       )}
 
-            {viewMode === 'list' && (
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th className="px-4 py-3 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500">Title</th>
-              <th className="px-4 py-3 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500">Teacher</th>
-              <th className="px-4 py-3 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500">Platform</th>
-              <th className="px-4 py-3 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500">Start</th>
-              <th className="px-4 py-3 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
-              <th className="px-4 py-3 text-left text-2xs font-semibold uppercase tracking-wider text-slate-500">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-                        {loading ? (
-              <tr><td colSpan={6}><LoadingState /></td></tr>
-            ) : displayedClasses.length === 0 ? (
-              <tr><td colSpan={6}><EmptyState compact title="No online classes found." /></td></tr>
-            ) : (
-              displayedClasses.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 text-sm font-medium text-slate-900">{c.title}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{c.teacher_name || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600 capitalize">{c.platform.replace('_', ' ')}</td>
-                                    <td className="px-4 py-3 text-sm text-slate-600">{formatClassDateTime(c.start_datetime, c.timezone)}</td>
-                  <td className="px-4 py-3">
-                    <span className={c.status === 'SCHEDULED' ? 'badge-success' : c.status === 'CANCELLED' ? 'badge-danger' : 'badge-neutral'}>{c.status}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {c.status === 'SCHEDULED' ? (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleJoin(c)}
-                          disabled={joiningId === c.id}
-                          className="btn-success btn-sm"
-                        >
-                          {joiningId === c.id ? 'Joining...' : 'Join'}
-                        </button>
-                        {canWrite && (
-                          <>
-                            <button
-                              onClick={() => setRescheduleTarget(c)}
-                              className="btn-secondary btn-sm"
-                            >
-                              Reschedule
-                            </button>
-                            <button
-                              onClick={() => setCancelTarget(c)}
-                              className="btn-secondary btn-sm !text-red-600 !border-red-300 hover:!bg-red-50"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-400">
-                        {c.status === 'CANCELLED' && c.cancel_reason ? `Cancelled: ${c.cancel_reason}` : '—'}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))
+      {viewMode === 'list' && (
+        loading ? (
+          <LoadingState label="Loading classes…" />
+        ) : displayedClasses.length === 0 ? (
+          <div className="card">
+            <EmptyState
+              title="No online classes found."
+              description={hasFilters || searchText ? 'Try clearing the filters.' : canWrite ? 'Tap “Plan a class” to add one.' : undefined}
+            />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {upcoming.length > 0 && (
+              <section>
+                <h2 className="text-sm font-semibold text-slate-500 mb-2">Coming up ({upcoming.length})</h2>
+                <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">{upcoming.map(renderCard)}</ul>
+              </section>
             )}
-                    </tbody>
-        </table>
-        </div>
-      </div>
+            {others.length > 0 && (
+              <section>
+                <h2 className="text-sm font-semibold text-slate-500 mb-2">Finished or cancelled ({others.length})</h2>
+                <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">{others.map(renderCard)}</ul>
+              </section>
+            )}
+          </div>
+        )
       )}
 
       {viewMode === 'list' && totalPages > 1 && (
         <div className="mt-4 flex flex-wrap gap-2 items-center justify-between text-sm text-slate-600">
           <span>Page {page} of {totalPages} ({totalCount} classes)</span>
           <div className="flex gap-2">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="btn-secondary btn-sm">Previous</button>
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="btn-secondary btn-sm">Next</button>
+            <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="btn-secondary">Previous</button>
+            <button type="button" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="btn-secondary">Next</button>
           </div>
         </div>
       )}
 
       {viewMode === 'calendar' && (
-        <DayCalendarView
-          day={calendarDate}
-          classes={displayedClasses}
-          canWrite={canWrite}
-          joiningId={joiningId}
-          onJoin={handleJoin}
-          onReschedule={setRescheduleTarget}
-          onCancel={setCancelTarget}
-        />
+        loading ? <LoadingState /> : (
+          <>
+            {/* Phones: the day's classes as simple cards, in time order */}
+            <div className="md:hidden">
+              {(() => {
+                const dayList = displayedClasses
+                  .filter((c) => c.start_datetime.startsWith(calendarDate))
+                  .sort((a, b) => a.start_datetime.localeCompare(b.start_datetime));
+                return dayList.length === 0
+                  ? <div className="card"><EmptyState compact title="No online classes on this day." /></div>
+                  : <ul className="space-y-3">{dayList.map(renderCard)}</ul>;
+              })()}
+            </div>
+            {/* Wider screens: time line for the day */}
+            <div className="hidden md:block">
+              <DayCalendarView
+                day={calendarDate}
+                classes={displayedClasses}
+                canWrite={canWrite}
+                joiningId={joiningId}
+                onJoin={handleJoin}
+                onReschedule={setRescheduleTarget}
+                onCancel={setCancelTarget}
+              />
+            </div>
+          </>
+        )
       )}
 
       {showScheduleModal && (
         <ScheduleClassModal
           onClose={() => setShowScheduleModal(false)}
-          onScheduled={() => { setShowScheduleModal(false); fetchClasses(); }}
+          onScheduled={() => { setShowScheduleModal(false); notify.success('Class planned.'); fetchClasses(); }}
         />
       )}
 
@@ -375,11 +442,11 @@ const OnlineClass: React.FC = () => {
         />
       )}
 
-            {rescheduleTarget && (
+      {rescheduleTarget && (
         <RescheduleClassModal
           classItem={rescheduleTarget}
           onClose={() => setRescheduleTarget(null)}
-          onRescheduled={() => { setRescheduleTarget(null); fetchClasses(); }}
+          onRescheduled={() => { setRescheduleTarget(null); notify.success('New time saved.'); fetchClasses(); }}
         />
       )}
 
@@ -422,7 +489,7 @@ const DayCalendarView: React.FC<{
   return (
     <div className="card p-4">
       {dayClasses.length === 0 ? (
-        <EmptyState title="No online classes scheduled on this day." />
+        <EmptyState title="No online classes on this day." />
       ) : (
         <div className="relative flex" style={{ height: `${(DAY_END_HOUR - DAY_START_HOUR) * 56}px` }}>
           <div className="w-16 flex-shrink-0 relative text-xs text-slate-400">
@@ -440,13 +507,13 @@ const DayCalendarView: React.FC<{
               <div key={c.id} className={`absolute left-1 right-1 rounded-md border px-2 py-1 text-xs overflow-hidden ${statusColor(c.status)}`}
                    style={{ top: `${topPct(c)}%`, height: `${heightPct(c)}%`, minHeight: '28px' }}>
                 <div className="font-semibold truncate">{c.title}</div>
-                <div className="truncate">{c.teacher_name} · {c.platform.replace('_', ' ')}</div>
+                <div className="truncate">{c.teacher_name} · {platformLabel(c.platform)}</div>
                 {c.status === 'SCHEDULED' && (
-                  <div className="mt-0.5 flex gap-2">
-                    <button onClick={() => onJoin(c)} disabled={joiningId === c.id} className="underline hover:no-underline">Join</button>
+                  <div className="mt-0.5 flex gap-3">
+                    <button type="button" onClick={() => onJoin(c)} disabled={joiningId === c.id} className="font-semibold underline hover:no-underline">Join class</button>
                     {canWrite && (<>
-                      <button onClick={() => onReschedule(c)} className="underline hover:no-underline">Reschedule</button>
-                      <button onClick={() => onCancel(c)} className="underline hover:no-underline">Cancel</button>
+                      <button type="button" onClick={() => onReschedule(c)} className="underline hover:no-underline">Change time</button>
+                      <button type="button" onClick={() => onCancel(c)} className="underline hover:no-underline">Cancel class</button>
                     </>)}
                   </div>
                 )}
@@ -574,15 +641,15 @@ const ScheduleClassModal: React.FC<ScheduleClassModalProps> = ({ onClose, onSche
 
     const handleSubmit = async (force = false) => {
     if (!title.trim() || !teacherId || !startDatetime) {
-      setError('Title, Teacher ID and Start date/time are required.');
+      setError('Please fill in the class name, teacher, and date and time.');
       return;
     }
     if (isRecurring && recurrenceDays.length === 0) {
-      setError('Select at least one day of the week for the recurring class.');
+      setError('Choose at least one day to repeat on.');
       return;
     }
     if (isRecurring && !recurrenceEndDate) {
-      setError('Pick an end date for the recurring class.');
+      setError('Choose the last date for the repeating class.');
       return;
     }
     setSaving(true);
@@ -610,231 +677,245 @@ const ScheduleClassModal: React.FC<ScheduleClassModalProps> = ({ onClose, onSche
         setConflicts(data.conflicts);
         setError(data.error);
       } else {
-        setError(data?.error || 'Failed to schedule class');
+        setError(data?.error || 'Could not plan the class. Please try again.');
       }
     } finally {
       setSaving(false);
     }
   };
 
+  const missing = !title.trim() ? 'Type a name for the class.'
+    : !teacherId ? 'Choose the teacher.'
+    : !startDatetime ? 'Choose the date and time.'
+    : isRecurring && recurrenceDays.length === 0 ? 'Choose the days to repeat on.'
+    : isRecurring && !recurrenceEndDate ? 'Choose the last date to repeat.'
+    : '';
+  const DAY_NAMES: Record<string, string> = { MO: 'Mon', TU: 'Tue', WE: 'Wed', TH: 'Thu', FR: 'Fri', SA: 'Sat', SU: 'Sun' };
+
   return (
-    <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50 p-4">
-      <div className="card shadow-pop w-full max-w-md">
-        <div className="card-header">
-          <h2 className="text-base font-semibold text-slate-900">Schedule Online Class</h2>
-          <button onClick={onClose} className="btn-icon">✕</button>
-        </div>
-        <div className="card-body space-y-4">
-          {error && (
-            <Alert tone="error">
-              {error}
-              {conflicts && (
-                <ul className="list-disc pl-5 mt-1">
-                  {conflicts.map((c, i) => <li key={i}>{c}</li>)}
-                </ul>
-              )}
-            </Alert>
+    <Dialog
+      title="Plan an online class"
+      onClose={onClose}
+      footer={<>
+        {missing && <p className="w-full text-sm text-slate-600 sm:flex-1 sm:w-auto">{missing}</p>}
+        <button type="button" onClick={onClose} className="btn-secondary">Back</button>
+        {conflicts && (
+          <button type="button" onClick={() => handleSubmit(true)} disabled={saving} className="btn-warn">
+            Plan anyway
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => handleSubmit(false)}
+          disabled={saving || !!missing}
+          className="btn-primary"
+        >
+          {saving ? 'Saving…' : 'Plan class'}
+        </button>
+      </>}
+    >
+      {error && (
+        <Alert tone="error">
+          {error}
+          {conflicts && (
+            <ul className="list-disc pl-5 mt-1">
+              {conflicts.map((c, i) => <li key={i}>{c}</li>)}
+            </ul>
           )}
+        </Alert>
+      )}
 
-          <div>
-            <label className="label">Title *</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} className="input" placeholder="e.g. Algebra Basics" />
-          </div>
+      <Field label="Class name" htmlFor="oc-title" required>
+        <input id="oc-title" value={title} onChange={(e) => setTitle(e.target.value)} className="input" placeholder="e.g. Algebra basics" />
+      </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Platform *</label>
-              <select value={platform} onChange={(e) => setPlatform(e.target.value as any)} className="input">
-                <option value="zoom">Zoom</option>
-                <option value="google_meet">Google Meet</option>
-              </select>
-            </div>
-                                                <div className="relative">
-              <label className="label">Teacher *</label>
-              {canBrowseTeachers ? (
-                <>
-                  <input
-                    value={teacherSearch}
-                    onChange={(e) => {
-                      setTeacherSearch(e.target.value);
-                      setTeacherId('');
-                      setShowTeacherDropdown(true);
-                    }}
-                    onFocus={() => setShowTeacherDropdown(true)}
-                    onBlur={() => setTimeout(() => setShowTeacherDropdown(false), 150)}
-                    className="input"
-                    placeholder={teachersLoading ? 'Loading...' : 'Type a name...'}
-                    disabled={teachersLoading}
-                    autoComplete="off"
-                  />
-                  {showTeacherDropdown && teacherSearch.trim() && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                      {teachers
-                        .filter((t) => t.name.toLowerCase().includes(teacherSearch.trim().toLowerCase()))
-                        .slice(0, 20)
-                        .map((t) => (
-                          <button
-                            type="button"
-                            key={t.id}
-                            onClick={() => {
-                              setTeacherId(String(t.id));
-                              setTeacherSearch(t.name);
-                              setShowTeacherDropdown(false);
-                            }}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-brand-50"
-                          >
-                            {t.name}
-                          </button>
-                        ))}
-                      {teachers.filter((t) => t.name.toLowerCase().includes(teacherSearch.trim().toLowerCase())).length === 0 && (
-                        <div className="px-3 py-2 text-sm text-slate-400">No match found</div>
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : teachersLoading ? (
-                <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-400 text-sm flex items-center gap-2"><Spinner size="sm" /> Loading...</div>
-              ) : selfTeacher?.is_teacher ? (
-                <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-700 text-sm">
-                  {selfTeacher.name} <span className="text-xs text-slate-400">(you)</span>
-                </div>
-              ) : (
-                <div className="w-full px-3 py-2 border border-red-200 rounded-lg bg-red-50 text-red-600 text-sm">
-                  You don't have permission to assign a teacher. Contact your admin.
-                </div>
-              )}
-            </div>
-          </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="Date and time" htmlFor="oc-start" required>
+          <input
+            id="oc-start"
+            type="datetime-local"
+            value={startDatetime}
+            onChange={(e) => setStartDatetime(e.target.value)}
+            className="input"
+          />
+        </Field>
+        <Field label="How long (minutes)" htmlFor="oc-duration">
+          <input id="oc-duration" type="number" inputMode="numeric" value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))} className="input" min={5} />
+        </Field>
+      </div>
 
-                                        <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="label">Class</label>
-              <select
-                value={classId}
-                onChange={(e) => { setClassId(e.target.value); setSectionId(''); }}
-                className="input"
-                disabled={optionsLoading}
-              >
-                <option value="">{optionsLoading ? 'Loading...' : canBrowseTeachers ? 'Any class' : 'Select class'}</option>
-                {effectiveClasses.map((c) => (
-                  <option key={c.id} value={c.id}>{c.class_name}</option>
-                ))}
-              </select>
-              {!canBrowseTeachers && !optionsLoading && effectiveClasses.length === 0 && (
-                <p className="text-xs text-red-500 mt-1">No subject/class assignments found — contact your admin.</p>
-              )}
-            </div>
-            <div>
-              <label className="label">Section</label>
-              <select
-                value={sectionId}
-                onChange={(e) => setSectionId(e.target.value)}
-                className="input"
-                disabled={!classId}
-              >
-                <option value="">{classId ? (canBrowseTeachers ? 'Any section' : 'Select section') : 'Select class first'}</option>
-                {(effectiveClasses.find((c) => String(c.id) === classId)?.sections || []).map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="label">Subject</label>
-              <select
-                value={subjectId}
-                onChange={(e) => setSubjectId(e.target.value)}
-                className="input"
-                disabled={optionsLoading || (!canBrowseTeachers && (!classId || !sectionId))}
-              >
-                <option value="">{canBrowseTeachers ? 'Any subject' : (!classId || !sectionId) ? 'Select class & section first' : 'Select subject'}</option>
-                {effectiveSubjects.map((s) => (
-                  <option key={s.id} value={s.id}>{s.subject_name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+      <Field label="Where" required>
+        <div className="segmented w-full">
+          {([['zoom', 'Zoom'], ['google_meet', 'Google Meet']] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setPlatform(value)}
+              aria-pressed={platform === value}
+              className={`segmented-item flex-1 min-h-[40px] ${platform === value ? 'segmented-item-active' : ''}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Start Date & Time *</label>
-              <input
-                type="datetime-local"
-                value={startDatetime}
-                onChange={(e) => setStartDatetime(e.target.value)}
-                className="input"
-              />
-            </div>
-                        <div>
-              <label className="label">Duration (minutes)</label>
-              <input type="number" value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))} className="input" min={5} />
-            </div>
-          </div>
-
-          <div className="border-t pt-3">
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-              <input
-                type="checkbox"
-                checked={isRecurring}
-                onChange={(e) => setIsRecurring(e.target.checked)}
-              />
-              Repeat this class weekly
-            </label>
-
-            {isRecurring && (
-              <div className="mt-3 space-y-3 pl-1">
-                <div>
-                  <label className="label">Repeat on *</label>
-                  <div className="flex flex-wrap gap-2">
-                    {['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'].map((day) => (
-                      <button
-                        type="button"
-                        key={day}
-                        onClick={() =>
-                          setRecurrenceDays((prev) =>
-                            prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
-                          )
-                        }
-                        className={`px-3 py-1 text-xs font-medium rounded-full border ${
-                          recurrenceDays.includes(day)
-                            ? 'bg-brand-600 text-brand-contrast border-brand-600'
-                            : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
-                        }`}
-                      >
-                        {day}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="label">Repeat until *</label>
-                  <input
-                    type="date"
-                    value={recurrenceEndDate}
-                    onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                    className="input"
-                  />
-                </div>
+      <div className="relative">
+        <label className="block text-sm font-medium text-slate-800 mb-1.5" htmlFor="oc-teacher">
+          Teacher<span className="text-red-600" aria-hidden="true"> *</span>
+        </label>
+        {canBrowseTeachers ? (
+          <>
+            <input
+              id="oc-teacher"
+              value={teacherSearch}
+              onChange={(e) => {
+                setTeacherSearch(e.target.value);
+                setTeacherId('');
+                setShowTeacherDropdown(true);
+              }}
+              onFocus={() => setShowTeacherDropdown(true)}
+              onBlur={() => setTimeout(() => setShowTeacherDropdown(false), 150)}
+              className="input"
+              placeholder={teachersLoading ? 'Loading…' : 'Type a name'}
+              disabled={teachersLoading}
+              autoComplete="off"
+            />
+            {teacherSearch.trim() && !teacherId && !showTeacherDropdown && (
+              <p className="mt-1.5 text-sm text-amber-700">Tap a name from the list.</p>
+            )}
+            {showTeacherDropdown && teacherSearch.trim() && (
+              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                {teachers
+                  .filter((t) => t.name.toLowerCase().includes(teacherSearch.trim().toLowerCase()))
+                  .slice(0, 20)
+                  .map((t) => (
+                    <button
+                      type="button"
+                      key={t.id}
+                      onClick={() => {
+                        setTeacherId(String(t.id));
+                        setTeacherSearch(t.name);
+                        setShowTeacherDropdown(false);
+                      }}
+                      className="w-full text-left px-3 py-3 text-[15px] hover:bg-brand-50"
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                {teachers.filter((t) => t.name.toLowerCase().includes(teacherSearch.trim().toLowerCase())).length === 0 && (
+                  <div className="px-3 py-3 text-sm text-slate-500">No teacher with that name</div>
+                )}
               </div>
             )}
+          </>
+        ) : teachersLoading ? (
+          <div className="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm flex items-center gap-2"><Spinner size="sm" /> Loading…</div>
+        ) : selfTeacher?.is_teacher ? (
+          <div className="w-full px-3 py-2.5 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 text-sm">
+            {selfTeacher.name} <span className="text-slate-500">(you)</span>
           </div>
-        </div>
-        <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
-          <button onClick={onClose} className="btn-secondary">Cancel</button>
-          {conflicts && (
-            <button onClick={() => handleSubmit(true)} disabled={saving} className="btn-warn">
-              Schedule Anyway
-            </button>
-          )}
-          <button
-            onClick={() => handleSubmit(false)}
-            disabled={saving}
-            className="btn-primary"
-          >
-            {saving ? 'Scheduling...' : 'Schedule'}
-          </button>
-        </div>
+        ) : (
+          <div className="w-full px-3 py-2.5 border border-red-200 rounded-lg bg-red-50 text-red-700 text-sm">
+            You can't choose a teacher. Please ask your school admin.
+          </div>
+        )}
       </div>
-    </div>
+
+      <fieldset className="space-y-3">
+        <legend className="text-sm font-medium text-slate-800 mb-1.5">For which class? {canBrowseTeachers && <span className="font-normal text-slate-500">(optional)</span>}</legend>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <select
+            aria-label="Class"
+            value={classId}
+            onChange={(e) => { setClassId(e.target.value); setSectionId(''); }}
+            className="input"
+            disabled={optionsLoading}
+          >
+            <option value="">{optionsLoading ? 'Loading…' : canBrowseTeachers ? 'Any class' : 'Choose class'}</option>
+            {effectiveClasses.map((c) => (
+              <option key={c.id} value={c.id}>{c.class_name}</option>
+            ))}
+          </select>
+          <select
+            aria-label="Section"
+            value={sectionId}
+            onChange={(e) => setSectionId(e.target.value)}
+            className="input"
+            disabled={!classId}
+          >
+            <option value="">{classId ? (canBrowseTeachers ? 'Any section' : 'Choose section') : 'Choose a class first'}</option>
+            {(effectiveClasses.find((c) => String(c.id) === classId)?.sections || []).map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          <select
+            aria-label="Subject"
+            value={subjectId}
+            onChange={(e) => setSubjectId(e.target.value)}
+            className="input"
+            disabled={optionsLoading || (!canBrowseTeachers && (!classId || !sectionId))}
+          >
+            <option value="">{canBrowseTeachers ? 'Any subject' : (!classId || !sectionId) ? 'Choose class and section first' : 'Choose subject'}</option>
+            {effectiveSubjects.map((s) => (
+              <option key={s.id} value={s.id}>{s.subject_name}</option>
+            ))}
+          </select>
+        </div>
+        {!canBrowseTeachers && !optionsLoading && effectiveClasses.length === 0 && (
+          <p className="text-sm text-red-600">You are not set as the teacher of any class yet. Please ask your school admin.</p>
+        )}
+      </fieldset>
+
+      <div className="border-t border-slate-100 pt-4">
+        <label className="flex items-center gap-2.5 text-sm font-medium text-slate-800 min-h-[44px]">
+          <input
+            type="checkbox"
+            className="w-5 h-5 accent-brand-600"
+            checked={isRecurring}
+            onChange={(e) => setIsRecurring(e.target.checked)}
+          />
+          Repeat this class every week
+        </label>
+
+        {isRecurring && (
+          <div className="mt-3 space-y-4">
+            <Field label="Repeat on" required>
+              <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                {['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'].map((day) => (
+                  <button
+                    type="button"
+                    key={day}
+                    aria-pressed={recurrenceDays.includes(day)}
+                    onClick={() =>
+                      setRecurrenceDays((prev) =>
+                        prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+                      )
+                    }
+                    className={`min-h-[44px] px-2 text-sm font-medium rounded-lg border ${
+                      recurrenceDays.includes(day)
+                        ? 'bg-brand-600 text-brand-contrast border-brand-600'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    {DAY_NAMES[day]}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <Field label="Last date" htmlFor="oc-until" required>
+              <input
+                id="oc-until"
+                type="date"
+                value={recurrenceEndDate}
+                onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                className="input"
+              />
+            </Field>
+          </div>
+        )}
+      </div>
+    </Dialog>
   );
 };
 
@@ -863,52 +944,39 @@ const CancelClassModal: React.FC<CancelClassModalProps> = ({ classItem, onClose,
       }
       onCancelled();
     } catch (e: any) {
-      setError(e.response?.data?.error || 'Failed to cancel class');
+      setError(e.response?.data?.error || 'Could not cancel the class. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50 p-4">
-      <div className="card shadow-pop w-full max-w-md">
-        <div className="card-header">
-          <h2 className="text-base font-semibold text-slate-900">Cancel Online Class</h2>
-          <button onClick={onClose} className="btn-icon">✕</button>
-        </div>
-        <div className="card-body space-y-4">
-          {error && (
-            <Alert tone="error">{error}</Alert>
-          )}
-          <p className="text-sm text-slate-600">
-                        You're about to cancel <span className="font-medium text-slate-900">"{classItem.title}"</span> scheduled for{' '}
-            {formatClassDateTime(classItem.start_datetime, classItem.timezone)}. Students and the teacher will no longer be able to join.
-          </p>
-          <div>
-            <label className="label">Reason (optional)</label>
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="input"
-              rows={3}
-              placeholder="e.g. Teacher unavailable, rescheduling later"
-            />
-          </div>
-        </div>
-        <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
-          <button onClick={onClose} className="btn-secondary">
-            Keep Class
-          </button>
-          <button
-            onClick={handleCancel}
-            disabled={saving}
-            className="btn-danger"
-          >
-            {saving ? 'Cancelling...' : 'Cancel Class'}
-          </button>
-        </div>
-      </div>
-    </div>
+    <Dialog
+      title="Cancel this class?"
+      onClose={onClose}
+      footer={<>
+        <button type="button" onClick={onClose} className="btn-secondary">Keep class</button>
+        <button type="button" onClick={handleCancel} disabled={saving} className="btn-danger">
+          {saving ? 'Cancelling…' : 'Cancel class'}
+        </button>
+      </>}
+    >
+      {error && <Alert tone="error">{error}</Alert>}
+      <p className="text-sm text-slate-700">
+        You are cancelling <span className="font-semibold text-slate-900">“{classItem.title}”</span> on{' '}
+        {formatClassDateTime(classItem.start_datetime, classItem.timezone)}. Students and the teacher will not be able to join.
+      </p>
+      <Field label="Reason (optional)" htmlFor="oc-cancel-reason">
+        <textarea
+          id="oc-cancel-reason"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="input"
+          rows={3}
+          placeholder="e.g. Teacher is on leave"
+        />
+      </Field>
+    </Dialog>
   );
 };
 
@@ -952,7 +1020,7 @@ const RescheduleClassModal: React.FC<RescheduleClassModalProps> = ({ classItem, 
         setConflicts(data.conflicts);
         setError(data.error);
       } else {
-        setError(data?.error || 'Failed to reschedule class');
+        setError(data?.error || 'Could not change the time. Please try again.');
       }
     } finally {
       setSaving(false);
@@ -960,71 +1028,55 @@ const RescheduleClassModal: React.FC<RescheduleClassModalProps> = ({ classItem, 
   };
 
   return (
-    <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50 p-4">
-      <div className="card shadow-pop w-full max-w-md">
-        <div className="card-header">
-          <h2 className="text-base font-semibold text-slate-900">Reschedule Class</h2>
-          <button onClick={onClose} className="btn-icon">✕</button>
-        </div>
-        <div className="card-body space-y-4">
-          {error && (
-            <Alert tone="error">
-              {error}
-              {conflicts && (
-                <ul className="list-disc pl-5 mt-1">
-                  {conflicts.map((c, i) => <li key={i}>{c}</li>)}
-                </ul>
-              )}
-            </Alert>
-          )}
-          <p className="text-sm text-slate-600">
-            Rescheduling <span className="font-medium text-slate-900">"{classItem.title}"</span>
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">New Date & Time *</label>
-              <input
-                type="datetime-local"
-                value={startDatetime}
-                onChange={(e) => setStartDatetime(e.target.value)}
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="label">Duration (minutes)</label>
-              <input
-                type="number"
-                value={durationMinutes}
-                onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                className="input"
-                min={5}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
-          <button onClick={onClose} className="btn-secondary">
-            Cancel
+    <Dialog
+      title="Change class time"
+      subtitle={<>For “{classItem.title}”</>}
+      onClose={onClose}
+      footer={<>
+        <button type="button" onClick={onClose} className="btn-secondary">Back</button>
+        {conflicts && (
+          <button type="button" onClick={() => handleSubmit(true)} disabled={saving} className="btn-warn">
+            Save anyway
           </button>
+        )}
+        <button type="button" onClick={() => handleSubmit(false)} disabled={saving || !startDatetime} className="btn-primary">
+          {saving ? 'Saving…' : 'Save new time'}
+        </button>
+      </>}
+    >
+      {error && (
+        <Alert tone="error">
+          {error}
           {conflicts && (
-            <button
-              onClick={() => handleSubmit(true)}
-              disabled={saving}
-              className="btn-warn"
-            >
-              Reschedule Anyway
-            </button>
+            <ul className="list-disc pl-5 mt-1">
+              {conflicts.map((c, i) => <li key={i}>{c}</li>)}
+            </ul>
           )}
-          <button
-            onClick={() => handleSubmit(false)}
-            disabled={saving}
-            className="btn-primary"
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
+        </Alert>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="New date and time" htmlFor="oc-new-start" required>
+          <input
+            id="oc-new-start"
+            type="datetime-local"
+            value={startDatetime}
+            onChange={(e) => setStartDatetime(e.target.value)}
+            className="input"
+          />
+        </Field>
+        <Field label="How long (minutes)" htmlFor="oc-new-duration">
+          <input
+            id="oc-new-duration"
+            type="number"
+            inputMode="numeric"
+            value={durationMinutes}
+            onChange={(e) => setDurationMinutes(Number(e.target.value))}
+            className="input"
+            min={5}
+          />
+        </Field>
       </div>
-    </div>
+    </Dialog>
   );
 };
 
@@ -1093,7 +1145,7 @@ const ZoomSettingsModal: React.FC<ZoomSettingsModalProps> = ({ onClose }) => {
   };
 
   const handleDeactivate = async (row: ZoomCredentialRow) => {
-    if (!await confirmDialog(`Deactivate the Zoom configuration for ${row.default_host_email}? Classes relying on it will stop being schedulable until a new one is set up.`)) {
+    if (!await confirmDialog(`Turn off the Zoom account ${row.default_host_email}? New Zoom classes can't be planned until another account is added.`, { tone: 'danger', confirmText: 'Turn off' })) {
       return;
     }
     setDeletingId(row.id);
@@ -1101,7 +1153,7 @@ const ZoomSettingsModal: React.FC<ZoomSettingsModalProps> = ({ onClose }) => {
     setSuccess(null);
     try {
       await api.delete(`/online-classes/settings/zoom/${row.id}`);
-      setSuccess('Zoom configuration deactivated.');
+      setSuccess('Zoom account turned off.');
       if (editingId === row.id) resetForm();
       loadExisting();
     } catch (e: any) {
@@ -1133,7 +1185,7 @@ const ZoomSettingsModal: React.FC<ZoomSettingsModalProps> = ({ onClose }) => {
     const isEditing = editingId !== null;
     // On create, the secret is mandatory. On edit, a blank secret means "keep the existing one".
     if (!accountId.trim() || !clientId.trim() || !defaultHostEmail.trim() || (!isEditing && !clientSecret.trim())) {
-      setError('All fields are required.');
+      setError('Please fill in every field marked *.');
       return;
     }
     setSaving(true);
@@ -1150,7 +1202,7 @@ const ZoomSettingsModal: React.FC<ZoomSettingsModalProps> = ({ onClose }) => {
           payload.client_secret = clientSecret.trim();
         }
         await api.put(`/online-classes/settings/zoom/${editingId}`, payload);
-        setSuccess('Zoom configuration updated successfully.');
+        setSuccess('Zoom account saved.');
       } else {
         const payload: Record<string, any> = {
           account_id: accountId.trim(),
@@ -1163,7 +1215,7 @@ const ZoomSettingsModal: React.FC<ZoomSettingsModalProps> = ({ onClose }) => {
         }
         // scopeType === 'shared' -> branch_id omitted entirely -> backend treats as school-wide
         await api.post('/online-classes/settings/zoom', payload);
-        setSuccess('Zoom credentials saved successfully.');
+        setSuccess('Zoom account added.');
       }
       resetForm();
       loadExisting();
@@ -1174,130 +1226,113 @@ const ZoomSettingsModal: React.FC<ZoomSettingsModalProps> = ({ onClose }) => {
     }
   };
 
+  const editing = editingId !== null;
+
   return (
-    <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50 p-4">
-      <div className="card shadow-pop w-full max-w-lg">
-        <div className="card-header">
-          <h2 className="text-base font-semibold text-slate-900">Zoom Settings</h2>
-          <button onClick={onClose} className="btn-icon">✕</button>
-        </div>
-        <div className="card-body space-y-4 max-h-[70vh] overflow-y-auto">
-          {error && (
-            <Alert tone="error">{error}</Alert>
-          )}
-          {success && (
-            <Alert tone="success">{success}</Alert>
-          )}
+    <Dialog
+      title="Zoom settings"
+      subtitle="The Zoom account used to make online classes."
+      onClose={onClose}
+      footer={<>
+        <button type="button" onClick={onClose} className="btn-secondary">Close</button>
+        {editing && (
+          <button type="button" onClick={resetForm} className="btn-secondary">Stop editing</button>
+        )}
+        <button type="button" onClick={handleSave} disabled={saving} className="btn-primary">
+          {saving ? 'Saving…' : editing ? 'Save changes' : 'Save Zoom account'}
+        </button>
+      </>}
+    >
+      {error && <Alert tone="error">{error}</Alert>}
+      {success && <Alert tone="success">{success}</Alert>}
 
-          <div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-2">Configured Accounts</h3>
-            {loadingList ? (
-              <div className="flex items-center gap-2 text-sm text-slate-500"><Spinner size="sm" /> Loading...</div>
-            ) : existing.length === 0 ? (
-              <EmptyState compact title="No Zoom account configured yet." />
-            ) : (
-              <div className="border rounded-lg divide-y">
-                {existing.map((r) => (
-                  <div key={r.id} className="px-3 py-2 text-sm flex items-center justify-between gap-2">
-                    <div>
-                      <div className="text-slate-700">{r.default_host_email}</div>
-                      <div className="text-xs text-slate-500">{r.scope}</div>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      <button
-                        onClick={() => handleEditClick(r)}
-                        className="btn-secondary btn-sm"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeactivate(r)}
-                        disabled={deletingId === r.id}
-                        className="btn-secondary btn-sm !text-red-600 !border-red-200 hover:!bg-red-50"
-                      >
-                        {deletingId === r.id ? 'Deactivating...' : 'Deactivate'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+      <section>
+        <h3 className="text-sm font-semibold text-slate-800 mb-2">Saved Zoom accounts</h3>
+        {loadingList ? (
+          <div className="flex items-center gap-2 text-sm text-slate-500"><Spinner size="sm" /> Loading…</div>
+        ) : existing.length === 0 ? (
+          <EmptyState compact title="No Zoom account added yet." />
+        ) : (
+          <ul className="border border-slate-200 rounded-xl divide-y divide-slate-100">
+            {existing.map((r) => (
+              <li key={r.id} className="px-3 py-3 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-slate-900 font-medium break-all">{r.default_host_email}</div>
+                  <div className="text-slate-500">{r.scope}</div>
+                </div>
+                <div className="grid grid-cols-2 sm:flex gap-2 shrink-0">
+                  <button type="button" onClick={() => handleEditClick(r)} className="btn-secondary btn-sm">Edit</button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeactivate(r)}
+                    disabled={deletingId === r.id}
+                    className="btn-secondary btn-sm !text-red-600 !border-red-200 hover:!bg-red-50"
+                  >
+                    {deletingId === r.id ? 'Turning off…' : 'Turn off'}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-          <hr />
+      <section className="border-t border-slate-100 pt-4 space-y-4">
+        <h3 className="text-sm font-semibold text-slate-800">
+          {editing ? 'Edit Zoom account' : 'Add a Zoom account'}
+        </h3>
 
-          <h3 className="text-sm font-semibold text-slate-700">
-            {editingId !== null ? 'Edit Zoom Account' : 'Add Zoom Account'}
-          </h3>
-
-          <div>
-            <label className="label">Scope</label>
-            <select
-              value={scopeType}
-              onChange={(e) => setScopeType(e.target.value as 'branch' | 'shared')}
-              disabled={editingId !== null}
-              className="input disabled:bg-slate-100 disabled:text-slate-500"
-            >
-              <option value="branch" disabled={!hasSpecificBranch}>
-                This branch only {!hasSpecificBranch ? '(select a branch first)' : `(${currentBranchName})`}
-              </option>
-              <option value="shared" disabled={!canSetShared}>
-                Shared across whole school {!canSetShared ? '(requires access to more than one branch)' : ''}
-              </option>
-            </select>
-            {editingId !== null && (
-              <p className="text-xs text-slate-500 mt-1">Scope can't be changed on an existing configuration — deactivate this one and create a new one instead if it's under the wrong branch/shared scope.</p>
-            )}
-            {editingId === null && !hasSpecificBranch && (
-              <p className="text-xs text-slate-500 mt-1">You're viewing "All Branches" — pick a specific branch from the top bar to configure branch-only Zoom credentials.</p>
-            )}
-            {editingId === null && !canSetShared && (
-              <p className="text-xs text-slate-500 mt-1">Your account only has access to one branch, so you can only configure branch-specific Zoom settings.</p>
-            )}
-          </div>
-
-          <div>
-            <label className="label">Zoom Account ID *</label>
-            <input value={accountId} onChange={(e) => setAccountId(e.target.value)} className="input" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Client ID *</label>
-              <input value={clientId} onChange={(e) => setClientId(e.target.value)} className="input" />
-            </div>
-            <div>
-              <label className="label">
-                Client Secret {editingId !== null ? '' : '*'}
-              </label>
-              <input
-                type="password"
-                value={clientSecret}
-                onChange={(e) => setClientSecret(e.target.value)}
-                className="input"
-                placeholder={editingId !== null ? '•••••• (leave blank to keep existing)' : ''}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="label">Default Host Email *</label>
-            <input value={defaultHostEmail} onChange={(e) => setDefaultHostEmail(e.target.value)} className="input" placeholder="e.g. admin@school.com" />
-          </div>
-        </div>
-        <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
-          <button onClick={onClose} className="btn-secondary">Close</button>
-          {editingId !== null && (
-            <button onClick={resetForm} className="btn-secondary">Cancel Edit</button>
-          )}
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="btn-primary"
+        <Field
+          label="Used by"
+          htmlFor="zoom-scope"
+          hint={editing
+            ? "This can't be changed. To change it, turn this account off and add it again."
+            : !hasSpecificBranch
+              ? 'To add an account for one branch only, first pick that branch at the top of the screen.'
+              : !canSetShared
+                ? 'You can only add an account for your own branch.'
+                : undefined}
+        >
+          <select
+            id="zoom-scope"
+            value={scopeType}
+            onChange={(e) => setScopeType(e.target.value as 'branch' | 'shared')}
+            disabled={editing}
+            className="input disabled:bg-slate-100 disabled:text-slate-500"
           >
-            {saving ? 'Saving...' : editingId !== null ? 'Save Changes' : 'Save Zoom Account'}
-          </button>
+            <option value="branch" disabled={!hasSpecificBranch}>
+              This branch only {!hasSpecificBranch ? '(pick a branch first)' : `(${currentBranchName})`}
+            </option>
+            <option value="shared" disabled={!canSetShared}>
+              All branches of the school {!canSetShared ? '(needs access to more than one branch)' : ''}
+            </option>
+          </select>
+        </Field>
+
+        <Field label="Zoom account ID" htmlFor="zoom-account" required>
+          <input id="zoom-account" value={accountId} onChange={(e) => setAccountId(e.target.value)} className="input" autoComplete="off" />
+        </Field>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Client ID" htmlFor="zoom-client" required>
+            <input id="zoom-client" value={clientId} onChange={(e) => setClientId(e.target.value)} className="input" autoComplete="off" />
+          </Field>
+          <Field label="Client secret" htmlFor="zoom-secret" required={!editing} hint={editing ? 'Leave empty to keep the saved one.' : undefined}>
+            <input
+              id="zoom-secret"
+              type="password"
+              value={clientSecret}
+              onChange={(e) => setClientSecret(e.target.value)}
+              className="input"
+              autoComplete="new-password"
+              placeholder={editing ? '••••••' : ''}
+            />
+          </Field>
         </div>
-      </div>
-    </div>
+        <Field label="Main host email" htmlFor="zoom-email" required>
+          <input id="zoom-email" type="email" inputMode="email" value={defaultHostEmail} onChange={(e) => setDefaultHostEmail(e.target.value)} className="input" placeholder="e.g. admin@school.com" />
+        </Field>
+      </section>
+    </Dialog>
   );
 };
 

@@ -1,24 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Page } from '../App';
-import { ChevronDown, Trash2, Edit2, Plus, RotateCcw, Calendar, Clock, Settings2 } from 'lucide-react';
+import { Trash2, Pencil, Plus, Calendar, Clock, SlidersHorizontal, Building2, BadgeCheck, CalendarRange, Archive, Settings2 } from 'lucide-react';
 import api from '../api';
-import { confirmDialog } from './ui/feedback';
-import { PageHeader, Alert, LoadingState, EmptyState } from './ui';
+import { confirmDialog, notify } from './ui/feedback';
+import { PageHeader, Alert, DataList, Field, Badge } from './ui';
+import type { Column } from './ui';
+import { ChoiceList, BackBar, Dialog } from './school-setup';
 
 interface ConfigurationProps {
     navigateTo?: (page: Page) => void;
-}
-
-interface DropdownItem {
-    label: string;
-    onClick?: () => void;
-    disabled?: boolean;
-}
-
-interface DropdownProps {
-    title: string;
-    items: DropdownItem[];
-    isActive?: boolean;
 }
 
 interface BranchOption {
@@ -70,12 +60,12 @@ const WEEKDAYS = [
 ];
 
 const WEEK_OPTIONS = [
-    { value: null, label: 'Every Week' },
-    { value: 1, label: 'First Week' },
-    { value: 2, label: 'Second Week' },
-    { value: 3, label: 'Third Week' },
-    { value: 4, label: 'Fourth Week' },
-    { value: 5, label: 'Fifth Week' },
+    { value: null, label: 'Every week' },
+    { value: 1, label: 'First week of the month' },
+    { value: 2, label: 'Second week of the month' },
+    { value: 3, label: 'Third week of the month' },
+    { value: 4, label: 'Fourth week of the month' },
+    { value: 5, label: 'Fifth week of the month' },
 ];
 
 /** Resolve the user's current branch to a branch object */
@@ -91,46 +81,10 @@ function resolveCurrentBranch(branches: BranchOption[]): BranchOption | null {
     return branches[0]; // fallback to first branch
 }
 
-const NavDropdown: React.FC<DropdownProps> = ({ title, items, isActive }) => {
-    const [isOpen, setIsOpen] = useState(false);
-
-    return (
-        <div
-            className="relative"
-            onMouseEnter={() => setIsOpen(true)}
-            onMouseLeave={() => setIsOpen(false)}
-        >
-            <button className={`btn-primary ${isActive ? 'bg-brand-700' : ''}`}>
-                {title} <ChevronDown size={14} />
-            </button>
-
-            {isOpen && (
-                <div className="menu left-0 z-50 w-48">
-                    {items.map((item, idx) => (
-                        <button
-                            key={idx}
-                            onClick={() => {
-                                if (!item.disabled && item.onClick) {
-                                    item.onClick();
-                                    setIsOpen(false);
-                                }
-                            }}
-                            disabled={item.disabled}
-                            className={`menu-item ${item.disabled ? "text-slate-400 cursor-not-allowed hover:bg-transparent hover:text-slate-400" : "" }`}
-                        >
-                            {item.label}
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
 // ================================================================
 // WEEKOFF POLICY COMPONENT
 // ================================================================
-const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => {
+const WeekoffPolicy: React.FC<{ branches: BranchOption[]; onBack: () => void }> = ({ branches, onBack }) => {
     const [rules, setRules] = useState<WeekoffRule[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -142,6 +96,7 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
     const [selectedBranch, setSelectedBranch] = useState<number>(0);
     const [selectedClass, setSelectedClass] = useState<number | ''>(''); // '' = All Classes
     const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
+    const [showForm, setShowForm] = useState(false);
 
     // Auto-select current branch on mount
     useEffect(() => {
@@ -183,7 +138,7 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
 
     const handleSave = async () => {
         if (!selectedBranch) {
-            setMessage({ type: 'error', text: 'Please select a branch' });
+            setMessage({ type: 'error', text: 'Choose a branch first.' });
             return;
         }
         setSaving(true);
@@ -195,10 +150,11 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
                 branch_id: selectedBranch,
                 class_id: selectedClass || null,
             });
-            setMessage({ type: 'success', text: 'Weekoff rule created successfully!' });
+            setMessage({ type: 'success', text: 'Weekly day off saved.' });
+            setShowForm(false);
             fetchRules();
         } catch (err: any) {
-            const msg = err.response?.data?.error || 'Failed to create rule';
+            const msg = err.response?.data?.error || 'Could not save. Please try again.';
             setMessage({ type: 'error', text: msg });
         } finally {
             setSaving(false);
@@ -206,13 +162,13 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
     };
 
     const handleDelete = async (id: number) => {
-        if (!await confirmDialog('Are you sure you want to delete this weekoff rule?')) return;
+        if (!await confirmDialog('Delete this weekly day off?', { tone: 'danger', confirmText: 'Delete' })) return;
         try {
             await api.delete(`/config/weekoff/${id}`);
-            setMessage({ type: 'success', text: 'Rule deleted' });
+            setMessage({ type: 'success', text: 'Weekly day off deleted.' });
             fetchRules();
         } catch (err: any) {
-            setMessage({ type: 'error', text: 'Failed to delete rule' });
+            setMessage({ type: 'error', text: 'Could not delete. Please try again.' });
         }
     };
 
@@ -225,166 +181,118 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
         setMessage(null);
     };
 
+    const ruleColumns: Column<WeekoffRule>[] = [
+        { key: 'title', header: 'Day off', primary: true, render: r => <span className="font-medium text-slate-900">{r.title}</span> },
+        { key: 'branch_name', header: 'Branch', secondary: true },
+        {
+            key: 'actions', header: '', hideOnMobile: true, align: 'right', render: r => (
+                <button type="button" onClick={() => handleDelete(r.id)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50">
+                    <Trash2 size={15} /> Delete
+                </button>
+            ),
+        },
+    ];
+
+    const preview = `${selectedWeek === null ? 'Every' : WEEK_OPTIONS.find(o => o.value === selectedWeek)?.label?.split(' ')[0]} ${WEEKDAYS.find(d => d.value === selectedDay)?.label}${selectedWeek === null ? '' : ' of the month'}${selectedClass ? ` · Class ${classOptions.find(c => c.id === selectedClass)?.class_name}` : ' · All classes'}`;
+
     return (
         <div>
-            <div className="flex flex-wrap items-center gap-3 mb-6">
-                <Clock className="text-brand-600" size={22} />
-                <h2 className="text-base font-semibold text-slate-900">Week-off Policy</h2>
-                <span className="badge-brand">
-                    {rules.length} Rules
-                </span>
-            </div>
+            <BackBar
+                label="Settings"
+                onBack={onBack}
+                title="Weekly days off"
+                hint="Days the school is closed every week, like every Sunday or the second Saturday."
+                actions={
+                    <button type="button" onClick={() => { handleReset(); setShowForm(true); }} className="btn-primary">
+                        <Plus size={16} /> Add a weekly day off
+                    </button>
+                }
+            />
 
-            {message && (
+            {message && !showForm && (
                 <Alert tone={message.type} className="mb-4" onClose={() => setMessage(null)}>
                     {message.text}
                 </Alert>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Left: Form */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-900 mb-4">Add New Weekoff Rule</h3>
+            <DataList
+                columns={ruleColumns}
+                rows={rules}
+                rowKey={r => r.id}
+                loading={loading}
+                emptyTitle="No weekly days off yet"
+                emptyHint="Tap “Add a weekly day off” to add one, for example every Sunday."
+                mobileActions={r => (
+                    <button type="button" onClick={() => handleDelete(r.id)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50">
+                        <Trash2 size={15} /> Delete
+                    </button>
+                )}
+            />
 
-                    <div className="space-y-4">
-                        {/* Branch */}
-                        <div>
-                            <label className="label">Branch</label>
-                            <select
-                                value={selectedBranch}
-                                onChange={(e) => setSelectedBranch(Number(e.target.value))}
-                                className="input"
-                            >
-                                <option value={0}>--Select Branch--</option>
+            {showForm && (
+                <Dialog
+                    title="Add a weekly day off"
+                    onClose={() => { setShowForm(false); setMessage(null); }}
+                    footer={<>
+                        <button type="button" onClick={() => { setShowForm(false); setMessage(null); }} className="btn-secondary">Back</button>
+                        <button type="button" onClick={handleSave} disabled={saving || !selectedBranch} className="btn-primary">
+                            {saving ? 'Saving…' : 'Save day off'}
+                        </button>
+                    </>}
+                >
+                    {message && message.type === 'error' && <Alert tone="error">{message.text}</Alert>}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Branch" htmlFor="wo-branch" required>
+                            <select id="wo-branch" value={selectedBranch} onChange={(e) => setSelectedBranch(Number(e.target.value))} className="input">
+                                <option value={0}>Choose branch</option>
                                 {branches.map(b => (
                                     <option key={b.id} value={b.id}>{b.branch_name}</option>
                                 ))}
                             </select>
-                        </div>
-
-                        {/* Class */}
-                        <div>
-                            <label className="label">Class</label>
-                            <select
-                                value={selectedClass}
-                                onChange={(e) => setSelectedClass(e.target.value ? Number(e.target.value) : '')}
-                                className="input"
-                            >
-                                <option value="">All Classes</option>
+                        </Field>
+                        <Field label="Class" htmlFor="wo-class">
+                            <select id="wo-class" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value ? Number(e.target.value) : '')} className="input">
+                                <option value="">All classes</option>
                                 {classOptions.map(c => (
                                     <option key={c.id} value={c.id}>{c.class_name}</option>
                                 ))}
                             </select>
-                        </div>
-
-                        {/* Day */}
-                        <div>
-                            <label className="label">Day</label>
-                            <select
-                                value={selectedDay}
-                                onChange={(e) => setSelectedDay(Number(e.target.value))}
-                                className="input"
-                            >
-                                {WEEKDAYS.map(d => (
-                                    <option key={d.value} value={d.value}>{d.label}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Week Rule */}
-                        <div>
-                            <label className="label">Rule</label>
-                            <div className="space-y-2">
-                                {WEEK_OPTIONS.map(opt => (
-                                    <label key={String(opt.value)} className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="week_rule"
-                                            checked={selectedWeek === opt.value}
-                                            onChange={() => setSelectedWeek(opt.value)}
-                                            className="text-brand-600 focus:ring-brand-500"
-                                        />
-                                        <span className="text-sm text-slate-700">{opt.label}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Preview */}
-                        <div className="bg-brand-50 border border-brand-200 rounded-lg p-3">
-                            <span className="text-xs text-brand-500 font-medium">Preview:</span>
-                            <p className="text-sm font-semibold text-brand-700 mt-1">
-                                {selectedWeek === null ? 'Every' : WEEK_OPTIONS.find(o => o.value === selectedWeek)?.label?.replace(' Week', '')} – {WEEKDAYS.find(d => d.value === selectedDay)?.label}
-                                {selectedClass ? ` (${classOptions.find(c => c.id === selectedClass)?.class_name})` : ' (All Classes)'}
-                            </p>
-                        </div>
-
-                        {/* Buttons */}
-                        <div className="flex gap-3 pt-2">
-                            <button
-                                onClick={handleSave}
-                                disabled={saving}
-                                className="btn-primary flex-1"
-                            >
-                                <Plus size={16} />
-                                {saving ? 'Saving...' : 'Save Rule'}
-                            </button>
-                            <button
-                                onClick={handleReset}
-                                className="btn-secondary"
-                            >
-                                <RotateCcw size={16} />
-                                Reset
-                            </button>
-                        </div>
+                        </Field>
                     </div>
-                </div>
 
-                {/* Right: Table */}
-                <div>
-                    <h3 className="text-sm font-semibold text-slate-900 mb-4">Existing Rules</h3>
-                    {loading ? (
-                        <LoadingState />
-                    ) : rules.length === 0 ? (
-                        <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300">
-                            <EmptyState compact title="No weekoff rules configured yet" icon={<Clock size={24} />} />
+                    <Field label="Day" htmlFor="wo-day">
+                        <select id="wo-day" value={selectedDay} onChange={(e) => setSelectedDay(Number(e.target.value))} className="input">
+                            {WEEKDAYS.map(d => (
+                                <option key={d.value} value={d.value}>{d.label}</option>
+                            ))}
+                        </select>
+                    </Field>
+
+                    <fieldset>
+                        <legend className="block text-sm font-medium text-slate-800 mb-1.5">Which weeks?</legend>
+                        <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
+                            {WEEK_OPTIONS.map(opt => (
+                                <label key={String(opt.value)} className="flex items-center gap-3 px-4 min-h-[44px] cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="week_rule"
+                                        checked={selectedWeek === opt.value}
+                                        onChange={() => setSelectedWeek(opt.value)}
+                                        className="w-5 h-5 accent-brand-600"
+                                    />
+                                    <span className="text-[15px] text-slate-800">{opt.label}</span>
+                                </label>
+                            ))}
                         </div>
-                    ) : (
-                        <div className="card overflow-hidden">
-                            <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left">S.No</th>
-                                        <th className="px-4 py-3 text-left">Rule Title</th>
-                                        <th className="px-4 py-3 text-left">Branch</th>
-                                        <th className="px-4 py-3 text-center">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {rules.map((rule, idx) => (
-                                        <tr key={rule.id} className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 text-slate-600">{idx + 1}</td>
-                                            <td className="px-4 py-3 font-medium text-slate-800">{rule.title}</td>
-                                            <td className="px-4 py-3 text-slate-600">{rule.branch_name}</td>
-                                            <td className="px-4 py-3 text-center">
-                                                <button
-                                                    onClick={() => handleDelete(rule.id)}
-                                                    className="btn-icon h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-700"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
+                    </fieldset>
+
+                    <div className="bg-brand-50 border border-brand-200 rounded-lg p-3">
+                        <span className="text-sm text-brand-700">School will be closed on:</span>
+                        <p className="text-[15px] font-semibold text-brand-800 mt-0.5">{preview}</p>
+                    </div>
+                </Dialog>
+            )}
         </div>
     );
 };
@@ -392,7 +300,7 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
 // ================================================================
 // HOLIDAY POLICY COMPONENT
 // ================================================================
-const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => {
+const HolidayPolicy: React.FC<{ branches: BranchOption[]; onBack: () => void }> = ({ branches, onBack }) => {
     const [holidays, setHolidays] = useState<Holiday[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -409,6 +317,7 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
     const [selectedBranch, setSelectedBranch] = useState<number>(0);
     const [selectedClass, setSelectedClass] = useState<number | ''>(''); // '' = All Classes
     const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
+    const [showForm, setShowForm] = useState(false);
 
     // Auto-select current branch on mount
     useEffect(() => {
@@ -450,7 +359,7 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
 
     const handleSave = async () => {
         if (!title.trim() || !startDate || !endDate || !selectedBranch) {
-            setMessage({ type: 'error', text: 'Title, Start Date, End Date, and Branch are required' });
+            setMessage({ type: 'error', text: 'Please fill in the holiday name, first day, last day and branch.' });
             return;
         }
 
@@ -471,14 +380,17 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
             if (editingId) {
                 await api.put(`/config/holiday/${editingId}`, payload);
                 setMessage({ type: 'success', text: 'Holiday updated successfully!' });
+                notify.success('Holiday saved.');
             } else {
                 await api.post('/config/holiday', payload);
                 setMessage({ type: 'success', text: 'Holiday created successfully!' });
+                notify.success('Holiday added.');
             }
             handleReset();
+            setShowForm(false);
             fetchHolidays();
         } catch (err: any) {
-            const msg = err.response?.data?.error || 'Failed to save holiday';
+            const msg = err.response?.data?.error || 'Could not save the holiday. Please try again.';
             setMessage({ type: 'error', text: msg });
         } finally {
             setSaving(false);
@@ -495,16 +407,18 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
         setDisplayOrder(h.display_order || '');
         setSelectedBranch(h.branch_id);
         setSelectedClass(h.class_id || '');
+        setMessage(null);
+        setShowForm(true);
     };
 
     const handleDelete = async (id: number) => {
-        if (!await confirmDialog('Are you sure you want to delete this holiday?')) return;
+        if (!await confirmDialog('Delete this holiday?', { tone: 'danger', confirmText: 'Delete' })) return;
         try {
             await api.delete(`/config/holiday/${id}`);
-            setMessage({ type: 'success', text: 'Holiday deleted' });
+            setMessage({ type: 'success', text: 'Holiday deleted.' });
             fetchHolidays();
         } catch (err: any) {
-            setMessage({ type: 'error', text: 'Failed to delete holiday' });
+            setMessage({ type: 'error', text: 'Could not delete. Please try again.' });
         }
     };
 
@@ -533,228 +447,166 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
         return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     };
 
+    const forLabel = (f: string) => (f === 'All' ? 'Students and staff' : f === 'StudentOnly' ? 'Students only' : 'Staff only');
+    const forTone = (f: string) => (f === 'All' ? 'brand' : f === 'StudentOnly' ? 'success' : 'warning') as 'brand' | 'success' | 'warning';
+    const dateText = (h: Holiday) => h.start_date !== h.end_date ? `${formatDate(h.start_date)} – ${formatDate(h.end_date)}` : formatDate(h.start_date);
+    const closeForm = () => { setShowForm(false); handleReset(); };
+    const missing = !selectedBranch ? 'Choose a branch.' : !title.trim() ? 'Type the holiday name.' : !startDate ? 'Choose the first day.' : !endDate ? 'Choose the last day.' : '';
+
+    const rowActions = (h: Holiday) => (
+        <>
+            <button type="button" onClick={() => handleEdit(h)} className="btn-ghost btn-sm text-brand-700">
+                <Pencil size={15} /> Edit
+            </button>
+            <button type="button" onClick={() => handleDelete(h.id)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50">
+                <Trash2 size={15} /> Delete
+            </button>
+        </>
+    );
+
+    const holidayColumns: Column<Holiday>[] = [
+        {
+            key: 'title', header: 'Holiday', primary: true, render: h => (
+                <div>
+                    <div className="font-medium text-slate-900">{h.title}</div>
+                    {h.description && <div className="text-sm font-normal text-slate-500 mt-0.5">{h.description}</div>}
+                </div>
+            ),
+        },
+        { key: 'date', header: 'Date', secondary: true, render: h => dateText(h) },
+        { key: 'for', header: 'For', render: h => <Badge tone={forTone(h.holiday_for)}>{forLabel(h.holiday_for)}</Badge> },
+        { key: 'actions', header: '', hideOnMobile: true, align: 'right', render: h => <div className="flex justify-end gap-1">{rowActions(h)}</div> },
+    ];
+
     return (
         <div>
-            <div className="flex flex-wrap items-center gap-3 mb-6">
-                <Calendar className="text-brand-600" size={22} />
-                <h2 className="text-base font-semibold text-slate-900">Holiday Policy</h2>
-                <span className="badge-brand">
-                    {holidays.length} Holidays
-                </span>
-            </div>
+            <BackBar
+                label="Settings"
+                onBack={onBack}
+                title="Holidays"
+                hint="Days the school is closed, like festivals and vacations."
+                actions={
+                    <button type="button" onClick={() => { handleReset(); setShowForm(true); }} className="btn-primary">
+                        <Plus size={16} /> Add a holiday
+                    </button>
+                }
+            />
 
-            {message && (
+            {message && !showForm && (
                 <Alert tone={message.type} className="mb-4" onClose={() => setMessage(null)}>
                     {message.text}
                 </Alert>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Left: Form */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-900 mb-4">
-                        {editingId ? 'Edit Holiday' : 'Add New Holiday'}
-                    </h3>
+            <DataList
+                columns={holidayColumns}
+                rows={holidays}
+                rowKey={h => h.id}
+                loading={loading}
+                emptyTitle="No holidays yet"
+                emptyHint="Tap “Add a holiday” to add the first one."
+                mobileActions={rowActions}
+            />
 
-                    <div className="space-y-4">
-                        {/* Branch */}
-                        <div>
-                            <label className="label">Branch</label>
-                            <select
-                                value={selectedBranch}
-                                onChange={(e) => setSelectedBranch(Number(e.target.value))}
+            {showForm && (
+                <Dialog
+                    title={editingId ? 'Change holiday' : 'Add a holiday'}
+                    onClose={closeForm}
+                    footer={<>
+                        {missing && <p className="w-full text-sm text-slate-600 sm:flex-1 sm:w-auto">{missing}</p>}
+                        <button type="button" onClick={closeForm} className="btn-secondary">Back</button>
+                        <button type="button" onClick={handleSave} disabled={saving || !!missing} className="btn-primary">
+                            {saving ? 'Saving…' : 'Save holiday'}
+                        </button>
+                    </>}
+                >
+                    {message && message.type === 'error' && <Alert tone="error">{message.text}</Alert>}
+
+                    <Field label="Holiday name" htmlFor="hol-title" required>
+                        <input
+                            id="hol-title"
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="e.g. Republic Day, Eid"
+                            className="input"
+                        />
+                    </Field>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="First day" htmlFor="hol-start" required>
+                            <input
+                                id="hol-start"
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => {
+                                    setStartDate(e.target.value);
+                                    if (!endDate) setEndDate(e.target.value);
+                                }}
                                 className="input"
-                            >
-                                <option value={0}>--Select Branch--</option>
+                            />
+                        </Field>
+                        <Field label="Last day" htmlFor="hol-end" required hint="Same as the first day for a one-day holiday.">
+                            <input
+                                id="hol-end"
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                min={startDate}
+                                className="input"
+                            />
+                        </Field>
+                    </div>
+
+                    <Field label="Who gets the holiday?" htmlFor="hol-for">
+                        <select id="hol-for" value={holidayFor} onChange={(e) => setHolidayFor(e.target.value)} className="input">
+                            <option value="All">Students and staff</option>
+                            <option value="StudentOnly">Students only</option>
+                            <option value="StaffOnly">Staff only</option>
+                        </select>
+                    </Field>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="Branch" htmlFor="hol-branch" required>
+                            <select id="hol-branch" value={selectedBranch} onChange={(e) => setSelectedBranch(Number(e.target.value))} className="input">
+                                <option value={0}>Choose branch</option>
                                 {branches.map(b => (
                                     <option key={b.id} value={b.id}>{b.branch_name}</option>
                                 ))}
                             </select>
-                        </div>
-
-                        {/* Class */}
-                        <div>
-                            <label className="label">Class</label>
-                            <select
-                                value={selectedClass}
-                                onChange={(e) => setSelectedClass(e.target.value ? Number(e.target.value) : '')}
-                                className="input"
-                            >
-                                <option value="">All Classes</option>
+                        </Field>
+                        <Field label="Class" htmlFor="hol-class">
+                            <select id="hol-class" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value ? Number(e.target.value) : '')} className="input">
+                                <option value="">All classes</option>
                                 {classOptions.map(c => (
                                     <option key={c.id} value={c.id}>{c.class_name}</option>
                                 ))}
                             </select>
-                        </div>
-
-                        {/* Title */}
-                        <div>
-                            <label className="label">Holiday Title *</label>
-                            <input
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder="e.g. Republic Day, Eid-ul-Fitr"
-                                className="input"
-                            />
-                        </div>
-
-                        {/* Holiday For */}
-                        <div>
-                            <label className="label">Holiday For</label>
-                            <select
-                                value={holidayFor}
-                                onChange={(e) => setHolidayFor(e.target.value)}
-                                className="input"
-                            >
-                                <option value="All">All (Students & Staff)</option>
-                                <option value="StudentOnly">Students Only</option>
-                                <option value="StaffOnly">Staff Only</option>
-                            </select>
-                        </div>
-
-                        {/* Dates */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="label">Start Date *</label>
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => {
-                                        setStartDate(e.target.value);
-                                        if (!endDate) setEndDate(e.target.value);
-                                    }}
-                                    className="input"
-                                />
-                            </div>
-                            <div>
-                                <label className="label">End Date *</label>
-                                <input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    min={startDate}
-                                    className="input"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Display Order */}
-                        <div>
-                            <label className="label">Display Order</label>
-                            <input
-                                type="number"
-                                value={displayOrder}
-                                onChange={(e) => setDisplayOrder(e.target.value ? Number(e.target.value) : '')}
-                                placeholder="Optional ordering"
-                                className="input"
-                            />
-                        </div>
-
-                        {/* Description */}
-                        <div>
-                            <label className="label">Description</label>
-                            <textarea
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Optional description..."
-                                rows={2}
-                                className="input resize-none"
-                            />
-                        </div>
-
-                        {/* Buttons */}
-                        <div className="flex gap-3 pt-2">
-                            <button
-                                onClick={handleSave}
-                                disabled={saving}
-                                className="btn-primary flex-1"
-                            >
-                                <Plus size={16} />
-                                {saving ? 'Saving...' : (editingId ? 'Update Holiday' : 'Save Holiday')}
-                            </button>
-                            <button
-                                onClick={handleReset}
-                                className="btn-secondary"
-                            >
-                                <RotateCcw size={16} />
-                                Reset
-                            </button>
-                        </div>
+                        </Field>
                     </div>
-                </div>
 
-                {/* Right: Table */}
-                <div>
-                    <h3 className="text-sm font-semibold text-slate-900 mb-4">Holiday Calendar</h3>
-                    {loading ? (
-                        <LoadingState />
-                    ) : holidays.length === 0 ? (
-                        <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300">
-                            <EmptyState compact title="No holidays configured yet" icon={<Calendar size={24} />} />
-                        </div>
-                    ) : (
-                        <div className="card overflow-hidden">
-                            <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    <tr>
-                                        <th className="px-3 py-3 text-left">S.No</th>
-                                        <th className="px-3 py-3 text-left">Name</th>
-                                        <th className="px-3 py-3 text-left">Date</th>
-                                        <th className="px-3 py-3 text-left">For</th>
-                                        <th className="px-3 py-3 text-center">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {holidays.map((h, idx) => (
-                                        <tr key={h.id} className="hover:bg-slate-50">
-                                            <td className="px-3 py-3 text-slate-600">{idx + 1}</td>
-                                            <td className="px-3 py-3">
-                                                <div className="font-medium text-slate-800">{h.title}</div>
-                                                {h.description && <div className="text-xs text-slate-400 mt-0.5">{h.description}</div>}
-                                            </td>
-                                            <td className="px-3 py-3 text-slate-600 text-xs">
-                                                {formatDate(h.start_date)}
-                                                {h.start_date !== h.end_date && (
-                                                    <> – {formatDate(h.end_date)}</>
-                                                )}
-                                            </td>
-                                            <td className="px-3 py-3">
-                                                <span className={h.holiday_for === 'All' ? 'badge-brand'
-                                                    : h.holiday_for === 'StudentOnly' ? 'badge-success'
-                                                        : 'badge-warning'
-                                                    }>
-                                                    {h.holiday_for === 'All' ? 'All' : h.holiday_for === 'StudentOnly' ? 'Students' : 'Staff'}
-                                                </span>
-                                            </td>
-                                            <td className="px-3 py-3 text-center">
-                                                <div className="flex items-center justify-center gap-1">
-                                                    <button
-                                                        onClick={() => handleEdit(h)}
-                                                        className="btn-icon h-8 w-8 text-brand-600 hover:bg-brand-50 hover:text-brand-700"
-                                                        title="Edit"
-                                                    >
-                                                        <Edit2 size={15} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(h.id)}
-                                                        className="btn-icon h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-700"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 size={15} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
+                    <Field label="Note (optional)" htmlFor="hol-desc">
+                        <textarea
+                            id="hol-desc"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            rows={2}
+                            className="input resize-none"
+                        />
+                    </Field>
+
+                    <Field label="Position in list (optional)" htmlFor="hol-order" hint="Lower numbers are shown first.">
+                        <input
+                            id="hol-order"
+                            type="number"
+                            inputMode="numeric"
+                            value={displayOrder}
+                            onChange={(e) => setDisplayOrder(e.target.value ? Number(e.target.value) : '')}
+                            className="input"
+                        />
+                    </Field>
+                </Dialog>
+            )}
         </div>
     );
 };
@@ -762,9 +614,10 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[] }> = ({ branches }) => 
 // ================================================================
 // MAIN CONFIGURATION COMPONENT
 // ================================================================
+type ConfigSection = 'weekoff' | 'holiday';
+
 const Configuration: React.FC<ConfigurationProps> = () => {
-    const [activeTab, setActiveTab] = useState<string>('masters');
-    const [activeMaster, setActiveMaster] = useState<string | null>(null);
+    const [active, setActive] = useState<ConfigSection | null>(null);
     const [branches, setBranches] = useState<BranchOption[]>([]);
 
     // Fetch branches on mount
@@ -780,97 +633,48 @@ const Configuration: React.FC<ConfigurationProps> = () => {
         fetchBranches();
     }, []);
 
-    const handleMastersClick = (masterType: string) => {
-        setActiveTab('masters');
-        setActiveMaster(masterType);
-    };
+    const back = () => setActive(null);
 
     return (
-        <div className="min-h-full bg-slate-50 flex flex-col">
-            {/* Header */}
-            <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
-                    <PageHeader
-                        eyebrow="Setup"
-                        title="Configuration Management"
-                        className="mb-5"
-                        icon={
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                        }
-                        actions={<>
-                            <span className="text-sm text-brand-600 cursor-pointer hover:underline mr-2">Get Help</span>
-                            <NavDropdown
-                                title="Masters"
-                                isActive={activeTab === 'masters'}
-                                items={[
-                                    { label: "Departments", onClick: () => handleMastersClick("Departments") },
-                                    { label: "Designations", onClick: () => handleMastersClick("Designations") },
-                                    { label: "Week-off Policy", onClick: () => handleMastersClick("Week-off Policy") },
-                                    { label: "Holiday Policy", onClick: () => handleMastersClick("Holiday Policy") },
+        <div className="min-h-full bg-surface-muted">
+            <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-5 sm:py-6">
+                {active === null && (
+                    <>
+                        <PageHeader
+                            eyebrow="Setup"
+                            title="School settings"
+                            subtitle="Choose what you want to change."
+                            icon={<Settings2 className="w-6 h-6" />}
+                        />
+                        <div className="space-y-6">
+                            <ChoiceList
+                                title="Days off"
+                                choices={[
+                                    { key: 'weekoff', title: 'Weekly days off', hint: 'For example every Sunday, or the second Saturday', icon: <Clock className="w-5 h-5" />, onClick: () => setActive('weekoff') },
+                                    { key: 'holiday', title: 'Holidays', hint: 'Festivals, vacations and other closed days', icon: <Calendar className="w-5 h-5" />, onClick: () => setActive('holiday') },
                                 ]}
                             />
-                            <button
-                                onClick={() => { setActiveTab('settings'); setActiveMaster(null); }}
-                                className={activeTab === 'settings' ? 'btn-soft' : 'btn-ghost text-brand-600'}
-                            >
-                                Setting
-                            </button>
-                            <button
-                                onClick={() => { setActiveTab('academic-year'); setActiveMaster(null); }}
-                                className={activeTab === 'academic-year' ? 'btn-soft' : 'btn-ghost text-brand-600'}
-                            >
-                                Academic Year
-                            </button>
-                            <button
-                                onClick={() => { setActiveTab('export-data'); setActiveMaster(null); }}
-                                className={activeTab === 'export-data' ? 'btn-soft' : 'btn-ghost text-brand-600'}
-                            >
-                                Export Data From Old Academic Year
-                            </button>
-                        </>}
-                    />
-                </div>
-            </div>
+                            <ChoiceList
+                                title="Staff lists"
+                                choices={[
+                                    { key: 'departments', title: 'Departments', hint: 'Groups of staff, like Science or Office', icon: <Building2 className="w-5 h-5" />, comingSoon: true },
+                                    { key: 'designations', title: 'Job titles', hint: 'Like Teacher, Clerk or Principal', icon: <BadgeCheck className="w-5 h-5" />, comingSoon: true },
+                                ]}
+                            />
+                            <ChoiceList
+                                title="Other settings"
+                                choices={[
+                                    { key: 'settings', title: 'General settings', hint: 'Other options for the whole school', icon: <SlidersHorizontal className="w-5 h-5" />, comingSoon: true },
+                                    { key: 'academic-year', title: 'School years', hint: 'Start and end of each school year', icon: <CalendarRange className="w-5 h-5" />, comingSoon: true },
+                                    { key: 'export-data', title: 'Bring data from last year', hint: 'Copy data from an old school year', icon: <Archive className="w-5 h-5" />, comingSoon: true },
+                                ]}
+                            />
+                        </div>
+                    </>
+                )}
 
-            {/* Main Content Area */}
-            <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6">
-                <div className="card min-h-[500px] p-5">
-
-                    {/* Masters Tab */}
-                    {activeTab === 'masters' && !activeMaster && (
-                        <EmptyState className="mt-10" icon={<Settings2 className="w-6 h-6" />} title="Masters Configuration" description="Select a master from the dropdown to configure." />
-                    )}
-
-                    {activeTab === 'masters' && activeMaster === 'Week-off Policy' && (
-                        <WeekoffPolicy branches={branches} />
-                    )}
-
-                    {activeTab === 'masters' && activeMaster === 'Holiday Policy' && (
-                        <HolidayPolicy branches={branches} />
-                    )}
-
-                    {activeTab === 'masters' && activeMaster === 'Departments' && (
-                        <EmptyState className="mt-10" icon={<Settings2 className="w-6 h-6" />} title="Departments" description="Department management coming soon." />
-                    )}
-
-                    {activeTab === 'masters' && activeMaster === 'Designations' && (
-                        <EmptyState className="mt-10" icon={<Settings2 className="w-6 h-6" />} title="Designations" description="Designation management coming soon." />
-                    )}
-
-                    {/* Other Tabs */}
-                    {activeTab === 'settings' && (
-                        <EmptyState className="mt-10" icon={<Settings2 className="w-6 h-6" />} title="System Settings" description="General system configuration options will appear here." />
-                    )}
-                    {activeTab === 'academic-year' && (
-                        <EmptyState className="mt-10" icon={<Settings2 className="w-6 h-6" />} title="Academic Year Settings" description="Manage academic years here." />
-                    )}
-                    {activeTab === 'export-data' && (
-                        <EmptyState className="mt-10" icon={<Settings2 className="w-6 h-6" />} title="Export Data" description="Export data from previous academic years." />
-                    )}
-                </div>
+                {active === 'weekoff' && <WeekoffPolicy branches={branches} onBack={back} />}
+                {active === 'holiday' && <HolidayPolicy branches={branches} onBack={back} />}
             </div>
         </div>
     );

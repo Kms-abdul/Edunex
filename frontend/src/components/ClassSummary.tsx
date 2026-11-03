@@ -1,7 +1,9 @@
 import * as XLSX from 'xlsx';
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { LoadingState, EmptyState } from './ui';
+import { FileSpreadsheet, Printer } from 'lucide-react';
+import { LoadingState, EmptyState, Badge, Field } from './ui';
+import { PhoneLink } from './students/common';
 import CreateStudent from './CreateStudent';
 
 // ---------------------------------------------------------------------------
@@ -173,77 +175,105 @@ const ClassSummary: React.FC<{ onBack: () => void }> = () => {
     // Else -> total count
     const recordCount = students.length;
 
-    const renderLeftSidebar = () => {
-        if (!summary) return <div className="card h-full"><LoadingState label="Loading inputs..." /></div>;
+    const STATUS_FILTERS = ['All', 'Active', 'Inactive', 'TC'];
+    const statusCount = (f: string) => (!summary ? 0 : f === 'All' ? summary.stats.total : (summary.stats.by_status[f] || 0));
+    const statusName = (f: string) => (f === 'All' ? 'All students' : f === 'TC' ? 'Left (TC)' : f);
 
-        const filters = ['All', 'Active', 'Inactive', 'TC'];
+    const statusBadge = (status: string) => (
+        <Badge tone={status === 'Active' ? 'success' : status === 'Inactive' ? 'danger' : 'warning'}>
+            {status === 'TC' ? 'Left (TC)' : status}
+        </Badge>
+    );
+
+    /** Phones and tablets: one simple filter card */
+    const renderMobileFilters = () => {
+        if (!summary) return <div className="card lg:hidden mb-4"><LoadingState label="Loading classes…" /></div>;
+        return (
+            <div className="card p-4 mb-4 space-y-4 lg:hidden print:hidden">
+                <div>
+                    <p className="label">Show</p>
+                    <div className="flex flex-wrap gap-2">
+                        {STATUS_FILTERS.map(f => (
+                            <button
+                                key={f}
+                                type="button"
+                                aria-pressed={statusFilter === f}
+                                onClick={() => setStatusFilter(f)}
+                                className={`min-h-[40px] px-3 rounded-full border text-sm font-medium ${statusFilter === f ? 'bg-brand-600 text-brand-contrast border-brand-600' : 'bg-white text-slate-700 border-slate-300'}`}
+                            >
+                                {statusName(f)} · {statusCount(f)}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="Class" htmlFor="cs-class">
+                        <select
+                            id="cs-class"
+                            className="input"
+                            value={selectedClass || ''}
+                            onChange={(e) => { setSelectedClass(e.target.value || null); setSelectedSection(null); }}
+                        >
+                            <option value="">Choose class</option>
+                            {summary.structure.map(c => <option key={c.name} value={c.name}>{c.name} ({c.count})</option>)}
+                        </select>
+                    </Field>
+                    <Field label="Section" htmlFor="cs-section">
+                        <select
+                            id="cs-section"
+                            className="input"
+                            value={selectedSection || ''}
+                            disabled={!selectedClassObject}
+                            onChange={(e) => setSelectedSection(e.target.value || null)}
+                        >
+                            <option value="">{selectedClassObject ? `All sections (${selectedClassObject.count})` : 'Choose a class first'}</option>
+                            {selectedClassObject?.sections.map(sec => <option key={sec.name} value={sec.name}>{sec.name} ({sec.count})</option>)}
+                        </select>
+                    </Field>
+                </div>
+            </div>
+        );
+    };
+
+    const renderLeftSidebar = () => {
+        if (!summary) return <div className="card h-full"><LoadingState label="Loading classes…" /></div>;
 
         return (
-            <div className="card h-full flex flex-col print:hidden">
-                {/* Status Dropdown / List */}
-                <div className="p-2 border-b bg-white">
-                    {/* Dropdown for Status */}
-                    <div className="relative mb-2">
-                        <select
-                            className="input font-medium"
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
+            <div className="card h-full flex flex-col overflow-hidden print:hidden">
+                <div className="p-2 border-b border-slate-100 space-y-1">
+                    {STATUS_FILTERS.map(f => (
+                        <button
+                            key={f}
+                            type="button"
+                            onClick={() => setStatusFilter(f)}
+                            className={`w-full flex justify-between items-center px-3 py-2 rounded-lg text-sm ${statusFilter === f ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-slate-700 hover:bg-slate-50'}`}
                         >
-                            {filters.map(f => <option key={f} value={f}>{f}</option>)}
-                        </select>
-                    </div>
-
-                    {/* Status Summary List */}
-                    <div className="grid grid-cols-1 border border-gray-200 rounded-md overflow-hidden text-sm">
-                        {/* Status Items mimicking list group */}
-                        {/* Header Total */}
-                        <div
-                            className="bg-slate-50 text-slate-800 text-sm border-b border-slate-200 rounded-t-xl flex justify-between p-2 cursor-pointer"
-                            onClick={() => setStatusFilter('All')}
-                        >
-                            <span className="font-semibold">All</span>
-                            <span className="font-bold">{summary.stats.total}</span>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 border border-gray-200 mt-2 rounded-md overflow-hidden text-sm divide-y">
-                        <div className="flex justify-between px-3 py-2 bg-white hover:bg-gray-50 cursor-pointer text-gray-600" onClick={() => setStatusFilter('Active')}>
-                            <span>Active</span>
-                            <span>{summary.stats.by_status['Active'] || 0}</span>
-                        </div>
-                        <div className="flex justify-between px-3 py-2 bg-white hover:bg-gray-50 cursor-pointer text-gray-600" onClick={() => setStatusFilter('Inactive')}>
-                            <span>Inactive</span>
-                            <span>{summary.stats.by_status['Inactive'] || 0}</span>
-                        </div>
-                        <div className="flex justify-between px-3 py-2 bg-white hover:bg-gray-50 cursor-pointer text-gray-600" onClick={() => setStatusFilter('TC')}>
-                            <span>TC</span>
-                            <span>{summary.stats.by_status['TC'] || 0}</span>
-                        </div>
-                    </div>
+                            <span>{statusName(f)}</span>
+                            <span className="font-semibold">{statusCount(f)}</span>
+                        </button>
+                    ))}
                 </div>
 
-                {/* Class List Table Header (Fake) */}
-                <div className="bg-gray-50 border-b px-3 py-2 flex justify-between text-xs font-bold text-gray-500 uppercase tracking-wider">
+                <div className="bg-slate-50 border-b border-slate-100 px-3 py-2 flex justify-between text-xs font-semibold text-slate-500">
                     <span>Class</span>
-                    <span>Total</span>
+                    <span>Students</span>
                 </div>
 
-                {/* Class List */}
                 <div className="flex-1 overflow-y-auto">
-                    <table className="w-full text-sm text-left">
-                        <tbody className="divide-y divide-gray-100">
-                            {summary.structure.map(c => (
-                                <tr
-                                    key={c.name}
+                    <ul className="divide-y divide-slate-100 text-sm">
+                        {summary.structure.map(c => (
+                            <li key={c.name}>
+                                <button
+                                    type="button"
                                     onClick={() => { setSelectedClass(c.name); setSelectedSection(null); }}
-                                    className={`cursor-pointer transition-colors ${selectedClass === c.name ? 'bg-brand-50' : 'hover:bg-slate-50'}`}
+                                    className={`w-full flex justify-between px-3 py-2.5 text-left transition-colors ${selectedClass === c.name ? 'bg-brand-50 text-brand-700' : 'text-slate-700 hover:bg-slate-50'}`}
                                 >
-                                    <td className={`px-3 py-2.5 font-medium ${selectedClass === c.name ? 'text-brand-700' : 'text-slate-700'}`}>{c.name}</td>
-                                    <td className={`px-3 py-2.5 text-right font-semibold ${selectedClass === c.name ? 'text-brand-700' : 'text-brand-500'}`}>{c.count}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                    <span className="font-medium">{c.name}</span>
+                                    <span className="font-semibold">{c.count}</span>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
                 </div>
             </div>
         );
@@ -252,62 +282,40 @@ const ClassSummary: React.FC<{ onBack: () => void }> = () => {
     const renderMiddleSidebar = () => {
         if (!selectedClass || !selectedClassObject) return (
             <div className="card h-full flex items-center justify-center print:hidden">
-                <EmptyState compact title="Select Class" />
+                <EmptyState compact title="Choose a class" />
             </div>
         );
 
         return (
-            <div className="card h-full flex flex-col border-green-100 print:hidden">
-                {/* Header Style Match: Green icons and text */}
-                <div className="p-3 border-b border-green-100 flex justify-between items-center text-green-700 bg-white">
-                    <div className="flex items-center gap-2">
-                        {/* Icon placeholder */}
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                        <span className="font-bold text-lg">Section</span>
-                    </div>
-
-                    {/* Refresh Icon */}
-                    <button className="text-green-600 hover:text-green-800" title="Refresh">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    </button>
+            <div className="card h-full flex flex-col overflow-hidden print:hidden">
+                <div className="bg-slate-50 border-b border-slate-100 px-3 py-2 flex justify-between text-xs font-semibold text-slate-500">
+                    <span>Section</span>
+                    <span>Students</span>
                 </div>
-
-                {/* Table Header */}
-                <div className="bg-gray-50 border-b px-3 py-2 flex justify-between text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    <span>Total</span>
-                    <span>{selectedClassObject.count}</span>
-                </div>
-
-                <div className="flex-1 overflow-y-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="border-b hidden">
-                            <tr>
-                                <th className="px-3 py-2">Section</th>
-                                <th className="px-3 py-2 text-right">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-green-50">
-                            <tr
-                                onClick={() => setSelectedSection(null)}
-                                className={`cursor-pointer transition-colors ${selectedSection === null ? 'bg-green-100' : 'hover:bg-green-50'}`}
+                <ul className="flex-1 overflow-y-auto divide-y divide-slate-100 text-sm">
+                    <li>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedSection(null)}
+                            className={`w-full flex justify-between px-3 py-2.5 text-left ${selectedSection === null ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-slate-700 hover:bg-slate-50'}`}
+                        >
+                            <span>All sections</span>
+                            <span>{selectedClassObject.count}</span>
+                        </button>
+                    </li>
+                    {selectedClassObject.sections.map(sec => (
+                        <li key={sec.name}>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedSection(sec.name)}
+                                className={`w-full flex justify-between px-3 py-2.5 text-left ${selectedSection === sec.name ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-slate-700 hover:bg-slate-50'}`}
                             >
-                                <td className="px-3 py-2.5 font-medium text-gray-700">All</td>
-                                <td className="px-3 py-2.5 text-right text-gray-600">{selectedClassObject.count}</td>
-                            </tr>
-                            {selectedClassObject.sections.map(s => (
-                                <tr
-                                    key={s.name}
-                                    onClick={() => setSelectedSection(s.name)}
-                                    // Highlight style: darker green background/border
-                                    className={`cursor-pointer transition-colors ${selectedSection === s.name ? 'bg-lime-100 border-l-4 border-lime-500' : 'hover:bg-green-50 border-l-4 border-transparent'}`}
-                                >
-                                    <td className="px-3 py-2.5 font-semibold text-gray-700">{s.name}</td>
-                                    <td className="px-3 py-2.5 text-right text-brand-600 font-bold">{s.count}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                <span>{sec.name}</span>
+                                <span className="font-semibold">{sec.count}</span>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
             </div>
         );
     };
@@ -316,96 +324,114 @@ const ClassSummary: React.FC<{ onBack: () => void }> = () => {
         if (viewMode === 'create') {
             return (
                 <div className="card h-full p-4 overflow-y-auto">
-                    <button onClick={() => setViewMode('summary')} className="mb-4 btn-ghost btn-sm">← Back to List</button>
+                    <button onClick={() => setViewMode('summary')} className="mb-4 btn-ghost btn-sm">← Back to list</button>
                     <CreateStudent mode="create" onSave={() => { setViewMode('summary'); fetchStudents(); fetchSummary(); }} onCancel={() => setViewMode('summary')} />
                 </div>
             )
         }
 
+        if (!selectedClass) {
+            return (
+                <div className="card h-full flex items-center justify-center print:hidden">
+                    <EmptyState title="Choose a class to see its students." description="Pick a class from the list. You can then pick a section, search, or download the list." />
+                </div>
+            );
+        }
+
         return (
             <div className="h-full flex flex-col gap-4 print:h-auto print:block">
-              
-                {/* Main Content Card */}
                 <div className="card flex-1 flex flex-col overflow-hidden print:shadow-none print:h-auto">
-                    {/* Sub Header */}
-                    <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center flex-wrap gap-2 print:bg-white print:border-none">
-                        <div className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                            {selectedClass || "All Classes"} {selectedSection || ""}
-                            <span className="text-sm text-slate-500 font-normal ml-2">Records : {recordCount}</span>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-4 print:hidden">
-                            {/* Gender Stats instead of Pagination */}
-                            <div className="flex items-center gap-2 text-sm font-medium">
-                                <div className="badge-success text-xs px-3 py-1">
-                                    Males: {totalMales}
+                    {/* Title, counts and tools */}
+                    <div className="px-4 sm:px-5 py-3 bg-slate-50 border-b border-slate-200 space-y-3 print:bg-white print:border-none">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <div className="text-base font-semibold text-slate-900">
+                                    Class {selectedClass} {selectedSection || ""}
                                 </div>
-                                <div className="badge-warning text-xs px-3 py-1">
-                                    Females: {totalFemales}
+                                <div className="text-sm text-slate-600">
+                                    {recordCount} student{recordCount === 1 ? '' : 's'} · {totalMales} boys · {totalFemales} girls
                                 </div>
                             </div>
-
-                            <div className="flex items-center gap-2 ml-4">
-                                <button title="Excel" onClick={exportToExcel} className="btn-icon h-8 w-8 text-emerald-600 hover:text-emerald-800"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></button>
-                                <button title="PDF" onClick={handlePrint} className="btn-icon h-8 w-8 text-red-500 hover:text-red-700"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg></button>
-                            </div>
-
-                            <div className="relative">
-                                <input
-                                    className="input rounded-full w-48"
-                                    placeholder="Search"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                />
+                            <div className="flex items-center gap-2 print:hidden">
+                                <button type="button" onClick={exportToExcel} className="btn-secondary btn-sm">
+                                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Excel
+                                </button>
+                                <button type="button" onClick={handlePrint} className="btn-secondary btn-sm">
+                                    <Printer className="w-4 h-4" /> Print
+                                </button>
                             </div>
                         </div>
+                        <input
+                            type="search"
+                            className="input sm:max-w-xs print:hidden"
+                            placeholder="Search students"
+                            aria-label="Search students"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
                     </div>
 
-                    {/* Table */}
-                    <div className="flex-1 overflow-auto print:overflow-visible">
+                    {/* Phones: cards */}
+                    <div className="md:hidden print:hidden p-3">
+                        {studentLoading ? (
+                            <LoadingState label="Loading students…" />
+                        ) : students.length === 0 ? (
+                            <EmptyState compact title="No students found" description="Try another section or clear the search." />
+                        ) : (
+                            <ul className="space-y-2.5">
+                                {students.map(st => (
+                                    <li key={st.id} className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <div className="text-[15px] font-semibold text-slate-900 break-words">{st.name}</div>
+                                                <div className="text-sm text-slate-500">Class {st.class} {st.section} · Roll No. {st.rollNo || '—'}</div>
+                                            </div>
+                                            {statusBadge(st.status)}
+                                        </div>
+                                        <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                                            <div><dt className="text-xs text-slate-500">Admission number</dt><dd className="text-slate-800 break-words">{st.admNo || '—'}</dd></div>
+                                            <div><dt className="text-xs text-slate-500">Father's name</dt><dd className="text-slate-800 break-words">{st.father || '—'}</dd></div>
+                                            <div className="col-span-2"><dt className="text-xs text-slate-500">Phone</dt><dd><PhoneLink phone={st.fatherMobile} /></dd></div>
+                                        </dl>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
+                    {/* Wide screens and print: table */}
+                    <div className="hidden md:block print:block flex-1 overflow-auto print:overflow-visible">
                         <table className="min-w-full text-sm divide-y divide-gray-200">
                             <thead className="bg-slate-50 text-slate-600 print:bg-white print:border-b-2 print:border-black">
                                 <tr>
-                                    <th className="px-4 py-3 text-left w-12">#</th>
-                                    <th className="px-4 py-3 text-left">Roll</th>
+                                    <th className="px-4 py-3 text-left w-12">No.</th>
+                                    <th className="px-4 py-3 text-left">Roll No.</th>
                                     <th className="px-4 py-3 text-left">Status</th>
                                     <th className="px-4 py-3 text-left">Name</th>
                                     <th className="px-4 py-3 text-left">Class</th>
-                                    <th className="px-4 py-3 text-left">Adm.No.</th>
-                                    <th className="px-4 py-3 text-left">Father Name</th>
-                                    <th className="px-4 py-3 text-left">PhoneNumber</th>
+                                    <th className="px-4 py-3 text-left">Admission No.</th>
+                                    <th className="px-4 py-3 text-left">Father's name</th>
+                                    <th className="px-4 py-3 text-left">Phone</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white">
                                 {studentLoading ? (
-                                    <tr><td colSpan={8}><LoadingState label="Loading students data..." /></td></tr>
+                                    <tr><td colSpan={8}><LoadingState label="Loading students…" /></td></tr>
                                 ) : students.length === 0 ? (
                                     <tr><td colSpan={8}>
-                                        <EmptyState compact title="No students found" description="Try adjusting filters or search" />
+                                        <EmptyState compact title="No students found" description="Try another section or clear the search." />
                                     </td></tr>
                                 ) : (
-                                    students.map((s, index) => (
-                                        <tr key={s.id} className="hover:bg-brand-50 group transition-colors">
-                                            <td className="px-4 py-3 font-mono text-gray-500">{index + 1}</td>
-                                            <td className="px-4 py-3 text-gray-600 font-medium">{s.rollNo || '-'}</td>
-                                            <td className="px-4 py-3">
-                                                {/* Squares for Status (P/N/etc) */}
-                                                {s.status === 'Active' ? (
-                                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded shadow-sm bg-orange-400 text-white text-xs font-bold" title="Present/Active">P</span>
-                                                ) : s.status === 'Inactive' ? (
-                                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded shadow-sm bg-red-500 text-white text-xs font-bold" title="Inactive">I</span>
-                                                ) : (
-                                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded shadow-sm bg-green-500 text-white text-xs font-bold" title={s.status}>{s.status?.[0]}</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="font-medium text-brand-600 group-hover:underline cursor-pointer">{s.name}</div>
-                                                {s.status === 'Inactive' && <div className="text-xs text-red-500 mt-0.5">(InActive)</div>}
-                                            </td>
-                                            <td className="px-4 py-3 text-gray-700 font-semibold">{s.class} {s.section}</td>
-                                            <td className="px-4 py-3 text-gray-600 font-mono text-xs">{s.admNo}</td>
-                                            <td className="px-4 py-3 text-gray-700">{s.father}</td>
-                                            <td className="px-4 py-3 text-gray-600 text-sm">{s.fatherMobile}</td>
+                                    students.map((st, index) => (
+                                        <tr key={st.id} className="hover:bg-slate-50">
+                                            <td className="px-4 py-3 text-gray-500">{index + 1}</td>
+                                            <td className="px-4 py-3 text-gray-600 font-medium">{st.rollNo || '-'}</td>
+                                            <td className="px-4 py-3">{statusBadge(st.status)}</td>
+                                            <td className="px-4 py-3 font-medium text-slate-900">{st.name}</td>
+                                            <td className="px-4 py-3 text-gray-700 font-semibold">{st.class} {st.section}</td>
+                                            <td className="px-4 py-3 text-gray-600">{st.admNo}</td>
+                                            <td className="px-4 py-3 text-gray-700">{st.father}</td>
+                                            <td className="px-4 py-3 text-gray-600 text-sm">{st.fatherMobile}</td>
                                         </tr>
                                     ))
                                 )}
@@ -418,20 +444,23 @@ const ClassSummary: React.FC<{ onBack: () => void }> = () => {
     };
 
     return (
-        <div className="flex h-full gap-4 p-4 overflow-hidden bg-surface-muted print:bg-white print:p-0 print:h-auto print:overflow-visible">
-            {/* Left Sidebar - 20% */}
-            <div className="w-1/5 min-w-[200px] flex-shrink-0 print:hidden">
-                {renderLeftSidebar()}
-            </div>
+        <div className="p-4 bg-surface-muted lg:h-full lg:flex lg:flex-col lg:overflow-hidden print:block print:bg-white print:p-0 print:h-auto print:overflow-visible">
+            {renderMobileFilters()}
+            <div className="lg:flex lg:flex-1 lg:min-h-0 gap-4 print:block print:h-auto">
+                {/* Desktop: status + class list */}
+                <div className="hidden lg:block w-1/5 min-w-[200px] flex-shrink-0 print:hidden">
+                    {renderLeftSidebar()}
+                </div>
 
-            {/* Middle Sidebar - 15% */}
-            <div className="w-[15%] min-w-[150px] flex-shrink-0 print:hidden">
-                {renderMiddleSidebar()}
-            </div>
+                {/* Desktop: sections */}
+                <div className="hidden lg:block w-[15%] min-w-[150px] flex-shrink-0 print:hidden">
+                    {renderMiddleSidebar()}
+                </div>
 
-            {/* Main Content - Rest */}
-            <div className="flex-1 min-w-0 print:w-full">
-                {renderStudentList()}
+                {/* Students */}
+                <div className="flex-1 min-w-0 print:w-full">
+                    {renderStudentList()}
+                </div>
             </div>
         </div>
     );

@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { School, Plus, ArrowUpDown, ChevronUp, ChevronDown, Pencil, Trash2, RotateCcw, Copy } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { notify, confirmDialog } from './ui/feedback';
-import { PageHeader, LoadingState, EmptyState } from './ui';
+import { PageHeader, EmptyState, DataList, Field, ActionBar } from './ui';
+import type { Column } from './ui';
+import { openWithIntent } from '../utils/intent';
+import { Dialog, BackBar } from './school-setup';
 
 interface Branch {
     id: number;
@@ -60,7 +64,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
     // Copy Feature State
     const [copyTargets, setCopyTargets] = useState<Set<string>>(new Set());
     const [isCopyDropdownOpen, setIsCopyDropdownOpen] = useState(false);
-    const copyDropdownRef = useRef<HTMLDivElement>(null);
+    const formRef = useRef<HTMLDivElement>(null);
     const [copying, setCopying] = useState(false);
 
     // Order Modal State
@@ -113,7 +117,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
     const handleSaveOrder = async () => {
         if (!orderBranchId || orderBranchId === 'all') {
-            notify("Please select a valid branch");
+            notify.error("Choose a branch first.");
             return;
         }
         setSavingOrder(true);
@@ -122,7 +126,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
                 branch_id: parseInt(orderBranchId),
                 class_ids: orderClasses.map(c => c.id)
             });
-            notify("Display order saved successfully!");
+            notify.success("Class order saved.");
             setIsOrderModalOpen(false);
             fetchMasterClasses();
             fetchClassSummary();
@@ -133,19 +137,6 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
             setSavingOrder(false);
         }
     };
-
-    // Close dropdown on outside click
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (copyDropdownRef.current && !copyDropdownRef.current.contains(event.target as Node)) {
-                setIsCopyDropdownOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
 
     // Mock data for list view
     const mockClasses: ClassData[] = [
@@ -262,11 +253,11 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
     const handleSaveClass = async () => {
         if (!newClassName.trim()) {
-            notify("Class Name is required");
+            notify.error("Type the class name first.");
             return;
         }
         if (!selectedBranch) {
-            notify("Please select a branch");
+            notify.error("Pick a branch at the top of the screen first.");
             return;
         }
 
@@ -276,26 +267,26 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
         })).filter(s => s.name && s.strength > 0);
 
         if (sectionsPayload.length === 0) {
-            notify("Please add at least one valid section with strength");
+            notify.error("Add at least one section with its number of students.");
             return;
         }
 
         const payload = {
             class_name: newClassName,
             branch_id: parseInt(selectedBranch),
-            academic_year: localStorage.getItem('academicYear') || "2025-26",
+            academic_year: localStorage.getItem('academicYear') || "2026-2027",
             sections: sectionsPayload
         };
 
         try {
             await api.post('/classes/create_with_sections', payload);
-            notify("Class saved successfully!");
+            notify.success("Class saved.");
             handleReset();
             // Refresh summary with current selection
             fetchClassSummary();
         } catch (error: any) {
             console.error("Save failed", error);
-            notify(error.response?.data?.error || "Failed to save class");
+            notify.error(error.response?.data?.error || "Could not save the class. Please try again.");
         }
     };
 
@@ -323,6 +314,12 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
         }
     };
 
+    /** Fill the form with a class and bring the form into view (it may be off-screen on phones). */
+    const editAndScroll = (cls: ClassData) => {
+        handleEditClass(cls);
+        setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+    };
+
     // Copy Targets Logic
     const toggleCopyTarget = (branchId: string) => {
         const newTargets = new Set(copyTargets);
@@ -336,16 +333,16 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
 
     const handleCopyBranchStructure = async () => {
         if (!selectedBranch || selectedBranch === 'all' || selectedBranch === '') {
-            notify("Please select a specific Source Branch first (not 'All').");
+            notify.error("Pick one branch at the top of the screen first (not 'All').");
             return;
         }
 
         if (copyTargets.size === 0) {
-            notify("Please select at least one target branch.");
+            notify.error("Tick at least one branch to copy to.");
             return;
         }
 
-        if (!await confirmDialog(`Are you sure you want to copy ALL classes and sections from the current branch to ${copyTargets.size} other branches?`)) {
+        if (!await confirmDialog(`Copy all classes and sections from this branch to ${copyTargets.size} other branch${copyTargets.size === 1 ? '' : 'es'}?`, { confirmText: 'Yes, copy' })) {
             return;
         }
 
@@ -358,7 +355,7 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
             };
 
             const res = await api.post('/classes/copy_branch_structure', payload);
-            notify(`Copy Successful!\nCopied Sections: ${res.data.copied_sections}\nSkipped (Existing): ${res.data.skipped_sections}`);
+            notify.success(`Copied. ${res.data.copied_sections} section(s) added, ${res.data.skipped_sections} already there.`);
             setCopyTargets(new Set());
             setIsCopyDropdownOpen(false);
             // Refresh to show changes if we copied to a branch we might switch to? 
@@ -383,520 +380,404 @@ const ClassesManagement: React.FC<ClassesManagementProps> = ({ navigateTo }) => 
     });
 
 
-    // Removed unused userRole
+    const currentBranchName = branches.find(b => String(b.id) === selectedBranch)?.branch_name || '';
+    const validSections = sections.filter(s => s.name && (parseInt(s.studentStrength) || 0) > 0).length;
+    const saveNote = !newClassName.trim() ? 'Type the class name.'
+        : !selectedBranch ? 'Pick a branch at the top of the screen first.'
+        : validSections === 0 ? 'Add at least one section with its number of students.'
+        : `Saves class ${newClassName.trim()} with ${validSections} section${validSections === 1 ? '' : 's'}.`;
+
+    const listColumns: Column<ClassData>[] = [
+        { key: 'class_name', header: 'Class', primary: true, render: c => <span className="font-medium text-slate-900">{c.class_name}</span> },
+        { key: 'class_teacher', header: 'Class teacher', render: c => c.class_teacher || '—' },
+        { key: 'class_monitor', header: 'Class monitor', render: c => c.class_monitor || '—' },
+        { key: 'total_students', header: 'Students', render: c => c.total_students ?? '—' },
+        { key: 'actions', header: 'Actions', hideOnMobile: true, render: () => rowActions() },
+    ];
+
+    const rowActions = () => (
+        <>
+            <button type="button" className="btn-secondary btn-sm" disabled title={SOON}>
+                Give roll numbers
+            </button>
+            <button
+                type="button"
+                className="btn-secondary btn-sm"
+                disabled={!canOpenTimetable}
+                title={canOpenTimetable ? 'Opens Timetable › Choose teachers for subjects' : 'You need access to subject teachers'}
+                onClick={() => openWithIntent(navigateTo!, 'timetable', 'subject-teacher')}
+            >
+                Subject teachers
+            </button>
+            <button type="button" className="btn-secondary btn-sm" disabled title={SOON}>
+                Class monitor
+            </button>
+        </>
+    );
+
     // List View - First screen
     if (viewMode === 'list') {
         return (
             <div className="min-h-full bg-surface-muted p-4 sm:p-6">
                 <div className="w-full">
-                    {/* Header Section */}
                     <PageHeader
                         title="Classes"
-                        icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                </svg>}
+                        subtitle="All classes and sections of your school."
+                        icon={<School className="w-6 h-6" />}
                         actions={(
-                        <>
-                            {navigateTo && (
-                                <button type="button" onClick={() => navigateTo('staffsupport')} className="btn-ghost text-brand-600">
-                                    Get Help
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => setViewMode('create')}
+                                    className="btn-primary"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Add or change classes
                                 </button>
-                            )}
-                            <button type="button" className="btn-primary" disabled title={SOON}>
-                                Assign Class Teachers
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setOrderBranchId(selectedBranch || (branches.length > 0 ? branches[0].id.toString() : ''));
-                                    setIsOrderModalOpen(true);
-                                }}
-                                className="btn-primary"
-                            >
-                                Assign Display Order
-                            </button>
-                            <button
-                                onClick={() => setViewMode('create')}
-                                className="btn-primary"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
-                                Add/Edit Class
-                            </button>
-                        </>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setOrderBranchId(selectedBranch || (branches.length > 0 ? branches[0].id.toString() : ''));
+                                        setIsOrderModalOpen(true);
+                                    }}
+                                    className="btn-secondary"
+                                >
+                                    <ArrowUpDown className="w-4 h-4" />
+                                    Change class order
+                                </button>
+                                <button type="button" className="btn-secondary" disabled title={SOON}>
+                                    Choose class teachers
+                                </button>
+                                {navigateTo && (
+                                    <button type="button" onClick={() => navigateTo('staffsupport')} className="btn-ghost text-brand-700">
+                                        Get help
+                                    </button>
+                                )}
+                            </>
                         )}
                     />
 
-                    {/* Filters Section */}
-                    <div className="card p-4 mb-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                            <div className="flex-1">
-                                <label className="label">
-                                    Class Selection
-                                </label>
+                    {/* Filters */}
+                    <div className="card p-4 mb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 sm:items-end">
+                            <Field label="Class" htmlFor="cm-filter-class">
                                 <select
+                                    id="cm-filter-class"
                                     value={selectedClass}
                                     onChange={(e) => setSelectedClass(e.target.value)}
                                     className="input"
                                 >
                                     <option value="all">All classes</option>
                                     {classOptions.map(name => <option key={name} value={name}>{name}</option>)}
-
                                 </select>
-                            </div>
-                            <div className="flex-1">
-                                <label className="label">
-                                    Section Selection
-                                </label>
+                            </Field>
+                            <Field label="Section" htmlFor="cm-filter-section">
                                 <select
+                                    id="cm-filter-section"
                                     value={selectedSection}
                                     onChange={(e) => setSelectedSection(e.target.value)}
                                     className="input"
                                 >
                                     <option value="all">All sections</option>
                                     {sectionOptions.map(name => <option key={name} value={name}>{name}</option>)}
-
                                 </select>
-                            </div>
+                            </Field>
                             {(selectedClass !== 'all' || selectedSection !== 'all') && (
-                                <div className="flex items-end">
-                                    <button type="button" onClick={() => { setSelectedClass('all'); setSelectedSection('all'); }} className="btn-secondary">
-                                        Clear filters
-                                    </button>
-                                </div>
+                                <button type="button" onClick={() => { setSelectedClass('all'); setSelectedSection('all'); }} className="btn-secondary">
+                                    Clear filters
+                                </button>
                             )}
                         </div>
                     </div>
 
-                    {/* Table Section */}
-                    <div className="card overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-slate-50 text-slate-600">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left">Class Name</th>
-                                        <th className="px-6 py-3 text-left">Class Teacher</th>
-                                        <th className="px-6 py-3 text-left">Class Monitor</th>
-                                        <th className="px-6 py-3 text-left">Total Students</th>
-                                        <th className="px-6 py-3 text-left">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {filteredClasses.map((cls, index) => (
-                                        <tr
-                                            key={cls.id}
-                                            className={`${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-brand-50 transition-colors`}
-                                        >
-                                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{cls.class_name}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-600">
-                                                {cls.class_teacher || '-'}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-600">
-                                                {cls.class_monitor || '-'}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900 font-medium">{cls.total_students}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex gap-2">
-                                                    <button type="button" className="btn-primary btn-sm" disabled title={SOON}>
-                                                        Assign Roll No
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className="btn-warn btn-sm"
-                                                        disabled={!canOpenTimetable}
-                                                        title={canOpenTimetable ? 'Open Timetable › Subject Teacher Assignment' : 'You need Subject Teacher Assignment access'}
-                                                        onClick={() => navigateTo?.('timetable')}
-                                                    >
-                                                        Assign Subject Teacher
-                                                    </button>
-                                                    <button type="button" className="btn-warn btn-sm" disabled title={SOON}>
-                                                        Assign Class Monitor
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {filteredClasses.length === 0 && (
-                            <EmptyState title="No classes found" description="Get started by adding a new class." />
-                        )}
-                    </div>
+                    <DataList
+                        columns={listColumns}
+                        rows={filteredClasses}
+                        rowKey={c => c.id}
+                        emptyTitle="No classes found"
+                        emptyHint="Tap “Add or change classes” to add one."
+                        mobileActions={() => rowActions()}
+                    />
                 </div>
 
-                {/* Display Order Modal */}
+                {/* Display Order */}
                 {isOrderModalOpen && (
-                    <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
-                        <div className="card shadow-pop w-full max-w-md">
-                            <div className="card-header">
-                                <h2 className="text-base font-semibold text-slate-900">Assign Display Order</h2>
-                                <button onClick={() => setIsOrderModalOpen(false)} className="btn-icon h-8 w-8">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-                            <div className="p-4 space-y-4">
-                                <div>
-                                    <label className="label">Select Branch</label>
-                                    <select
-                                        value={orderBranchId}
-                                        onChange={(e) => setOrderBranchId(e.target.value)}
-                                        className="input"
-                                    >
-                                        <option value="">- Select Branch -</option>
-                                        {branches.map(b => (
-                                            <option key={b.id} value={b.id}>{b.branch_name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                {orderBranchId && (
-                                    <div className="max-h-96 overflow-y-auto border border-slate-200 rounded-lg">
-                                        {orderClasses.length === 0 ? (
-                                            <EmptyState compact title="No classes found" />
-                                        ) : (
-                                            <ul className="divide-y divide-slate-100">
-                                                {orderClasses.map((cls, idx) => (
-                                                    <li key={cls.id} className="flex items-center justify-between p-3 bg-white hover:bg-slate-50">
-                                                        <div className="flex items-center gap-3">
-                                                            <input
-                                                                type="number"
-                                                                min="1"
-                                                                max={orderClasses.length}
-                                                                value={idx + 1}
-                                                                onChange={() => { }} // React controlled warning fix, real change handled on blur or change with caution.
-                                                                onBlur={(e) => setSpecificOrder(idx, e.target.value)}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') {
-                                                                        setSpecificOrder(idx, e.currentTarget.value);
-                                                                    }
-                                                                }}
-                                                                className="input w-16 text-center"
-                                                                title="Type a number and press Enter or click outside to move"
-                                                            />
-                                                            <span className="font-medium text-slate-700">{cls.class_name}</span>
-                                                        </div>
-                                                        <div className="flex gap-1">
-                                                            <button
-                                                                onClick={() => moveOrder(idx, 'up')}
-                                                                disabled={idx === 0}
-                                                                className={`btn-icon ${idx === 0 ? 'text-slate-300' : 'text-brand-600 hover:bg-brand-50'}`}
-                                                            >
-                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
-                                                            </button>
-                                                            <button
-                                                                onClick={() => moveOrder(idx, 'down')}
-                                                                disabled={idx === orderClasses.length - 1}
-                                                                className={`btn-icon ${idx === orderClasses.length - 1 ? 'text-slate-300' : 'text-brand-600 hover:bg-brand-50'}`}
-                                                            >
-                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                                                            </button>
-                                                        </div>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                            <div className="p-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
-                                <button onClick={() => setIsOrderModalOpen(false)} className="btn-secondary">Cancel</button>
-                                <button
-                                    onClick={handleSaveOrder}
-                                    disabled={savingOrder || orderClasses.length === 0}
-                                    className="btn-primary"
-                                >
-                                    {savingOrder ? 'Saving...' : 'Save Order'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <Dialog
+                        title="Change class order"
+                        subtitle="This is the order classes appear in lists. Use the arrows, or type a position number."
+                        onClose={() => setIsOrderModalOpen(false)}
+                        footer={<>
+                            <button type="button" onClick={() => setIsOrderModalOpen(false)} className="btn-secondary">Back</button>
+                            <button
+                                type="button"
+                                onClick={handleSaveOrder}
+                                disabled={savingOrder || orderClasses.length === 0}
+                                className="btn-primary"
+                            >
+                                {savingOrder ? 'Saving…' : 'Save order'}
+                            </button>
+                        </>}
+                    >
+                        <Field label="Branch" htmlFor="cm-order-branch">
+                            <select
+                                id="cm-order-branch"
+                                value={orderBranchId}
+                                onChange={(e) => setOrderBranchId(e.target.value)}
+                                className="input"
+                            >
+                                <option value="">Choose branch</option>
+                                {branches.map(b => (
+                                    <option key={b.id} value={b.id}>{b.branch_name}</option>
+                                ))}
+                            </select>
+                        </Field>
+                        {orderBranchId && (
+                            orderClasses.length === 0 ? (
+                                <EmptyState compact title="No classes in this branch" />
+                            ) : (
+                                <ul className="border border-slate-200 rounded-xl divide-y divide-slate-100">
+                                    {orderClasses.map((cls, idx) => (
+                                        <li key={cls.id} className="flex items-center justify-between gap-2 px-3 py-2 bg-white">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <input
+                                                    type="number"
+                                                    inputMode="numeric"
+                                                    min="1"
+                                                    max={orderClasses.length}
+                                                    value={idx + 1}
+                                                    onChange={() => { }} // React controlled warning fix, real change handled on blur or change with caution.
+                                                    onBlur={(e) => setSpecificOrder(idx, e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            setSpecificOrder(idx, e.currentTarget.value);
+                                                        }
+                                                    }}
+                                                    className="input w-16 text-center"
+                                                    aria-label={`Position of class ${cls.class_name}`}
+                                                    title="Type a number and press Enter to move"
+                                                />
+                                                <span className="font-medium text-slate-800 truncate">{cls.class_name}</span>
+                                            </div>
+                                            <div className="flex gap-1 flex-shrink-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => moveOrder(idx, 'up')}
+                                                    disabled={idx === 0}
+                                                    aria-label={`Move ${cls.class_name} up`}
+                                                    className={`btn-icon ${idx === 0 ? 'text-slate-300' : 'text-brand-600 hover:bg-brand-50'}`}
+                                                >
+                                                    <ChevronUp className="w-5 h-5" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => moveOrder(idx, 'down')}
+                                                    disabled={idx === orderClasses.length - 1}
+                                                    aria-label={`Move ${cls.class_name} down`}
+                                                    className={`btn-icon ${idx === orderClasses.length - 1 ? 'text-slate-300' : 'text-brand-600 hover:bg-brand-50'}`}
+                                                >
+                                                    <ChevronDown className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )
+                        )}
+                    </Dialog>
                 )}
-
             </div>
         );
     }
 
     // Create/Edit View - Second screen
+    const summaryColumns: Column<ClassData>[] = [
+        { key: 'class_name', header: 'Class', primary: true },
+        { key: 'sections', header: 'Sections', secondary: true, render: c => c.sections?.map(s => s.name).join(', ') || '—' },
+        {
+            key: 'edit', header: '', hideOnMobile: true, align: 'right', render: c => (
+                <button type="button" onClick={() => editAndScroll(c)} className="btn-soft btn-sm">
+                    <Pencil className="w-4 h-4" /> Edit
+                </button>
+            ),
+        },
+    ];
+
     return (
-        <div className="min-h-full bg-surface-muted">
-            {/* Header */}
-            <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-5">
-                <PageHeader
-                    className="mb-5"
-                    title="CREATE CLASS AND SECTION"
-                    icon={<svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" />
-                    </svg>}
-                    actions={(
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className="btn-secondary"
-                        >
-                            Back
+        <div className="min-h-full bg-surface-muted p-4 sm:p-6">
+            <BackBar
+                label="Classes"
+                title="Add or change classes"
+                hint={<>Type a class name and its sections, then save. {currentBranchName && <>Branch: <span className="font-medium text-slate-700">{currentBranchName}</span></>}</>}
+                onBack={() => setViewMode('list')}
+            />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                {/* Form (first on phones) */}
+                <div ref={formRef} className="card lg:order-2 scroll-mt-20">
+                    <div className="card-header">
+                        <h2 className="text-base font-semibold text-slate-900">Class details</h2>
+                        <button type="button" onClick={handleReset} className="btn-ghost btn-sm">
+                            <RotateCcw className="w-4 h-4" /> Clear form
                         </button>
-                    )}
-                />
-            </div>
-
-            {/* Main Content - Two Column Layout */}
-            <div className="p-4 sm:p-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Left Column - Class Summary */}
-                    <div className="card">
-                        <div className="card-header">
-                            <div className="flex items-center gap-2">
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-                                </svg>
-                                <h2 className="text-base font-semibold text-slate-900">Class Summary</h2>
-                            </div>
-                            <div className="flex items-center gap-2">
-
-                                {/* Copy Structure Button (Header) */}
-                                <div className="relative" ref={copyDropdownRef}>
-                                    <button
-                                        onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
-                                        className="btn-primary btn-sm"
-                                        title="Copy all classes to other branches"
-                                    >
-                                        <span>Copy Structure</span>
-                                        <svg className={`w-4 h-4 transition-transform ${isCopyDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </button>
-
-                                    {isCopyDropdownOpen && (
-                                        <div className="card shadow-pop absolute right-0 top-full mt-2 w-72 z-50 max-h-80 overflow-y-auto">
-                                            <div className="sticky top-0 bg-slate-50 px-3 py-2 border-b border-slate-100 text-xs font-semibold text-slate-700 uppercase">
-                                                Target Branches
-                                            </div>
-
-                                            {Object.keys(branchesByLocation).length === 0 ? (
-                                                <EmptyState
-                                                    compact
-                                                    title={(selectedBranch === 'all' || !selectedBranch)
-                                                        ? "Please select a source branch first."
-                                                        : "No other branches available"}
-                                                />
-                                            ) : (
-                                                Object.keys(branchesByLocation).map(loc => (
-                                                    <div key={loc}>
-                                                        <div className="px-3 py-1 bg-slate-100 text-xs font-semibold text-slate-600">
-                                                            {loc}
-                                                        </div>
-                                                        {branchesByLocation[loc].map(b => (
-                                                            <label key={b.id} className="flex items-center gap-2 px-4 py-2 hover:bg-brand-50 cursor-pointer">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={copyTargets.has(String(b.id))}
-                                                                    onChange={() => toggleCopyTarget(String(b.id))}
-                                                                    className="w-4 h-4 accent-brand-600 rounded border-slate-300"
-                                                                />
-                                                                <span className="text-sm text-slate-700">{b.branch_name}</span>
-                                                            </label>
-                                                        ))}
-                                                    </div>
-                                                ))
-                                            )}
-
-                                            <div className="sticky bottom-0 bg-white border-t border-slate-100 p-2 flex justify-between items-center">
-                                                <span className="text-xs text-slate-500">{copyTargets.size} selected</span>
-                                                <button
-                                                    onClick={handleCopyBranchStructure}
-                                                    disabled={copying || copyTargets.size === 0}
-                                                    className="btn-success btn-sm"
-                                                >
-                                                    {copying ? "Copying..." : "Confirm Copy"}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
-                                    <tr>
-                                        <th className="px-4 py-2 text-left">Class</th>
-                                        <th className="px-4 py-2 text-left">Section</th>
-                                        <th className="px-4 py-2 text-left">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {loading ? (
-                                        <tr>
-                                            <td colSpan={3}>
-                                                <LoadingState label="Loading classes..." />
-                                            </td>
-                                        </tr>
-                                    ) : classSummary.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={3}>
-                                                <EmptyState compact title="No classes found for this branch/year." />
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        classSummary.map((cls) => (
-                                            <tr key={cls.id} className="hover:bg-slate-50">
-                                                <td className="px-4 py-3 text-sm text-slate-900">{cls.class_name}</td>
-                                                <td className="px-4 py-3 text-sm text-slate-700">
-                                                    {cls.sections?.map(s => s.name).join(', ') || '-'}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => handleEditClass(cls)}
-                                                            className="btn-soft btn-sm"
-                                                            title="Edit"
-                                                        >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                            </svg>
-                                                        </button>
-
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )))}
-                                </tbody>
-                            </table>
-                        </div>
                     </div>
 
-                    {/* Right Column - Create Class Form */}
-                    <div className="card">
-                        <div className="card-header justify-start gap-2">
-                            <svg className="w-5 h-5 text-slate-700" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" />
-                            </svg>
-                            <h2 className="text-base font-semibold text-slate-900">Create Class</h2>
+                    <div className="card-body space-y-5">
+                        <Field label="Class name" htmlFor="cm-class-name" required hint="Pick from the list or type a new one, e.g. 5 or UKG.">
+                            <input
+                                id="cm-class-name"
+                                type="text"
+                                list="master-classes-list"
+                                value={newClassName}
+                                onChange={(e) => setNewClassName(e.target.value)}
+                                placeholder="e.g. 5"
+                                className="input"
+                            />
+                            <datalist id="master-classes-list">
+                                {masterClasses.map((c) => (
+                                    <option key={c.id} value={c.class_name} />
+                                ))}
+                            </datalist>
+                        </Field>
+
+                        <div>
+                            <p className="block text-sm font-medium text-slate-800 mb-1.5">Sections<span className="text-red-600" aria-hidden="true"> *</span></p>
+                            <ul className="space-y-2">
+                                {sections.map((section, i) => (
+                                    <li key={section.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                                            <div>
+                                                <label className="label" htmlFor={`cm-sec-name-${section.id}`}>Section {i + 1} name</label>
+                                                <input
+                                                    id={`cm-sec-name-${section.id}`}
+                                                    type="text"
+                                                    value={section.name}
+                                                    onChange={(e) => updateSection(section.id, 'name', e.target.value)}
+                                                    placeholder="e.g. A"
+                                                    className="input"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="label" htmlFor={`cm-sec-size-${section.id}`}>Number of students</label>
+                                                <input
+                                                    id={`cm-sec-size-${section.id}`}
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    value={section.studentStrength}
+                                                    onChange={(e) => updateSection(section.id, 'studentStrength', e.target.value)}
+                                                    placeholder="e.g. 40"
+                                                    className="input"
+                                                />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeSection(section.id)}
+                                                disabled={sections.length === 1}
+                                                aria-label={`Remove section ${i + 1}`}
+                                                className="btn-icon text-red-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                            <button type="button" onClick={addSection} className="btn-secondary btn-sm mt-2 w-full sm:w-auto">
+                                <Plus className="w-4 h-4" /> Add another section
+                            </button>
                         </div>
 
-                        <div className="p-6 space-y-6">
-                            {/* Class Input */}
-                            <div>
-                                <label className="label">
-                                    Class<span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    list="master-classes-list"
-                                    value={newClassName}
-                                    onChange={(e) => setNewClassName(e.target.value)}
-                                    placeholder="5"
-                                    className="input"
-                                />
-                                <datalist id="master-classes-list">
-                                    {masterClasses.map((c) => (
-                                        <option key={c.id} value={c.class_name} />
-                                    ))}
-                                </datalist>
-                            </div>
+                        <Field label="Branch" hint="Set by the branch picked at the top of the screen.">
+                            <div className="input bg-slate-50 text-slate-700">{currentBranchName || 'No branch picked'}</div>
+                        </Field>
 
-
-                            {/* Section Management */}
-                            <div>
-                                <div className="flex items-center gap-2 mb-3">
-                                    <label className="label">Section</label>
-                                    <button
-                                        onClick={addSection}
-                                        className="btn-primary h-6 w-6 px-0"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
-                                        </svg>
-                                    </button>
-
-                                </div>
-
-                                <div className="border border-slate-200 rounded-lg overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
-                                            <tr>
-                                                <th className="px-3 py-2 text-left">Section Name</th>
-                                                <th className="px-3 py-2 text-left">Student Strength</th>
-                                                <th className="px-3 py-2 text-left">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200">
-                                            {sections.map((section) => (
-                                                <tr key={section.id} className="bg-white">
-                                                    <td className="px-3 py-2">
-                                                        <input
-                                                            type="text"
-                                                            value={section.name}
-                                                            onChange={(e) => updateSection(section.id, 'name', e.target.value)}
-                                                            placeholder="Section Name"
-                                                            className="input"
-                                                        />
-                                                    </td>
-                                                    <td className="px-3 py-2">
-                                                        <input
-                                                            type="text"
-                                                            value={section.studentStrength}
-                                                            onChange={(e) => updateSection(section.id, 'studentStrength', e.target.value)}
-                                                            placeholder="Student Strength"
-                                                            className="input"
-                                                        />
-                                                    </td>
-                                                    <td className="px-3 py-2">
-                                                        <button
-                                                            onClick={() => removeSection(section.id)}
-                                                            disabled={sections.length === 1}
-                                                            className="btn-danger h-7 w-7 px-0"
-                                                        >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                            </svg>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            {/* Branch Selection */}
-                            <div>
-                                <label className="label">
-                                    Assign to the Branch<span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    disabled // This makes it read-only
-                                    value={selectedBranch}
-                                    className="input appearance-none"
-                                >
-                                    <option value="">- Select-Branch -</option>
-                                    {branches.map(b => (
-                                        <option key={b.id} value={b.id}>{b.branch_name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex justify-end gap-3 pt-4">
-                                <button
-                                    onClick={handleReset}
-                                    className="btn-secondary"
-                                >
-                                    Reset
-                                </button>
-                                <button
-                                    onClick={handleSaveClass}
-                                    className="btn-primary"
-                                >
-                                    Save
-                                </button>
-                            </div>
-
-                            {/* Copy logic moved to Header */}
-                        </div>
+                        <ActionBar note={saveNote}>
+                            <button
+                                type="button"
+                                onClick={handleSaveClass}
+                                disabled={!newClassName.trim() || !selectedBranch || validSections === 0}
+                                className="btn-primary btn-lg"
+                            >
+                                Save class
+                            </button>
+                        </ActionBar>
                     </div>
                 </div>
+
+                {/* Existing classes */}
+                <div className="lg:order-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <h2 className="text-base font-semibold text-slate-900">Classes in this branch</h2>
+                        <button
+                            type="button"
+                            onClick={() => setIsCopyDropdownOpen(true)}
+                            className="btn-secondary btn-sm"
+                            title="Copy all classes to other branches"
+                        >
+                            <Copy className="w-4 h-4" /> Copy to other branches
+                        </button>
+                    </div>
+                    <DataList
+                        columns={summaryColumns}
+                        rows={classSummary}
+                        rowKey={c => c.id}
+                        loading={loading}
+                        emptyTitle="No classes in this branch yet"
+                        emptyHint="Add the first one using the form."
+                        mobileActions={c => (
+                            <button type="button" onClick={() => editAndScroll(c)} className="btn-soft btn-sm">
+                                <Pencil className="w-4 h-4" /> Edit
+                            </button>
+                        )}
+                    />
+                </div>
             </div>
+
+            {isCopyDropdownOpen && (
+                <Dialog
+                    title="Copy classes to other branches"
+                    subtitle={<>Copies every class and section of {currentBranchName || 'this branch'}. Classes that already exist there are skipped.</>}
+                    onClose={() => setIsCopyDropdownOpen(false)}
+                    footer={<>
+                        <button type="button" onClick={() => setIsCopyDropdownOpen(false)} className="btn-secondary">Back</button>
+                        <button
+                            type="button"
+                            onClick={handleCopyBranchStructure}
+                            disabled={copying || copyTargets.size === 0}
+                            className="btn-primary"
+                        >
+                            {copying ? 'Copying…' : copyTargets.size === 0 ? 'Tick a branch' : `Copy to ${copyTargets.size} branch${copyTargets.size === 1 ? '' : 'es'}`}
+                        </button>
+                    </>}
+                >
+                    {Object.keys(branchesByLocation).length === 0 ? (
+                        <EmptyState
+                            compact
+                            title={(selectedBranch === 'all' || !selectedBranch)
+                                ? 'Pick a branch at the top of the screen first.'
+                                : 'There are no other branches.'}
+                        />
+                    ) : (
+                        Object.keys(branchesByLocation).map(loc => (
+                            <div key={loc}>
+                                <h3 className="text-sm font-semibold text-slate-500 mb-1.5">{loc}</h3>
+                                <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
+                                    {branchesByLocation[loc].map(b => (
+                                        <label key={b.id} className="flex items-center gap-3 px-4 min-h-[48px] cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={copyTargets.has(String(b.id))}
+                                                onChange={() => toggleCopyTarget(String(b.id))}
+                                                className="w-5 h-5 accent-brand-600 rounded border-slate-300"
+                                            />
+                                            <span className="text-[15px] text-slate-800">{b.branch_name}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </Dialog>
+            )}
         </div>
     );
 };
