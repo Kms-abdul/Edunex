@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
-import { canWrite, canRead } from '../utils/permissions';
+import { canWrite } from '../utils/permissions';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SchoolOption { id: number; school_name: string; }

@@ -27,6 +27,7 @@ export interface Student {
   sr: number;
   photo: string;
   admNo: string;
+  enrollment_no?: string;
   rollNo: number;
   class: string;
   section: string;

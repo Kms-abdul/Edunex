@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 
-interface FeeType {
-    id: number;
-    fee_type: string;
-}
-
 interface ConcessionItem {
     fee_type_id: number;
     fee_type_name: string;

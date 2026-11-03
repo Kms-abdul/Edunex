@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../api';
 import { hasPermission } from '../utils/permissions';
-import { ChevronDownIcon, PrinterIcon, EyeIcon } from './icons';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";

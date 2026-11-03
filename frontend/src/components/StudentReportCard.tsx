@@ -2,11 +2,9 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import {
   ClassOption,
-  SectionOption,
   TestOption,
   StudentOption,
   ProgressReportData,
-  AcademicHistoryRecord, 
   HistoricalPerformance
 } from '../reportcardtypes';
 import ReportCard from './ReportCard';
@@ -572,7 +570,7 @@ const StudentReportCard: React.FC = () => {
                 </option>
                 {students.map(s => (
                   <option key={s.student_id || s.id} value={s.student_id || s.id}>
-                    {s.roll_number} - {s.name || s.student_name}
+                    {s.roll_number ?? s.roll_no ?? '-'} - {s.name || s.student_name}
                   </option>
                 ))}
               </select>

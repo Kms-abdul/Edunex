@@ -200,7 +200,7 @@ const StaffSupport: React.FC = () => {
                         <WaIcon cls="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-semibold text-slate-900 tracking-tight">StaffSupport</h1>
+                        <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Staff Support</h1>
                         <p className="text-gray-500 text-sm">
                             Get help from our support team via WhatsApp
                         </p>

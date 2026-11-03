@@ -120,7 +120,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, navigateTo, cu
               />
             )}
             <NavLink
-              title="StaffSupport"
+              title="Staff Support"
               icon={<HeadphoneIcon className="w-5 h-5" />}
               active={currentPage === 'staffsupport'}
               onClick={() => navigateTo('staffsupport')}

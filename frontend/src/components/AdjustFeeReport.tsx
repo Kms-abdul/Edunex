@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { DailyReport } from './FeeReportComponents';
 import FeeReceipt from './FeeReceipt';
 import api from '../api';
 

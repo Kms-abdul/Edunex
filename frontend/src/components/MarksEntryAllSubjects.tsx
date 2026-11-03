@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import api from "../api";
-import { Save, Edit, FileDown, Upload } from "lucide-react";
+import { Save, Edit, FileDown } from "lucide-react";
 import * as XLSX from 'xlsx';
 
 // --- Types ---

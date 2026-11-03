@@ -110,7 +110,7 @@ const DashboardHome: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigat
                         />
                     )}
                     <ModuleTile
-                        name="StaffSupport"
+                        name="Staff Support"
                         description="Raise and track support requests"
                         icon={<HeadphoneIcon className="w-6 h-6" />}
                         iconClassName="bg-sky-50 text-sky-600"

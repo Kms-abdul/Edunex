@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import StaffProfile from './StaffProfile';
-import { EyeIcon, DashboardIcon } from './icons';
+import { EyeIcon } from './icons';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

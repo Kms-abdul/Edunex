@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Pencil, ArrowUp, ArrowDown, Plus, ToggleLeft, ToggleRight, X, Save } from 'lucide-react';
+import { Pencil, Plus, ToggleLeft, ToggleRight, X, Save } from 'lucide-react';
 import api from '../api';
 
 interface TestType {

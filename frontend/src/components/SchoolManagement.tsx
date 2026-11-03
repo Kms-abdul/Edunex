@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { canWrite } from '../utils/permissions';
 import { useAuth } from '../contexts/AuthContext';
-import { BuildingOfficeIcon, UserIcon, ShieldCheckIcon } from './icons';
 
 interface Branch {
   id: number;

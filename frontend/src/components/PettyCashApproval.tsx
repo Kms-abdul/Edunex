@@ -8,7 +8,7 @@ const PettyCashApproval: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [activeTab, setActiveTab] = useState<'expenses' | 'funds'>('expenses');
-    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         return () => {

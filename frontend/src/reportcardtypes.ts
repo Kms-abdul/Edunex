@@ -21,6 +21,7 @@ export interface StudentOption {
     name?: string;
     student_name?: string;
     roll_no?: number | string;
+    roll_number?: number | string;
     father_name?: string;
     admission_no?: string;
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../api';
-import { TrashIcon, PrinterIcon } from './icons';
+import { PrinterIcon } from './icons';
 import FeeReceipt from './FeeReceipt';
 import { Page } from '../App';
 import { useAuth } from '../contexts/AuthContext';

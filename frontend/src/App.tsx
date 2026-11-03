@@ -73,7 +73,7 @@ export type Page =
 const AppInner: React.FC = () => {
   const { isAuthenticated, user, setUser, clearUser } = useAuth();
   // Determine the default landing page
-  const defaultPage: Page = user?.role === 'Admin' || user?.role === 'HR' ? 'dashboard' : 'staff-profile';
+  const defaultPage: Page = ['SuperAdmin', 'Admin', 'HR'].includes(user?.role || '') ? 'dashboard' : 'staff-profile';
 
   const handleLoginSuccess = (user: any) => {
     setUser(user);
