@@ -1,21 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Page } from '../App';
-import { ChevronDownIcon, ChartBarIcon } from './icons';
-import { Student } from '../types';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import api from '../api';
 import { notify, confirmDialog } from './ui/feedback';
-import { PageHeader, EmptyState, Alert } from './ui';
-
-const getNormalizedBranch = (): string => {
-    const b = localStorage.getItem('currentBranch') || 'All';
-    if (b === 'All Locations' || b === 'All Branches' || b === 'All') {
-        return 'All';
-    }
-    return b;
-};
-
+import { EmptyState, Alert, ActionBar, Button, DataList, Field } from './ui';
+import type { Column } from './ui';
+import { consumeIntent } from '../utils/intent';
+import DailyAttendance from './attendance/DailyAttendance';
+import MonthFilters from './attendance/MonthFilters';
+import { getNormalizedBranch, prettyDate, statusBadge, statusLabel } from './attendance/shared';
 
 interface StudentAttendanceProps {
     navigateTo: (page: Page) => void;
@@ -24,451 +18,17 @@ interface StudentAttendanceProps {
 
 type AttendanceTab = 'take' | 'today' | 'register' | 'absent-report';
 
-interface AttendanceHeaderProps {
-    activeTab: AttendanceTab;
-    onTabChange: (tab: AttendanceTab) => void;
-    onAction: (action: string) => void;
-    navigateTo?: (page: Page) => void;
-}
-
-const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({ activeTab, onTabChange, onAction, navigateTo }) => {
-    const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-    const buttonStyle = "btn-secondary btn-sm";
-    const activeButtonStyle = "btn-primary btn-sm";
-
-    const Dropdown: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
-        const isOpen = openDropdown === title;
-        return (
-            <div className="relative inline-block text-left">
-                <button
-                    type="button"
-                    className={`${buttonStyle} flex items-center`}
-                    onClick={() => setOpenDropdown(isOpen ? null : title)}
-                    onBlur={() => setTimeout(() => setOpenDropdown(null), 200)}
-                >
-                    {title}
-                    <ChevronDownIcon className="w-4 h-4 ml-1" />
-                </button>
-                {isOpen && (
-                    <div className="card shadow-pop origin-top-right absolute right-0 mt-2 w-56 z-10">
-                        <div className="py-1" role="menu" aria-orientation="vertical">
-                            {children}
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    const DropdownItem: React.FC<{ children: React.ReactNode, action?: string }> = ({ children, action }) => (
-        <a
-            href="#"
-            className="menu-item"
-            role="menuitem"
-            onClick={(e) => {
-                e.preventDefault();
-                if (action) onAction(action);
-            }}
-        >
-            {children}
-        </a>
-    );
-
-    return (
-        <div className="bg-white px-4 sm:px-6 py-4 border-b border-slate-200">
-            <PageHeader
-                eyebrow="Administration"
-                title="Student Attendance"
-                subtitle="Non Biometric"
-                icon={<ChartBarIcon className="w-6 h-6" />}
-                className="!mb-0 !items-center"
-                actions={<>
-                    <button className={buttonStyle} onClick={() => navigateTo?.('student-administration')}>Student Directory</button>
-                    <button className={activeTab === 'take' ? activeButtonStyle : buttonStyle} onClick={() => onTabChange('take')}>Take Attendance</button>
-                    <button className={activeTab === 'register' ? activeButtonStyle : buttonStyle} onClick={() => onTabChange('register')}>Register View</button>
-                    <Dropdown title="Reports">
-                        <DropdownItem action="Absent Report">Absent Report</DropdownItem>
-                        <DropdownItem action="SMS">Send SMS To All Present Students</DropdownItem>
-                        <DropdownItem action="Month Report">Month Report</DropdownItem>
-                    </Dropdown>
-                </>}
-            />
-        </div>
-    );
-};
-
-
-const TakeAttendanceForm: React.FC = () => {
-    const [students, setStudents] = useState<Student[]>([]);
-    const [attendance, setAttendance] = useState<{ [key: number]: string }>({});
-    const [selectedClass, setSelectedClass] = useState('');
-    const [selectedSection, setSelectedSection] = useState('');
-    const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
-    const [loading, setLoading] = useState(false);
-    const [classOptions, setClassOptions] = useState<{ id: number, class_name: string }[]>([]);
-    const [sectionOptions, setSectionOptions] = useState<string[]>([]);
-    const [isUpdateMode, setIsUpdateMode] = useState(false);
-    const [updateCount, setUpdateCount] = useState<number>(0);
-    const [lastModified, setLastModified] = useState<string | null>(null);
-   const [dateBlocked, setDateBlocked] = useState<{ blocked: boolean; reason: string }>({ blocked: false, reason: '' });
-// const [smsSelected, setSmsSelected] = useState<Set<number>>(new Set());
-// const [sendingSms, setSendingSms]   = useState(false);
-// const [smsResult,  setSmsResult]    = useState<{sent:number;failed:number;skipped:number}|null>(null);
-    useEffect(() => {
-        api.get('/classes')
-            .then(res => setClassOptions(res.data.classes || []))
-            .catch(err => console.error("Failed to load classes", err));
-    }, []);
-
-    useEffect(() => {
-        if (!selectedClass) {
-            setSectionOptions([]);
-            setSelectedSection('');
-            return;
-        }
-
-        const branch = getNormalizedBranch();
-        const academicYear = localStorage.getItem('academicYear') || '';
-        api.get('/sections', {
-            params: {
-                class: selectedClass,
-                branch,
-                academic_year: academicYear,
-            }
-        })
-            .then(res => setSectionOptions(res.data.sections || []))
-            .catch(err => {
-                console.error("Failed to load sections", err);
-                setSectionOptions([]);
-            });
-    }, [selectedClass]);
-
-
-    const handleGetStudents = async () => {
-        if (!selectedClass) {
-            notify("Please select a class");
-            return;
-        }
-        setLoading(true);
-        setDateBlocked({ blocked: false, reason: '' });
-        try {
-            const globalBranch = getNormalizedBranch();
-            const branchParam = globalBranch === "All Branches" || globalBranch === "All" ? "All" : globalBranch;
-
-            // Pre-check: Is this date a holiday or weekoff?
-            try {
-                const checkRes = await api.post('/config/check-date', {
-                    date: attendanceDate,
-                    branch_name: branchParam,
-                    class_name: selectedClass,
-                });
-                if (checkRes.data?.is_holiday || checkRes.data?.is_weekoff) {
-                    setDateBlocked({ blocked: true, reason: checkRes.data.reason || 'Holiday / Weekoff' });
-                    setStudents([]);
-                    setAttendance({});
-                    setLoading(false);
-                    return;
-                }
-            } catch (checkErr) {
-                console.error('Date check failed, proceeding:', checkErr);
-            }
-
-            const res = await api.get('/attendance', {
-                params: {
-                    class: selectedClass,
-                    section: selectedSection,
-                    date: attendanceDate,
-                    branch: branchParam
-                }
-            });
-
-            const fetchedStudents = res.data.students || [];
-            const existingAttendance = res.data.attendance || {};
-
-            setStudents(fetchedStudents);
-            setUpdateCount(res.data.class_update_count || 0);
-            setLastModified(res.data.last_modified);
-
-            // Build attendance map
-            const initialAttendance: { [key: number]: string } = {};
-            fetchedStudents.forEach((s: any) => {
-                const status = existingAttendance[s.student_id] || 'Present';
-                initialAttendance[s.student_id] = status;
-            });
-
-            setAttendance(initialAttendance);
-
-            // 🔥 NEW: Detect first-time or update mode
-            const hasExisting = Object.keys(existingAttendance).length > 0;
-            setIsUpdateMode(hasExisting);
-
-        } catch (error) {
-            console.error("Error fetching students:", error);
-            notify("Failed to fetch students");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleStatusChange = (studentId: number, status: string) => {
-        setAttendance(prev => ({ ...prev, [studentId]: status }));
-    };
-
-    const markAll = (status: string) => {
-        const updated = students.reduce((acc, student) => {
-            if (!(student as any).is_locked) {
-                acc[student.student_id!] = status;
-            } else {
-                // keep old status if locked
-                acc[student.student_id!] = attendance[student.student_id!];
-            }
-            return acc;
-        }, {} as { [key: number]: string });
-        setAttendance(updated);
-    };
-
-    // const absentIds = students
-    //     .filter(s => attendance[s.student_id!] === 'Absent')
-    //     .map(s => s.student_id!);
-
-    // const toggleSmsSelect = (id: number) => {
-    //     setSmsSelected(prev => {
-    //         const next = new Set(prev);
-    //         next.has(id) ? next.delete(id) : next.add(id);
-    //         return next;
-    //     });
-    // };
-
-    // const toggleSelectAllAbsent = (checked: boolean) => {
-    //     setSmsSelected(checked ? new Set(absentIds) : new Set());
-    // };
-
-    // const handleSendSms = async () => {
-    //     if (smsSelected.size === 0) return;
-    //     if (!await confirmDialog(`Send SMS to parents of ${smsSelected.size} student(s)?`)) return;
-    //     setSendingSms(true);
-    //     setSmsResult(null);
-    //     try {
-    //         const res = await api.post('/attendance/send-sms', {
-    //             date: attendanceDate,
-    //             student_ids: Array.from(smsSelected)
-    //         });
-    //         setSmsResult(res.data);
-    //         setSmsSelected(new Set());
-    //     } catch (err: any) {
-    //         notify(`SMS error: ${err.response?.data?.error || err.message}`);
-    //     } finally {
-    //         setSendingSms(false);
-    //     }
-    // };
-
-    const handleSave = async () => {
-        setLoading(true);
-        try {
-            const payload = {
-                date: attendanceDate,
-                attendance: Object.entries(attendance).map(([studentId, status]) => ({
-                    student_id: parseInt(studentId),
-                    date: attendanceDate,
-                    status: status
-                }))
-            };
-
-            await api.post('/attendance', payload);
-            notify("Attendance saved successfully!");
-            handleGetStudents();
-        } catch (error) {
-            console.error("Error saving attendance:", error);
-            notify("Failed to save attendance");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="p-4">
-            <div className="card">
-                <div className="bg-slate-50 text-slate-800 text-sm border-b border-slate-200 rounded-t-xl font-semibold p-3">
-                    Take Attendance
-                </div>
-                <div className="p-4 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-                        <div>
-                            <label className="label">Attendance Date</label>
-                            <input
-                                type="date"
-                                value={attendanceDate}
-                                onChange={(e) => setAttendanceDate(e.target.value)}
-                                max={new Date().toISOString().split('T')[0]}
-                                className="input mt-1"
-                            />
-                        </div>
-                        <div>
-                            <label className="label">Class</label>
-                            <select
-                                value={selectedClass}
-                                onChange={e => setSelectedClass(e.target.value)}
-                                className="input mt-1"
-                            >
-                                <option value="">--Select Class--</option>
-                                {classOptions.map(c => (
-                                    <option key={c.id} value={c.class_name}>{c.class_name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="label">Section</label>
-                            <select
-                                value={selectedSection}
-                                onChange={e => setSelectedSection(e.target.value)}
-                                className="input mt-1"
-                            >
-                                <option value="">--All Sections--</option>
-                                {sectionOptions.map(section => <option key={section} value={section}>{section}</option>)}
-                            </select>
-                        </div>
-                        <button onClick={handleGetStudents} disabled={loading} className="btn-primary">
-                            {loading ? 'Loading...' : 'Get Students'}
-                        </button>
-                    </div>
-
-                    {dateBlocked.blocked && (
-                        <Alert tone="error" title="Attendance Blocked" className="mt-4">
-                            {dateBlocked.reason} — Attendance cannot be taken on this date.
-                        </Alert>
-                    )}
-
-                    {students.length > 0 && (
-                        <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                            <div className="p-2 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-2">
-                                <button onClick={() => markAll('Present')} className="btn btn-sm bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100">Mark All Present</button>
-                                <button onClick={() => markAll('Absent')} className="btn btn-sm bg-red-50 text-red-700 border border-red-200 hover:bg-red-100">Mark All Absent</button>
-                                {/* <div className="h-4 w-px bg-gray-300" />
-                                <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-600 select-none">
-                                    <input
-                                        type="checkbox"
-                                        checked={absentIds.length > 0 && smsSelected.size === absentIds.length}
-                                        ref={el => { if (el) el.indeterminate = smsSelected.size > 0 && smsSelected.size < absentIds.length; }}
-                                        onChange={e => toggleSelectAllAbsent(e.target.checked)}
-                                        className="h-3.5 w-3.5 accent-violet-600"
-                                    />
-                                    Select all absent
-                                </label>
-                                {smsSelected.size > 0 && (
-                                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                                        {smsSelected.size} selected
-                                    </span>
-                                )}
-                                <button
-                                    onClick={handleSendSms}
-                                    disabled={smsSelected.size === 0 || sendingSms}
-                                    className="btn-warn btn-sm ml-auto"
-                                >
-                                    {sendingSms ? 'Sending…' : `📱 Send SMS (${smsSelected.size})`}
-                                </button>
-                                {smsResult && (
-                                    <span className="text-xs text-gray-500">
-                                        ✅ {smsResult.sent} sent · ⏭ {smsResult.skipped} skipped
-                                        {smsResult.failed > 0 && <> · ❌ {smsResult.failed} failed</>}
-                                    </span>
-                                )} */}
-                            </div>
-                            <table className="min-w-full divide-y divide-slate-200 text-sm">
-                                <thead>
-                                    <tr>
-                                        {/* <th className="px-4 py-2 w-8"></th> */}
-                                        <th className="px-4 py-2 text-left">Roll No.</th>
-                                        <th className="px-4 py-2 text-left">Adm No.</th>
-                                        <th className="px-4 py-2 text-left">Student Name</th>
-                                        <th className="px-4 py-2 text-left">Father Name</th>
-                                        <th className="px-4 py-2 text-left">Phone</th>
-                                        <th className="px-4 py-2 text-left">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-slate-100">
-                                    {students.map(student => (
-                                        <tr key={student.student_id}>
-                                            {/* <td className="px-4 py-2">
-                                                {attendance[student.student_id!] === 'Absent' ? (
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={smsSelected.has(student.student_id!)}
-                                                        onChange={() => toggleSmsSelect(student.student_id!)}
-                                                        className="h-4 w-4 accent-violet-600 cursor-pointer"
-                                                    />
-                                                ) : (
-                                                    <span className="block w-4" />
-                                                )}
-                                            </td> */}
-                                            <td className="px-4 py-2 whitespace-nowrap">{student.rollNo}</td>
-                                            <td className="px-4 py-2 whitespace-nowrap">{student.admNo}</td>
-                                            <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900">{student.name}</td>
-                                            <td className="px-4 py-2 whitespace-nowrap text-gray-500">{student.father}</td>
-                                            <td className="px-4 py-2 whitespace-nowrap text-gray-500">{student.smsNo || student.fatherMobile}</td>
-                                            <td className="px-4 py-2 whitespace-nowrap">
-                                                <div className="flex items-center space-x-5">
-                                                    {[
-                                                        { val: 'Present', label: 'P', color: 'green' },
-                                                        { val: 'Absent', label: 'A', color: 'red' },
-                                                    ].map(opt => {
-                                                        const colorMap: { [key: string]: { text: string; ring: string; label: string } } = {
-                                                            green: { text: 'text-emerald-600', ring: 'focus:ring-emerald-500', label: 'text-emerald-700' },
-                                                            red: { text: 'text-red-600', ring: 'focus:ring-red-500', label: 'text-red-700' },
-                                                        };
-                                                        const classes = colorMap[opt.color];
-                                                        return (
-                                                            <label key={opt.val} className="flex items-center cursor-pointer">
-                                                                <input
-                                                                    type="radio"
-                                                                    name={`status-${student.student_id}`}
-                                                                    checked={attendance[student.student_id!] === opt.val}
-                                                                    onChange={() => {
-                                                                        if ((student as any).is_locked) {
-                                                                            notify("This student record is locked for this academic year.");
-                                                                        } else {
-                                                                            handleStatusChange(student.student_id!, opt.val);
-                                                                        }
-                                                                    }}
-                                                                    disabled={(student as any).is_locked}
-                                                                    className={`h-5 w-5 ${classes.text} border-gray-300 ${classes.ring}                                ${(student as any).is_locked ? 'cursor-not-allowed opacity-50' : ''}`}
-                                                                    title={(student as any).is_locked ? 'Record locked (Promoted)' : ''}
-                                                                />
-                                                                <span className={`ml-1 ${classes.label} font-medium`}>{opt.label}</span>
-                                                            </label>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
-                                <div className="flex flex-col items-end gap-1">
-                                    <button
-                                        onClick={handleSave}
-                                        disabled={loading}
-                                        className={isUpdateMode ? "btn-primary" : "btn-success"}
-                                    >
-                                        {loading
-                                            ? (isUpdateMode ? "Updating..." : "Saving...")
-                                            : (isUpdateMode ? `Update Attendance (Updates: ${updateCount})` : "Save Attendance")
-                                        }
-                                    </button>
-                                    {isUpdateMode && lastModified && (
-                                        <div className="text-xs text-gray-500">
-                                            Last Modified: {new Date(lastModified).toLocaleString()}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    )
-};
+/** Key for the letters used in the monthly grids. */
+const StatusLegend: React.FC<{ extra?: React.ReactNode }> = ({ extra }) => (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-600">
+        <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-emerald-100 text-emerald-800 font-semibold flex items-center justify-center">P</span> Present</span>
+        <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-red-100 text-red-800 font-semibold flex items-center justify-center">A</span> Absent</span>
+        <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-amber-100 text-amber-800 font-semibold flex items-center justify-center">L</span> Leave</span>
+        <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-gray-200 text-gray-600 font-semibold flex items-center justify-center">H</span> Holiday / week off</span>
+        <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-gray-50 text-gray-400 font-semibold flex items-center justify-center">-</span> Not marked</span>
+        {extra}
+    </div>
+);
 
 const RegisterViewTab: React.FC = () => {
     const [selectedClass, setSelectedClass] = useState('');
@@ -512,7 +72,7 @@ const RegisterViewTab: React.FC = () => {
 
     const handleGetReport = async () => {
         if (!selectedClass) {
-            notify("Please select a class");
+            notify("Choose a class first");
             return;
         }
         setLoading(true);
@@ -664,65 +224,47 @@ const RegisterViewTab: React.FC = () => {
     };
 
     return (
-        <div className="p-4">
+        <div className="space-y-4">
             <div className="card">
-                <div className="bg-slate-50 text-slate-800 text-sm border-b border-slate-200 rounded-t-xl font-semibold p-3">
-                    Attendance Register
+                <div className="card-body space-y-4">
+                    <p className="text-sm text-slate-600">See who came on each day of a month.</p>
+                    <MonthFilters
+                        idPrefix="reg"
+                        classOptions={classOptions}
+                        sectionOptions={sectionOptions}
+                        selectedClass={selectedClass}
+                        setSelectedClass={setSelectedClass}
+                        selectedSection={selectedSection}
+                        setSelectedSection={setSelectedSection}
+                        selectedMonth={selectedMonth}
+                        setSelectedMonth={setSelectedMonth}
+                        selectedYear={selectedYear}
+                        setSelectedYear={setSelectedYear}
+                        loading={loading}
+                        onSubmit={handleGetReport}
+                        submitLabel="Show register"
+                    />
                 </div>
-                <div className="p-4 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
-                        <div>
-                            <label className="label">Class</label>
-                            <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="input mt-1">
-                                <option value="">--Select Class--</option>
-                                {classOptions.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="label">Section</label>
-                            <select value={selectedSection} onChange={e => setSelectedSection(e.target.value)} className="input mt-1">
-                                <option value="">--All Sections--</option>
-                                {sectionOptions.map(section => <option key={section} value={section}>{section}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="label">Month</label>
-                            <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))} className="input mt-1">
-                                {Array.from({ length: 12 }, (_, i) => i + 1)
-                                    .filter(m => {
-                                        const now = new Date();
-                                        if (selectedYear > now.getFullYear()) return false;
-                                        if (selectedYear === now.getFullYear() && m > (now.getMonth() + 1)) return false;
-                                        return true;
-                                    })
-                                    .map(m => (
-                                        <option key={m} value={m}>{new Date(0, m - 1).toLocaleString('default', { month: 'long' })}</option>
-                                    ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="label">Year</label>
-                            <input
-                                type="number"
-                                value={selectedYear}
-                                max={new Date().getFullYear()}
-                                onChange={e => setSelectedYear(parseInt(e.target.value))}
-                                className="input mt-1"
-                            />
-                        </div>
-                        <button onClick={handleGetReport} disabled={loading} className="btn-primary">
-                            {loading ? 'Loading...' : 'Get Register'}
+            </div>
+
+            {reportData && (reportData.students || []).length === 0 && (
+                <div className="card"><EmptyState compact title="No students found" description="There are no students in this class and section." /></div>
+            )}
+            {reportData && (reportData.students || []).length > 0 && (
+                <div className="card overflow-hidden">
+                    <div className="card-body flex flex-wrap items-center justify-between gap-3">
+                        <StatusLegend />
+                        <button onClick={handleExportExcel} disabled={!reportData} className="btn-secondary btn-sm min-h-[40px]">
+                            Download Excel
                         </button>
-
                     </div>
-
-                    {reportData && (
-                        <div className="overflow-x-auto border border-slate-200 rounded-xl mt-4">
+                    <p className="px-4 pb-2 text-xs text-slate-500 md:hidden">Swipe the table sideways to see all days.</p>
+                        <div className="overflow-x-auto border-t border-slate-200">
                             <table className="min-w-full divide-y divide-gray-200 text-xs">
                                 <thead className="">
                                     <tr>
-                                        <th className="px-2 py-2 text-left sticky left-0 z-10 w-48">Student</th>
-                                        <th className="px-2 py-2 text-center border-1 border-gray-100">Roll No</th>
+                                        <th className="px-2 py-2 text-left sticky left-0 z-10 w-36 sm:w-48 bg-slate-50">Student</th>
+                                        <th className="px-2 py-2 text-center border-1 border-gray-100">Roll no.</th>
                                         {daysArray.map(d => {
                                             const date = new Date(selectedYear, selectedMonth - 1, d);
                                             const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
@@ -743,7 +285,7 @@ const RegisterViewTab: React.FC = () => {
                                         })}
                                         <th className="px-2 py-2 text-center bg-blue-50 border-l border-blue-100">Present</th>
                                         <th className="px-2 py-2 text-center bg-blue-50">Absent</th>
-                                        <th className="px-2 py-2 text-center bg-blue-50">Total Working Days</th>
+                                        <th className="px-2 py-2 text-center bg-blue-50">Working days</th>
                                         <th className="px-2 py-2 text-center bg-blue-50">Attendance %</th>
                                     </tr>
 
@@ -774,8 +316,8 @@ const RegisterViewTab: React.FC = () => {
 
                                         return (
                                             <tr key={student.student_id} className="hover:bg-gray-50 transition-colors">
-                                                <td className="px-2 py-1 whitespace-nowrap font-medium text-gray-900 sticky left-0 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                                                    <div>{student.name}</div>
+                                                <td className="px-2 py-1 font-medium text-gray-900 sticky left-0 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[8rem] max-w-[10rem] sm:max-w-none">
+                                                    <div className="break-words">{student.name}</div>
                                                     <div className="text-[10px] text-gray-500">{student.admNo}</div>
                                                 </td>
                                                 <td className="px-2 py-1 text-center font-medium text-gray-700 bg-white border-l border-gray-100">
@@ -817,14 +359,10 @@ const RegisterViewTab: React.FC = () => {
 
                                 </tbody>
                             </table>
-                            <div className="right p-2 mt-2">
-                                <button onClick={handleExportExcel} disabled={!reportData} className="btn-success">
-                                    Export Excel</button> </div>
                         </div>
-                    )}
                 </div>
-            </div>
-        </div >
+            )}
+        </div>
     );
 };
 
@@ -873,7 +411,7 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
 
     const handleGetStudents = async () => {
         if (!selectedClass) {
-            notify("Please select a class");
+            notify("Choose a class first");
             return;
         }
         setLoading(true);
@@ -956,13 +494,13 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
     };
 
     const handleReset = async () => {
-        if (await confirmDialog("Are you sure you want to discard all unsaved changes?")) {
+        if (await confirmDialog("Undo all changes you have not saved yet?")) {
             setAttendanceData({ ...originalData });
         }
     };
 
     const handleDownloadTemplate = async () => {
-        if (!selectedClass) return notify("Select a class first");
+        if (!selectedClass) return notify("Choose a class first");
 
         try {
             const globalBranch = getNormalizedBranch();
@@ -1068,7 +606,7 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
 
             // Use the date from the first item as a default fallback date 
             // to satisfy backend checks if they are strict or running old code
-            const sampleDate = attendanceList[0]?.date || new Date().toISOString().split('T')[0];
+            const sampleDate = attendanceList[0]?.date || new Date().toLocaleDateString('en-CA') /* local YYYY-MM-DD, not UTC */;
 
             const res = await api.post('/attendance', {
                 date: sampleDate, // Added global date as fallback
@@ -1110,57 +648,30 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
         }
     };
 
+    const changedCount = Object.entries(attendanceData).filter(([key, status]) => status !== originalData[key]).length;
+    const allStudentsLocked = students.length > 0 && students.every((s: any) => s.is_locked);
+
     return (
-        <div className="p-4">
+        <div className="space-y-4">
             <div className="card">
-                <div className="bg-slate-50 text-slate-800 text-sm border-b border-slate-200 rounded-t-xl font-semibold p-3">
-                    Monthly Attendance Entry
-                </div>
-                <div className="p-4 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
-                        <div>
-                            <label className="label">Class</label>
-                            <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="input mt-1">
-                                <option value="">--Select Class--</option>
-                                {classOptions.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="label">Section</label>
-                            <select value={selectedSection} onChange={e => setSelectedSection(e.target.value)} className="input mt-1">
-                                <option value="">--All Sections--</option>
-                                {sectionOptions.map(section => <option key={section} value={section}>{section}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="label">Month</label>
-                            <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))} className="input mt-1">
-                                {Array.from({ length: 12 }, (_, i) => i + 1)
-                                    .filter(m => {
-                                        const now = new Date();
-                                        if (selectedYear > now.getFullYear()) return false;
-                                        if (selectedYear === now.getFullYear() && m > (now.getMonth() + 1)) return false;
-                                        return true;
-                                    })
-                                    .map(m => (
-                                        <option key={m} value={m}>{new Date(0, m - 1).toLocaleString('default', { month: 'long' })}</option>
-                                    ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="label">Year</label>
-                            <input
-                                type="number"
-                                value={selectedYear}
-                                max={new Date().getFullYear()}
-                                onChange={e => setSelectedYear(parseInt(e.target.value))}
-                                className="input mt-1"
-                            />
-                        </div>
-                        <button onClick={handleGetStudents} disabled={loading} className="btn-primary">
-                            {loading ? 'Loading...' : 'Get Register'}
-                        </button>
-                    </div>
+                <div className="card-body space-y-4">
+                    <p className="text-sm text-slate-600">Fill or fix attendance for a whole month at once.</p>
+                    <MonthFilters
+                        idPrefix="entry"
+                        classOptions={classOptions}
+                        sectionOptions={sectionOptions}
+                        selectedClass={selectedClass}
+                        setSelectedClass={setSelectedClass}
+                        selectedSection={selectedSection}
+                        setSelectedSection={setSelectedSection}
+                        selectedMonth={selectedMonth}
+                        setSelectedMonth={setSelectedMonth}
+                        selectedYear={selectedYear}
+                        setSelectedYear={setSelectedYear}
+                        loading={loading}
+                        onSubmit={handleGetStudents}
+                        submitLabel="Show students"
+                    />
                     {/*
                     <div className="flex justify-end gap-2">
                         <button
@@ -1188,42 +699,35 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                         </div>
                     </div>
                     */}
-                    {students.length > 0 && (
-                        <div className="mt-4">
-                            <div className="flex flex-wrap justify-between items-center gap-3 mb-2">
-                                <span className="text-sm text-slate-500">Click on a cell to toggle Present/Absent</span>
-                                <div className="flex flex-col items-end gap-1">
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={handleReset}
-                                            disabled={loading || saving || Object.keys(attendanceData).length === 0}
-                                            className="btn-secondary"
-                                        >
-                                            Reset Changes
-                                        </button>
-                                        <button
-                                            onClick={handleSave}
-                                            disabled={loading || saving || students.every((s: any) => s.is_locked)}
-                                            className="btn-success"
-                                        >
-                                            {saving ? "Saving..." : "Save All Changes"}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="overflow-x-auto border border-slate-200 rounded-xl max-h-[70vh]">
+                </div>
+            </div>
+
+            {students.length > 0 && (
+                <>
+                    {allStudentsLocked && (
+                        <Alert tone="warning" title="These students are locked">
+                            All students here have moved to a new class, so this month can't be changed.
+                        </Alert>
+                    )}
+                    <div className="card overflow-hidden">
+                        <div className="card-body space-y-2">
+                            <p className="text-sm font-medium text-slate-800">Tap a box to switch between Present (P) and Absent (A).</p>
+                            <StatusLegend />
+                        </div>
+                        <p className="px-4 pb-2 text-xs text-slate-500 md:hidden">Swipe the table sideways to see all days.</p>
+                        <div className="overflow-auto border-t border-slate-200 max-h-[70vh]">
                                 <table className="min-w-full divide-y divide-gray-200 text-xs relative">
-                                    <thead className="sticky top-0 z-20">
+                                    <thead className="sticky top-0 z-20 bg-slate-50">
                                         <tr>
-                                            <th className="px-2 py-2 text-center sticky left-0 z-30 w-16 shadow-[1px_0_0_0_rgba(0,0,0,0.1)]">Roll No</th>
-                                            <th className="px-2 py-2 text-center sticky left-16 z-30 w-24 shadow-[1px_0_0_0_rgba(0,0,0,0.1)]">Adm No</th>
-                                            <th className="px-2 py-2 text-left sticky left-40 z-30 w-48 shadow-[1px_0_0_0_rgba(0,0,0,0.1)]">Student Name</th>
+                                            <th className="hidden sm:table-cell px-2 py-2 text-center sm:sticky left-0 z-30 w-16 bg-slate-50 shadow-[1px_0_0_0_rgba(0,0,0,0.1)]">Roll no.</th>
+                                            <th className="hidden sm:table-cell px-2 py-2 text-center sm:sticky left-16 z-30 w-24 bg-slate-50 shadow-[1px_0_0_0_rgba(0,0,0,0.1)]">Adm. no.</th>
+                                            <th className="px-2 py-2 text-left sticky left-0 sm:left-40 z-30 w-32 sm:w-48 bg-slate-50 shadow-[1px_0_0_0_rgba(0,0,0,0.1)]">Student</th>
                                             {daysArray.map(d => {
                                                 const date = new Date(selectedYear, selectedMonth - 1, d);
                                                 const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
                                                 const isSunday = date.getDay() === 0;
                                                 return (
-                                                    <th key={d} className={`px-1 py-1 text-center w-8 border-l border-gray-100 ${isSunday ? 'bg-red-50 text-red-600' : 'text-gray-500'}`}>
+                                                    <th key={d} className={`px-1 py-1 text-center w-9 border-l border-gray-100 ${isSunday ? 'bg-red-50 text-red-600' : 'text-gray-500'}`}>
                                                         <div className="flex flex-col items-center justify-center leading-tight">
                                                             <span>{d}</span>
                                                             <span className="text-[10px] font-normal">{dayName}</span>
@@ -1236,14 +740,16 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {students.map((student: any) => (
                                             <tr key={student.student_id} className="hover:bg-gray-50">
-                                                <td className="px-2 py-1 text-center whitespace-nowrap text-gray-700 sticky left-0 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                                <td className="hidden sm:table-cell px-2 py-1 text-center whitespace-nowrap text-gray-700 sm:sticky left-0 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                                                     {student.rollNo || "-"}
                                                 </td>
-                                                <td className="px-2 py-1 text-center whitespace-nowrap text-gray-500 sticky left-16 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                                <td className="hidden sm:table-cell px-2 py-1 text-center whitespace-nowrap text-gray-500 sm:sticky left-16 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                                                     {student.admNo}
                                                 </td>
-                                                <td className="px-2 py-1 whitespace-nowrap font-medium text-gray-900 sticky left-40 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                                                    {student.name}
+                                                <td className="px-2 py-1 font-medium text-gray-900 sticky left-0 sm:left-40 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[8rem] max-w-[9rem] sm:max-w-none">
+                                                    <div className="break-words leading-snug">{student.name}</div>
+                                                    <div className="sm:hidden text-[10px] text-gray-500">Roll {student.rollNo || '-'}</div>
+                                                    {student.is_locked && <div className="text-[10px] text-gray-500">Locked</div>}
                                                 </td>
                                                 {daysArray.map(d => {
                                                     const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -1266,7 +772,8 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                                                         <td
                                                             key={d}
                                                             onClick={() => toggleStatus(student.student_id, d)}
-                                                            className={`px-1 py-1 text-center border-l border-gray-100 cursor-pointer ${getStatusColor(status)}`}
+                                                            title={`${student.name}, ${d}: ${statusLabel(status)}`}
+                                                            className={`px-1 py-1 h-10 min-w-[2.25rem] text-center text-sm font-semibold border-l border-gray-100 cursor-pointer select-none ${getStatusColor(status)}`}
                                                         >
                                                             {status ? status.charAt(0) : '-'}
                                                         </td>
@@ -1276,11 +783,28 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                                         ))}
                                     </tbody>
                                 </table>
-                            </div>
                         </div>
-                    )}
-                </div>
-            </div>
+                    </div>
+
+                    <ActionBar note={changedCount > 0 ? `${changedCount} ${changedCount === 1 ? 'change' : 'changes'} not saved yet` : 'No changes yet'}>
+                        <Button
+                            variant="secondary"
+                            onClick={handleReset}
+                            disabled={loading || saving || Object.keys(attendanceData).length === 0}
+                        >
+                            Undo changes
+                        </Button>
+                        <Button
+                            variant="success"
+                            onClick={handleSave}
+                            disabled={loading || saving || students.every((s: any) => s.is_locked)}
+                            loading={saving}
+                        >
+                            {saving ? "Saving..." : `Save changes${changedCount > 0 ? ` (${changedCount})` : ''}`}
+                        </Button>
+                    </ActionBar>
+                </>
+            )}
         </div>
     );
 };
@@ -1291,19 +815,21 @@ const RegisterView: React.FC = () => {
     return (
         <div className="space-y-4">
             {/* Sub Tabs */}
-            <div className="flex justify-center mx-4 mt-2">
-                <div className="segmented flex-wrap">
+            <div>
+                <div className="segmented w-full sm:w-auto">
                     <button
+                        type="button"
                         onClick={() => setSubTab('view')}
-                        className={`segmented-item ${subTab === 'view' ? 'segmented-item-active' : ''}`}
+                        className={`segmented-item flex-1 sm:flex-none min-h-[40px] ${subTab === 'view' ? 'segmented-item-active' : ''}`}
                     >
-                        Attendance Register Query
+                        See register
                     </button>
                     <button
+                        type="button"
                         onClick={() => setSubTab('entry')}
-                        className={`segmented-item ${subTab === 'entry' ? 'segmented-item-active' : ''}`}
+                        className={`segmented-item flex-1 sm:flex-none min-h-[40px] ${subTab === 'entry' ? 'segmented-item-active' : ''}`}
                     >
-                        Monthly Attendance Entry
+                        Edit a month
                     </button>
                 </div>
             </div>
@@ -1314,7 +840,8 @@ const RegisterView: React.FC = () => {
 };
 const AbsentReport: React.FC = () => {
     const [reportType, setReportType] = useState<'today' | 'student'>('today');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [searchedDay, setSearchedDay] = useState(false);
+    const [date, setDate] = useState(new Date().toLocaleDateString('en-CA') /* local YYYY-MM-DD, not UTC */);
     const [selectedClass, setSelectedClass] = useState('');
     const [selectedSection, setSelectedSection] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -1475,399 +1002,326 @@ const AbsentReport: React.FC = () => {
         }
     };
 
+    const handleGetClassStudents = async () => {
+        if (!selectedClass) {
+            notify("Choose a class first");
+            return;
+        }
+        setLoading(true);
+        try {
+            const globalBranch = getNormalizedBranch();
+            const branchParam = globalBranch === "All Branches" || globalBranch === "All" ? "All" : globalBranch;
+            const params: any = { class: selectedClass, branch: branchParam };
+            if (selectedSection) params.section = selectedSection;
+            const res = await api.get('/students', { params });
+            setSearchResults(res.data.students || []);
+            setSelectedStudent(null);
+        } catch (e) {
+            console.error(e);
+            notify("Error fetching students");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const absentColumns: Column<any>[] = [
+        { key: 'name', header: 'Name', primary: true, render: r => <span className="font-medium">{r.name}</span> },
+        { key: 'class', header: 'Class', secondary: true, render: r => `Class ${r.class ?? '—'}${r.rollNo ? ` · Roll ${r.rollNo}` : ''}` },
+        { key: 'admNo', header: 'Admission no.' },
+        { key: 'father', header: 'Father' },
+        { key: 'phone', header: 'Phone', render: r => (r.smsNo || r.fatherMobile)
+            ? <a href={`tel:${r.smsNo || r.fatherMobile}`} className="text-brand-700 underline-offset-2 hover:underline">{r.smsNo || r.fatherMobile}</a>
+            : '—' },
+        { key: 'status', header: 'Status', render: r => <span className={r.status === 'Absent' ? 'badge-danger' : 'badge-warning'}>{statusLabel(r.status)}</span> },
+    ];
+
+    const historyColumns: Column<any>[] = [
+        { key: 'date', header: 'Date', primary: true, render: r => prettyDate(r.date) },
+        { key: 'status', header: 'Status', render: r => <span className={statusBadge(r.status)}>{statusLabel(r.status)}</span> },
+    ];
+
+    const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+        <div className="flex justify-between gap-3 border-b border-gray-100 py-1.5">
+            <span className="text-gray-600">{label}</span>
+            <span className="font-medium text-gray-900 text-right break-words min-w-0">{value}</span>
+        </div>
+    );
+
     return (
-        <div className="p-4">
-            <div className="card">
-                <div className="bg-slate-50 text-slate-800 text-sm border-b border-slate-200 rounded-t-xl font-semibold p-3 flex justify-between items-center">
-                    <span>Absent Report</span>
-                    <div className="segmented">
-                        <button
-                            onClick={() => { setReportType('today'); setResults([]); setSelectedStudent(null); }}
-                            className={`segmented-item text-xs py-1 ${reportType === 'today' ? 'segmented-item-active' : ''}`}
-                        >
-                            Today's Absentees
-                        </button>
-                        <button
-                            onClick={() => { setReportType('student'); setResults([]); }}
-                            className={`segmented-item text-xs py-1 ${reportType === 'student' ? 'segmented-item-active' : ''}`}
-                        >
-                            Student Report
-                        </button>
+        <div className="space-y-4">
+            <div className="segmented w-full sm:w-auto">
+                <button
+                    type="button"
+                    onClick={() => { setReportType('today'); setResults([]); setSelectedStudent(null); setSearchedDay(false); }}
+                    className={`segmented-item flex-1 sm:flex-none min-h-[40px] ${reportType === 'today' ? 'segmented-item-active' : ''}`}
+                >
+                    Absent on a day
+                </button>
+                <button
+                    type="button"
+                    onClick={() => { setReportType('student'); setResults([]); }}
+                    className={`segmented-item flex-1 sm:flex-none min-h-[40px] ${reportType === 'student' ? 'segmented-item-active' : ''}`}
+                >
+                    One student
+                </button>
+            </div>
+
+            {reportType === 'today' ? (
+                <div className="card">
+                    <div className="card-body space-y-4">
+                        <p className="text-sm text-slate-600">See which students were absent or on leave.</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                            <Field label="Date" htmlFor="abs-date">
+                                <input id="abs-date" type="date" value={date} onChange={e => setDate(e.target.value)} className="input" />
+                            </Field>
+                            <Field label="Class (optional)" htmlFor="abs-class">
+                                <select id="abs-class" value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="input">
+                                    <option value="">All classes</option>
+                                    {classOptions.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
+                                </select>
+                            </Field>
+                            <Button onClick={() => { setSearchedDay(true); handleGetTodayReport(); }} loading={loading} className="min-h-[44px]">
+                                Show absent students
+                            </Button>
+                        </div>
                     </div>
                 </div>
-                <div className="p-4 space-y-4">
-                    <div className="flex flex-wrap gap-4 items-end">
-                        {reportType === 'today' ? (
-                            <>
-                                <div>
-                                    <label className="label">Date</label>
-                                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="input w-auto mt-1" />
-                                </div>
-                                <div>
-                                    <label className="label">Class (Optional)</label>
-                                    <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="input mt-1 w-40">
-                                        <option value="">All Classes</option>
-                                        {classOptions.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
-                                    </select>
-                                </div>
-                                <button onClick={handleGetTodayReport} disabled={loading} className="btn-primary">
-                                    {loading ? 'Searching...' : 'Search'}
-                                </button>
-                            </>
-                        ) : (
-                            <div className="w-full space-y-4">
-                                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                                    <h4 className="text-sm font-semibold text-slate-900 mb-2">Find Student by Class & Section</h4>
-                                    <div className="flex flex-wrap gap-4 items-end">
-                                        <div>
-                                            <label className="label">Class</label>
-                                            <select
-                                                value={selectedClass}
-                                                onChange={e => {
-                                                    setSelectedClass(e.target.value);
-                                                    // Trigger search if section is already selected or just fetch all class students
-                                                    // For now, let's wait for explicit "Get Students" or just use the existing search logic adapted
-                                                }}
-                                                className="input mt-1 w-40"
-                                            >
-                                                <option value="">--Select--</option>
-                                                {classOptions.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="label">Section</label>
-                                            <select
-                                                value={selectedSection}
-                                                onChange={e => setSelectedSection(e.target.value)}
-                                                className="input mt-1 w-40"
-                                            >
-                                                <option value="">--Select--</option>
-                                                {sectionOptions.map(section => <option key={section} value={section}>{section}</option>)}
-                                            </select>
-                                        </div>
-                                        <button
-                                            onClick={async () => {
-                                                if (!selectedClass) {
-                                                    notify("Please select a class");
-                                                    return;
-                                                }
-                                                setLoading(true);
-                                                try {
-                                                    const globalBranch = getNormalizedBranch();
-                                                    const branchParam = globalBranch === "All Branches" || globalBranch === "All" ? "All" : globalBranch;
-                                                    const params: any = { class: selectedClass, branch: branchParam };
-                                                    if (selectedSection) params.section = selectedSection;
-                                                    const res = await api.get('/students', { params });
-                                                    setSearchResults(res.data.students || []);
-                                                    setSelectedStudent(null);
-                                                } catch (e) {
-                                                    console.error(e);
-                                                    notify("Error fetching students");
-                                                } finally {
-                                                    setLoading(false);
-                                                }
-                                            }}
-                                            disabled={loading}
-                                            className="btn-primary"
-                                        >
-                                            Get Students
-                                        </button>
-                                    </div>
-                                </div>
+            ) : (
+                <div className="card">
+                    <div className="card-body space-y-4">
+                        <p className="text-sm text-slate-600">Find a student to see every day they were present or absent.</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                            <Field label="Class" htmlFor="stu-class">
+                                <select
+                                    id="stu-class"
+                                    value={selectedClass}
+                                    onChange={e => setSelectedClass(e.target.value)}
+                                    className="input"
+                                >
+                                    <option value="">Choose a class</option>
+                                    {classOptions.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="Section (optional)" htmlFor="stu-section">
+                                <select
+                                    id="stu-section"
+                                    value={selectedSection}
+                                    onChange={e => setSelectedSection(e.target.value)}
+                                    className="input"
+                                >
+                                    <option value="">All sections</option>
+                                    {sectionOptions.map(section => <option key={section} value={section}>{section}</option>)}
+                                </select>
+                            </Field>
+                            <Button variant="secondary" onClick={handleGetClassStudents} disabled={loading} className="min-h-[44px]">
+                                Show students
+                            </Button>
+                        </div>
 
-                                <div className="relative flex items-center py-2">
-                                    <div className="flex-grow border-t border-gray-300"></div>
-                                    <span className="flex-shrink-0 mx-4 text-gray-400 text-xs">OR SEARCH BY DETAILS</span>
-                                    <div className="flex-grow border-t border-gray-300"></div>
-                                </div>
+                        <div className="relative flex items-center py-1">
+                            <div className="flex-grow border-t border-gray-200"></div>
+                            <span className="flex-shrink-0 mx-3 text-slate-500 text-sm">or search</span>
+                            <div className="flex-grow border-t border-gray-200"></div>
+                        </div>
 
-                                <div className="flex flex-wrap sm:flex-nowrap gap-2 items-end">
-                                    <div className="flex-grow">
-                                        <label className="label">Search Student (Name, Adm No, Phone)</label>
-                                        <input
-                                            type="text"
-                                            value={searchQuery}
-                                            onChange={e => setSearchQuery(e.target.value)}
-                                            placeholder="Enter Name, Admission No, or Phone"
-                                            className="input mt-1"
-                                            onKeyDown={(e) => e.key === 'Enter' && handleSearchStudent()}
-                                        />
-                                    </div>
-                                    <button onClick={handleSearchStudent} disabled={loading} className="btn-primary">
-                                        Find
-                                    </button>
-                                </div>
+                        <Field label="Name, admission number or phone" htmlFor="stu-search">
+                            <div className="flex gap-2">
+                                <input
+                                    id="stu-search"
+                                    type="search"
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    placeholder="e.g. Ayesha or 1023"
+                                    className="input flex-1 min-w-0"
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearchStudent()}
+                                />
+                                <Button onClick={handleSearchStudent} disabled={loading} className="min-h-[44px] flex-shrink-0">
+                                    Find
+                                </Button>
+                            </div>
+                        </Field>
 
-                                {searchResults.length > 0 && (
-                                    <div className="mt-2 border border-slate-200 rounded-lg max-h-40 overflow-y-auto bg-slate-50">
-                                        {searchResults.map(s => (
-                                            <div
-                                                key={s.student_id}
+                        {searchResults.length > 0 && (
+                            <div>
+                                <p className="text-sm font-medium text-slate-800 mb-2">Tap a student</p>
+                                <ul className="border border-slate-200 rounded-xl max-h-72 overflow-y-auto divide-y divide-slate-100 bg-white">
+                                    {searchResults.map(s => (
+                                        <li key={s.student_id}>
+                                            <button
+                                                type="button"
                                                 onClick={() => handleSelectStudent(s)}
-                                                className="p-2 hover:bg-brand-50 cursor-pointer border-b border-slate-200 last:border-b-0 text-sm"
+                                                className="w-full text-left px-3 py-2.5 min-h-[44px] hover:bg-brand-50 active:bg-brand-50 text-sm"
                                             >
-                                                <span className="font-semibold">{s.first_name} {s.last_name}</span>
-                                                <span className="text-gray-500 ml-2">({s.admission_no}) - Class {s.class} {s.section ? `- Sec ${s.section}` : ''}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {selectedStudent && (
-                                    <div className="card mt-6 overflow-hidden">
-                                        <div className="card-header bg-brand-50 border-brand-100">
-                                            <h3 className="text-base font-semibold text-brand-800">Student Profile</h3>
-                                            <button onClick={() => setSelectedStudent(null)} className="text-sm text-brand-600 hover:text-brand-800 hover:underline">
-                                                Change Student
+                                                <span className="font-semibold text-slate-900">{s.first_name} {s.last_name}</span>
+                                                <span className="block text-slate-500">Adm. no. {s.admission_no} · Class {s.class}{s.section ? ` · Section ${s.section}` : ''}</span>
                                             </button>
-                                        </div>
-                                        <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-6">
-                                            {/* Photo & Basic Info */}
-                                            <div className="md:col-span-1 flex flex-col items-center text-center">
-                                                <div className="w-24 h-24 bg-gray-200 rounded-full mb-3 flex items-center justify-center overflow-hidden border-2 border-white shadow-md">
-                                                    {selectedStudent.photo ? (
-                                                        <img src={selectedStudent.photo} alt={selectedStudent.name} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <span className="text-3xl text-gray-400">👤</span>
-                                                    )}
-                                                </div>
-                                                <h2 className="text-lg font-semibold text-slate-900">{selectedStudent.name}</h2>
-                                                <p className="text-sm text-gray-500">{selectedStudent.admNo}</p>
-                                                <span className="badge-success mt-2">
-                                                    Active
-                                                </span>
-                                            </div>
-
-                                            {/* Detailed Info */}
-                                            <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                                                <div>
-                                                    <h4 className="font-semibold text-gray-500 mb-2 uppercase text-xs tracking-wider">Academic Details</h4>
-                                                    <div className="space-y-1">
-                                                        <div className="flex justify-between border-b border-gray-100 py-1">
-                                                            <span className="text-gray-600">Class & Section:</span>
-                                                            <span className="font-medium text-gray-900">{selectedStudent.class} - {selectedStudent.section || 'N/A'}</span>
-                                                        </div>
-                                                        <div className="flex justify-between border-b border-gray-100 py-1">
-                                                            <span className="text-gray-600">Roll Number:</span>
-                                                            <span className="font-medium text-gray-900">{selectedStudent.rollNo || '-'}</span>
-                                                        </div>
-                                                        <div className="flex justify-between border-b border-gray-100 py-1">
-                                                            <span className="text-gray-600">Admission Date:</span>
-                                                            <span className="font-medium text-gray-900">{selectedStudent.admission_date || '-'}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div>
-                                                    <h4 className="font-semibold text-gray-500 mb-2 uppercase text-xs tracking-wider">Personal Details</h4>
-                                                    <div className="space-y-1">
-                                                        <div className="flex justify-between border-b border-gray-100 py-1">
-                                                            <span className="text-gray-600">Father Name:</span>
-                                                            <span className="font-medium text-gray-900">{selectedStudent.father || '-'}</span>
-                                                        </div>
-                                                        <div className="flex justify-between border-b border-gray-100 py-1">
-                                                            <span className="text-gray-600">Mobile:</span>
-                                                            <span className="font-medium text-gray-900">{selectedStudent.smsNo || selectedStudent.fatherMobile || '-'}</span>
-                                                        </div>
-                                                        <div className="flex justify-between border-b border-gray-100 py-1">
-                                                            <span className="text-gray-600">DOB:</span>
-                                                            <span className="font-medium text-gray-900">{selectedStudent.dob || '-'}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="sm:col-span-2 mt-2">
-                                                    <h4 className="font-semibold text-gray-500 mb-1 uppercase text-xs tracking-wider">Address</h4>
-                                                    <p className="text-gray-700 bg-gray-50 p-2 rounded border border-gray-100">
-                                                        {selectedStudent.address || 'No address provided'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Attendance Stats */}
-                                        {results.length > 0 && (
-                                            <div className="bg-slate-50 border-t border-slate-200 px-4 py-3 grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
-                                                <div className="card p-2">
-                                                    <div className="text-xs text-gray-500 uppercase font-semibold">Total Days</div>
-                                                    <div className="text-xl font-bold text-gray-800">{results.length}</div>
-                                                </div>
-                                                <div className="card p-2">
-                                                    <div className="text-xs text-emerald-600 uppercase font-semibold">Present</div>
-                                                    <div className="text-xl font-bold text-emerald-700">{results.filter(r => r.status === 'Present').length}</div>
-                                                </div>
-                                                <div className="card p-2">
-                                                    <div className="text-xs text-red-600 uppercase font-semibold">Absent</div>
-                                                    <div className="text-xl font-bold text-red-700">{results.filter(r => r.status === 'Absent').length}</div>
-                                                </div>
-                                                <div className="card p-2">
-                                                    <div className="text-xs text-amber-600 uppercase font-semibold">Leave</div>
-                                                    <div className="text-xl font-bold text-amber-700">{results.filter(r => r.status === 'Leave').length}</div>
-                                                </div>
-                                                <div className="card p-2">
-                                                    <div className="text-xs text-brand-600 uppercase font-semibold">Percentage</div>
-                                                    <div className="text-xl font-bold text-brand-700">
-                                                        {results.length > 0
-                                                            ? Math.round((results.filter(r => r.status === 'Present').length / results.length) * 100)
-                                                            : 0}%
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
                         )}
                     </div>
+                </div>
+            )}
 
-                    {results.length > 0 ? (
-                        <div className="overflow-x-auto border border-slate-200 rounded-xl mt-4">
-                            {/* {reportType === 'today' && (
-                                <div className="p-2 bg-gray-50 border-b flex items-center gap-3 flex-wrap">
-                                    <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-600 select-none">
-                                        <input
-                                            type="checkbox"
-                                            checked={results.length > 0 && smsSelected.size === results.length}
-                                            ref={el => { if (el) el.indeterminate = smsSelected.size > 0 && smsSelected.size < results.length; }}
-                                            onChange={e => toggleSelectAll(e.target.checked)}
-                                            className="h-3.5 w-3.5 accent-violet-600"
-                                        />
-                                        Select all
-                                    </label>
-                                    {smsSelected.size > 0 && (
-                                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                                            {smsSelected.size} selected
-                                        </span>
-                                    )}
-                                    <button
-                                        onClick={handleSendSms}
-                                        disabled={smsSelected.size === 0 || sendingSms}
-                                        className="btn-warn btn-sm ml-auto"
-                                    >
-                                        {sendingSms ? 'Sending…' : `📱 Send SMS (${smsSelected.size})`}
-                                    </button>
-                                    {smsResult && (
-                                        <span className="text-xs text-gray-500">
-                                            ✅ {smsResult.sent} sent · ⏭ {smsResult.skipped} skipped
-                                            {smsResult.failed > 0 && <> · ❌ {smsResult.failed} failed</>}
-                                        </span>
-                                    )}
-                                </div>
-                            )} */}
-                            <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                <thead className="">
-                                    <tr>
-                                        {reportType === 'today' ? (
-                                            <>
-                                                {/* <th className="px-4 py-2 w-8"></th> */}
-                                                <th className="px-4 py-2 text-left">Class</th>
-                                                <th className="px-4 py-2 text-left">Roll No</th>
-                                                <th className="px-4 py-2 text-left">Adm No</th>
-                                                <th className="px-4 py-2 text-left">Name</th>
-                                                <th className="px-4 py-2 text-left">Father Name</th>
-                                                <th className="px-4 py-2 text-left">Phone</th>
-                                                <th className="px-4 py-2 text-left">Status</th>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <th className="px-4 py-2 text-left">Date</th>
-                                                <th className="px-4 py-2 text-left">Status</th>
-                                            </>
-                                        )}
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {results.map((item, idx) => (
-                                        <tr key={idx}>
-                                            {reportType === 'today' ? (
-                                                <>
-                                                    {/* <td className="px-4 py-2">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={smsSelected.has(item.student_id)}
-                                                            onChange={() => toggleSmsSelect(item.student_id)}
-                                                            className="h-4 w-4 accent-violet-600 cursor-pointer"
-                                                        />
-                                                    </td> */}
-                                                    <td className="px-4 py-2 whitespace-nowrap">{item.class}</td>
-                                                    <td className="px-4 py-2 whitespace-nowrap">{item.rollNo}</td>
-                                                    <td className="px-4 py-2 whitespace-nowrap">{item.admNo}</td>
-                                                    <td className="px-4 py-2 whitespace-nowrap font-medium">{item.name}</td>
-                                                    <td className="px-4 py-2 whitespace-nowrap text-gray-500">{item.father}</td>
-                                                    <td className="px-4 py-2 whitespace-nowrap text-gray-500">{item.smsNo || item.fatherMobile}</td>
-                                                    <td className="px-4 py-2 whitespace-nowrap">
-                                                        <span className={item.status === 'Absent' ? 'badge-danger' : 'badge-warning'}>
-                                                            {item.status}
-                                                        </span>
-                                                    </td>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <td className="px-4 py-2 whitespace-nowrap">{item.date}</td>
-                                                    <td className="px-4 py-2 whitespace-nowrap">
-                                                        <span className={item.status === 'Present' ? 'badge-success' :
-                                                            item.status === 'Absent' ? 'badge-danger' :
-                                                                item.status === 'Leave' ? 'badge-warning' :
-                                                                    'badge-neutral'
-                                                            }>
-                                                            {item.status}
-                                                        </span>
-                                                    </td>
-                                                </>
-                                            )}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+            {reportType === 'student' && selectedStudent && (
+                <div className="card overflow-hidden">
+                    <div className="card-header bg-brand-50 border-brand-100">
+                        <h3 className="text-base font-semibold text-brand-800">Student</h3>
+                        <button type="button" onClick={() => setSelectedStudent(null)} className="btn-ghost btn-sm">
+                            Choose another student
+                        </button>
+                    </div>
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-6">
+                        {/* Photo & Basic Info */}
+                        <div className="md:col-span-1 flex flex-col items-center text-center">
+                            <div className="w-24 h-24 bg-gray-200 rounded-full mb-3 flex items-center justify-center overflow-hidden border-2 border-white shadow-md">
+                                {selectedStudent.photo ? (
+                                    <img src={selectedStudent.photo} alt={selectedStudent.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="text-3xl text-gray-400">👤</span>
+                                )}
+                            </div>
+                            <h2 className="text-lg font-semibold text-slate-900 break-words">{selectedStudent.name}</h2>
+                            <p className="text-sm text-gray-500">{selectedStudent.admNo}</p>
+                            <span className="badge-success mt-2">
+                                Active
+                            </span>
                         </div>
-                    ) : (
-                        !loading && (reportType === 'today' || selectedStudent) && <EmptyState compact title="No records found" className="mt-4" />
+
+                        {/* Detailed Info */}
+                        <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <h4 className="font-semibold text-slate-700 mb-1">School details</h4>
+                                <InfoRow label="Class and section" value={`${selectedStudent.class} - ${selectedStudent.section || 'N/A'}`} />
+                                <InfoRow label="Roll number" value={selectedStudent.rollNo || '-'} />
+                                <InfoRow label="Joined on" value={selectedStudent.admission_date || '-'} />
+                            </div>
+
+                            <div>
+                                <h4 className="font-semibold text-slate-700 mb-1">Personal details</h4>
+                                <InfoRow label="Father's name" value={selectedStudent.father || '-'} />
+                                <InfoRow label="Mobile" value={selectedStudent.smsNo || selectedStudent.fatherMobile || '-'} />
+                                <InfoRow label="Date of birth" value={selectedStudent.dob || '-'} />
+                            </div>
+
+                            <div className="sm:col-span-2 mt-2">
+                                <h4 className="font-semibold text-slate-700 mb-1">Address</h4>
+                                <p className="text-gray-700 bg-gray-50 p-2 rounded border border-gray-100 break-words">
+                                    {selectedStudent.address || 'No address provided'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Attendance Stats */}
+                    {results.length > 0 && (
+                        <div className="bg-slate-50 border-t border-slate-200 px-4 py-3 grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+                            <div className="card p-2">
+                                <div className="text-xs text-gray-600 font-semibold">Days marked</div>
+                                <div className="text-xl font-bold text-gray-800">{results.length}</div>
+                            </div>
+                            <div className="card p-2">
+                                <div className="text-xs text-emerald-700 font-semibold">Present</div>
+                                <div className="text-xl font-bold text-emerald-700">{results.filter(r => r.status === 'Present').length}</div>
+                            </div>
+                            <div className="card p-2">
+                                <div className="text-xs text-red-700 font-semibold">Absent</div>
+                                <div className="text-xl font-bold text-red-700">{results.filter(r => r.status === 'Absent').length}</div>
+                            </div>
+                            <div className="card p-2">
+                                <div className="text-xs text-amber-700 font-semibold">Leave</div>
+                                <div className="text-xl font-bold text-amber-700">{results.filter(r => r.status === 'Leave').length}</div>
+                            </div>
+                            <div className="card p-2 col-span-2 sm:col-span-1">
+                                <div className="text-xs text-brand-700 font-semibold">Present %</div>
+                                <div className="text-xl font-bold text-brand-700">
+                                    {results.length > 0
+                                        ? Math.round((results.filter(r => r.status === 'Present').length / results.length) * 100)
+                                        : 0}%
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </div>
+            )}
+
+            {/* Sending SMS to parents of absent students was switched off earlier (see commented code above). */}
+            {results.length > 0 ? (
+                <div>
+                    <p className="text-sm font-semibold text-slate-800 mb-2">
+                        {reportType === 'today'
+                            ? `${results.length} ${results.length === 1 ? 'student' : 'students'} absent or on leave`
+                            : 'Day by day'}
+                    </p>
+                    <DataList
+                        columns={reportType === 'today' ? absentColumns : historyColumns}
+                        rows={results}
+                        rowKey={(_, idx) => idx}
+                    />
+                </div>
+            ) : (
+                !loading && ((reportType === 'today' && searchedDay) || (reportType === 'student' && selectedStudent)) && <div className="card"><EmptyState compact title="No records found" /></div>
+            )}
+        </div>
+    );
+};
+
+const VIEWS: { id: AttendanceTab; label: string }[] = [
+    { id: 'take', label: 'Daily' },
+    { id: 'register', label: 'Monthly' },
+    { id: 'absent-report', label: 'Absent list' },
+];
+
+const StudentAttendance: React.FC<StudentAttendanceProps> = ({ navigateTo, defaultTab = 'take' }) => {
+    const [activeTab, setActiveTab] = useState<AttendanceTab>(() => {
+        // A shortcut may open this page on a specific view, e.g. 'register' or 'absent-report'.
+        const intent = consumeIntent('student-attendance');
+        return intent && ['take', 'today', 'register', 'absent-report'].includes(intent) ? intent as AttendanceTab : defaultTab;
+    });
+
+    const renderContent = () => {
+        switch (activeTab) {
+            case 'take':
+                return <DailyAttendance navigateTo={navigateTo} />;
+            case 'register':
+                return <RegisterView />;
+            case 'absent-report':
+                return <AbsentReport />;
+            case 'today':
+                return <EmptyState title="Today's Report Coming Soon" />;
+            default:
+                return <DailyAttendance navigateTo={navigateTo} />;
+        }
+    };
+
+    return (
+        <div className="min-h-full bg-surface-muted">
+            <div className={`mx-auto px-4 py-4 sm:px-6 ${activeTab === 'take' ? 'max-w-3xl' : 'max-w-6xl'}`}>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <h1 className="text-xl font-semibold text-slate-900">Student attendance</h1>
+                    <button type="button" className="btn-ghost btn-sm" onClick={() => navigateTo?.('student-administration')}>
+                        Student list
+                    </button>
+                </div>
+                <div className="segmented w-full sm:w-auto mb-5" role="tablist" aria-label="Attendance views">
+                    {VIEWS.map(v => (
+                        <button
+                            key={v.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={activeTab === v.id}
+                            onClick={() => setActiveTab(v.id)}
+                            className={`segmented-item flex-1 sm:flex-none min-h-[40px] ${activeTab === v.id ? 'segmented-item-active' : ''}`}
+                        >
+                            {v.label}
+                        </button>
+                    ))}
+                </div>
+                {renderContent()}
             </div>
         </div>
     );
 };
 
-const StudentAttendance: React.FC<StudentAttendanceProps> = ({ navigateTo, defaultTab = 'take' }) => {
-    const [activeTab, setActiveTab] = useState<AttendanceTab>(defaultTab);
-
-    // Handle dropdown actions
-    const handleDropdownAction = (action: string) => {
-        if (action === 'Absent Report') {
-            setActiveTab('absent-report' as any);
-        } else if (action === 'Month Report') {
-            setActiveTab('register');
-        }
-    };
-
-    const renderContent = () => {
-        switch (activeTab) {
-            case 'take':
-                return <TakeAttendanceForm />;
-            case 'register':
-                return <RegisterView />;
-            case 'absent-report' as any:
-                return <AbsentReport />;
-            case 'today':
-                return <EmptyState title="Today's Report Coming Soon" />;
-            default:
-                return <TakeAttendanceForm />;
-        }
-    };
-
-    return (
-        <div className="h-full overflow-y-auto bg-surface-muted">
-            <AttendanceHeader
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
-                onAction={handleDropdownAction}
-                navigateTo={navigateTo}
-            />
-            {renderContent()}
-        </div>
-    );
-};
-
 export default StudentAttendance;
-
