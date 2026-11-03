@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { PencilIcon, TrashIcon, RefreshIcon } from './icons';
 import { notify, confirmDialog } from './ui/feedback';
+import { EmptyState } from './ui';
 
 interface FeeInstallment {
     sr: number;
@@ -192,17 +193,17 @@ const UpdateStudentFeeStructure: React.FC = () => {
     const selectedStudent = students.find(s => s.student_id === selectedStudentId);
 
     return (
-        <div className="container-fluid mx-auto p-4 bg-gray-50 min-h-full">
+        <div className="container-fluid mx-auto p-4 min-h-full">
             {/* Header */}
-            <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 mb-6 flex justify-between items-center rounded-r shadow-sm">
+            <div className="bg-brand-50 border-l-4 border-brand-500 p-4 mb-6 flex flex-wrap gap-3 justify-between items-center rounded-r-lg shadow-sm">
                 <div className="flex items-center">
-                    <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                    <h2 className="text-xl font-semibold text-slate-900 tracking-tight flex items-center gap-2">
                         <span>📋</span> Update student fee structure
                     </h2>
                 </div>
 
                 {/* Filters */}
-                <div className="flex gap-2 items-center">
+                <div className="flex flex-wrap gap-2 items-center">
                     {(() => {
                         const displayBranch = computeGlobalBranch();
 
@@ -211,7 +212,7 @@ const UpdateStudentFeeStructure: React.FC = () => {
                                 type="text"
                                 value={displayBranch}
                                 readOnly
-                                className="input w-32 ring-indigo-300"
+                                className="input w-32"
                                 title="Current Branch"
                             />
                         );
@@ -221,12 +222,12 @@ const UpdateStudentFeeStructure: React.FC = () => {
                         placeholder="Search Name/AdmNo/EnrollmentNo"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="input w-40 ring-indigo-300"
+                        className="input w-40"
                     />
                     <select
                         value={selectedClass}
                         onChange={e => setSelectedClass(e.target.value)}
-                        className="input w-24 ring-indigo-300"
+                        className="input w-24"
                     >
                         <option value="">Class</option>
                         {classes.map(c => <option key={c} value={c}>{c}</option>)}
@@ -234,7 +235,7 @@ const UpdateStudentFeeStructure: React.FC = () => {
                     <select
                         value={selectedStudentId || ''}
                         onChange={e => setSelectedStudentId(Number(e.target.value) || null)}
-                        className="input w-64 ring-indigo-300"
+                        className="input w-64"
                     >
                         <option value="">Select Student</option>
                         {students.map(s => (
@@ -251,9 +252,9 @@ const UpdateStudentFeeStructure: React.FC = () => {
             {/* Content */}
             {selectedStudentId ? (
                 <div>
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-medium text-gray-700">
-                            Fee Installments for <span className="text-indigo-600 font-bold">{selectedStudent?.name}</span>
+                    <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
+                        <h3 className="text-base font-semibold text-slate-900">
+                            Fee Installments for <span className="text-brand-600 font-bold">{selectedStudent?.name}</span>
                         </h3>
                         <div className="flex gap-2">
                             <button
@@ -267,7 +268,7 @@ const UpdateStudentFeeStructure: React.FC = () => {
                     </div>
 
                     {installments.length === 0 ? (
-                        <div className="text-center py-10 text-gray-500">No installments found for this student.</div>
+                        <div className="card"><EmptyState title="No installments found for this student." /></div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {installments.map((inst) => (
@@ -282,8 +283,8 @@ const UpdateStudentFeeStructure: React.FC = () => {
                     )}
                 </div>
             ) : (
-                <div className="text-center py-20 text-gray-400">
-                    Please select a student to view and update fee structure.
+                <div className="card">
+                    <EmptyState title="Please select a student to view and update fee structure." />
                 </div>
             )}
 
@@ -329,34 +330,34 @@ const InstallmentCard: React.FC<{
 
     // Status Badge Color
     const badgeColor = isPaid
-        ? 'bg-green-600 text-white'
+        ? 'badge-success'
         : isPartial
-            ? 'bg-orange-500 text-white'
-            : 'bg-orange-500 text-white'; // Image shows orange for Unpaid too
+            ? 'badge-warning'
+            : 'badge-warning'; // Image shows orange for Unpaid too
 
     // Card Header Color
-    const headerColor = isPaid ? 'bg-green-50' : 'bg-orange-50';
+    const headerColor = isPaid ? 'bg-emerald-50' : 'bg-amber-50';
 
     return (
         <div className="card overflow-hidden">
             <div className={`px-4 py-2 flex justify-between items-center ${headerColor}`}>
-                <span className="font-semibold text-gray-700 text-sm">{installment.title}</span>
-                <span className={`text-xs px-2 py-0.5 rounded ${badgeColor}`}>{installment.status}</span>
+                <span className="font-semibold text-slate-700 text-sm">{installment.title}</span>
+                <span className={badgeColor}>{installment.status}</span>
             </div>
             <div className="p-4">
                 <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium text-gray-600">Tuition Fee</span>
-                    <span className="text-sm font-bold text-gray-800">{installment.payable}</span>
+                    <span className="text-sm font-medium text-slate-600">Tuition Fee</span>
+                    <span className="text-sm font-bold text-slate-800">{installment.payable}</span>
                 </div>
 
                 {/* Calculation view matching screenshot: 3500 - 250 = 3250 */}
-                <div className="text-xs text-gray-500 text-right mb-2">
+                <div className="text-xs text-slate-500 text-right mb-2">
                     {installment.payable} - {installment.concession} = {installment.payable - installment.concession}
                 </div>
 
-                <div className="border-t pt-2 flex justify-between items-center">
-                    <span className="text-xs text-gray-400">Total</span>
-                    <span className="font-bold text-gray-800">
+                <div className="border-t border-slate-100 pt-2 flex justify-between items-center">
+                    <span className="text-xs text-slate-400">Total</span>
+                    <span className="font-bold text-slate-800">
                         ₹ {installment.payable - installment.concession}
                     </span>
                 </div>
@@ -366,7 +367,7 @@ const InstallmentCard: React.FC<{
                     <div className="mt-3 flex justify-end gap-2">
                         <button
                             onClick={onEdit}
-                            className="btn bg-blue-100 text-blue-600 hover:bg-blue-200"
+                            className="btn-soft btn-sm"
                             title="Edit"
                         >
                             <PencilIcon className="w-4 h-4" />
@@ -374,7 +375,7 @@ const InstallmentCard: React.FC<{
                         {installment.paidAmount === 0 && (
                             <button
                                 onClick={onDelete}
-                                className="btn bg-red-100 text-red-600 hover:bg-red-200"
+                                className="btn btn-sm bg-red-50 text-red-600 hover:bg-red-100"
                                 title="Delete"
                             >
                                 <TrashIcon className="w-4 h-4" />
@@ -397,7 +398,7 @@ const EditFeeModal: React.FC<{
 
     return (
         <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
-            <div className="bg-white p-6 rounded-lg w-96">
+            <div className="card shadow-pop p-6 w-full max-w-sm mx-4">
                 <h3 className="text-base font-semibold text-slate-900 mb-4">Edit Fee: {fee.title}</h3>
 
                 <div className="mb-4">
@@ -406,7 +407,7 @@ const EditFeeModal: React.FC<{
                         type="number"
                         value={total}
                         onChange={e => setTotal(parseFloat(e.target.value) || 0)}
-                        className="w-full border rounded px-3 py-2"
+                        className="input"
                         disabled={fee.paidAmount > 0} // Can't edit total if partially paid usually
                     />
                     {fee.paidAmount > 0 && <p className="text-xs text-red-500 mt-1">Cannot change total amount for partially paid fees.</p>}
@@ -450,7 +451,7 @@ const AddFeeModal: React.FC<{
 
     return (
         <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
-            <div className="bg-white p-6 rounded-lg w-96">
+            <div className="card shadow-pop p-6 w-full max-w-sm mx-4">
                 <h3 className="text-base font-semibold text-slate-900 mb-4">Add Student Fee</h3>
 
                 <div className="mb-4">
@@ -519,27 +520,27 @@ const AssignStandardFeeModal: React.FC<{
 
     return (
         <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
-            <div className="bg-white p-6 rounded-lg w-96">
+            <div className="card shadow-pop p-6 w-full max-w-sm mx-4">
                 <h3 className="text-base font-semibold text-slate-900 mb-4">Assign Standard Fees</h3>
-                <p className="text-sm text-gray-500 mb-4">
+                <p className="text-sm text-slate-500 mb-4">
                     Select standard fees to assign. The amounts will be automatically determined from the class fee structure.
                 </p>
 
                 <div className="mb-6 max-h-60 overflow-y-auto">
                     <label className="label">Standard Fee Types</label>
                     {standardFeeTypes.length === 0 ? (
-                        <p className="text-sm text-gray-500 italic">No standard fee types available.</p>
+                        <EmptyState compact title="No standard fee types available." />
                     ) : (
                         <div className="space-y-2">
                             {standardFeeTypes.map(ft => (
-                                <label key={ft.id} className="flex items-center gap-2 cursor-pointer p-1 hover:bg-gray-50 rounded">
+                                <label key={ft.id} className="flex items-center gap-2 cursor-pointer p-1 hover:bg-slate-50 rounded">
                                     <input
                                         type="checkbox"
                                         checked={selectedFeeTypeIds.includes(ft.id)}
                                         onChange={e => handleCheckboxChange(ft.id, e.target.checked)}
-                                        className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                        className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500"
                                     />
-                                    <span className="text-sm text-gray-700">{ft.fee_type}</span>
+                                    <span className="text-sm text-slate-700">{ft.fee_type}</span>
                                 </label>
                             ))}
                         </div>
@@ -550,7 +551,7 @@ const AssignStandardFeeModal: React.FC<{
                     <button onClick={onClose} className="btn-secondary">Cancel</button>
                     <button
                         onClick={() => selectedFeeTypeIds.length > 0 && onSave(selectedFeeTypeIds)}
-                        className={`btn text-white ${selectedFeeTypeIds.length > 0 ? 'bg-green-600 hover:bg-green-700' : 'bg-green-300 cursor-not-allowed'}`}
+                        className="btn-success"
                         disabled={selectedFeeTypeIds.length === 0}
                     >
                         Assign

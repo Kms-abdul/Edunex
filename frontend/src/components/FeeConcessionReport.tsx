@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { notify } from './ui/feedback';
+import { Badge, EmptyState, ErrorState, LoadingState } from './ui';
 
 const FeeConcessionReport: React.FC = () => {
     const [concessions, setConcessions] = useState<any[]>([]);
@@ -43,7 +44,7 @@ const FeeConcessionReport: React.FC = () => {
     return (
         <div className="container mx-auto p-6 font-sans">
             <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 flex items-center">
-                <span className="bg-blue-100 text-blue-600 p-2 rounded-lg mr-3">
+                <span className="bg-brand-100 text-brand-600 p-2 rounded-lg mr-3">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
                     </svg>
@@ -52,14 +53,14 @@ const FeeConcessionReport: React.FC = () => {
             </h2>
 
             {loading ? (
-                <div className="card p-4 text-center">Loading report...</div>
+                <div className="card"><LoadingState label="Loading report..." /></div>
             ) : error ? (
-                <div className="card p-4 text-red-500 text-center">Error: {error}</div>
+                <div className="card"><ErrorState title="Error" message={error} onRetry={fetchReport} /></div>
             ) : (
                 <div className="card overflow-hidden">
-                    <div className="overflow-x-auto rounded-lg border border-slate-200">
+                    <div className="overflow-x-auto">
                         <table className="min-w-full text-sm text-left">
-                            <thead className="border-b border-slate-100">
+                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600 border-b border-slate-200">
                                 <tr>
                                     <th className="px-4 py-4">Student</th>
                                     <th className="px-4 py-4">Adm No</th>
@@ -75,7 +76,7 @@ const FeeConcessionReport: React.FC = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-50">
                                 {concessions.length === 0 ? (
-                                    <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-500">No concessions found</td></tr>
+                                    <tr><td colSpan={10}><EmptyState compact title="No concessions found" /></td></tr>
                                 ) : (
                                     concessions.map((c, idx) => (
                                         <tr key={idx} className="hover:bg-slate-50 transition-colors">
@@ -87,7 +88,7 @@ const FeeConcessionReport: React.FC = () => {
                                             <td className="px-4 py-4 text-slate-600">{c.assigned_by}</td>
                                             <td className="px-4 py-4 text-right font-medium">₹{(c.total_gross || 0).toLocaleString()}</td>
                                             <td className="px-4 py-4 text-right font-medium text-emerald-600">₹{(c.total_concession || 0).toLocaleString()}</td>
-                                            <td className="px-4 py-4 text-right font-medium text-blue-600">₹{(c.total_paid || 0).toLocaleString()}</td>
+                                            <td className="px-4 py-4 text-right font-medium text-brand-600">₹{(c.total_paid || 0).toLocaleString()}</td>
                                             <td className="px-4 py-4 text-center">
                                                 <button
                                                     onClick={() => handleViewDetails(c)}
@@ -111,12 +112,13 @@ const FeeConcessionReport: React.FC = () => {
                     <div className="card shadow-pop w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <div>
-                                <h3 className="text-xl font-bold text-slate-800">Concession Details</h3>
+                                <h3 className="text-base font-semibold text-slate-900">Concession Details</h3>
                                 <p className="text-sm text-slate-500 mt-1">{selectedStudent.student_name} ({selectedStudent.admission_no})</p>
                             </div>
                             <button
                                 onClick={() => setSelectedStudent(null)}
                                 className="btn-icon text-slate-400 hover:text-slate-600"
+                                aria-label="Close"
                             >
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
@@ -124,10 +126,11 @@ const FeeConcessionReport: React.FC = () => {
 
                         <div className="p-6 overflow-y-auto">
                             {loadingDetails ? (
-                                <div className="text-center py-8 text-slate-500">Loading details...</div>
+                                <LoadingState label="Loading details..." />
                             ) : (
-                                <table className="w-full text-sm text-left border border-slate-200 rounded-lg overflow-hidden">
-                                    <thead className="border-b border-slate-200">
+                                <div className="border border-slate-200 rounded-lg overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600 border-b border-slate-200">
                                         <tr>
                                             <th className="px-4 py-3">Installment</th>
                                             <th className="px-4 py-3">Fee Type</th>
@@ -139,7 +142,7 @@ const FeeConcessionReport: React.FC = () => {
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {details.length === 0 ? (
-                                            <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">No details found</td></tr>
+                                            <tr><td colSpan={6}><EmptyState compact title="No details found" /></td></tr>
                                         ) : (
                                             details.map((d, idx) => (
                                                 <tr key={idx} className="hover:bg-slate-50">
@@ -147,20 +150,20 @@ const FeeConcessionReport: React.FC = () => {
                                                     <td className="px-4 py-3 text-slate-600">{d.fee_type}</td>
                                                     <td className="px-4 py-3 text-right font-medium">₹{(d.total_fee || 0).toLocaleString()}</td>
                                                     <td className="px-4 py-3 text-right font-medium text-emerald-600">₹{(d.concession || 0).toLocaleString()}</td>
-                                                    <td className="px-4 py-3 text-right font-medium text-blue-600">₹{(d.paid || 0).toLocaleString()}</td>
+                                                    <td className="px-4 py-3 text-right font-medium text-brand-600">₹{(d.paid || 0).toLocaleString()}</td>
                                                     <td className="px-4 py-3">
-                                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${d.status === 'Paid' ? 'bg-green-100 text-green-700' :
-                                                            d.status === 'Partially Paid' ? 'bg-yellow-100 text-yellow-700' :
-                                                                'bg-red-100 text-red-700'
-                                                            }`}>
+                                                        <Badge tone={d.status === 'Paid' ? 'success' :
+                                                            d.status === 'Partially Paid' ? 'warning' :
+                                                                'danger'}>
                                                             {d.status || 'Unpaid'}
-                                                        </span>
+                                                        </Badge>
                                                     </td>
                                                 </tr>
                                             ))
                                         )}
                                     </tbody>
                                 </table>
+                                </div>
                             )}
                         </div>
                     </div>

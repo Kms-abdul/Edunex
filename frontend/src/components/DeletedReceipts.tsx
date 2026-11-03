@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { notify } from './ui/feedback';
+import { EmptyState, ErrorState, LoadingState } from './ui';
 
 const DeletedReceiptsReport: React.FC = () => {
     const [receipts, setReceipts] = useState<any[]>([]);
@@ -90,7 +91,7 @@ const DeletedReceiptsReport: React.FC = () => {
     return (
         <div className="container mx-auto p-6">
             <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 flex items-center">
-                <span className="bg-red-100 text-red-600 p-2 rounded mr-3">
+                <span className="bg-red-100 text-red-600 p-2 rounded-lg mr-3">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
@@ -99,7 +100,7 @@ const DeletedReceiptsReport: React.FC = () => {
             </h2>
 
             <div className="card mb-6 p-4">
-                <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-2 mb-4">
                     <div className="w-full md:w-1/3">
                         <input
                             type="text"
@@ -109,13 +110,13 @@ const DeletedReceiptsReport: React.FC = () => {
                             className="input"
                         />
                     </div>
-                    <div className="flex gap-2 mt-2 md:mt-0">
+                    <div className="flex flex-wrap gap-2">
                         <button onClick={exportToExcel} className="btn-success">
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             Excel
                         </button>
                         <button onClick={exportToPDF} className="btn-danger">
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             PDF
                         </button>
                         <button onClick={fetchReport} className="btn-primary">
@@ -125,15 +126,15 @@ const DeletedReceiptsReport: React.FC = () => {
                 </div>
 
                 {loading ? (
-                    <div className="text-center py-8 text-gray-500">Loading deleted receipts...</div>
+                    <LoadingState label="Loading deleted receipts..." />
                 ) : error ? (
-                    <div className="text-center py-8 text-red-500">{error}</div>
+                    <ErrorState message={error} onRetry={fetchReport} />
                 ) : filteredReceipts.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">No deleted receipts found.</div>
+                    <EmptyState compact title="No deleted receipts found." />
                 ) : (
                     <div className="overflow-x-auto rounded-lg border border-slate-200">
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead className="">
+                        <table className="min-w-full divide-y divide-slate-200 text-sm">
+                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                                 <tr>
                                     <th className="px-3 py-2 text-left">S.No</th>
                                     <th className="px-3 py-2 text-left">Student Name</th>
@@ -149,21 +150,21 @@ const DeletedReceiptsReport: React.FC = () => {
                                     <th className="px-3 py-2 text-left">Cancel Reason</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-slate-100">
                                 {filteredReceipts.map((r, idx) => (
-                                    <tr key={idx} className="hover:bg-gray-50">
-                                        <td className="px-3 py-2 text-gray-500">{idx + 1}</td>
+                                    <tr key={idx} className="hover:bg-slate-50">
+                                        <td className="px-3 py-2 text-slate-500">{idx + 1}</td>
                                         <td className="px-3 py-2 font-medium">{r.student_name}</td>
-                                        <td className="px-3 py-2 text-blue-600">{r.admission_no}</td>
+                                        <td className="px-3 py-2 text-brand-600">{r.admission_no}</td>
                                         <td className="px-3 py-2">{r.class} {r.section}</td>
-                                        <td className="px-3 py-2 text-gray-600">{r.branch}</td>
+                                        <td className="px-3 py-2 text-slate-600">{r.branch}</td>
                                         <td className="px-3 py-2">{r.receipt_no}</td>
                                         <td className="px-3 py-2 truncate max-w-[150px]" title={r.fee_type_str}>{r.fee_type_str || '-'}</td>
-                                        <td className="px-3 py-2 text-right font-medium text-gray-800">₹{(r.amount_paid || 0).toLocaleString()}</td>
+                                        <td className="px-3 py-2 text-right font-medium text-slate-800">₹{(r.amount_paid || 0).toLocaleString()}</td>
                                         <td className="px-3 py-2">{r.mode}</td>
                                         <td className="px-3 py-2 font-semibold text-red-600">{r.deleted_by}</td>
-                                        <td className="px-3 py-2 text-xs text-gray-500">{r.deleted_at}</td>
-                                        <td className="px-3 py-2 text-xs truncate max-w-[200px] text-gray-600" title={r.cancel_reason}>{r.cancel_reason}</td>
+                                        <td className="px-3 py-2 text-xs text-slate-500">{r.deleted_at}</td>
+                                        <td className="px-3 py-2 text-xs truncate max-w-[200px] text-slate-600" title={r.cancel_reason}>{r.cancel_reason}</td>
                                     </tr>
                                 ))}
                             </tbody>

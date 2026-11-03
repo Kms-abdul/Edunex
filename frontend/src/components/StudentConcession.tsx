@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { notify, confirmDialog } from './ui/feedback';
+import { EmptyState } from './ui';
 
 interface ConcessionItem {
     fee_type_id: number;
@@ -263,14 +264,14 @@ const StudentConcession: React.FC = () => {
     const selectedConcession = concessions.find(c => c.title === selectedConcessionTitle);
 
     return (
-        <div className="p-6 bg-gray-50 min-h-full">
+        <div className="p-6 min-h-full">
             <div className="max-w-7xl mx-auto space-y-6">
                 <h2 className="text-xl font-semibold text-slate-900 tracking-tight flex items-center">
-                    <span className="text-violet-600 mr-2">₹</span> Student Concession
+                    <span className="text-brand-600 mr-2">₹</span> Student Concession
                 </h2>
 
                 {/* Filters */}
-                <div className="card p-4 grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="card p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
                     {/* <div>
                         <input
                             type="text"
@@ -332,20 +333,20 @@ const StudentConcession: React.FC = () => {
 
                         {selectedConcession && (
                             <div>
-                                <h3 className="font-semibold text-gray-700 mb-2">Concession Rules</h3>
-                                <div className="border rounded overflow-hidden">
-                                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                        <thead className="">
+                                <h3 className="text-base font-semibold text-slate-900 mb-2">Concession Rules</h3>
+                                <div className="border border-slate-200 rounded-lg overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                                             <tr>
                                                 <th className="px-3 py-2 text-left">Fee Type</th>
                                                 <th className="px-3 py-2 text-right">Value ({selectedConcession.is_percentage ? '%' : '₹'})</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="bg-white divide-y divide-gray-200">
+                                        <tbody className="bg-white divide-y divide-slate-100">
                                             {selectedConcession.items.map((item, idx) => (
                                                 <tr key={idx}>
-                                                    <td className="px-3 py-2 text-gray-900">{item.fee_type_name}</td>
-                                                    <td className="px-3 py-2 text-right text-gray-900">{item.percentage}</td>
+                                                    <td className="px-3 py-2 text-slate-900">{item.fee_type_name}</td>
+                                                    <td className="px-3 py-2 text-right text-slate-900">{item.percentage}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -357,17 +358,17 @@ const StudentConcession: React.FC = () => {
 
                     {/* Right: Student Installments */}
                     <div className="card lg:col-span-2 p-4">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-semibold text-gray-800">Student Installments</h3>
-                            {message && <span className={`text-sm ${message.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>{message}</span>}
+                        <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
+                            <h3 className="text-base font-semibold text-slate-900">Student Installments</h3>
+                            {message && <span className={`text-sm ${message.includes('Error') ? 'text-red-600' : 'text-emerald-600'}`}>{message}</span>}
                         </div>
 
                         {installments.length === 0 ? (
-                            <p className="text-gray-500 text-center py-8">Select a student to view installments.</p>
+                            <EmptyState title="Select a student to view installments." />
                         ) : (
                             <div className="overflow-x-auto rounded-lg border border-slate-200">
-                                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                    <thead className="">
+                                <table className="min-w-full divide-y divide-slate-200 text-sm">
+                                    <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                                         <tr>
                                             <th className="px-3 py-2 w-10">
                                                 <input type="checkbox" onChange={handleSelectAll} />
@@ -376,11 +377,11 @@ const StudentConcession: React.FC = () => {
                                             <th className="px-3 py-2 text-right">Total Fee</th>
                                             <th className="px-3 py-2 text-right">Paid</th>
                                             <th className="px-3 py-2 text-right">Current Concession</th>
-                                            <th className="px-3 py-2 text-right text-violet-600">New Concession</th>
+                                            <th className="px-3 py-2 text-right text-brand-600">New Concession</th>
                                             <th className="px-3 py-2 text-center">Status</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
+                                    <tbody className="bg-white divide-y divide-slate-100">
                                         {installments.map((inst) => {
                                             const newConc = inst.student_fee_id ? previewData[inst.student_fee_id] : undefined;
                                             const hasNewConc = newConc !== undefined;
@@ -395,7 +396,7 @@ const StudentConcession: React.FC = () => {
                                             else if (hasExistingConcession) disabledReason = "Fee already has a concession";
 
                                             return (
-                                                <tr key={inst.sr} className={hasNewConc ? "bg-violet-50" : ""}>
+                                                <tr key={inst.sr} className={hasNewConc ? "bg-brand-50" : ""}>
                                                     <td className="px-3 py-2 text-center" title={disabledReason}>
                                                         <input
                                                             type="checkbox"
@@ -404,21 +405,20 @@ const StudentConcession: React.FC = () => {
                                                             disabled={!hasNewConc || isDisabled}
                                                         />
                                                     </td>
-                                                    <td className="px-3 py-2 text-gray-900">
+                                                    <td className="px-3 py-2 text-slate-900">
                                                         {inst.title}
                                                         {isDisabled && <span className="ml-2 text-xs text-red-500">({isPaidOrPartial ? 'Paid' : 'Has Concession'})</span>}
                                                     </td>
-                                                    <td className="px-3 py-2 text-right text-gray-900">{inst.payable}</td>
-                                                    <td className="px-3 py-2 text-right text-gray-900">{inst.paidAmount || 0}</td>
-                                                    <td className="px-3 py-2 text-right text-gray-900">{inst.concession || 0}</td>
-                                                    <td className="px-3 py-2 text-right font-bold text-violet-600">
+                                                    <td className="px-3 py-2 text-right text-slate-900">{inst.payable}</td>
+                                                    <td className="px-3 py-2 text-right text-slate-900">{inst.paidAmount || 0}</td>
+                                                    <td className="px-3 py-2 text-right text-slate-900">{inst.concession || 0}</td>
+                                                    <td className="px-3 py-2 text-right font-bold text-brand-600">
                                                         {hasNewConc && !isDisabled ? newConc : '-'}
                                                     </td>
                                                     <td className="px-3 py-2 text-center">
-                                                        <span className={`px-2 py-1 rounded-full text-xs ${inst.paid ? 'bg-green-100 text-green-800' :
-                                                            (inst.paidAmount || 0) > 0 ? 'bg-yellow-100 text-yellow-800' :
-                                                                'bg-red-100 text-red-800'
-                                                            }`}>
+                                                        <span className={inst.paid ? 'badge-success' :
+                                                            (inst.paidAmount || 0) > 0 ? 'badge-warning' :
+                                                                'badge-danger'}>
                                                             {inst.paid ? 'Paid' : (inst.paidAmount || 0) > 0 ? 'Partial' : 'Pending'}
                                                         </span>
                                                     </td>

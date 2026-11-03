@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { EmptyState, LoadingState } from './ui';
 
 interface LedgerDetailRow {
     date: string;
@@ -142,18 +143,18 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
     };
 
     return (
-        <div className="p-4 bg-gray-50 min-h-full space-y-6">
-            <h2 className="text-xl font-semibold text-blue-700 mb-4">
+        <div className="p-4 min-h-full space-y-6">
+            <h2 className="text-xl font-semibold tracking-tight text-brand-700 mb-4">
                 Cash ledger in details {filterMonth ? `(${filterMonth})` : ''}
             </h2>
             <div className="card p-4">
-                <div className="flex flex-wrap items-center justify-between mb-6 pb-2 border-b">
+                <div className="flex flex-wrap gap-3 items-center justify-between mb-6 pb-2 border-b border-slate-100">
                     <div className="flex items-center gap-2">
-                        <span className="text-blue-600 font-medium">📜 Cash ledger in details</span>
+                        <span className="text-brand-600 font-medium">📜 Cash ledger in details</span>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm text-gray-700">Branch:</span>
+                            <span className="font-medium text-sm text-slate-700">Branch:</span>
                             <select
                                 className="input w-auto"
                                 value={selectedBranch}
@@ -163,7 +164,7 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
                             </select>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm text-gray-700">FY:</span>
+                            <span className="font-medium text-sm text-slate-700">FY:</span>
                             <select
                                 className="input w-auto"
                                 value={academicYear}
@@ -176,7 +177,7 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
                         </div>
                         <button
                             onClick={handleExcelExport}
-                            className="btn btn-sm text-sm bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
+                            className="btn btn-sm bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
                         >
                             <FileSpreadsheet size={16} /> Excel
                         </button>
@@ -185,7 +186,7 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
 
                 <div className="overflow-x-auto rounded-lg border border-slate-200">
                     <table className="w-full text-sm text-left">
-                        <thead className="">
+                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                             <tr>
                                 <th className="p-3 border w-12 text-center">S.No</th>
                                 <th className="p-3 border">Voucher Date</th>
@@ -200,30 +201,30 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
                         <tbody>
                             {filteredData.length === 0 && !loading && (
                                 <tr>
-                                    <td colSpan={8} className="text-center p-6 text-gray-500">No transactions found.</td>
+                                    <td colSpan={8}><EmptyState compact title="No transactions found." /></td>
                                 </tr>
                             )}
                             {loading && (
                                 <tr>
-                                    <td colSpan={8} className="text-center p-6 text-gray-500">Loading details...</td>
+                                    <td colSpan={8}><LoadingState label="Loading details..." /></td>
                                 </tr>
                             )}
                             {filteredData.map((row, idx) => (
-                                <tr key={idx} className="hover:bg-gray-50">
-                                    <td className="p-3 border text-center text-gray-500">{idx + 1}</td>
+                                <tr key={idx} className="hover:bg-slate-50">
+                                    <td className="p-3 border text-center text-slate-500">{idx + 1}</td>
                                     <td className="p-3 border">
                                         <button
-                                            className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-left"
+                                            className="text-brand-600 hover:text-brand-800 hover:underline font-medium text-left"
                                             onClick={() => setSelectedTxn(row)}
                                             title="Click to view details"
                                         >
                                             {row.date}
                                         </button>
                                     </td>
-                                    <td className="p-3 border font-medium text-gray-700">{row.voucher_no}</td>
+                                    <td className="p-3 border font-medium text-slate-700">{row.voucher_no}</td>
                                     <td className="p-3 border">{row.ledger_type}</td>
                                     <td className="p-3 border">{row.ledger_name}</td>
-                                    <td className="p-3 border text-gray-600">{row.narration}</td>
+                                    <td className="p-3 border text-slate-600">{row.narration}</td>
                                     <td className="p-3 border text-right text-emerald-600">
                                         {row.debit > 0 ? row.debit.toFixed(2) : '-'}
                                     </td>
@@ -233,7 +234,7 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
                                 </tr>
                             ))}
                             {filteredData.length > 0 && (
-                                <tr className="">
+                                <tr className="bg-slate-50 font-semibold">
                                     <td colSpan={6} className="p-3 border text-right">Total:</td>
                                     <td className="p-3 border text-right text-emerald-700">
                                         {filteredData.reduce((sum, row) => sum + row.debit, 0).toFixed(2)}
@@ -251,31 +252,31 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
                 {selectedTxn && (
                     <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
                         <div className="card shadow-pop p-6 max-w-2xl w-full mx-4">
-                            <div className="flex justify-between items-center mb-4 border-b pb-2">
-                                <h3 className="text-xl font-semibold text-gray-800">
+                            <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+                                <h3 className="text-base font-semibold text-slate-900">
                                     Voucher Details: {selectedTxn.voucher_no}
                                 </h3>
-                                <button onClick={() => setSelectedTxn(null)} className="text-gray-500 hover:text-gray-700 text-xl font-bold">
+                                <button onClick={() => setSelectedTxn(null)} className="btn-icon" aria-label="Close">
                                     ✖
                                 </button>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 mb-6">
-                                <div><span className="text-gray-500 font-medium">Date:</span> {selectedTxn.date}</div>
-                                <div><span className="text-gray-500 font-medium">Voucher Type:</span> {selectedTxn.voucher_type}</div>
-                                <div><span className="text-gray-500 font-medium">Ledger Type:</span> {selectedTxn.ledger_type}</div>
-                                <div><span className="text-gray-500 font-medium">Ledger Head:</span> {selectedTxn.ledger_name}</div>
-                                <div><span className="text-gray-500 font-medium">Narration:</span> {selectedTxn.narration}</div>
-                                <div><span className="text-gray-500 font-medium">Debit:</span> {selectedTxn.debit > 0 ? selectedTxn.debit.toFixed(2) : '-'}</div>
-                                <div><span className="text-gray-500 font-medium">Credit:</span> {selectedTxn.credit > 0 ? selectedTxn.credit.toFixed(2) : '-'}</div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                <div><span className="text-slate-500 font-medium">Date:</span> {selectedTxn.date}</div>
+                                <div><span className="text-slate-500 font-medium">Voucher Type:</span> {selectedTxn.voucher_type}</div>
+                                <div><span className="text-slate-500 font-medium">Ledger Type:</span> {selectedTxn.ledger_type}</div>
+                                <div><span className="text-slate-500 font-medium">Ledger Head:</span> {selectedTxn.ledger_name}</div>
+                                <div><span className="text-slate-500 font-medium">Narration:</span> {selectedTxn.narration}</div>
+                                <div><span className="text-slate-500 font-medium">Debit:</span> {selectedTxn.debit > 0 ? selectedTxn.debit.toFixed(2) : '-'}</div>
+                                <div><span className="text-slate-500 font-medium">Credit:</span> {selectedTxn.credit > 0 ? selectedTxn.credit.toFixed(2) : '-'}</div>
                             </div>
 
                             {selectedTxn.items && selectedTxn.items.length > 0 && (
                                 <div>
-                                    <h4 className="font-semibold text-gray-700 mb-2">Items Breakdown</h4>
-                                    <div className="border rounded overflow-hidden">
+                                    <h4 className="text-base font-semibold text-slate-900 mb-2">Items Breakdown</h4>
+                                    <div className="border border-slate-200 rounded-lg overflow-x-auto">
                                         <table className="w-full text-sm text-left">
-                                            <thead className="border-b">
+                                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600 border-b border-slate-200">
                                                 <tr>
                                                     <th className="p-2 border-r">Item Name</th>
                                                     <th className="p-2 text-right">Amount</th>
@@ -283,13 +284,13 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
                                             </thead>
                                             <tbody>
                                                 {selectedTxn.items.map((item, idx) => (
-                                                    <tr key={idx} className="border-b last:border-b-0 hover:bg-gray-50">
+                                                    <tr key={idx} className="border-b last:border-b-0 hover:bg-slate-50">
                                                         <td className="p-2 border-r">{item.item_name}</td>
                                                         <td className="p-2 text-right">{item.amount.toFixed(2)}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
-                                            <tfoot className="bg-gray-50">
+                                            <tfoot className="bg-slate-50">
                                                 <tr>
                                                     <td className="p-2 border-r font-semibold text-right">Total:</td>
                                                     <td className="p-2 font-semibold text-right">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Page } from '../App';
 import { notify, confirmDialog } from './ui/feedback';
+import { EmptyState, ErrorState, LoadingState } from './ui';
 
 interface Student {
     student_id: number;
@@ -40,8 +41,7 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
     const [selectedClass, setSelectedClass] = useState('');
     const [selectedSection, setSelectedSection] = useState('');
     const [selectedBranch, setSelectedBranch] = useState('All');
-    const [academicYear, setAcademicYear] = useState(localStorage.getItem('academicYear') || '');
-    const [isBranchLocked, setIsBranchLocked] = useState(false);
+    const [academicYear] = useState(localStorage.getItem('academicYear') || '');
 
     const [students, setStudents] = useState<Student[]>([]);
     const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
@@ -53,7 +53,6 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
     const [restrictedFeeTypeIds, setRestrictedFeeTypeIds] = useState<Set<number>>(new Set());
 
     useEffect(() => {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
         const globalBranch = localStorage.getItem('currentBranch');
 
         if (globalBranch && globalBranch !== 'All Locations') {
@@ -276,19 +275,17 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
 
     if (error) {
         return (
-            <div className="p-6 text-red-600">
-                <h2 className="text-xl font-bold mb-4">Error</h2>
-                <p>{error}</p>
-                <button onClick={() => window.location.reload()} className="btn-primary mt-4">
-                    Retry
-                </button>
+            <div className="p-6">
+                <div className="card">
+                    <ErrorState title="Error" message={error} onRetry={() => window.location.reload()} />
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="p-6 bg-gray-50 min-h-full">
-            <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 text-brand-600">Assign Special Fee Type</h2>
+        <div className="p-6 min-h-full">
+            <h2 className="text-xl font-semibold tracking-tight mb-6 text-brand-600">Assign Special Fee Type</h2>
 
             <div className="card p-4 mb-6 flex flex-wrap gap-4 items-end">
                 <div>
@@ -315,9 +312,9 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
                 </div>
             </div>
 
-            <div className="flex gap-6">
-                <div className="card w-1/3 p-4 h-fit">
-                    <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-col lg:flex-row gap-6">
+                <div className="card w-full lg:w-1/3 p-4 h-fit">
+                    <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
                         <h3 className="text-base font-semibold text-slate-900">Special Fee Type</h3>
                         <button
                             onClick={() => navigateTo && navigateTo('fee-type')}
@@ -328,13 +325,13 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
                     </div>
 
                     <div className="space-y-3">
-                        <div className="flex items-center justify-between font-medium text-gray-500 text-sm pb-2 border-b">
+                        <div className="flex items-center justify-between font-medium text-slate-500 text-sm pb-2 border-b border-slate-100">
                             <span>Fee Type</span>
                             <span>Amount</span>
                         </div>
 
                         {feeTypes.length === 0 ? (
-                            <p className="text-gray-500 text-sm text-center py-4">No special fee types found.</p>
+                            <EmptyState compact title="No special fee types found." />
                         ) : (
                             feeTypes.map(ft => {
                                 const isSelected = selectedFees.some(f => f.fee_type_id === ft.id);
@@ -368,7 +365,7 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
 
                     <div className="mt-6 flex justify-end">
                         <button
-                            className={`btn text-white ${selectedStudentIds.length > 0 && selectedFees.length > 0 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-300 cursor-not-allowed' }`}
+                            className="btn-success"
                             onClick={handleAssignFees}
                             disabled={selectedStudentIds.length === 0 || selectedFees.length === 0 || assigning}
                         >
@@ -377,8 +374,8 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
                     </div>
                 </div>
 
-                <div className="card w-2/3 p-4">
-                    <div className="flex justify-between items-center mb-4">
+                <div className="card w-full lg:w-2/3 p-4">
+                    <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
                         <h3 className="text-base font-semibold text-slate-900">Student List</h3>
                         <input
                             type="text"
@@ -391,8 +388,8 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
 
                     <div className="overflow-x-auto rounded-lg border border-slate-200">
                         <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b">
+                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                                <tr className="border-b border-slate-200">
                                     <th className="p-2 w-10">
                                         <input
                                             type="checkbox"
@@ -409,19 +406,19 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={5} className="p-4 text-center text-gray-500">
-                                            Loading students...
+                                        <td colSpan={5}>
+                                            <LoadingState label="Loading students..." />
                                         </td>
                                     </tr>
                                 ) : filteredStudents.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="p-4 text-center text-gray-500">
-                                            No students match the search criteria.
+                                        <td colSpan={5}>
+                                            <EmptyState compact title="No students match the search criteria." />
                                         </td>
                                     </tr>
                                 ) : (
                                     filteredStudents.map(student => (
-                                        <tr key={student.student_id} className="border-b hover:bg-gray-50">
+                                        <tr key={student.student_id} className="border-b border-slate-100 hover:bg-slate-50">
                                             <td className="p-2">
                                                 <input
                                                     type="checkbox"

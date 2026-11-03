@@ -6,6 +6,7 @@ import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { notify } from './ui/feedback';
+import { Alert, EmptyState, LoadingState } from './ui';
 
 // Types 
 export interface Receipt {
@@ -86,7 +87,7 @@ const StatCard = ({ label, value, subtext }: any) => {
 
 // Reusable Filter Wrapper
 const FilterContainer = ({ children }: { children: React.ReactNode }) => (
-    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 mb-6 shadow-sm mx-4 mt-4">
+    <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 mb-6 shadow-sm mx-4 mt-4">
         <h3 className="text-sm font-semibold text-slate-700 mb-4 uppercase tracking-wider">Filters</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {children}
@@ -105,15 +106,15 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalRecords, perPa
     const showLastPage = endPage < totalPages;
 
     return (
-        <div className="p-4 border-t bg-gray-50 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <span className="text-sm text-gray-500 italic">
+        <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <span className="text-sm text-slate-500 italic">
                 Showing {((currentPage - 1) * perPage) + 1} to {Math.min(currentPage * perPage, totalRecords)} of {totalRecords} records
             </span>
             <div className="flex items-center gap-1 flex-wrap">
                 <button
                     disabled={currentPage === 1}
                     onClick={() => onPageChange(currentPage - 1)}
-                    className="px-2 py-1 text-sm font-medium text-gray-600 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-gray-600 mr-2"
+                    className="px-2 py-1 text-sm font-medium text-slate-600 hover:text-brand-600 disabled:opacity-30 disabled:hover:text-slate-600 mr-2"
                 >
                     Previous
                 </button>
@@ -122,7 +123,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalRecords, perPa
                     <button
                         key={p}
                         onClick={() => onPageChange(p)}
-                        className={`btn min-w-[28px] ${currentPage === p ? 'text-indigo-700 underline underline-offset-4' : 'text-gray-500 hover:text-gray-800' }`}
+                        className={`btn min-w-[28px] ${currentPage === p ? 'text-brand-700 underline underline-offset-4' : 'text-slate-500 hover:text-slate-800' }`}
                     >
                         {p}
                     </button>
@@ -130,10 +131,10 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalRecords, perPa
 
                 {showLastPage && (
                     <>
-                        <span className="px-1 text-sm text-gray-400">...</span>
+                        <span className="px-1 text-sm text-slate-400">...</span>
                         <button
                             onClick={() => onPageChange(totalPages)}
-                            className={`btn min-w-[28px] ${currentPage === totalPages ? 'text-indigo-700 underline underline-offset-4' : 'text-gray-500 hover:text-gray-800' }`}
+                            className={`btn min-w-[28px] ${currentPage === totalPages ? 'text-brand-700 underline underline-offset-4' : 'text-slate-500 hover:text-slate-800' }`}
                         >
                             {totalPages}
                         </button>
@@ -143,7 +144,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, totalRecords, perPa
                 <button
                     disabled={currentPage === totalPages}
                     onClick={() => onPageChange(currentPage + 1)}
-                    className="px-2 py-1 text-sm font-medium text-gray-600 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-gray-600 ml-2"
+                    className="px-2 py-1 text-sm font-medium text-slate-600 hover:text-brand-600 disabled:opacity-30 disabled:hover:text-slate-600 ml-2"
                 >
                     Next
                 </button>
@@ -267,11 +268,11 @@ const SummaryTables = ({ modeSummary, collectedBySummary, totalCollection }: {
         {/* Payment Mode Table */}
         <div className="card flex-1 overflow-hidden">
             <div className="bg-slate-50 px-6 py-4 border-b border-slate-100">
-                <h4 className="font-bold text-slate-800">Payment Mode Summary</h4>
+                <h4 className="text-base font-semibold text-slate-900">Payment Mode Summary</h4>
             </div>
-            <div className="p-0">
+            <div className="p-0 overflow-x-auto">
                 <table className="w-full text-sm">
-                    <thead className="bg-white">
+                    <thead className="bg-white text-xs font-semibold uppercase tracking-wide text-slate-600">
                         <tr className="border-b border-slate-100">
                             <th className="px-6 py-3 text-left">Payment Mode</th>
                             <th className="px-6 py-3 text-right">Amount</th>
@@ -296,11 +297,11 @@ const SummaryTables = ({ modeSummary, collectedBySummary, totalCollection }: {
         {/* Collected By Table */}
         <div className="card flex-1 overflow-hidden">
             <div className="bg-slate-50 px-6 py-4 border-b border-slate-100">
-                <h4 className="font-bold text-slate-800">Collected By Summary</h4>
+                <h4 className="text-base font-semibold text-slate-900">Collected By Summary</h4>
             </div>
             <div className="p-0 overflow-x-auto">
                 <table className="w-full text-sm">
-                    <thead className="bg-white">
+                    <thead className="bg-white text-xs font-semibold uppercase tracking-wide text-slate-600">
                         <tr className="border-b border-slate-100">
                             <th className="px-6 py-3 text-left">Collected By</th>
                             <th className="px-6 py-3 text-left">Branch</th>
@@ -314,7 +315,7 @@ const SummaryTables = ({ modeSummary, collectedBySummary, totalCollection }: {
                                 <td className="px-6 py-4 font-medium text-slate-700">{row.user}</td>
                                 <td className="px-6 py-4 text-slate-600">{row.branch}</td>
                                 <td className="px-6 py-4 text-center text-slate-600">
-                                    <span className="bg-slate-100 px-2.5 py-1 rounded-full text-xs font-semibold">{row.count}</span>
+                                    <span className="badge-neutral">{row.count}</span>
                                 </td>
                                 <td className="px-6 py-4 text-right text-slate-600">₹{Number(row.amount).toLocaleString()}</td>
                             </tr>
@@ -346,14 +347,8 @@ const FullReceiptsTable: React.FC<{
 
     if (!receipts || receipts.length === 0) {
         return (
-            <div className="card text-center py-16 mt-4 mx-4 flex flex-col items-center justify-center">
-                <div className="bg-slate-50 p-4 rounded-full mb-4">
-                    <svg className="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-slate-700 mb-1">No collections recorded yet.</h3>
-                <p className="text-slate-500 text-sm">Try changing the filters or collect a new fee.</p>
+            <div className="card mt-4 mx-4">
+                <EmptyState title="No collections recorded yet." description="Try changing the filters or collect a new fee." />
             </div>
         );
     }
@@ -363,9 +358,9 @@ const FullReceiptsTable: React.FC<{
 
     return (
         <div className="card overflow-hidden mx-4 mt-6">
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
-                    <thead className="border-b border-slate-100">
+                    <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600 border-b border-slate-200">
                         <tr>
                             <th className="px-3 py-2 text-left">S.No</th>
                             <th className="px-3 py-2 text-left">Student Name</th>
@@ -387,36 +382,36 @@ const FullReceiptsTable: React.FC<{
                             <th className="px-3 py-2 text-center">Action</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-slate-100">
                         {currentReceipts.map((r: any, idx: number) => {
                             const sNo = ((currentPage - 1) * rowsPerPage) + idx + 1;
                             return (
-                                <tr key={idx} className="hover:bg-gray-50 h-[45px]">
-                                    <td className="px-3 py-2 text-gray-500 font-medium">{sNo}</td>
+                                <tr key={idx} className="hover:bg-slate-50 h-[45px]">
+                                    <td className="px-3 py-2 text-slate-500 font-medium">{sNo}</td>
                                     <td className="px-3 py-2 font-medium">{r.student_name}</td>
-                                    <td className="px-3 py-2 text-blue-600">{r.admission_no}</td>
+                                    <td className="px-3 py-2 text-brand-600">{r.admission_no}</td>
                                     <td className="px-3 py-2">{r.class} {r.section}</td>
-                                    <td className="px-3 py-2 text-gray-600">{r.branch}</td>
+                                    <td className="px-3 py-2 text-slate-600">{r.branch}</td>
                                     <td className="px-3 py-2">{r.receipt_no}</td>
                                     {showAllColumns && <td className="px-3 py-2 max-w-[200px] truncate" title={r.fee_type_str}>{r.fee_type_str || '-'}</td>}
                                     {showAllColumns && <td className="px-3 py-2 text-right">₹{(r.gross_amount || 0).toLocaleString()}</td>}
                                     {showAllColumns && <td className="px-3 py-2 text-right">₹{(r.concession || 0).toLocaleString()}</td>}
                                     {showAllColumns && <td className="px-3 py-2 text-right">₹{(r.net_payable || 0).toLocaleString()}</td>}
-                                    <td className="px-3 py-2 text-right font-bold text-gray-800">₹{(r.amount_paid || r.amount || 0).toLocaleString()}</td>
+                                    <td className="px-3 py-2 text-right font-bold text-slate-800">₹{(r.amount_paid || r.amount || 0).toLocaleString()}</td>
                                     <td className="px-3 py-2 text-right text-red-500">₹{(r.due_amount || 0).toLocaleString()}</td>
                                     <td className="px-3 py-2">{r.mode}</td>
                                     <td className="px-3 py-2 text-xs max-w-[150px]">
                                         {r.mode === 'Cheque' ? (
                                             <div className="truncate" title={`Chq: ${r.cheque_no || '-'} | ${r.bank_name || '-'} | ${r.cheque_date || '-'}`}>
                                                 <div>{r.cheque_no || '-'}</div>
-                                                <div className="text-gray-400">{r.bank_name || '-'}</div>
-                                                <div className="text-gray-400">{r.cheque_date || '-'}</div>
+                                                <div className="text-slate-400">{r.bank_name || '-'}</div>
+                                                <div className="text-slate-400">{r.cheque_date || '-'}</div>
                                             </div>
                                         ) : (
                                             <div className="truncate" title={r.transaction_id}>{r.transaction_id || '-'}</div>
                                         )}
                                     </td>                                {showAllColumns && <td className="px-3 py-2 text-xs truncate max-w-[150px]" title={r.note}>{r.note || '-'}</td>}
-                                    <td className="px-3 py-2 text-xs text-gray-500">
+                                    <td className="px-3 py-2 text-xs text-slate-500">
                                         {r.date} <br /> {r.time}
                                     </td>
                                     <td className="px-3 py-2">{r.collected_by}</td>
@@ -543,8 +538,8 @@ export const TodayCollection: React.FC<ReportProps> = ({ onViewReceipt }) => {
     const [selectedSection, setSelectedSection] = useState('All');
     const [selectedFeeType, setSelectedFeeType] = useState('All');
     const [selectedMode, setSelectedMode] = useState('All');
-    const [selectedCollector, setSelectedCollector] = useState('All');
-    const [collectors, setCollectors] = useState<string[]>([]);
+    const [selectedCollector] = useState('All');
+    const [, setCollectors] = useState<string[]>([]);
 
     const sections = useClassSections(selectedClass);
     const paymentModes = ["All", "Cash", "UPI", "Card", "Bank Transfer", "Cheque"];
@@ -620,8 +615,8 @@ export const TodayCollection: React.FC<ReportProps> = ({ onViewReceipt }) => {
     // Derived State: Summary based on Filtered Data
     const summary = useMemo(() => calculateSummary(filteredReceipts), [filteredReceipts]);
 
-    if (loading) return <div className="p-4">Loading today's collection...</div>;
-    if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
+    if (loading) return <LoadingState label="Loading today's collection..." />;
+    if (error) return <div className="p-4"><Alert tone="error" title="Error" onRetry={fetchReport}>{error}</Alert></div>;
 
     return (
         <div className="space-y-4 font-sans">
@@ -697,7 +692,7 @@ export const TodayCollection: React.FC<ReportProps> = ({ onViewReceipt }) => {
                 <div className="flex-grow"></div>
                 <button
                     onClick={() => downloadExcelReport(filteredReceipts, 'Today_Collection')}
-                    className="btn-secondary text-green-600"
+                    className="btn-secondary text-emerald-600"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     Export Excel
@@ -748,8 +743,8 @@ export const DailyReport: React.FC<ReportProps> = ({ onViewReceipt, forcedStatus
     const [selectedSection, setSelectedSection] = useState('All');
     const [selectedFeeType, setSelectedFeeType] = useState('All');
     const [selectedMode, setSelectedMode] = useState('All');
-    const [selectedCollector, setSelectedCollector] = useState('All');
-    const [collectors, setCollectors] = useState<string[]>([]);
+    const [selectedCollector] = useState('All');
+    const [, setCollectors] = useState<string[]>([]);
 
     const sections = useClassSections(selectedClass);
     const paymentModes = ["All", "Cash", "UPI", "Card", "Bank Transfer", "Cheque"];
@@ -934,7 +929,7 @@ export const DailyReport: React.FC<ReportProps> = ({ onViewReceipt, forcedStatus
                 <div className="flex-grow"></div>
                 <button
                     onClick={() => downloadExcelReport(filteredReceipts, 'Daily_Fee_Report')}
-                    className="btn-secondary text-green-600"
+                    className="btn-secondary text-emerald-600"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     Export Excel
@@ -948,8 +943,8 @@ export const DailyReport: React.FC<ReportProps> = ({ onViewReceipt, forcedStatus
                 </button>
             </div>
 
-            {loading && <div className="text-center py-4">Loading report...</div>}
-            {error && <div className="text-center text-red-500 py-4">{error}</div>}
+            {loading && <LoadingState label="Loading report..." />}
+            {error && <Alert tone="error" className="mx-4">{error}</Alert>}
 
             {rawData && (
                 <>
@@ -987,10 +982,10 @@ export const MonthlyReport: React.FC<ReportProps> = ({ onViewReceipt }) => {
     const [selectedSection, setSelectedSection] = useState('All');
     const [selectedFeeType, setSelectedFeeType] = useState('All');
     const [selectedMode, setSelectedMode] = useState('All');
-    const [selectedCollector, setSelectedCollector] = useState('All');
+    const [selectedCollector] = useState('All');
     const [feeTypes, setFeeTypes] = useState<any[]>([]);
     const [classList, setClassList] = useState<string[]>([]);
-    const [collectors, setCollectors] = useState<string[]>([]);
+    const [, setCollectors] = useState<string[]>([]);
 
     const sections = useClassSections(selectedClass);
     const paymentModes = ["All", "Cash", "UPI", "Card", "Bank Transfer", "Cheque"];
@@ -1174,7 +1169,7 @@ export const MonthlyReport: React.FC<ReportProps> = ({ onViewReceipt }) => {
                 <div className="flex-grow"></div>
                 <button
                     onClick={() => downloadExcelReport(filteredReceipts, `Monthly_Report_${monthName}_${year}`)}
-                    className="btn-secondary text-green-600"
+                    className="btn-secondary text-emerald-600"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     Export Excel
@@ -1188,8 +1183,8 @@ export const MonthlyReport: React.FC<ReportProps> = ({ onViewReceipt }) => {
                 </button>
             </div>
 
-            {loading && <div className="text-center py-4">Loading report...</div>}
-            {error && <div className="text-center text-red-500 py-4">{error}</div>}
+            {loading && <LoadingState label="Loading report..." />}
+            {error && <Alert tone="error" className="mx-4">{error}</Alert>}
 
             {rawData && (
                 <>
@@ -1222,11 +1217,11 @@ export const ClassWiseReport: React.FC<ReportProps> = ({ onViewReceipt }) => {
     const [selectedSection, setSelectedSection] = useState('All');
     const [selectedFeeType, setSelectedFeeType] = useState('All');
     const [selectedMode, setSelectedMode] = useState('All');
-    const [selectedCollector, setSelectedCollector] = useState('All');
-    const [startDate, setStartDate] = useState<string>('');
-    const [endDate, setEndDate] = useState<string>('');
+    const [selectedCollector] = useState('All');
+    const [startDate] = useState<string>('');
+    const [endDate] = useState<string>('');
     const [feeTypes, setFeeTypes] = useState<any[]>([]);
-    const [collectors, setCollectors] = useState<string[]>([]);
+    const [, setCollectors] = useState<string[]>([]);
     const [rawData, setRawData] = useState<any>(null); // Store API response
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -1389,7 +1384,7 @@ export const ClassWiseReport: React.FC<ReportProps> = ({ onViewReceipt }) => {
                 <div className="flex-grow"></div>
                 <button
                     onClick={() => downloadExcelReport(filteredReceipts, `ClassWise_Report_${className}`)}
-                    className="btn-secondary text-green-600"
+                    className="btn-secondary text-emerald-600"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     Export Excel
@@ -1403,8 +1398,8 @@ export const ClassWiseReport: React.FC<ReportProps> = ({ onViewReceipt }) => {
                 </button>
             </div>
 
-            {loading && <div className="text-center py-4">Loading...</div>}
-            {error && <div className="text-red-500 text-center py-4">{error}</div>}
+            {loading && <LoadingState />}
+            {error && <Alert tone="error" className="mx-4">{error}</Alert>}
 
             {rawData && (
                 <>
@@ -1440,9 +1435,9 @@ export const InstallmentWiseReport: React.FC<ReportProps> = ({ onViewReceipt }) 
     const [selectedClass, setSelectedClass] = useState('All');
     const [selectedSection, setSelectedSection] = useState('All');
     const [selectedMode, setSelectedMode] = useState('All');
-    const [selectedCollector, setSelectedCollector] = useState('All');
+    const [selectedCollector] = useState('All');
     const [classList, setClassList] = useState<string[]>([]);
-    const [collectors, setCollectors] = useState<string[]>([]);
+    const [, setCollectors] = useState<string[]>([]);
     const [rawData, setRawData] = useState<any>(null); // Store API response
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -1597,7 +1592,7 @@ export const InstallmentWiseReport: React.FC<ReportProps> = ({ onViewReceipt }) 
                 <div className="flex-grow"></div>
                 <button
                     onClick={() => downloadExcelReport(filteredReceipts, `Installment_Report_${installment}`)}
-                    className="btn-secondary text-green-600"
+                    className="btn-secondary text-emerald-600"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     Export Excel
@@ -1611,8 +1606,8 @@ export const InstallmentWiseReport: React.FC<ReportProps> = ({ onViewReceipt }) 
                 </button>
             </div>
 
-            {loading && <div className="text-center py-4">Loading...</div>}
-            {error && <div className="text-red-500 text-center py-4">{error}</div>}
+            {loading && <LoadingState />}
+            {error && <Alert tone="error" className="mx-4">{error}</Alert>}
 
             {rawData && (
                 <>
@@ -1653,7 +1648,7 @@ export const DueReport: React.FC = () => {
     const [classList, setClassList] = useState<string[]>([]);
     const [selectedClass, setSelectedClass] = useState('All');
     const [selectedSection, setSelectedSection] = useState('All');
-    const [minDueAmount, setMinDueAmount] = useState<string>('');
+    const [minDueAmount] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const rowsPerPage = 5;
@@ -1683,12 +1678,6 @@ export const DueReport: React.FC = () => {
         try {
             setLoading(true);
             setError('');
-            const params = new URLSearchParams({
-                class: selectedClass === 'All' ? '' : selectedClass, // Handle 'All' correctly if backend expects empty or 'All'
-                section: selectedSection === 'All' ? '' : selectedSection,
-                ...(minDueAmount && { min_due: minDueAmount })
-            });
-
             // If backend expects 'All' literally, keep it. 
             // Original code sent selectedClass directly. 
             // I'll stick to sending 'All' if simpler, or check logic.
@@ -1857,7 +1846,7 @@ export const DueReport: React.FC = () => {
                 <div className="flex-grow"></div>
                 <button
                     onClick={downloadExcel}
-                    className="btn-secondary text-green-600"
+                    className="btn-secondary text-emerald-600"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     Export Excel
@@ -1871,8 +1860,8 @@ export const DueReport: React.FC = () => {
                 </button>
             </div>
 
-            {loading && <div className="text-center py-4">Loading...</div>}
-            {error && <div className="text-red-500 text-center py-4">{error}</div>}
+            {loading && <LoadingState />}
+            {error && <Alert tone="error" className="mx-4">{error}</Alert>}
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 px-4 mb-8">
@@ -1887,9 +1876,9 @@ export const DueReport: React.FC = () => {
 
             {/* Due Table */}
             <div className="card overflow-hidden mx-4 mb-6">
-                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
-                        <thead className="border-b border-slate-100">
+                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600 border-b border-slate-200">
                             <tr>
                                 <th className="px-4 py-3 text-left">S.No</th>
                                 <th className="px-4 py-3 text-left">Student Name</th>
@@ -1902,11 +1891,11 @@ export const DueReport: React.FC = () => {
                                 <th className="px-4 py-3 text-right">Due Amount</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-slate-100">
                             {filteredData.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="bg-green-50 text-green-600 text-center py-8 font-medium">
-                                        🎉 No students with pending dues!
+                                    <td colSpan={9}>
+                                        <EmptyState compact icon={<span className="text-xl">🎉</span>} title="No students with pending dues!" />
                                     </td>
                                 </tr>
                             ) : (
@@ -1914,19 +1903,19 @@ export const DueReport: React.FC = () => {
                                     {filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage).map((s, idx) => {
                                         const sNo = ((currentPage - 1) * rowsPerPage) + idx + 1;
                                         return (
-                                            <tr key={s.student_id || idx} className="hover:bg-gray-50 h-[45px]">
-                                                <td className="px-4 py-3 text-gray-500">{sNo}</td>
-                                                <td className="px-4 py-3 font-medium text-gray-900">{s.name}</td>
-                                                <td className="px-4 py-3 text-blue-600">{s.admission_no || s.adm_no || s.admissionNo || '-'}</td>
+                                            <tr key={s.student_id || idx} className="hover:bg-slate-50 h-[45px]">
+                                                <td className="px-4 py-3 text-slate-500">{sNo}</td>
+                                                <td className="px-4 py-3 font-medium text-slate-900">{s.name}</td>
+                                                <td className="px-4 py-3 text-brand-600">{s.admission_no || s.adm_no || s.admissionNo || '-'}</td>
                                                 <td className="px-4 py-3">{s.class} {s.section}</td>
-                                                <td className="px-4 py-3 text-gray-600">{s.father_name || s.father || s.parent_name || '-'}</td>
+                                                <td className="px-4 py-3 text-slate-600">{s.father_name || s.father || s.parent_name || '-'}</td>
                                                 <td className="px-4 py-3">
-                                                    <a href={`tel:${s.father_mobile}`} className="text-blue-600 hover:underline">
+                                                    <a href={`tel:${s.father_mobile}`} className="text-brand-600 hover:underline">
                                                         {s.father_mobile}
                                                     </a>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">₹{s.total_fee?.toLocaleString('en-IN')}</td>
-                                                <td className="px-4 py-3 text-right text-green-600">
+                                                <td className="px-4 py-3 text-right text-emerald-600">
                                                     ₹{(s.paid_amount || (s.total_fee - s.due_amount))?.toLocaleString('en-IN')}
                                                 </td>
                                                 <td className="px-4 py-3 text-right font-bold text-red-600">
@@ -1945,11 +1934,11 @@ export const DueReport: React.FC = () => {
                             )}
                         </tbody>
                         {filteredData.length > 0 && (
-                            <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-200">
+                            <tfoot className="bg-slate-50 font-semibold border-t-2 border-slate-200">
                                 <tr>
                                     <td colSpan={6} className="px-4 py-3 text-right">Total:</td>
                                     <td className="px-4 py-3 text-right">₹{totalFee.toLocaleString('en-IN')}</td>
-                                    <td className="px-4 py-3 text-right text-green-600">
+                                    <td className="px-4 py-3 text-right text-emerald-600">
                                         ₹{(totalFee - totalDue).toLocaleString('en-IN')}
                                     </td>
                                     <td className="px-4 py-3 text-right text-red-600">
@@ -1971,8 +1960,8 @@ export const DueReport: React.FC = () => {
 
             {/* Class-wise Due Summary */}
             {filteredData.length > 0 && (
-                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-sm mt-4 mx-4 mb-6">
-                    <h4 className="font-semibold mb-4 text-slate-800">Class-wise Due Summary</h4>
+                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm mt-4 mx-4 mb-6">
+                    <h4 className="text-base font-semibold mb-4 text-slate-900">Class-wise Due Summary</h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                         {Object.entries(
                             filteredData.reduce((acc: any, s) => {
@@ -2003,7 +1992,7 @@ export const LateFeeDueReport: React.FC = () => {
     const [classList, setClassList] = useState<string[]>([]);
     const [selectedClass, setSelectedClass] = useState('All');
     const [selectedSection, setSelectedSection] = useState('All');
-    const [minDueAmount, setMinDueAmount] = useState<string>('');
+    const [minDueAmount] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const rowsPerPage = 5;
@@ -2033,12 +2022,6 @@ export const LateFeeDueReport: React.FC = () => {
         try {
             setLoading(true);
             setError('');
-            const params = new URLSearchParams({
-                class: selectedClass === 'All' ? '' : selectedClass, // Handle 'All' correctly if backend expects empty or 'All'
-                section: selectedSection === 'All' ? '' : selectedSection,
-                ...(minDueAmount && { min_due: minDueAmount })
-            });
-
             // If backend expects 'All' literally, keep it. 
             // Original code sent selectedClass directly. 
             // I'll stick to sending 'All' if simpler, or check logic.
@@ -2207,7 +2190,7 @@ export const LateFeeDueReport: React.FC = () => {
                 <div className="flex-grow"></div>
                 <button
                     onClick={downloadExcel}
-                    className="btn-secondary text-green-600"
+                    className="btn-secondary text-emerald-600"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     Export Excel
@@ -2221,8 +2204,8 @@ export const LateFeeDueReport: React.FC = () => {
                 </button>
             </div>
 
-            {loading && <div className="text-center py-4">Loading...</div>}
-            {error && <div className="text-red-500 text-center py-4">{error}</div>}
+            {loading && <LoadingState />}
+            {error && <Alert tone="error" className="mx-4">{error}</Alert>}
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 px-4 mb-8">
@@ -2237,9 +2220,9 @@ export const LateFeeDueReport: React.FC = () => {
 
             {/* Late Fee Due Table */}
             <div className="card overflow-hidden mx-4 mb-6">
-                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
-                        <thead className="border-b border-slate-100">
+                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600 border-b border-slate-200">
                             <tr>
                                 <th className="px-4 py-3 text-left">S.No</th>
                                 <th className="px-4 py-3 text-left">Student Name</th>
@@ -2252,11 +2235,11 @@ export const LateFeeDueReport: React.FC = () => {
                                 <th className="px-4 py-3 text-right">Due Amount</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-slate-100">
                             {filteredData.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9} className="bg-green-50 text-green-600 text-center py-8 font-medium">
-                                        🎉 No students with pending dues!
+                                    <td colSpan={9}>
+                                        <EmptyState compact icon={<span className="text-xl">🎉</span>} title="No students with pending dues!" />
                                     </td>
                                 </tr>
                             ) : (
@@ -2264,19 +2247,19 @@ export const LateFeeDueReport: React.FC = () => {
                                     {filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage).map((s, idx) => {
                                         const sNo = ((currentPage - 1) * rowsPerPage) + idx + 1;
                                         return (
-                                            <tr key={s.student_id || idx} className="hover:bg-gray-50 h-[45px]">
-                                                <td className="px-4 py-3 text-gray-500">{sNo}</td>
-                                                <td className="px-4 py-3 font-medium text-gray-900">{s.name}</td>
-                                                <td className="px-4 py-3 text-blue-600">{s.admission_no || s.adm_no || s.admissionNo || '-'}</td>
+                                            <tr key={s.student_id || idx} className="hover:bg-slate-50 h-[45px]">
+                                                <td className="px-4 py-3 text-slate-500">{sNo}</td>
+                                                <td className="px-4 py-3 font-medium text-slate-900">{s.name}</td>
+                                                <td className="px-4 py-3 text-brand-600">{s.admission_no || s.adm_no || s.admissionNo || '-'}</td>
                                                 <td className="px-4 py-3">{s.class} {s.section}</td>
-                                                <td className="px-4 py-3 text-gray-600">{s.father_name || s.father || s.parent_name || '-'}</td>
+                                                <td className="px-4 py-3 text-slate-600">{s.father_name || s.father || s.parent_name || '-'}</td>
                                                 <td className="px-4 py-3">
-                                                    <a href={`tel:${s.father_mobile}`} className="text-blue-600 hover:underline">
+                                                    <a href={`tel:${s.father_mobile}`} className="text-brand-600 hover:underline">
                                                         {s.father_mobile}
                                                     </a>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">₹{s.total_fee?.toLocaleString('en-IN')}</td>
-                                                <td className="px-4 py-3 text-right text-green-600">
+                                                <td className="px-4 py-3 text-right text-emerald-600">
                                                     ₹{(s.paid_amount || (s.total_fee - s.due_amount))?.toLocaleString('en-IN')}
                                                 </td>
                                                 <td className="px-4 py-3 text-right font-bold text-red-600">
@@ -2295,11 +2278,11 @@ export const LateFeeDueReport: React.FC = () => {
                             )}
                         </tbody>
                         {filteredData.length > 0 && (
-                            <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-200">
+                            <tfoot className="bg-slate-50 font-semibold border-t-2 border-slate-200">
                                 <tr>
                                     <td colSpan={6} className="px-4 py-3 text-right">Total:</td>
                                     <td className="px-4 py-3 text-right">₹{totalFee.toLocaleString('en-IN')}</td>
-                                    <td className="px-4 py-3 text-right text-green-600">
+                                    <td className="px-4 py-3 text-right text-emerald-600">
                                         ₹{(totalFee - totalDue).toLocaleString('en-IN')}
                                     </td>
                                     <td className="px-4 py-3 text-right text-red-600">
@@ -2321,8 +2304,8 @@ export const LateFeeDueReport: React.FC = () => {
 
             {/* Class-wise Due Summary */}
             {filteredData.length > 0 && (
-                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-sm mt-4 mx-4 mb-6">
-                    <h4 className="font-semibold mb-4 text-slate-800">Class-wise Due Summary</h4>
+                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm mt-4 mx-4 mb-6">
+                    <h4 className="text-base font-semibold mb-4 text-slate-900">Class-wise Due Summary</h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                         {Object.entries(
                             filteredData.reduce((acc: any, s) => {
@@ -2368,45 +2351,6 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
         date: ''
     });
     const [saving, setSaving] = useState(false);
-
-    // Check admin role
-    // NEW (Robust Detection)
-    const getUserRole = (): string => {
-        // Check direct keys
-        const directRole = localStorage.getItem('userRole') ||
-            localStorage.getItem('role') ||
-            localStorage.getItem('user_role');
-        if (directRole) return directRole.toLowerCase();
-
-        // Check JSON user objects
-        const possibleKeys = ['user', 'currentUser', 'authUser', 'userData', 'loggedInUser'];
-        for (const key of possibleKeys) {
-            try {
-                const data = localStorage.getItem(key);
-                if (data) {
-                    const parsed = JSON.parse(data);
-                    const role = parsed?.role || parsed?.userRole || parsed?.user_role;
-                    if (role) return String(role).toLowerCase();
-                }
-            } catch {
-                // Not JSON, skip
-            }
-        }
-
-        // Try to decode JWT token
-        try {
-            const token = localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('authToken');
-            if (token) {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                const role = payload?.role || payload?.user_role;
-                if (role) return String(role).toLowerCase();
-            }
-        } catch {
-            // Invalid token
-        }
-
-        return '';
-    };
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const isAdmin = hasPermission(user, 'fees.fee.take-fee', 'delete'); // Usually, if they can delete/cancel, they can edit
@@ -2563,14 +2507,15 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
                 </div>
             </div>
 
-            {error && <div className="text-red-500 text-center py-2 px-4">{error}</div>}
+            {error && <Alert tone="error" className="mx-4">{error}</Alert>}
 
             {/* Student List (when multiple results) */}
             {students.length > 1 && !selectedStudent && (
-                <div className="card mx-4">
-                    <h4 className="font-semibold p-3 border-b bg-gray-50">Select a Student ({students.length} found)</h4>
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead className="">
+                <div className="card overflow-hidden mx-4">
+                    <h4 className="text-base font-semibold text-slate-900 p-3 border-b border-slate-200 bg-slate-50">Select a Student ({students.length} found)</h4>
+                    <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                             <tr>
                                 <th className="px-3 py-2 text-left">Adm No.</th>
                                 <th className="px-3 py-2 text-left">Student Name</th>
@@ -2580,10 +2525,10 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
                                 <th className="px-3 py-2 text-center">Action</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y">
+                        <tbody className="divide-y divide-slate-100">
                             {students.map((s: any, idx: number) => (
-                                <tr key={idx} className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-blue-600 font-medium">{s.admission_no || s.adm_no}</td>
+                                <tr key={idx} className="hover:bg-slate-50">
+                                    <td className="px-3 py-2 text-brand-600 font-medium">{s.admission_no || s.adm_no}</td>
                                     <td className="px-3 py-2 font-medium">{s.name}</td>
                                     <td className="px-3 py-2">{s.class} {s.section}</td>
                                     <td className="px-3 py-2">{s.father_name || s.father || '-'}</td>
@@ -2600,34 +2545,35 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
                             ))}
                         </tbody>
                     </table>
+                    </div>
                 </div>
             )}
 
             {/* Selected Student Info */}
             {selectedStudent && (
-                <div className="bg-blue-50 border border-blue-200 rounded p-4 mx-4">
+                <div className="bg-brand-50 border border-brand-200 rounded-lg p-4 mx-4">
                     <div className="flex justify-between items-start">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-1">
                             <div>
-                                <p className="text-xs text-gray-500">Student Name</p>
+                                <p className="text-xs text-slate-500">Student Name</p>
                                 <p className="font-semibold">{selectedStudent.name}</p>
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500">Admission No.</p>
-                                <p className="font-semibold text-blue-700">{selectedStudent.admission_no || selectedStudent.adm_no}</p>
+                                <p className="text-xs text-slate-500">Admission No.</p>
+                                <p className="font-semibold text-brand-700">{selectedStudent.admission_no || selectedStudent.adm_no}</p>
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500">Class</p>
+                                <p className="text-xs text-slate-500">Class</p>
                                 <p className="font-semibold">{selectedStudent.class} {selectedStudent.section}</p>
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500">Father Name</p>
+                                <p className="text-xs text-slate-500">Father Name</p>
                                 <p className="font-semibold">{selectedStudent.father_name || selectedStudent.father || '-'}</p>
                             </div>
                         </div>
                         <button
                             onClick={() => { setSelectedStudent(null); setReceipts([]); }}
-                            className="text-gray-500 hover:text-gray-700 ml-4"
+                            className="btn-ghost btn-sm ml-4"
                         >
                             ✕ Clear
                         </button>
@@ -2635,7 +2581,7 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
                 </div>
             )}
 
-            {loading && <div className="text-center py-4">Loading receipts...</div>}
+            {loading && <LoadingState label="Loading receipts..." />}
 
             {/* Receipts Summary */}
             {selectedStudent && !loading && (
@@ -2648,13 +2594,13 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
 
                     {/* Receipts Table - Custom with Edit Button */}
                     {receipts.length === 0 ? (
-                        <div className="bg-red-50 text-red-500 text-center py-8 border rounded mt-4 mx-4 font-medium">
-                            No receipts found for this student
+                        <div className="card mt-4 mx-4">
+                            <EmptyState compact title="No receipts found for this student" />
                         </div>
                     ) : (
                         <div className="card overflow-x-auto mt-4 mx-4">
-                            <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                <thead className="">
+                            <table className="min-w-full divide-y divide-slate-200 text-sm">
+                                <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                                     <tr>
                                         <th className="px-3 py-2 text-left">S.No</th>
                                         <th className="px-3 py-2 text-left">Rcpt No</th>
@@ -2668,24 +2614,22 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
                                         <th className="px-3 py-2 text-center">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody className="divide-y divide-slate-100">
                                     {receipts.map((r: any, idx: number) => (
-                                        <tr key={idx} className="hover:bg-gray-50">
-                                            <td className="px-3 py-2 text-gray-500">{idx + 1}</td>
-                                            <td className="px-3 py-2 font-medium text-blue-700">{r.receipt_no}</td>
-                                            <td className="px-3 py-2 text-xs text-gray-600">
+                                        <tr key={idx} className="hover:bg-slate-50">
+                                            <td className="px-3 py-2 text-slate-500">{idx + 1}</td>
+                                            <td className="px-3 py-2 font-medium text-brand-700">{r.receipt_no}</td>
+                                            <td className="px-3 py-2 text-xs text-slate-600">
                                                 {formatDateDDMMYYYY(r.date)}<br />
-                                                <span className="text-gray-400">{r.time}</span>
+                                                <span className="text-slate-400">{r.time}</span>
                                             </td>
                                             <td className="px-3 py-2 max-w-[200px] truncate" title={r.fee_type_str}>{r.fee_type_str || '-'}</td>
                                             <td className="px-3 py-2 text-right font-bold">₹{(r.amount_paid || r.amount || 0).toLocaleString()}</td>
                                             <td className="px-3 py-2 text-right text-red-500">₹{(r.due_amount || 0).toLocaleString()}</td>
                                             <td className="px-3 py-2">
-                                                <span className={`px-2 py-1 rounded text-xs font-medium ${r.mode === 'Cash' ? 'bg-green-100 text-green-700' :
-                                                    r.mode === 'UPI' ? 'bg-purple-100 text-purple-700' :
-                                                        r.mode === 'Cheque' ? 'bg-orange-100 text-orange-700' :
-                                                            'bg-blue-100 text-blue-700'
-                                                    }`}>
+                                                <span className={r.mode === 'Cash' ? 'badge-success' :
+                                                    r.mode === 'Cheque' ? 'badge-warning' :
+                                                        'badge-brand'}>
                                                     {r.mode}
                                                 </span>
                                             </td>
@@ -2693,13 +2637,13 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
                                                 {r.mode === 'Cheque' ? (
                                                     <div>
                                                         <div>{r.cheque_no || '-'}</div>
-                                                        <div className="text-gray-400">{r.bank_name || '-'}</div>
+                                                        <div className="text-slate-400">{r.bank_name || '-'}</div>
                                                     </div>
                                                 ) : (
                                                     <div className="truncate" title={r.transaction_id}>{r.transaction_id || '-'}</div>
                                                 )}
                                             </td>
-                                            <td className="px-3 py-2 text-gray-600">{r.collected_by}</td>
+                                            <td className="px-3 py-2 text-slate-600">{r.collected_by}</td>
                                             <td className="px-3 py-2 text-center">
                                                 <div className="flex gap-1 justify-center">
                                                     <button
@@ -2721,7 +2665,7 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
                                         </tr>
                                     ))}
                                 </tbody>
-                                <tfoot className="bg-gray-100 font-bold">
+                                <tfoot className="bg-slate-50 font-semibold">
                                     <tr>
                                         <td colSpan={4} className="px-3 py-2 text-right">Total:</td>
                                         <td className="px-3 py-2 text-right">₹{totalCollected.toLocaleString()}</td>
@@ -2738,13 +2682,14 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
             {editingReceipt && (
                 <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50 p-4">
                     <div className="card shadow-pop max-w-md w-full">
-                        <div className="p-4 border-b flex justify-between items-center">
+                        <div className="card-header">
                             <h3 className="text-base font-semibold text-slate-900">
                                 Edit Receipt: {editingReceipt.receipt_no}
                             </h3>
                             <button
                                 onClick={() => setEditingReceipt(null)}
-                                className="text-gray-500 hover:text-gray-700"
+                                className="btn-icon"
+                                aria-label="Close"
                             >
                                 ✕
                             </button>
@@ -2752,15 +2697,15 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
 
                         <div className="p-4 space-y-4">
                             {/* Read-only info */}
-                            <div className="bg-gray-50 p-3 rounded text-sm border">
+                            <div className="bg-slate-50 p-3 rounded-lg text-sm border border-slate-200">
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                        <span className="text-gray-500">Student:</span>
+                                        <span className="text-slate-500">Student:</span>
                                         <p className="font-semibold">{selectedStudent?.name}</p>
                                     </div>
                                     <div>
-                                        <span className="text-gray-500">Amount Paid:</span>
-                                        <p className="font-semibold text-green-700">
+                                        <span className="text-slate-500">Amount Paid:</span>
+                                        <p className="font-semibold text-emerald-700">
                                             ₹{(editingReceipt.amount_paid || editingReceipt.amount || 0).toLocaleString()}
                                         </p>
                                     </div>
@@ -2847,12 +2792,12 @@ export const SearchStudentReport: React.FC<ReportProps> = ({ onViewReceipt }) =>
                                 </div>
                             ) : null}
 
-                            <div className="bg-yellow-50 border border-yellow-200 p-2 rounded text-xs text-yellow-800">
-                                ⚠️ Only Payment Date, Mode, and Transaction/Cheque details can be edited. Amount, Fee Type, and Student details are non-editable.
-                            </div>
+                            <Alert tone="warning" className="text-xs">
+                                Only Payment Date, Mode, and Transaction/Cheque details can be edited. Amount, Fee Type, and Student details are non-editable.
+                            </Alert>
                         </div>
 
-                        <div className="p-4 border-t flex gap-2 justify-end bg-gray-50">
+                        <div className="p-4 border-t border-slate-200 flex gap-2 justify-end bg-slate-50">
                             <button
                                 onClick={() => setEditingReceipt(null)}
                                 disabled={saving}

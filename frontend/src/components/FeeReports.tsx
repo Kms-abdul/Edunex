@@ -12,12 +12,13 @@ import {
 import FeeReceipt from './FeeReceipt';
 import api from '../api';
 import { notify } from './ui/feedback';
+import { LoadingState } from './ui';
 
 const FeeReports: React.FC = () => {
     const [activeTab, setActiveTab] = useState('today');
     const [receiptData, setReceiptData] = useState<any>(null);
     const [loadingReceipt, setLoadingReceipt] = useState(false);
-    const [error, setError] = useState('');
+    const [, setError] = useState('');
 
     const handleViewReceipt = async (receiptNo: string) => {
         try {
@@ -104,7 +105,7 @@ const FeeReports: React.FC = () => {
                 paymentDate: res.data.paymentDate || payments[0]?.payment_date,
                 paymentMode: res.data.paymentMode || payments[0]?.mode,
                 paymentNote: res.data.paymentNote || "",
-                items: groupedItems.map((g, i) => ({
+                items: groupedItems.map((g) => ({
                     title: g.title,
                     amount: g.amount,
                     payable: g.amount,
@@ -143,7 +144,7 @@ const FeeReports: React.FC = () => {
     return (
         <div className="container mx-auto p-6">
             <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 flex items-center">
-                <span className="bg-violet-100 text-violet-600 p-2 rounded mr-3">
+                <span className="bg-brand-100 text-brand-600 p-2 rounded-lg mr-3">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
@@ -152,12 +153,12 @@ const FeeReports: React.FC = () => {
             </h2>
 
             {/* Tabs */}
-            <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-200 pb-1">
+            <div className="segmented flex-wrap mb-8">
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`btn rounded-t-lg ${activeTab === tab.id ? 'bg-violet-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100' }`}
+                        className={`segmented-item ${activeTab === tab.id ? 'segmented-item-active' : ''}`}
                     >
                         {tab.label}
                     </button>
@@ -179,7 +180,7 @@ const FeeReports: React.FC = () => {
             {/* Receipt Modal */}
             {loadingReceipt && (
                 <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
-                    <div className="card p-4">Loading Receipt...</div>
+                    <div className="card px-8"><LoadingState label="Loading Receipt..." /></div>
                 </div>
             )}
 

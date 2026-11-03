@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import axios from "axios";
 import { notify, confirmDialog } from './ui/feedback';
+import { EmptyState } from './ui';
 
 interface FeeType {
     id?: number;
@@ -61,7 +62,6 @@ const FeeTypeManagement: React.FC = () => {
 
     // Fetch fee types on component mount
     useEffect(() => {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
         let globalBranch = localStorage.getItem('currentBranch') || 'All';
 
         setFormData(prev => ({ ...prev, branch: globalBranch }));
@@ -261,39 +261,39 @@ const FeeTypeManagement: React.FC = () => {
                                 </button>
                                 {isCopyDropdownOpen && (
                                     <div className="card shadow-pop absolute top-12 right-0 w-80 z-50 p-2 max-h-96 overflow-y-auto">
-                                        <div className="mb-2 text-sm font-semibold text-gray-700 pb-2 border-b">
+                                        <div className="mb-2 text-sm font-semibold text-slate-700 pb-2 border-b border-slate-100">
                                             Select Target Branches
                                         </div>
                                         {Object.keys(branchesByLocation).length === 0 ? (
-                                            <div className="text-gray-500 text-sm p-4 text-center">No other branches available</div>
+                                            <EmptyState compact title="No other branches available" />
                                         ) : (
                                             Object.keys(branchesByLocation).map(loc => (
                                                 <div key={loc} className="mb-1">
-                                                    <div className="text-sm font-bold text-gray-900 px-3 py-2 bg-gray-50 border-b border-gray-100">
+                                                    <div className="text-sm font-semibold text-slate-900 px-3 py-2 bg-slate-50 border-b border-slate-100">
                                                         {loc}
                                                     </div>
                                                     <div className="py-1">
                                                         {branchesByLocation[loc].map(b => (
-                                                            <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-blue-50 cursor-pointer transition-colors pl-6">
+                                                            <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-brand-50 cursor-pointer transition-colors pl-6">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={copyTargets.has(String(b.id))}
                                                                     onChange={() => toggleCopyTarget(String(b.id))}
-                                                                    className="w-4 h-4 accent-blue-600 rounded border-gray-300"
+                                                                    className="w-4 h-4 accent-brand-600 rounded border-slate-300"
                                                                 />
-                                                                <span className="text-sm text-gray-700">{b.name}</span>
+                                                                <span className="text-sm text-slate-700">{b.name}</span>
                                                             </label>
                                                         ))}
                                                     </div>
                                                 </div>
                                             ))
                                         )}
-                                        <div className="mt-2 pt-2 border-t flex justify-between items-center sticky bottom-0 bg-white">
-                                            <span className="text-xs text-gray-500">{copyTargets.size} selected</span>
+                                        <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center sticky bottom-0 bg-white">
+                                            <span className="text-xs text-slate-500">{copyTargets.size} selected</span>
                                             <button
                                                 onClick={handleCopy}
                                                 disabled={copying || copyTargets.size === 0}
-                                                className={`btn btn-sm text-white ${copying || copyTargets.size === 0 ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
+                                                className="btn-success btn-sm"
                                             >
                                                 {copying ? "Copying..." : "Confirm Copy"}
                                             </button>
@@ -316,7 +316,7 @@ const FeeTypeManagement: React.FC = () => {
             {/* Add/Edit Form */}
             {showForm && (
                 <div className="card p-6 mb-6">
-                    <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                    <h3 className="text-base font-semibold text-slate-900 mb-4">
                         {editingId ? 'Edit Fee Type' : 'Add New Fee Type'}
                     </h3>
 
@@ -447,9 +447,9 @@ const FeeTypeManagement: React.FC = () => {
                                 id="is_refundable"
                                 checked={formData.is_refundable}
                                 onChange={handleInputChange}
-                                className="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+                                className="w-4 h-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500"
                             />
-                            <label htmlFor="is_refundable" className="label ml-2">
+                            <label htmlFor="is_refundable" className="label mb-0 ml-2">
                                 Is Fee Refundable?
                             </label>
                         </div>
@@ -491,9 +491,9 @@ const FeeTypeManagement: React.FC = () => {
 
             {/* Fee Types Table */}
             <div className="card overflow-hidden">
-                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="border-b">
+                        <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-600">
                             <tr>
                                 <th className="px-6 py-3 text-left">
                                     Fee Type
@@ -521,46 +521,40 @@ const FeeTypeManagement: React.FC = () => {
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white divide-y divide-slate-100">
                             {feeTypes.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
-                                        No fee types found. Click "Add New Fee Type" to create one.
+                                    <td colSpan={8}>
+                                        <EmptyState compact title="No fee types found" description='Click "Add New Fee Type" to create one.' />
                                     </td>
                                 </tr>
                             ) : (
                                 feeTypes.map((feeType) => (
-                                    <tr key={feeType.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    <tr key={feeType.id} className="hover:bg-slate-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                                             {feeType.fee_type}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <span className={`px-2 py-1 rounded-full text-xs ${!feeType.branch || feeType.branch === 'All'
-                                                ? 'bg-blue-100 text-blue-800'
-                                                : 'bg-gray-100 text-gray-800'
-                                                }`}>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                                            <span className={!feeType.branch || feeType.branch === 'All' ? 'badge-brand' : 'badge-neutral'}>
                                                 {feeType.branch || 'All'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                                             {feeType.category || '-'}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                                             {feeType.fee_type_group || '-'}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                                            <span className="badge-brand">
                                                 {feeType.type}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                                             {feeType.display_name || '-'}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <span className={`px-2 py-1 rounded-full text-xs ${feeType.is_refundable
-                                                ? 'bg-green-100 text-green-800'
-                                                : 'bg-orange-100 text-orange-800'
-                                                }`}>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                                            <span className={feeType.is_refundable ? 'badge-success' : 'badge-warning'}>
                                                 {feeType.is_refundable ? 'Yes' : 'No'}
                                             </span>
                                         </td>
@@ -568,13 +562,13 @@ const FeeTypeManagement: React.FC = () => {
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => handleEdit(feeType)}
-                                                    className="btn text-blue-600 hover:text-blue-900 bg-blue-50"
+                                                    className="btn-soft btn-sm"
                                                 >
                                                     ✎ Edit
                                                 </button>
                                                 <button
                                                     onClick={() => feeType.id && handleDelete(feeType.id)}
-                                                    className="btn text-red-600 hover:text-red-900 bg-red-50"
+                                                    className="btn btn-sm text-red-600 bg-red-50 hover:bg-red-100"
                                                 >
                                                     🗑 Delete
                                                 </button>

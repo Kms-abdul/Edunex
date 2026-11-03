@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import FeeReceipt from './FeeReceipt';
 import { TrashIcon, PrinterIcon, RefreshIcon } from './icons';
 import { notify } from './ui/feedback';
+import { Alert, Badge, EmptyState, ErrorState, LoadingState } from './ui';
 
 interface FeeItem {
     payment_id: number;
@@ -138,7 +139,7 @@ const Pagination: React.FC<{
 };
 
 const DeleteFeeReceipt: React.FC = () => {
-    const { user, hasPermission } = useAuth();
+    const { hasPermission } = useAuth();
 
     // Permissions
     const canDeleteReceipt =
@@ -411,9 +412,8 @@ const DeleteFeeReceipt: React.FC = () => {
     if (!canReadReceipts) {
         return (
             <div className="p-8 max-w-4xl mx-auto">
-                <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-6 text-center">
-                    <h3 className="text-xl font-bold mb-2">Access Restricted</h3>
-                    <p>You do not have permission to view or delete fee receipts.</p>
+                <div className="card">
+                    <ErrorState title="Access Restricted" message="You do not have permission to view or delete fee receipts." />
                 </div>
             </div>
         );
@@ -448,23 +448,15 @@ const DeleteFeeReceipt: React.FC = () => {
 
             {/* Notification Messages */}
             {successMessage && (
-                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-2 font-medium">
-                        <span>✓</span>
-                        <span>{successMessage}</span>
-                    </div>
-                    <button onClick={() => setSuccessMessage(null)} className="text-emerald-600 hover:text-emerald-800">✕</button>
-                </div>
+                <Alert tone="success" onClose={() => setSuccessMessage(null)}>
+                    {successMessage}
+                </Alert>
             )}
 
             {error && (
-                <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-2 font-medium">
-                        <span>⚠</span>
-                        <span>{error}</span>
-                    </div>
-                    <button onClick={() => setError(null)} className="text-red-600 hover:text-red-800">✕</button>
-                </div>
+                <Alert tone="error" onClose={() => setError(null)}>
+                    {error}
+                </Alert>
             )}
 
             {/* Stats Overview */}
@@ -474,7 +466,7 @@ const DeleteFeeReceipt: React.FC = () => {
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Found</p>
                         <p className="text-2xl font-bold text-slate-800 mt-1">{receipts.length}</p>
                     </div>
-                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center font-bold">
                         #
                     </div>
                 </div>
@@ -502,9 +494,9 @@ const DeleteFeeReceipt: React.FC = () => {
                 <div className="card p-4 flex items-center justify-between">
                     <div>
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Total Paid</p>
-                        <p className="text-2xl font-bold text-blue-600 mt-1">₹{totalCollected.toLocaleString('en-IN')}</p>
+                        <p className="text-2xl font-bold text-brand-600 mt-1">₹{totalCollected.toLocaleString('en-IN')}</p>
                     </div>
-                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center font-bold">
                         ₹
                     </div>
                 </div>
@@ -646,7 +638,7 @@ const DeleteFeeReceipt: React.FC = () => {
 
             {/* Receipts Table & Pagination */}
             <div className="card overflow-hidden flex flex-col">
-                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                <div className="card-header bg-slate-50">
                     <h3 className="font-semibold text-slate-800 text-base">
                         Fee Receipts List ({receipts.length})
                     </h3>
@@ -657,8 +649,8 @@ const DeleteFeeReceipt: React.FC = () => {
 
                 <div className="overflow-x-auto flex-1">
                     <table className="w-full text-left border-collapse text-sm">
-                        <thead>
-                            <tr className="bg-slate-100/70 border-b border-slate-200">
+                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                            <tr className="border-b border-slate-200">
                                 <th className="px-4 py-3">Receipt No</th>
                                 <th className="px-4 py-3">Date</th>
                                 <th className="px-4 py-3">Student Info</th>
@@ -674,20 +666,14 @@ const DeleteFeeReceipt: React.FC = () => {
                         <tbody className="divide-y divide-slate-200">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={10} className="text-center py-12 text-slate-500">
-                                        <div className="flex flex-col items-center justify-center">
-                                            <RefreshIcon className="w-8 h-8 animate-spin text-red-500 mb-2" />
-                                            <span>Loading fee receipts...</span>
-                                        </div>
+                                    <td colSpan={10}>
+                                        <LoadingState label="Loading fee receipts..." />
                                     </td>
                                 </tr>
                             ) : paginatedReceipts.length === 0 ? (
                                 <tr>
-                                    <td colSpan={10} className="text-center py-12 text-slate-500">
-                                        <div className="max-w-md mx-auto">
-                                            <p className="text-base font-semibold text-slate-700 mb-1">No receipts found</p>
-                                            <p className="text-xs text-slate-500">Try changing your search keywords, receipt number or date filters.</p>
-                                        </div>
+                                    <td colSpan={10}>
+                                        <EmptyState compact title="No receipts found" description="Try changing your search keywords, receipt number or date filters." />
                                     </td>
                                 </tr>
                             ) : (
@@ -748,7 +734,7 @@ const DeleteFeeReceipt: React.FC = () => {
 
                                             {/* Mode */}
                                             <td className="px-4 py-3.5 text-slate-700 whitespace-nowrap">
-                                                <span className="px-2 py-0.5 rounded text-xs bg-slate-100 font-medium">
+                                                <span className="badge-neutral">
                                                     {r.payment_mode || 'Cash'}
                                                 </span>
                                             </td>
@@ -757,9 +743,7 @@ const DeleteFeeReceipt: React.FC = () => {
                                             <td className="px-4 py-3.5 text-center whitespace-nowrap">
                                                 {isCancelled ? (
                                                     <div className="inline-flex flex-col items-center">
-                                                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
-                                                            Cancelled
-                                                        </span>
+                                                        <Badge tone="danger">Cancelled</Badge>
                                                         {r.cancel_reason && (
                                                             <span className="text-[11px] text-red-600 max-w-[150px] truncate mt-0.5 italic" title={r.cancel_reason}>
                                                                 {r.cancel_reason}
@@ -767,9 +751,7 @@ const DeleteFeeReceipt: React.FC = () => {
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                                                        Active
-                                                    </span>
+                                                    <Badge tone="success">Active</Badge>
                                                 )}
                                             </td>
 
@@ -781,7 +763,7 @@ const DeleteFeeReceipt: React.FC = () => {
                                                         onClick={() => handlePrintReceipt(r.receipt_no)}
                                                         disabled={loadingReceiptData}
                                                         title="View / Print Receipt"
-                                                        className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        className="btn-icon text-brand-600 hover:text-brand-800 hover:bg-brand-50"
                                                     >
                                                         <PrinterIcon className="w-4 h-4" />
                                                     </button>
@@ -832,7 +814,7 @@ const DeleteFeeReceipt: React.FC = () => {
                                 <TrashIcon className="w-6 h-6" />
                             </div>
                             <div>
-                                <h3 className="text-xl font-bold text-red-900">
+                                <h3 className="text-base font-semibold text-red-900">
                                     Cancel Fee Receipt #{receiptToCancel.receipt_no}
                                 </h3>
                                 <p className="text-sm text-red-700 mt-1">

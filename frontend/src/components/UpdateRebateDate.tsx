@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
+import { Alert, EmptyState, LoadingState } from './ui';
 
 interface Installment {
     id: number;
@@ -104,69 +105,65 @@ const UpdateRebateDate: React.FC = () => {
     };
 
     if (loading) {
-        return <div className="p-6">Loading installments...</div>;
+        return <div className="p-6"><LoadingState label="Loading installments..." /></div>;
     }
 
     return (
         <div className="p-6 max-w-6xl mx-auto">
             <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 flex items-center">
-                <span className="text-violet-600 mr-2">📅</span> Update Rebate Date
+                <span className="text-brand-600 mr-2">📅</span> Update Rebate Date
             </h2>
 
             {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-md mb-6 shadow-sm border border-red-100 flex items-center">
-                    <span className="mr-2">⚠️</span> {error}
-                </div>
+                <Alert tone="error" className="mb-6">{error}</Alert>
             )}
 
             {successMessage && (
-                <div className="bg-green-50 text-green-600 p-4 rounded-md mb-6 shadow-sm border border-green-100 flex items-center">
-                    <span className="mr-2">✅</span> {successMessage}
-                </div>
+                <Alert tone="success" className="mb-6">{successMessage}</Alert>
             )}
 
             <div className="card overflow-hidden">
-                <div className="p-4 bg-gray-50 border-b border-gray-200">
-                    <p className="text-sm text-gray-600">
+                <div className="p-4 bg-slate-50 border-b border-slate-200">
+                    <p className="text-sm text-slate-500">
                         Update the due date (rebate date) for student fees corresponding to each installment in the current branch <strong>({branch})</strong> and academic year <strong>({academicYear})</strong>.
                         Note: This will not change the installment definition's Last Pay Date, but it will update the actual due dates for all students assigned this fee.
                     </p>
                 </div>
-                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <div className="overflow-x-auto">
                     <table className="min-w-full bg-white">
-                        <thead className="">
+                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                             <tr>
-                                <th className="px-4 py-3 text-left border-b">Title</th>
-                                <th className="px-4 py-3 text-left border-b">Fee Type</th>
-                                <th className="px-4 py-3 text-left border-b">Start Date</th>
-                                <th className="px-4 py-3 text-left border-b">End Date</th>
-                                <th className="px-4 py-3 text-left border-b">Original Cutoff Date</th>
-                                <th className="px-4 py-3 text-left border-b">New Rebate Date</th>
-                                <th className="px-4 py-3 text-center border-b">Action</th>
+                                <th className="px-4 py-3 text-left border-b border-slate-200">Title</th>
+                                <th className="px-4 py-3 text-left border-b border-slate-200">Fee Type</th>
+                                <th className="px-4 py-3 text-left border-b border-slate-200">Start Date</th>
+                                <th className="px-4 py-3 text-left border-b border-slate-200">End Date</th>
+                                <th className="px-4 py-3 text-left border-b border-slate-200">Original Cutoff Date</th>
+                                <th className="px-4 py-3 text-left border-b border-slate-200">New Rebate Date</th>
+                                <th className="px-4 py-3 text-center border-b border-slate-200">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {installments.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                                        No installments found for the current branch and academic year.
+                                    <td colSpan={7}>
+                                        <EmptyState compact title="No installments found for the current branch and academic year." />
                                     </td>
                                 </tr>
                             ) : (
                                 installments.map(inst => (
-                                    <tr key={inst.id} className="hover:bg-gray-50 border-b last:border-b-0">
-                                        <td className="px-4 py-3 text-sm text-gray-800 font-medium">
+                                    <tr key={inst.id} className="hover:bg-slate-50 border-b border-slate-100 last:border-b-0">
+                                        <td className="px-4 py-3 text-sm text-slate-800 font-medium">
                                             {inst.title}
-                                            {inst.is_admission && <span className="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded">Admission</span>}
+                                            {inst.is_admission && <span className="ml-2 badge-success">Admission</span>}
                                         </td>
-                                        <td className="px-4 py-3 text-sm text-gray-600">{inst.fee_type_name || '-'}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-600">
+                                        <td className="px-4 py-3 text-sm text-slate-600">{inst.fee_type_name || '-'}</td>
+                                        <td className="px-4 py-3 text-sm text-slate-600">
                                             {new Date(inst.start_date).toLocaleDateString('en-GB')}
                                         </td>
-                                        <td className="px-4 py-3 text-sm text-gray-600">
+                                        <td className="px-4 py-3 text-sm text-slate-600">
                                             {new Date(inst.end_date).toLocaleDateString('en-GB')}
                                         </td>
-                                        <td className="px-4 py-3 text-sm text-gray-600">
+                                        <td className="px-4 py-3 text-sm text-slate-600">
                                             {new Date(inst.last_pay_date).toLocaleDateString('en-GB')}
                                         </td>
                                         <td className="px-4 py-3 text-sm">
@@ -181,7 +178,7 @@ const UpdateRebateDate: React.FC = () => {
                                             <button
                                                 onClick={() => handleSave(inst)}
                                                 disabled={!newDates[inst.id] || savingId === inst.id}
-                                                className={`btn btn-sm ${!newDates[inst.id] ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : savingId === inst.id ? 'bg-violet-400 text-white cursor-wait' : 'bg-violet-600 text-white hover:bg-violet-700' }`}
+                                                className={`btn-primary btn-sm ${savingId === inst.id ? 'cursor-wait' : ''}`}
                                             >
                                                 {savingId === inst.id ? 'Saving...' : 'Update'}
                                             </button>

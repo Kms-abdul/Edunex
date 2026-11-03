@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import { notify, confirmDialog } from './ui/feedback';
+import { Alert, EmptyState } from './ui';
 
 interface FeeType {
     id: number;
@@ -44,12 +45,10 @@ interface BranchOption {
 const ClassFeeStructure: React.FC = () => {
     const [feeTypes, setFeeTypes] = useState<FeeType[]>([]);
     const [classes, setClasses] = useState<string[]>([]);
-    const [feeGroups, setFeeGroups] = useState<string[]>(['Standard']);
 
     const [selectedClass, setSelectedClass] = useState('');
-    const [academicYear, setAcademicYear] = useState(localStorage.getItem('academicYear') || '');
+    const [academicYear] = useState(localStorage.getItem('academicYear') || '');
     const [selectedFeeGroup, setSelectedFeeGroup] = useState('Standard');
-    const [newFeeGroup, setNewFeeGroup] = useState('');
     // const [selectedBranch, setSelectedBranch] = useState('All'); // Removed state
     const [selectedLocation, setSelectedLocation] = useState('Hyderabad');
     // const [isBranchLocked, setIsBranchLocked] = useState(false); // Removed state
@@ -221,14 +220,6 @@ const ClassFeeStructure: React.FC = () => {
             setClasses(classNames);
         } catch (error) {
             console.error('Error fetching classes:', error);
-        }
-    };
-
-    const addFeeGroup = () => {
-        if (newFeeGroup && !feeGroups.includes(newFeeGroup)) {
-            setFeeGroups([...feeGroups, newFeeGroup]);
-            setSelectedFeeGroup(newFeeGroup);
-            setNewFeeGroup('');
         }
     };
 
@@ -498,27 +489,14 @@ const ClassFeeStructure: React.FC = () => {
     });
 
     return (
-        <div className="container mx-auto p-6 bg-gray-50 min-h-full">
+        <div className="container mx-auto p-6 min-h-full">
             <div className="card p-6 mb-6">
                 <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6">Create Class Fee Structure</h2>
 
                 {isAllBranchesMode && (
-                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-                        <div className="flex">
-                            <div className="flex-shrink-0">
-                                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                            </div>
-                            <div className="ml-3">
-                                <p className="text-sm text-yellow-700">
-                                    <span className="font-bold">Cannot create fee structure in "All Branches" mode.</span>
-                                    <br />
-                                    Please select a specific branch from the header to create or modify fee structures.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    <Alert tone="warning" title='Cannot create fee structure in "All Branches" mode.' className="mb-6">
+                        Please select a specific branch from the header to create or modify fee structures.
+                    </Alert>
                 )}
 
                 {/* Class and Academic Year Selection */}
@@ -550,7 +528,7 @@ const ClassFeeStructure: React.FC = () => {
                 {/* Fee Structure for New Admissions */}
                 <div className="mb-6">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold text-gray-800">Fee for New Admissions</h3>
+                        <h3 className="text-base font-semibold text-slate-900">Fee for New Admissions</h3>
                         <button
                             onClick={() => setShowNewAdmissionForm(!showNewAdmissionForm)}
                             className="btn-primary"
@@ -583,7 +561,7 @@ const ClassFeeStructure: React.FC = () => {
                 {/* Fee Structure for Existing Students */}
                 <div className="mb-6">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold text-gray-800">Fee Structure for Existing Students</h3>
+                        <h3 className="text-base font-semibold text-slate-900">Fee Structure for Existing Students</h3>
                         <button
                             onClick={() => setShowExistingStudentForm(!showExistingStudentForm)}
                             className="btn-primary"
@@ -614,7 +592,7 @@ const ClassFeeStructure: React.FC = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex justify-between items-center gap-4 mt-8 pt-4 border-t">
+                <div className="flex flex-wrap justify-between items-center gap-4 mt-8 pt-4 border-t border-slate-100">
                     {/* Copy Section */}
                     <div>
                         {!isAllBranchesMode && selectedClass && (
@@ -629,41 +607,41 @@ const ClassFeeStructure: React.FC = () => {
                                 {/* Grouped Dropdown */}
                                 {isCopyDropdownOpen && (
                                     <div className="card shadow-pop absolute bottom-12 left-0 w-80 z-50 p-2 max-h-96 overflow-y-auto">
-                                        <div className="mb-2 text-sm font-semibold text-gray-700 pb-2 border-b">
+                                        <div className="mb-2 text-sm font-semibold text-slate-700 pb-2 border-b border-slate-100">
                                             Select Target Branches
                                         </div>
                                         {Object.keys(branchesByLocation).length === 0 ? (
-                                            <div className="text-gray-500 text-sm p-4 text-center">No other branches available</div>
+                                            <EmptyState compact title="No other branches available" />
                                         ) : (
                                             Object.keys(branchesByLocation).map(loc => (
                                                 <div key={loc} className="mb-1">
                                                     {/* Header - Clean & Bold */}
-                                                    <div className="text-sm font-bold text-gray-900 px-3 py-2 bg-gray-50 border-b border-gray-100">
+                                                    <div className="text-sm font-semibold text-slate-900 px-3 py-2 bg-slate-50 border-b border-slate-100">
                                                         {loc}
                                                     </div>
                                                     {/* Items - Indented */}
                                                     <div className="py-1">
                                                         {branchesByLocation[loc].map(b => (
-                                                            <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-blue-50 cursor-pointer transition-colors pl-6">
+                                                            <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-brand-50 cursor-pointer transition-colors pl-6">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={copyTargets.has(String(b.id))}
                                                                     onChange={() => toggleCopyTarget(String(b.id))}
-                                                                    className="w-4 h-4 accent-blue-600 rounded border-gray-300"
+                                                                    className="w-4 h-4 accent-brand-600 rounded border-slate-300"
                                                                 />
-                                                                <span className="text-sm text-gray-700">{b.name}</span>
+                                                                <span className="text-sm text-slate-700">{b.name}</span>
                                                             </label>
                                                         ))}
                                                     </div>
                                                 </div>
                                             ))
                                         )}
-                                        <div className="mt-2 pt-2 border-t flex justify-between items-center sticky bottom-0 bg-white">
-                                            <span className="text-xs text-gray-500">{copyTargets.size} selected</span>
+                                        <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center sticky bottom-0 bg-white">
+                                            <span className="text-xs text-slate-500">{copyTargets.size} selected</span>
                                             <button
                                                 onClick={handleCopy}
                                                 disabled={copying || copyTargets.size === 0}
-                                                className={`btn btn-sm text-white ${copying || copyTargets.size === 0 ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
+                                                className="btn-success btn-sm"
                                             >
                                                 {copying ? "Copying..." : "Confirm Copy"}
                                             </button>
@@ -674,15 +652,15 @@ const ClassFeeStructure: React.FC = () => {
                         )}
                     </div>
 
-                    <div className="flex gap-4 items-center">
+                    <div className="flex flex-wrap gap-4 items-center">
                         <label className="flex items-center gap-2 mr-4 cursor-pointer">
                             <input
                                 type="checkbox"
                                 checked={updateAssignedStudents}
                                 onChange={(e) => setUpdateAssignedStudents(e.target.checked)}
-                                className="w-4 h-4 accent-violet-600 rounded border-gray-300 cursor-pointer"
+                                className="w-4 h-4 accent-brand-600 rounded border-slate-300 cursor-pointer"
                             />
-                            <span className="text-sm text-gray-700 font-medium">Update assigned students (unpaid fees)</span>
+                            <span className="text-sm text-slate-700 font-medium">Update assigned students (unpaid fees)</span>
                         </label>
                         <button
                             onClick={resetForm}
@@ -720,7 +698,7 @@ const AddFeeForm: React.FC<{
     };
 
     return (
-        <div className="bg-gray-50 p-4 rounded-md mb-4 border border-gray-200">
+        <div className="bg-slate-50 p-4 rounded-lg mb-4 border border-slate-200">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label className="label">Fee Type</label>
@@ -771,21 +749,19 @@ const FeeStructureTable: React.FC<{
 
     if (fees.length === 0) {
         return (
-            <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-md border border-gray-200">
-                No fees added yet
-            </div>
+            <EmptyState compact title="No fees added yet" className="bg-slate-50 rounded-lg border border-slate-200" />
         );
     }
 
     return (
         <div className="space-y-4">
             {fees.map((fee, feeIndex) => (
-                <div key={feeIndex} className="border border-gray-200 rounded-md overflow-hidden">
-                    <div className="bg-blue-50 px-4 py-3 flex justify-between items-center">
+                <div key={feeIndex} className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="bg-brand-50 px-4 py-3 flex flex-wrap gap-2 justify-between items-center">
                         <div>
-                            <h4 className="font-semibold text-gray-800">{fee.fee_type_name}</h4>
+                            <h4 className="font-semibold text-slate-900">{fee.fee_type_name}</h4>
                             <div className="flex items-center gap-2 mt-1">
-                                <span className="text-sm text-gray-600 font-medium">Total: ₹</span>
+                                <span className="text-sm text-slate-600 font-medium">Total: ₹</span>
                                 {editingTotalIndex === feeIndex ? (
                                     <>
                                         <input
@@ -797,7 +773,7 @@ const FeeStructureTable: React.FC<{
                                         />
                                         <button
                                             onClick={() => setEditingTotalIndex(null)}
-                                            className="btn btn-sm bg-green-100 text-green-700 hover:bg-green-200 text-xs"
+                                            className="btn btn-sm bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                                         >
                                             Done
                                         </button>
@@ -807,7 +783,7 @@ const FeeStructureTable: React.FC<{
                                         <span className="text-sm font-semibold">{fee.total_amount.toLocaleString()}</span>
                                         <button
                                             onClick={() => setEditingTotalIndex(feeIndex)}
-                                            className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                                            className="p-1 text-slate-400 hover:text-brand-600 transition-colors"
                                             title="Edit Total Amount"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -839,7 +815,7 @@ const FeeStructureTable: React.FC<{
 
                     {fee.installments.length > 0 && (
                         <div className="p-4 bg-white">
-                            <h5 className="text-sm font-medium text-gray-700 mb-2">Monthly Installments:</h5>
+                            <h5 className="text-sm font-medium text-slate-700 mb-2">Monthly Installments:</h5>
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                                 {fee.installments.map((inst, monthIndex) => (
                                     <div key={monthIndex} className="flex flex-col">

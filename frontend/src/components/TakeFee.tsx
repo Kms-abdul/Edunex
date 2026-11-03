@@ -3,8 +3,8 @@ import api from '../api';
 import { PrinterIcon } from './icons';
 import FeeReceipt from './FeeReceipt';
 import { Page } from '../App';
-import { useAuth } from '../contexts/AuthContext';
 import { notify } from './ui/feedback';
+import { Badge, EmptyState } from './ui';
 
 // Removed monthOrder in favor of Sr based dynamic grouping
 
@@ -174,13 +174,13 @@ const InstallmentRow: React.FC<{
         details += `, Concession = ${concession}`;
     }
 
-    let rowClass = "bg-white hover:bg-gray-50";
+    let rowClass = "bg-white hover:bg-slate-50";
 
     if (isFullyPaid) {
         details = `Payable = ${payable}`;
         if (concession && concession > 0) details += `, Concession = ${concession}`;
         details += `, Paid = ${paidAmount || (payable - (concession || 0))}, Due = 0`;
-        rowClass = "bg-green-100 text-green-800 hover:bg-green-200";
+        rowClass = "bg-emerald-50 text-emerald-800 hover:bg-emerald-100";
     } else if (isPartial) {
         details = `Payable = ${payable}`;
         if (concession && concession > 0) details += `, Concession = ${concession}`;
@@ -194,7 +194,7 @@ const InstallmentRow: React.FC<{
     }
 
     if (isSelected) {
-        rowClass += " bg-violet-100";
+        rowClass += " bg-brand-100";
     }
 
     if (isDisabled) {
@@ -203,28 +203,27 @@ const InstallmentRow: React.FC<{
 
     return (
         <tr className={rowClass}>
-            <td className="border px-2 py-2 text-center">
+            <td className="border border-slate-200 px-2 py-2 text-center">
                 {isFullyPaid ? (
-                    <span className="text-green-600 font-bold">✔</span>
+                    <span className="text-emerald-600 font-bold">✔</span>
                 ) : (
                     <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => !isDisabled && onSelect(sr)}
                         disabled={isDisabled}
-                        className="h-4 w-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                 )}
             </td>
-            <td className="border px-2 py-2 text-center text-sm text-gray-600">{sr}</td>
-            <td className="border px-2 py-2 text-sm text-gray-800">{title}</td>
-            <td className="border px-2 py-2 text-xs text-gray-500">{details}</td>
+            <td className="border border-slate-200 px-2 py-2 text-center text-sm text-slate-600">{sr}</td>
+            <td className="border border-slate-200 px-2 py-2 text-sm text-slate-800">{title}</td>
+            <td className="border border-slate-200 px-2 py-2 text-xs text-slate-500">{details}</td>
         </tr>
     );
 };
 
 const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
-    const { hasPermission } = useAuth();
     const [students, setStudents] = useState<FeeStudent[]>([]);
     const [classes, setClasses] = useState<string[]>([]);
     const [sectionOptions, setSectionOptions] = useState<string[]>([]);
@@ -247,7 +246,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
     const [appliedConcession, setAppliedConcession] = useState(0);
     const [itemConcessions, setItemConcessions] = useState<Record<number, number>>({});
     const [itemPayingAmounts, setItemPayingAmounts] = useState<Record<number, number | string>>({});
-    const [paidInput, setPaidInput] = useState('0');
+    const [, setPaidInput] = useState('0');
 
     const [concessions, setConcessions] = useState<Concession[]>([]);
     const [feeTypes, setFeeTypes] = useState<{ id: number; fee_type: string }[]>([]);
@@ -678,21 +677,6 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
         setPaidInput(String(totalPaying));
     }, [totalPaying]);
 
-    const handleEqualClick = () => {
-        setItemPayingAmounts(() => {
-            const next: Record<number, number | string> = {};
-            for (const item of selectedItems) {
-                const itemConcession = itemConcessions[item.sr] || 0;
-                const grossNeeded =
-                    item.dueAmount !== undefined && item.dueAmount > 0
-                        ? item.dueAmount
-                        : item.payable - (item.paidAmount || 0);
-                next[item.sr] = Math.max(0, grossNeeded - itemConcession);
-            }
-            return next;
-        });
-    };
-
     const handleReset = () => {
         setSelectedIds([]);
         setSelectedConcession('0');
@@ -865,17 +849,17 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
     const RupeeIcon = () => <span className="font-sans">₹</span>;
 
     return (
-        <div className="container-fluid mx-auto bg-gray-50">
+        <div className="container-fluid mx-auto">
             <div className="p-4">
                 <div className="card shadow-pop p-4">
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                         {/* Left Column */}
                         <div className="lg:col-span-3 space-y-4">
-                            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                            <h3 className="text-base font-semibold text-slate-900 flex items-center">
                                 <RupeeIcon />&nbsp;Collect Fee
                             </h3>
 
-                            <div className="p-4 border rounded-lg shadow-sm bg-violet-50/50 space-y-3">
+                            <div className="p-4 border border-slate-200 rounded-lg shadow-sm bg-brand-50/50 space-y-3">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                                     <input
                                         type="text"
@@ -946,31 +930,31 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                     <InfoCard
                                         title="Total Paids"
                                         value={summary.totalPaids.toLocaleString()}
-                                        bgColor="bg-green-100"
-                                        textColor="text-green-800"
+                                        bgColor="bg-emerald-50"
+                                        textColor="text-emerald-800"
                                         icon={<RupeeIcon />}
                                     />
                                     <InfoCard
                                         title="Current Due"
                                         value={summary.currentDue.toLocaleString()}
-                                        bgColor="bg-blue-100"
-                                        textColor="text-blue-800"
+                                        bgColor="bg-brand-50"
+                                        textColor="text-brand-800"
                                         icon={<RupeeIcon />}
                                     />
                                     <InfoCard
                                         title="Total Due"
                                         value={summary.totalDue.toLocaleString()}
-                                        bgColor="bg-orange-100"
-                                        textColor="text-orange-800"
+                                        bgColor="bg-amber-50"
+                                        textColor="text-amber-800"
                                         icon={<RupeeIcon />}
                                     />
                                 </div>
                             )}
 
                             <div className="flex items-center justify-between">
-                                <h4 className="font-semibold text-gray-700">
+                                <h4 className="font-semibold text-slate-900">
                                     Details{' '}
-                                    <span className="text-sm text-black-500 font-normal ml-3">
+                                    <span className="text-sm text-slate-600 font-normal ml-3">
                                         {selectedStudent
                                             ? `Student Name: ${selectedStudent.name} || FatherName: ${selectedStudent.fatherName} || Adm No: ${selectedStudent.admNo} || Phone: ${selectedStudent.fatherPhone}`
                                             : 'Details : N/A'}
@@ -978,12 +962,12 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                 </h4>
                             </div>
 
-                            <div className="border rounded-lg overflow-hidden shadow-sm">
+                            <div className="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
                                 <div className="bg-slate-50 text-slate-800 text-sm border-b border-slate-200 rounded-t-xl px-4 py-2 flex justify-between items-center">
                                     <h4 className="font-semibold relative">
                                         Installment
                                         {filteredInstallments.length > 0 && (
-                                            <span className="absolute -top-2 -right-5 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                            <span className="absolute -top-2 -right-5 bg-amber-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                                                 {filteredInstallments.length}
                                             </span>
                                         )}
@@ -997,12 +981,12 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                 </div>
                                 <div className="overflow-x-auto max-h-96">
                                     <table className="w-full text-sm">
-                                        <thead className="sticky top-0">
+                                        <thead className="sticky top-0 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                                             <tr className="sticky top-0">
-                                                <th className="px-2 py-2 border w-12"></th>
-                                                <th className="px-2 py-2 border w-12">Sr.</th>
-                                                <th className="px-2 py-2 border text-left">Title</th>
-                                                <th className="px-2 py-2 border text-left">Details</th>
+                                                <th className="px-2 py-2 border border-slate-200 w-12"></th>
+                                                <th className="px-2 py-2 border border-slate-200 w-12">Sr.</th>
+                                                <th className="px-2 py-2 border border-slate-200 text-left">Title</th>
+                                                <th className="px-2 py-2 border border-slate-200 text-left">Details</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1031,15 +1015,15 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                                     })
                                                 ) : (
                                                     <tr>
-                                                        <td colSpan={4} className="text-center p-4 text-gray-500">
-                                                            No installments found for this fee type.
+                                                        <td colSpan={4}>
+                                                            <EmptyState compact title="No installments found for this fee type." />
                                                         </td>
                                                     </tr>
                                                 )
                                             ) : (
                                                 <tr>
-                                                    <td colSpan={4} className="text-center p-4 text-gray-500">
-                                                        Please select a student to view installments.
+                                                    <td colSpan={4}>
+                                                        <EmptyState compact title="Please select a student to view installments." />
                                                     </td>
                                                 </tr>
                                             )}
@@ -1051,11 +1035,11 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
 
                         {/* Right Column */}
                         <div className="lg:col-span-2 space-y-4">
-                            <div className="border rounded-lg p-4 space-y-3 bg-gray-50/50 shadow-sm">
-                                <div className="flex justify-between items-center">
-                                    <h3 className="font-semibold text-gray-800">
+                            <div className="border border-slate-200 rounded-lg p-4 space-y-3 bg-slate-50/50 shadow-sm">
+                                <div className="flex flex-wrap gap-2 justify-between items-center">
+                                    <h3 className="text-base font-semibold text-slate-900">
                                         Fee Structure{' '}
-                                        <a href="#" className="text-blue-500 text-sm font-normal hover:underline">
+                                        <a href="#" className="text-brand-600 text-sm font-normal hover:underline">
                                             Get Help
                                         </a>
                                     </h3>
@@ -1084,8 +1068,8 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                 </div>
                                 <div className="overflow-x-auto rounded-lg border border-slate-200">
                                     <table className="w-full text-sm bg-white">
-                                        <thead>
-                                            <tr className="">
+                                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                                            <tr>
                                                 <th className="border p-2 w-10">
                                                     <button className="btn-success w-6 h-6">
                                                         +
@@ -1143,8 +1127,8 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                                 })
                                             ) : (
                                                 <tr>
-                                                    <td className="border p-2 h-8 text-center text-gray-400" colSpan={7}>
-                                                        Select installments to pay
+                                                    <td className="border p-0" colSpan={7}>
+                                                        <EmptyState compact title="Select installments to pay" />
                                                     </td>
                                                 </tr>
                                             )}
@@ -1153,22 +1137,22 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                 </div>
                                 <div className="space-y-2 pt-4">
                                     <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-600">Amount</span>
-                                        <span className="font-semibold text-gray-800">{amount.toLocaleString()}</span>
+                                        <span className="text-slate-600">Amount</span>
+                                        <span className="font-semibold text-slate-800">{amount.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-600">Concession</span>
-                                        <span className="font-semibold text-gray-800">
+                                        <span className="text-slate-600">Concession</span>
+                                        <span className="font-semibold text-slate-800">
                                             {appliedConcession.toLocaleString()}
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm font-semibold border-t pt-2">
-                                        <span className="text-gray-800">Payable(Amount - Concession)</span>
-                                        <span className="font-semibold text-gray-800">{payable.toLocaleString()}</span>
+                                        <span className="text-slate-800">Payable(Amount - Concession)</span>
+                                        <span className="font-semibold text-slate-800">{payable.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm border-t pt-2">
-                                        <span className="text-gray-600">Paid</span>
-                                        <span className="font-semibold text-gray-800">{totalPaying.toLocaleString()}</span>
+                                        <span className="text-slate-600">Paid</span>
+                                        <span className="font-semibold text-slate-800">{totalPaying.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm font-semibold text-red-600 border-t pt-2">
                                         <span>Due (Payable - Paid)</span>
@@ -1177,7 +1161,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                 </div>
                             </div>
 
-                            <div className="border rounded-lg p-4 space-y-4 bg-gray-50/50 shadow-sm">
+                            <div className="border border-slate-200 rounded-lg p-4 space-y-4 bg-slate-50/50 shadow-sm">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="label">Payment Mode*</label>
@@ -1275,9 +1259,9 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                     <input
                                         id="keep-details"
                                         type="checkbox"
-                                        className="h-4 w-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+                                        className="h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500"
                                     />
-                                    <label htmlFor="keep-details" className="label ml-2">
+                                    <label htmlFor="keep-details" className="label mb-0 ml-2">
                                         Keep same payment detail for the next fee payment
                                     </label>
                                 </div>
@@ -1309,8 +1293,8 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
             {showHistory && (
                 <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
                     <div className="card shadow-pop w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-bold">
+                        <div className="flex flex-wrap gap-3 justify-between items-center mb-4">
+                            <h2 className="text-base font-semibold text-slate-900">
                                 Payment History - {selectedStudent?.name} ({localStorage.getItem('academicYear')})
                             </h2>
                             <div className="flex items-center space-x-4">
@@ -1319,13 +1303,14 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                         type="checkbox"
                                         checked={showCancelled}
                                         onChange={e => setShowCancelled(e.target.checked)}
-                                        className="h-4 w-4 text-violet-600 rounded border-gray-300"
+                                        className="h-4 w-4 text-brand-600 rounded border-slate-300"
                                     />
                                     <span>Show Cancelled</span>
                                 </label>
                                 <button
                                     onClick={() => setShowHistory(false)}
-                                    className="text-gray-500 hover:text-gray-700"
+                                    className="btn-icon"
+                                    aria-label="Close"
                                 >
                                     ✕
                                 </button>
@@ -1333,8 +1318,10 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                         </div>
                         {/* ────────────────────────────────────────────────────────── */}
 
+                        <div className="card overflow-hidden">
+                        <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="">
+                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                                 <tr>
                                     <th className="p-2">Receipt No</th>
                                     <th className="p-2">Academic Year</th>
@@ -1379,7 +1366,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                     return (
                                         <tr
                                             key={first.receipt_no}
-                                            className={`border-b hover:bg-gray-50 align-top ${isCancelled ? 'bg-red-50' : ''}`}
+                                            className={`border-b border-slate-100 hover:bg-slate-50 align-top ${isCancelled ? 'bg-red-50' : ''}`}
                                         >
                                             <td className="p-2">{first.receipt_no}</td>
                                             <td className="p-2">{first.academic_year}</td>
@@ -1398,16 +1385,16 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                             <td className="p-2">{first.mode}</td>
                                             <td className="p-2">
                                                 {isCancelled ? (
-                                                    <div className="text-red-600 font-semibold text-xs">
-                                                        Cancelled
+                                                    <div className="text-xs">
+                                                        <Badge tone="danger">Cancelled</Badge>
                                                         {first.cancel_reason && (
-                                                            <div className="text-gray-500 font-normal italic">
+                                                            <div className="mt-1 text-slate-500 font-normal italic">
                                                                 {first.cancel_reason}
                                                             </div>
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-green-600 font-semibold text-xs">Active</span>
+                                                    <Badge tone="success">Active</Badge>
                                                 )}
                                             </td>
                                             <td className="p-2">
@@ -1416,7 +1403,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                                     <button
                                                         onClick={() => handlePrintHistoryReceipt(first.receipt_no)}
                                                         title="Print Receipt"
-                                                        className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 transition-colors"
+                                                        className="btn-icon text-brand-600 hover:text-brand-800 hover:bg-brand-50"
                                                     >
                                                         <PrinterIcon className="w-5 h-5" />
                                                     </button>
@@ -1427,13 +1414,15 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = () => {
                                 })}
                                 {paymentHistory.length === 0 && (
                                     <tr>
-                                        <td colSpan={9} className="p-4 text-center text-gray-500">
-                                            No payments found.
+                                        <td colSpan={10}>
+                                            <EmptyState compact title="No payments found." />
                                         </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
+                        </div>
+                        </div>
                         <div className="mt-4 flex justify-end">
                             <button
                                 onClick={() => setShowHistory(false)}

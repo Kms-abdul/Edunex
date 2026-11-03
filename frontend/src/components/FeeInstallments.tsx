@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
-import { canWrite } from '../utils/permissions';
 import { notify, confirmDialog } from './ui/feedback';
+import { EmptyState } from './ui';
 
 interface FeeType {
     id: number;
@@ -71,14 +71,14 @@ const BulkPreview: React.FC<{ bulkConfig: BulkConfig; MONTHS: string[] }> = ({ b
     }
 
     return (
-        <div className="card mt-4 border-violet-200 overflow-hidden">
-            <div className="px-4 py-2 bg-violet-100 text-sm font-medium text-violet-800">
+        <div className="card mt-4 border-brand-200 overflow-hidden">
+            <div className="px-4 py-2 bg-brand-100 text-sm font-medium text-brand-800">
                 Preview — first {Math.min(count, 6)} of {count} installments
             </div>
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                    <thead>
-                        <tr className="">
+                    <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                        <tr>
                             <th className="px-4 py-2 text-left">Title</th>
                             <th className="px-4 py-2 text-left">Start</th>
                             <th className="px-4 py-2 text-left">End</th>
@@ -87,16 +87,16 @@ const BulkPreview: React.FC<{ bulkConfig: BulkConfig; MONTHS: string[] }> = ({ b
                     </thead>
                     <tbody>
                         {preview.map((p, i) => (
-                            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                <td className="px-4 py-2 font-medium text-gray-800">{p.title}</td>
-                                <td className="px-4 py-2 text-gray-600">{p.start}</td>
-                                <td className="px-4 py-2 text-gray-600">{p.end}</td>
-                                <td className="px-4 py-2 text-violet-700 font-medium">{p.cutoff}</td>
+                            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                                <td className="px-4 py-2 font-medium text-slate-800">{p.title}</td>
+                                <td className="px-4 py-2 text-slate-600">{p.start}</td>
+                                <td className="px-4 py-2 text-slate-600">{p.end}</td>
+                                <td className="px-4 py-2 text-brand-700 font-medium">{p.cutoff}</td>
                             </tr>
                         ))}
                         {count > 6 && (
                             <tr>
-                                <td colSpan={4} className="px-4 py-2 text-center text-gray-400 text-xs">
+                                <td colSpan={4} className="px-4 py-2 text-center text-slate-400 text-xs">
                                     + {count - 6} more months…
                                 </td>
                             </tr>
@@ -174,7 +174,6 @@ const FeeInstallments: React.FC = () => {
 
     useEffect(() => {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
-        const isAdminUser = canWrite(user, 'setup.school-setup.setup-school');
 
         let globalBranch = localStorage.getItem('currentBranch') || 'All';
 
@@ -500,11 +499,11 @@ const FeeInstallments: React.FC = () => {
 
     // ── Render ──────────────────────────────────────────────────────────────────
     return (
-        <div className="container mx-auto p-6 bg-gray-50 min-h-full">
+        <div className="container mx-auto p-6 min-h-full">
             <div className="card p-6">
 
                 {/* ── Header ── */}
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex flex-wrap gap-3 justify-between items-center mb-6">
                     <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Fee Installments</h2>
 
                     {/* Copy to Branches Button */}
@@ -520,7 +519,7 @@ const FeeInstallments: React.FC = () => {
 
                             {isCopyDropdownOpen && (
                                 <div className="card shadow-pop absolute top-12 right-0 w-80 z-50 p-2 max-h-96 overflow-y-auto">
-                                    <div className="mb-2 p-2 border-b bg-gray-50">
+                                    <div className="mb-2 p-2 border-b border-slate-100 bg-slate-50">
                                         <label className="label">
                                             Select Fee Type to Copy:
                                         </label>
@@ -536,26 +535,26 @@ const FeeInstallments: React.FC = () => {
                                         </select>
                                     </div>
 
-                                    <div className="mb-2 text-sm font-semibold text-gray-700 pb-2 border-b px-2">
+                                    <div className="mb-2 text-sm font-semibold text-slate-700 pb-2 border-b border-slate-100 px-2">
                                         Select Target Branches
                                     </div>
 
                                     {Object.keys(branchesByLocation).length === 0 ? (
-                                        <div className="text-gray-500 text-sm p-4 text-center">No other branches available</div>
+                                        <EmptyState compact title="No other branches available" />
                                     ) : (
                                         Object.keys(branchesByLocation).map(loc => (
                                             <div key={loc} className="mb-1">
-                                                <div className="text-sm font-bold text-gray-900 px-3 py-2 bg-gray-50 border-b border-gray-100">{loc}</div>
+                                                <div className="text-sm font-semibold text-slate-900 px-3 py-2 bg-slate-50 border-b border-slate-100">{loc}</div>
                                                 <div className="py-1">
                                                     {branchesByLocation[loc].map(b => (
-                                                        <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-blue-50 cursor-pointer transition-colors pl-6">
+                                                        <label key={b.id} className="flex items-center gap-3 px-4 py-2 hover:bg-brand-50 cursor-pointer transition-colors pl-6">
                                                             <input
                                                                 type="checkbox"
                                                                 checked={copyTargets.has(String(b.id))}
                                                                 onChange={() => toggleCopyTarget(String(b.id))}
-                                                                className="w-4 h-4 accent-blue-600 rounded border-gray-300"
+                                                                className="w-4 h-4 accent-brand-600 rounded border-slate-300"
                                                             />
-                                                            <span className="text-sm text-gray-700">{b.name}</span>
+                                                            <span className="text-sm text-slate-700">{b.name}</span>
                                                         </label>
                                                     ))}
                                                 </div>
@@ -563,12 +562,12 @@ const FeeInstallments: React.FC = () => {
                                         ))
                                     )}
 
-                                    <div className="mt-2 pt-2 border-t flex justify-between items-center sticky bottom-0 bg-white p-1">
-                                        <span className="text-xs text-gray-500">{copyTargets.size} selected</span>
+                                    <div className="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center sticky bottom-0 bg-white p-1">
+                                        <span className="text-xs text-slate-500">{copyTargets.size} selected</span>
                                         <button
                                             onClick={handleCopy}
                                             disabled={copying || copyTargets.size === 0 || !selectedCopyFeeTypeId}
-                                            className={`btn btn-sm text-white ${copying || copyTargets.size === 0 || !selectedCopyFeeTypeId ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
+                                            className="btn-success btn-sm"
                                         >
                                             {copying ? 'Copying...' : 'Confirm Copy'}
                                         </button>
@@ -580,8 +579,8 @@ const FeeInstallments: React.FC = () => {
                 </div>
 
                 {/* ── Single Installment Form ── */}
-                <div className="mb-6 bg-gray-50 p-6 rounded-lg border border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                <div className="mb-6 bg-slate-50 p-6 rounded-lg border border-slate-200">
+                    <h3 className="text-base font-semibold text-slate-900 mb-4">
                         {editingId ? 'Edit Installment' : 'Add New Installment'}
                     </h3>
 
@@ -718,11 +717,11 @@ const FeeInstallments: React.FC = () => {
                 </div>
 
                 {/* ── Bulk Generation Panel ── */}
-                <div className="mb-6 bg-violet-50 p-6 rounded-lg border border-violet-200">
-                    <div className="flex justify-between items-center mb-4">
+                <div className="mb-6 bg-brand-50 p-6 rounded-lg border border-brand-200">
+                    <div className="flex flex-wrap gap-3 justify-between items-center mb-4">
                         <div>
-                            <h3 className="text-lg font-semibold text-violet-800">Bulk Generate Installments</h3>
-                            <p className="text-sm text-violet-600 mt-0.5">Generate up to 12 installments in one click with automatic year rollover</p>
+                            <h3 className="text-base font-semibold text-brand-800">Bulk Generate Installments</h3>
+                            <p className="text-sm text-brand-600 mt-0.5">Generate up to 12 installments in one click with automatic year rollover</p>
                         </div>
                         <button
                             type="button"
@@ -791,7 +790,7 @@ const FeeInstallments: React.FC = () => {
                                 <div className="lg:col-span-2">
                                     <label className="label">
                                         Number of Installments *
-                                        <span className="ml-1 text-xs text-gray-400">(max 12)</span>
+                                        <span className="ml-1 text-xs text-slate-400">(max 12)</span>
                                     </label>
                                     <div className="flex gap-2">
                                         {[3, 6, 12].map(n => (
@@ -799,7 +798,7 @@ const FeeInstallments: React.FC = () => {
                                                 key={n}
                                                 type="button"
                                                 onClick={() => setBulkConfig(prev => ({ ...prev, count: n }))}
-                                                className={`btn flex-1 border ${bulkConfig.count === n ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-gray-700 border-gray-300 hover:border-violet-400' }`}
+                                                className={`flex-1 ${bulkConfig.count === n ? 'btn-primary' : 'btn-secondary'}`}
                                             >
                                                 {n}
                                             </button>
@@ -827,7 +826,7 @@ const FeeInstallments: React.FC = () => {
                                             placeholder="Custom"
                                             className={`input w-24 ${bulkConfig.count > 12
                                                 ? 'border-red-400 bg-red-50'
-                                                : 'border-gray-300'
+                                                : 'border-slate-300'
                                                 }`}
                                         />
                                     </div>
@@ -840,7 +839,7 @@ const FeeInstallments: React.FC = () => {
                                 <div>
                                     <label className="label">
                                         Cut-off Day of Month *
-                                        <span className="ml-1 text-xs text-gray-400">(1–28, e.g. 5 = every 5th)</span>
+                                        <span className="ml-1 text-xs text-slate-400">(1–28, e.g. 5 = every 5th)</span>
                                     </label>
                                     <input
                                         type="number"
@@ -878,7 +877,7 @@ const FeeInstallments: React.FC = () => {
                                     type="button"
                                     onClick={generateBulkInstallments}
                                     disabled={bulkConfig.count > 12 || bulkConfig.count < 1}
-                                    className={`btn text-white ${bulkConfig.count > 12 || bulkConfig.count < 1 ? 'bg-gray-400 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-700' }`}
+                                    className="btn-primary"
                                 >
                                     Generate {bulkConfig.count} Installments
                                 </button>
@@ -896,10 +895,11 @@ const FeeInstallments: React.FC = () => {
 
 
                 {/* ── Installments Table ── */}
+                <h3 className="text-base font-semibold text-slate-900 mb-4">Fee Installments</h3>
+                <div className="card overflow-hidden">
                 <div className="overflow-x-auto">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Fee Installments</h3>
-                    <table className="min-w-full bg-white border border-gray-200">
-                        <thead className="">
+                    <table className="min-w-full bg-white">
+                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                             <tr>
                                 {/*<th className="px-4 py-3 text-left border-b">No.</th>*/}
                                 <th className="px-4 py-3 text-left border-b">Fee Type</th>
@@ -914,32 +914,32 @@ const FeeInstallments: React.FC = () => {
                         <tbody>
                             {installments.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                                        No installments added yet
+                                    <td colSpan={7}>
+                                        <EmptyState compact title="No installments added yet" />
                                     </td>
                                 </tr>
                             ) : (
                                 installments.map(installment => (
-                                    <tr key={installment.id} className="hover:bg-gray-50">
-                                        {/*<td className="px-4 py-3 text-sm text-gray-800 border-b">{installment.installment_no}</td>*/}
-                                        <td className="px-4 py-3 text-sm text-gray-600 border-b">{installment.fee_type_name || '-'}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-800 border-b">
+                                    <tr key={installment.id} className="hover:bg-slate-50">
+                                        {/*<td className="px-4 py-3 text-sm text-slate-800 border-b border-slate-100">{installment.installment_no}</td>*/}
+                                        <td className="px-4 py-3 text-sm text-slate-600 border-b border-slate-100">{installment.fee_type_name || '-'}</td>
+                                        <td className="px-4 py-3 text-sm text-slate-800 border-b border-slate-100">
                                             {installment.title}
                                             {installment.is_admission && (
-                                                <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Admission</span>
+                                                <span className="ml-2 badge-success">Admission</span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 text-sm text-gray-800 border-b">
+                                        <td className="px-4 py-3 text-sm text-slate-800 border-b border-slate-100">
                                             {new Date(installment.start_date).toLocaleDateString('en-GB')}
                                         </td>
-                                        <td className="px-4 py-3 text-sm text-gray-800 border-b">
+                                        <td className="px-4 py-3 text-sm text-slate-800 border-b border-slate-100">
                                             {new Date(installment.end_date).toLocaleDateString('en-GB')}
                                         </td>
-                                        <td className="px-4 py-3 text-sm text-gray-800 border-b">
+                                        <td className="px-4 py-3 text-sm text-slate-800 border-b border-slate-100">
                                             {new Date(installment.last_pay_date).toLocaleDateString('en-GB')}
                                         </td>
-                                        <td className="px-4 py-3 text-sm text-gray-600 border-b">{installment.branch || 'All'}</td>
-                                        <td className="px-4 py-3 text-center border-b">
+                                        <td className="px-4 py-3 text-sm text-slate-600 border-b border-slate-100">{installment.branch || 'All'}</td>
+                                        <td className="px-4 py-3 text-center border-b border-slate-100">
                                             <div className="flex justify-center gap-2">
                                                 <button
                                                     onClick={() => handleEdit(installment)}
@@ -960,6 +960,7 @@ const FeeInstallments: React.FC = () => {
                             )}
                         </tbody>
                     </table>
+                </div>
                 </div>
 
             </div>

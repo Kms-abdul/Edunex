@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
+import { EmptyState, ErrorState, LoadingState } from './ui';
 
 const DeletedReceiptsReport: React.FC = () => {
     const [receipts, setReceipts] = useState<any[]>([]);
@@ -34,14 +35,14 @@ const DeletedReceiptsReport: React.FC = () => {
             </h2>
 
             {loading ? (
-                <div className="card p-4 text-center">Loading report...</div>
+                <div className="card"><LoadingState label="Loading report..." /></div>
             ) : error ? (
-                <div className="card p-4 text-red-500 text-center">Error: {error}</div>
+                <div className="card"><ErrorState title="Error" message={error} onRetry={fetchReport} /></div>
             ) : (
                 <div className="card overflow-hidden">
-                    <div className="overflow-x-auto rounded-lg border border-slate-200">
+                    <div className="overflow-x-auto">
                         <table className="min-w-full text-sm text-left">
-                            <thead className="border-b border-slate-100">
+                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600 border-b border-slate-200">
                                 <tr>
                                     <th className="px-4 py-4">Receipt No</th>
                                     <th className="px-4 py-4">Student</th>
@@ -59,13 +60,13 @@ const DeletedReceiptsReport: React.FC = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-50">
                                 {receipts.length === 0 ? (
-                                    <tr><td colSpan={12} className="px-4 py-8 text-center text-slate-500">No deleted receipts found</td></tr>
+                                    <tr><td colSpan={12}><EmptyState compact title="No deleted receipts found" /></td></tr>
                                 ) : (
                                     receipts.map((r, idx) => (
                                         <tr key={idx} className="hover:bg-red-50/30 transition-colors">
                                             <td className="px-4 py-4 font-medium text-slate-800">{r.receipt_no}</td>
                                             <td className="px-4 py-4 text-slate-600">{r.student_name}</td>
-                                            <td className="px-4 py-4 text-blue-600">{r.admission_no}</td>
+                                            <td className="px-4 py-4 text-brand-600">{r.admission_no}</td>
                                             <td className="px-4 py-4 text-slate-600">{r.class} {r.section}</td>
                                             <td className="px-4 py-4 text-slate-600">{r.branch}</td>
                                             <td className="px-4 py-4 text-slate-600 truncate max-w-[150px]" title={r.fee_type_str}>{r.fee_type_str}</td>

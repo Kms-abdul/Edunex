@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import FeeReceipt from './FeeReceipt';
 import api from '../api';
 import { notify } from './ui/feedback';
+import { EmptyState, LoadingState } from './ui';
 
 const groupInstallments = (items: any[]) => {
     const installmentFees = items.filter(i => i.installment && i.installment !== "One-Time" && i.installment !== "None");
@@ -159,7 +160,7 @@ const AdjustFeeReport: React.FC = () => {
                 paymentDate: res.data.paymentDate || payments[0]?.payment_date,
                 paymentMode: res.data.paymentMode || payments[0]?.mode,
                 paymentNote: res.data.paymentNote || "",
-                items: groupedItems.map((g, i) => ({
+                items: groupedItems.map((g) => ({
                     title: g.title,
                     amount: g.amount,
                     payable: g.amount,
@@ -183,11 +184,13 @@ const AdjustFeeReport: React.FC = () => {
             setLoadingReceipt(false);
         }
     };
+    // Receipt drill-down is not wired into this report yet; keep the handler for when adjustment rows land.
+    void handleViewReceipt;
 
     return (
         <div className="container mx-auto p-6">
             <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 flex items-center">
-                <span className="bg-blue-100 text-blue-600 p-2 rounded mr-3">
+                <span className="bg-brand-100 text-brand-600 p-2 rounded-lg mr-3">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                     </svg>
@@ -195,16 +198,16 @@ const AdjustFeeReport: React.FC = () => {
                 Adjust Fee Report
             </h2>
 
-            <div className="card min-h-[400px] p-8 text-center text-gray-500 flex items-center justify-center">
-                <div>
-                    <h3 className="text-xl font-medium mb-2">Adjust Fee Report</h3>
-                    <p>This report will display fee adjustment records. (Pending explicit backend data mapping)</p>
-                </div>
+            <div className="card min-h-[400px] flex items-center justify-center">
+                <EmptyState
+                    title="Adjust Fee Report"
+                    description="This report will display fee adjustment records. (Pending explicit backend data mapping)"
+                />
             </div>
 
             {loadingReceipt && (
                 <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
-                    <div className="card p-4">Loading Receipt...</div>
+                    <div className="card px-8"><LoadingState label="Loading Receipt..." /></div>
                 </div>
             )}
 
