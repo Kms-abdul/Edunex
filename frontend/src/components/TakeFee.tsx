@@ -447,6 +447,16 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = ({ navigateTo }
         [installments, selectedIds]
     );
 
+    // A concession only applies to fees that are still chosen: when a fee is
+    // un-ticked, drop its discount so the amount to pay is never too low.
+    useEffect(() => {
+        const keep = Object.entries(itemConcessions).filter(([sr]) => selectedIds.includes(Number(sr)));
+        if (keep.length === Object.keys(itemConcessions).length) return;
+        const next = Object.fromEntries(keep) as Record<number, number>;
+        setItemConcessions(next);
+        setAppliedConcession(Object.values(next).reduce((sum, v) => sum + (v || 0), 0));
+    }, [selectedIds, itemConcessions]);
+
     const amount = selectedItems.reduce((sum, item) => {
         const grossNeeded =
             item.dueAmount !== undefined && item.dueAmount > 0
@@ -609,7 +619,8 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = ({ navigateTo }
                         paid_amount: totalToPay,
                         total_amount: selectedStudent.total_fee,
                         admission_no: selectedStudent.admNo,
-                        balance: selectedStudent.due_amount - totalToPay,
+                        // Concession given now also reduces what is still owed
+                        balance: Math.max(0, (selectedStudent.due_amount || 0) - totalToPay - appliedConcession),
                         branch_name: selectedStudent.branch || 'School',
                         student_id: selectedStudent.student_id
                     });
