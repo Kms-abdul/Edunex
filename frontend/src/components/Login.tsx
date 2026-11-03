@@ -15,14 +15,14 @@ type ViewState = 'login' | 'forgot-email' | 'forgot-otp' | 'forgot-reset';
 
 /* ── Presentational building blocks ─────────────────────────────────── */
 const Field: React.FC<{ icon: React.ReactNode; children: React.ReactNode; trailing?: React.ReactNode }> = ({ icon, children, trailing }) => (
-  <div className="group flex items-center gap-3 h-12 rounded-xl border border-slate-200 bg-white px-3.5 transition-all focus-within:border-brand-500 focus-within:ring-4 focus-within:ring-brand-500/10 hover:border-slate-300">
+  <div className="group flex items-center gap-3 h-14 rounded-xl border border-slate-300 bg-white px-3.5 transition-all focus-within:border-brand-500 focus-within:ring-4 focus-within:ring-brand-500/10 hover:border-slate-300">
     <span className="text-slate-400 group-focus-within:text-brand-600 flex-shrink-0">{icon}</span>
     {children}
     {trailing}
   </div>
 );
 
-const fieldInput = "flex-1 min-w-0 h-full !border-0 !bg-transparent !shadow-none !ring-0 text-[15px] text-slate-800 placeholder:text-slate-400 focus:!outline-none focus:!shadow-none focus:!ring-0 p-0";
+const fieldInput = "flex-1 min-w-0 h-full !border-0 !bg-transparent !shadow-none !ring-0 text-base text-slate-900 placeholder:text-slate-400 focus:!outline-none focus:!shadow-none focus:!ring-0 p-0";
 
 const Alert: React.FC<{ kind: 'error' | 'success'; children: React.ReactNode }> = ({ kind, children }) => (
   <div className={`flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm ${kind === 'error' ? 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/15' : 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/15'}`}>
@@ -119,7 +119,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       onLoginSuccess(response.data.user);
       setLoading(false);
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Invalid username or password';
+      const msg = err?.response?.data?.error || err?.message || 'Wrong username or password. Please try again.';
       setError(msg);
       setLoading(false);
     }
@@ -131,10 +131,10 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     setLoading(true);
     try {
       const response = await axios.post(`${API_URL}/users/forgot-password`, { email });
-      setMessage(response.data.message || 'OTP has been sent to your email.');
+      setMessage(response.data.message || 'We sent a code to your email.');
       setView('forgot-otp');
     } catch (err: any) {
-      setError(err?.response?.data?.error || 'Failed to send OTP.');
+      setError(err?.response?.data?.error || 'Could not send the code. Check the email address and try again.');
     } finally {
       setLoading(false);
     }
@@ -152,10 +152,10 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     setLoading(true);
     try {
       await axios.post(`${API_URL}/users/verify-otp`, { email, otp });
-      setMessage('OTP verified. Please set a new password.');
+      setMessage('Code is correct. Now choose a new password.');
       setView('forgot-reset');
     } catch (err: any) {
-      setError(err?.response?.data?.error || 'Invalid OTP.');
+      setError(err?.response?.data?.error || 'That code is not correct. Check your email and try again.');
     } finally {
       setLoading(false);
     }
@@ -172,7 +172,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         otp,
         new_password: newPassword,
       });
-      setMessage(response.data.message || 'Password successfully reset! You can now login.');
+      setMessage(response.data.message || 'Password changed. You can now sign in.');
       setTimeout(() => {
         setView('login');
         setEmail('');
@@ -181,18 +181,26 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         setPassword('');
       }, 2000);
     } catch (err: any) {
-      setError(err?.response?.data?.error || 'Failed to reset password.');
+      setError(err?.response?.data?.error || 'Could not change the password. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const titles: Record<ViewState, { title: string; subtitle: string }> = {
-    'login': { title: 'Welcome back', subtitle: 'Sign in to your Edunex account to continue.' },
-    'forgot-email': { title: 'Reset your password', subtitle: 'Enter your registered email address to receive an OTP.' },
-    'forgot-otp': { title: 'Verify OTP', subtitle: `We've sent a 6-digit OTP to ${email}` },
-    'forgot-reset': { title: 'Set a new password', subtitle: 'OTP verified! Please enter your new password below.' },
+    'login': { title: 'Sign in', subtitle: 'Type your username and password to open Edunex.' },
+    'forgot-email': { title: 'Forgot password?', subtitle: 'We will email you a 6-digit code to set a new password.' },
+    'forgot-otp': { title: 'Check your email', subtitle: `Type the 6-digit code we sent to ${email}` },
+    'forgot-reset': { title: 'Choose a new password', subtitle: 'Your code is correct. Now type a new password.' },
   };
+
+  const forgotSteps: ViewState[] = ['forgot-email', 'forgot-otp', 'forgot-reset'];
+  const forgotIndex = forgotSteps.indexOf(view);
+  const forgotLabels = ['Your email', 'Code from email', 'New password'];
+
+  const backToLogin = () => { setView('login'); resetMessages(); };
+
+  const linkButton = "inline-flex items-center justify-center min-h-[44px] px-2 text-sm font-medium";
 
   /* ══════════════════════════════════════════════════════════════════
      RENDER
@@ -211,69 +219,80 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
       {/* ── RIGHT PANEL (form) ── */}
       <div className="flex-1 flex flex-col min-h-screen">
-        <div className="flex-1 flex items-center justify-center px-6 py-10 sm:px-12">
+        <div className="flex-1 flex items-start sm:items-center justify-center px-4 pt-8 pb-10 sm:px-12 sm:py-10">
           <div className="w-full max-w-[400px] animate-fade-in">
             {/* Logo */}
-            <div className="flex flex-col items-center text-center mb-8">
-              <img src={Learnspacelogo} alt="Edunex" className="h-20 w-auto object-contain mb-4" />
+            <div className="flex flex-col items-center text-center mb-6 sm:mb-8">
+              <img src={Learnspacelogo} alt="Edunex" className="h-16 sm:h-20 w-auto object-contain mb-4" />
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{titles[view].title}</h1>
-              <p className="text-sm text-slate-500 mt-1.5">{titles[view].subtitle}</p>
+              <p className="text-[15px] text-slate-600 mt-1.5">{titles[view].subtitle}</p>
             </div>
+
+            {/* Step progress for the forgot-password flow */}
+            {forgotIndex >= 0 && (
+              <div className="mb-5" aria-label="Progress">
+                <p className="text-sm text-slate-500">Step {forgotIndex + 1} of 3 · {forgotLabels[forgotIndex]}</p>
+                <div className="mt-2 flex gap-1.5">
+                  {forgotLabels.map((label, i) => (
+                    <span key={label} className={`h-1.5 flex-1 rounded-full ${i <= forgotIndex ? 'bg-brand-600' : 'bg-slate-200'}`} />
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* ════ LOGIN VIEW ════ */}
             {view === 'login' && (
-              <form onSubmit={handleLogin} noValidate className="space-y-4">
+              <form onSubmit={handleLogin} noValidate className="space-y-5">
                 {/* Username */}
                 <div>
-                  <label htmlFor="login-username" className="label">Username</label>
-                  <Field icon={<User className="w-[18px] h-[18px]" />}>
+                  <label htmlFor="login-username" className="label text-[15px]">Your username</label>
+                  <Field icon={<User className="w-5 h-5" />}>
                     <input
                       id="login-username"
+                      name="username"
                       type="text"
-                      placeholder="Enter your username"
+                      placeholder="Type your username"
                       required
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       className={fieldInput}
                       autoComplete="username"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      enterKeyHint="next"
                     />
                   </Field>
                 </div>
 
                 {/* Password */}
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label htmlFor="login-password" className="label !mb-0">Password</label>
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-brand-600 hover:text-brand-700"
-                      onClick={() => { setView('forgot-email'); resetMessages(); }}
-                    >
-                      Forgot Password?
-                    </button>
-                  </div>
+                  <label htmlFor="login-password" className="label text-[15px]">Your password</label>
                   <Field
-                    icon={<Lock className="w-[18px] h-[18px]" />}
+                    icon={<Lock className="w-5 h-5" />}
                     trailing={
                       <button
                         type="button"
-                        className="text-slate-400 hover:text-slate-600 flex-shrink-0"
+                        className="-mr-2 inline-flex items-center justify-center h-11 w-11 text-slate-500 hover:text-slate-700 flex-shrink-0"
                         onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
                         title={showPassword ? 'Hide password' : 'Show password'}
                       >
-                        {showPassword ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     }
                   >
                     <input
                       id="login-password"
+                      name="password"
                       type={showPassword ? 'text' : 'password'}
-                      placeholder="Enter your password"
+                      placeholder="Type your password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className={fieldInput}
                       autoComplete="current-password"
+                      enterKeyHint="go"
                     />
                   </Field>
                 </div>
@@ -281,124 +300,151 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 {error && <Alert kind="error">{error}</Alert>}
                 {message && <Alert kind="success">{message}</Alert>}
 
-                {/* Login button */}
-                <PrimaryButton id="login-submit" type="submit" loading={loading} loadingText="Logging in…" title="Login to your account" className="mt-2">
-                  Login <ArrowRight className="w-4 h-4" />
+                {/* Sign in button */}
+                <PrimaryButton id="login-submit" type="submit" loading={loading} loadingText="Signing in…" className="!h-14 text-base">
+                  Sign in <ArrowRight className="w-5 h-5" />
                 </PrimaryButton>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    className={`${linkButton} text-brand-700 hover:text-brand-800`}
+                    onClick={() => { setView('forgot-email'); resetMessages(); }}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
               </form>
             )}
 
-            {/* ════ FORGOT PASSWORD – EMAIL VIEW ════ */}
+            {/* ════ FORGOT PASSWORD – STEP 1: EMAIL ════ */}
             {view === 'forgot-email' && (
-              <form onSubmit={handleForgotPassword} noValidate className="space-y-4">
+              <form onSubmit={handleForgotPassword} noValidate className="space-y-5">
                 <div>
-                  <label htmlFor="forgot-email-input" className="label">Email Address</label>
-                  <Field icon={<Mail className="w-[18px] h-[18px]" />}>
+                  <label htmlFor="forgot-email-input" className="label text-[15px]">Your email address</label>
+                  <Field icon={<Mail className="w-5 h-5" />}>
                     <input
                       id="forgot-email-input"
+                      name="email"
                       type="email"
-                      placeholder="you@example.com"
+                      inputMode="email"
+                      placeholder="name@example.com"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className={fieldInput}
                       autoComplete="email"
+                      autoCapitalize="none"
+                      enterKeyHint="send"
                     />
                   </Field>
+                  <p className="mt-1.5 text-sm text-slate-500">Use the email address saved on your account.</p>
                 </div>
 
                 {error && <Alert kind="error">{error}</Alert>}
 
-                <PrimaryButton id="forgot-send-otp" type="submit" loading={loading} loadingText="Sending OTP…">
-                  Send OTP <ArrowRight className="w-4 h-4" />
+                <PrimaryButton id="forgot-send-otp" type="submit" loading={loading} loadingText="Sending code…" disabled={!email.trim()} className="!h-14 text-base">
+                  Send me a code <ArrowRight className="w-5 h-5" />
                 </PrimaryButton>
 
-                <div className="text-center pt-1">
-                  <button type="button" className="text-sm text-slate-500 hover:text-slate-800" onClick={() => { setView('login'); resetMessages(); }}>
-                    ← Back to Login
+                <div className="text-center">
+                  <button type="button" className={`${linkButton} text-slate-600 hover:text-slate-900`} onClick={backToLogin}>
+                    ← Back to sign in
                   </button>
                 </div>
               </form>
             )}
 
-            {/* ════ FORGOT PASSWORD – OTP VIEW ════ */}
+            {/* ════ FORGOT PASSWORD – STEP 2: CODE ════ */}
             {view === 'forgot-otp' && (
-              <form onSubmit={handleVerifyOTP} noValidate className="space-y-4">
+              <form onSubmit={handleVerifyOTP} noValidate className="space-y-5">
                 <div>
-                  <label htmlFor="forgot-otp-input" className="label">One-time password</label>
-                  <Field icon={<KeyRound className="w-[18px] h-[18px]" />}>
+                  <label htmlFor="forgot-otp-input" className="label text-[15px]">6-digit code</label>
+                  <Field icon={<KeyRound className="w-5 h-5" />}>
                     <input
                       id="forgot-otp-input"
+                      name="otp"
                       type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       placeholder="• • • • • •"
                       required
                       maxLength={6}
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
-                      className={`${fieldInput} tracking-[0.35em] text-center font-semibold`}
+                      className={`${fieldInput} tracking-[0.35em] text-center font-semibold text-lg`}
+                      autoComplete="one-time-code"
+                      enterKeyHint="next"
                     />
                   </Field>
+                  <p className="mt-1.5 text-sm text-slate-500">Not there? Check your spam folder, or tap “Send the code again”.</p>
                 </div>
 
                 {error && <Alert kind="error">{error}</Alert>}
                 {message && <Alert kind="success">{message}</Alert>}
 
-                <PrimaryButton id="forgot-verify-otp" type="submit" loading={loading} loadingText="Verifying…">
-                  Verify OTP <ShieldCheck className="w-4 h-4" />
+                <PrimaryButton id="forgot-verify-otp" type="submit" loading={loading} loadingText="Checking…" disabled={!otp.trim()} className="!h-14 text-base">
+                  Check code <ShieldCheck className="w-5 h-5" />
                 </PrimaryButton>
 
-                <div className="flex items-center justify-between pt-1">
-                  <button type="button" className="text-sm text-slate-500 hover:text-slate-800" onClick={() => { setView('forgot-email'); resetMessages(); }}>
-                    Change Email
+                <div className="flex items-center justify-between gap-2">
+                  <button type="button" className={`${linkButton} text-slate-600 hover:text-slate-900`} onClick={() => { setView('forgot-email'); resetMessages(); }}>
+                    ← Change email
                   </button>
-                  <button type="button" className="text-sm font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50" onClick={() => requestOtp()} disabled={loading}>
-                    Resend OTP
+                  <button type="button" className={`${linkButton} text-brand-700 hover:text-brand-800 disabled:opacity-50`} onClick={() => requestOtp()} disabled={loading}>
+                    Send the code again
                   </button>
                 </div>
               </form>
             )}
 
-            {/* ════ FORGOT PASSWORD – RESET VIEW ════ */}
+            {/* ════ FORGOT PASSWORD – STEP 3: NEW PASSWORD ════ */}
             {view === 'forgot-reset' && (
-              <form onSubmit={handleResetPassword} noValidate className="space-y-4">
+              <form onSubmit={handleResetPassword} noValidate className="space-y-5">
+                {/* Hidden username field helps password managers save the new password */}
+                <input type="email" name="email" value={email} autoComplete="username" readOnly hidden />
                 <div>
-                  <label htmlFor="reset-new-password" className="label">New Password</label>
+                  <label htmlFor="reset-new-password" className="label text-[15px]">New password</label>
                   <Field
-                    icon={<Lock className="w-[18px] h-[18px]" />}
+                    icon={<Lock className="w-5 h-5" />}
                     trailing={
                       <button
                         type="button"
-                        className="text-slate-400 hover:text-slate-600 flex-shrink-0"
+                        className="-mr-2 inline-flex items-center justify-center h-11 w-11 text-slate-500 hover:text-slate-700 flex-shrink-0"
                         onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
-                        {showPassword ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     }
                   >
                     <input
                       id="reset-new-password"
+                      name="new-password"
                       type={showPassword ? 'text' : 'password'}
-                      placeholder="Minimum 8 characters"
+                      placeholder="At least 8 characters"
                       required
                       minLength={8}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       className={fieldInput}
                       autoComplete="new-password"
+                      enterKeyHint="done"
                     />
                   </Field>
+                  <p className="mt-1.5 text-sm text-slate-500">Use at least 8 characters. Tap the eye to see what you typed.</p>
                 </div>
 
                 {error && <Alert kind="error">{error}</Alert>}
                 {message && <Alert kind="success">{message}</Alert>}
 
-                <PrimaryButton id="reset-submit" type="submit" loading={loading} loadingText="Resetting…">
-                  Set New Password <ArrowRight className="w-4 h-4" />
+                <PrimaryButton id="reset-submit" type="submit" loading={loading} loadingText="Saving…" disabled={!newPassword} className="!h-14 text-base">
+                  Save new password <ArrowRight className="w-5 h-5" />
                 </PrimaryButton>
 
-                <div className="text-center pt-1">
-                  <button type="button" className="text-sm text-slate-500 hover:text-slate-800" onClick={() => { setView('login'); resetMessages(); }}>
-                    Cancel & Back to Login
+                <div className="text-center">
+                  <button type="button" className={`${linkButton} text-slate-600 hover:text-slate-900`} onClick={backToLogin}>
+                    Cancel and go back to sign in
                   </button>
                 </div>
               </form>

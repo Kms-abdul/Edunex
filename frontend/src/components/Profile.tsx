@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
-import { PageHeader, Alert } from './ui';
+import { PageHeader, Alert, Field, Button } from './ui';
 
 const Profile: React.FC = () => {
     // Username State
@@ -142,7 +142,7 @@ const Profile: React.FC = () => {
             localStorage.setItem('user', JSON.stringify(user));
 
             setOriginalUsername(username.trim());
-            setUsernameStatus({ type: 'success', msg: 'Username updated successfully!' });
+            setUsernameStatus({ type: 'success', msg: 'Username saved.' });
 
         } catch (error: any) {
             const errMsg = error.response?.data?.error || error.response?.data?.message || 'Failed to update username';
@@ -160,22 +160,22 @@ const Profile: React.FC = () => {
     // ==================== PASSWORD HANDLERS ====================
     const handleSavePassword = async () => {
         if (!currentPassword) {
-            setPasswordStatus({ type: 'error', msg: 'Current password is required' });
+            setPasswordStatus({ type: 'error', msg: 'Type your current password first.' });
             return;
         }
 
         if (!newPassword) {
-            setPasswordStatus({ type: 'error', msg: 'New password is required' });
+            setPasswordStatus({ type: 'error', msg: 'Type a new password.' });
             return;
         }
 
         if (newPassword.length < 8) {
-            setPasswordStatus({ type: 'error', msg: 'Password must be at least 8 characters' });
+            setPasswordStatus({ type: 'error', msg: 'The password needs at least 8 characters.' });
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            setPasswordStatus({ type: 'error', msg: 'Passwords do not match' });
+            setPasswordStatus({ type: 'error', msg: 'The two new passwords are not the same. Type them again.' });
             return;
         }
 
@@ -188,7 +188,7 @@ const Profile: React.FC = () => {
                 newPassword: newPassword
             });
 
-            setPasswordStatus({ type: 'success', msg: 'Password updated successfully!' });
+            setPasswordStatus({ type: 'success', msg: 'Password changed. Use the new password next time you sign in.' });
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
@@ -237,27 +237,27 @@ const Profile: React.FC = () => {
 
         // Validation
         if (!newUserUsername.trim()) {
-            setAddUserStatus({ type: 'error', msg: 'Username is required' });
+            setAddUserStatus({ type: 'error', msg: 'Type a username first.' });
             return;
         }
 
         if (!newUserPassword) {
-            setAddUserStatus({ type: 'error', msg: 'Password is required' });
+            setAddUserStatus({ type: 'error', msg: 'Type a password first.' });
             return;
         }
 
         if (newUserPassword.length < 8) {
-            setAddUserStatus({ type: 'error', msg: 'Password must be at least 8 characters' });
+            setAddUserStatus({ type: 'error', msg: 'The password needs at least 8 characters.' });
             return;
         }
 
         if (!newUserEmail.trim()) {
-            setAddUserStatus({ type: 'error', msg: 'Email is required' });
+            setAddUserStatus({ type: 'error', msg: 'Type an email address first.' });
             return;
         }
 
         if (selectedBranches.length === 0) {
-            setAddUserStatus({ type: 'error', msg: 'Please select at least one branch' });
+            setAddUserStatus({ type: 'error', msg: 'Tick at least one branch.' });
             return;
         }
 
@@ -277,7 +277,7 @@ const Profile: React.FC = () => {
 
         try {
             await api.post('/users/add', payload);
-            setAddUserStatus({ type: 'success', msg: 'User created successfully!' });
+            setAddUserStatus({ type: 'success', msg: 'User created. They can now sign in.' });
 
             // Reset form
             setNewUserUsername('');
@@ -305,185 +305,186 @@ const Profile: React.FC = () => {
         setAddUserStatus({ type: '', msg: '' });
     };
 
+    const [showAddUser, setShowAddUser] = useState(false);
+
+    const passwordNote = !currentPassword ? 'Type your current password first.'
+        : !newPassword ? 'Type a new password.'
+        : newPassword.length < 8 ? 'New password needs at least 8 characters.'
+        : newPassword !== confirmPassword ? 'Type the new password again so both match.'
+        : '';
+
+    const sectionTitle = 'text-base font-semibold text-slate-900';
+
     return (
-        <div className="container mx-auto p-4 md:p-6">
+        <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
             <PageHeader
-                eyebrow="My Account"
-                title="Username & Password"
-                subtitle="Update your login credentials and manage users."
+                eyebrow="My account"
+                title="Username and password"
+                subtitle="See your username and change your password."
             />
 
-            <div className="card p-5">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* ==================== USERNAME (read only) ==================== */}
+            <form onSubmit={(e) => e.preventDefault()} className="card">
+                <div className="card-body p-4 sm:p-5 space-y-4">
+                    <h2 className={sectionTitle}>Your username</h2>
 
-                    {/* ==================== CHANGE USERNAME FORM ==================== */}
-                    <form onSubmit={(e) => e.preventDefault()}>
-                        <div className="space-y-4 border border-slate-200 p-5 rounded-lg h-full">
-                            <h3 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-4">Change Username</h3>
+                    {usernameStatus.msg && (
+                        <Alert tone={usernameStatus.type === 'success' ? 'success' : 'error'}>
+                            {usernameStatus.msg}
+                        </Alert>
+                    )}
 
-                            {usernameStatus.msg && (
-                                <Alert tone={usernameStatus.type === 'success' ? 'success' : 'error'}>
-                                    {usernameStatus.msg}
-                                </Alert>
-                            )}
+                    <Field label="Username" htmlFor="txtuserName" hint="This is the name you type to sign in. Ask your admin if it needs to change.">
+                        <input
+                            type="text"
+                            id="txtuserName"
+                            name="txtuserName"
+                            maxLength={100}
+                            value={username}
+                            disabled={true}
+                            onChange={(e) => {
+                                setUsername(e.target.value);
+                                setUsernameStatus({ type: '', msg: '' });
+                            }}
+                            autoComplete="username"
+                            className="input h-11"
+                        />
+                    </Field>
 
-                            <div>
-                                <label htmlFor="txtuserName" className="label">
-                                    Username
-                                </label>
-                                <input
-                                    type="text"
-                                    id="txtuserName"
-                                    name="txtuserName"
-                                    maxLength={100}
-                                    value={username}
-                                    disabled={true}
-                                    onChange={(e) => {
-                                        setUsername(e.target.value);
-                                        setUsernameStatus({ type: '', msg: '' });
-                                    }}
-                                    // disabled={usernameLoading}
-                                    className="input"
-                                />
-                            </div>
-
-                            <div className="flex items-center space-x-4">
-                                <button
-                                    type="button"
-                                    onClick={handleSaveUsername}
-                                    disabled={usernameLoading || username === originalUsername}
-                                    className="btn-primary"
-                                >
-                                    {usernameLoading ? 'Saving...' : 'Save'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleCancelUsername}
-                                    disabled={usernameLoading || username === originalUsername}
-                                    className="btn-secondary"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
+                    {username !== originalUsername && (
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <Button onClick={handleSaveUsername} loading={usernameLoading} disabled={username === originalUsername}>
+                                Save username
+                            </Button>
+                            <Button variant="secondary" onClick={handleCancelUsername} disabled={usernameLoading}>
+                                Cancel
+                            </Button>
                         </div>
-                    </form>
-
-                    {/* ==================== CHANGE PASSWORD FORM ==================== */}
-                    <form onSubmit={(e) => e.preventDefault()}>
-                        <div className="space-y-4 border border-slate-200 p-5 rounded-lg h-full">
-                            <h3 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-4">Change Password</h3>
-
-                            {passwordStatus.msg && (
-                                <Alert tone={passwordStatus.type === 'success' ? 'success' : 'error'}>
-                                    {passwordStatus.msg}
-                                </Alert>
-                            )}
-
-                            <div className="grid grid-cols-1 gap-4">
-                                <div>
-                                    <label htmlFor="txtCurrentPassword" className="label">
-                                        Current Password <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="password"
-                                        id="txtCurrentPassword"
-                                        name="txtCurrentPassword"
-                                        maxLength={99}
-                                        value={currentPassword}
-                                        onChange={(e) => {
-                                            setCurrentPassword(e.target.value);
-                                            setPasswordStatus({ type: '', msg: '' });
-                                        }}
-                                        disabled={passwordLoading}
-                                        placeholder="Enter current password"
-                                        className="input"
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="txtNewPassword" className="label">
-                                        New Password <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="password"
-                                        id="txtNewPassword"
-                                        name="txtNewPassword"
-                                        maxLength={99}
-                                        value={newPassword}
-                                        onChange={(e) => {
-                                            setNewPassword(e.target.value);
-                                            setPasswordStatus({ type: '', msg: '' });
-                                        }}
-                                        disabled={passwordLoading}
-                                        placeholder="Enter new password"
-                                        className="input"
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="txtConfirmPassword" className="label">
-                                        Confirm Password <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="password"
-                                        id="txtConfirmPassword"
-                                        name="txtConfirmPassword"
-                                        maxLength={99}
-                                        value={confirmPassword}
-                                        onChange={(e) => {
-                                            setConfirmPassword(e.target.value);
-                                            setPasswordStatus({ type: '', msg: '' });
-                                        }}
-                                        disabled={passwordLoading}
-                                        placeholder="Confirm new password"
-                                        className="input"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex items-center space-x-4">
-                                <button
-                                    type="button"
-                                    onClick={handleSavePassword}
-                                    disabled={passwordLoading || (!newPassword && !confirmPassword)}
-                                    className="btn-primary"
-                                >
-                                    {passwordLoading ? 'Saving...' : 'Save Password'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleCancelPassword}
-                                    disabled={passwordLoading || (!newPassword && !confirmPassword)}
-                                    className="btn-secondary"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-
+                    )}
                 </div>
+            </form>
 
-                {/* ==================== ADD USER SECTION (ADMIN ONLY) ==================== */}
-                {canManageUsers && (
-                    <div className="mt-8">
-                        <div className="card p-5">
-                            <h3 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-4">
-                                Add New User
-                            </h3>
+            {/* ==================== CHANGE PASSWORD ==================== */}
+            <form onSubmit={(e) => { e.preventDefault(); if (!passwordNote) handleSavePassword(); }} className="card">
+                <div className="card-body p-4 sm:p-5 space-y-4">
+                    <div>
+                        <h2 className={sectionTitle}>Change your password</h2>
+                        <p className="text-sm text-slate-500 mt-0.5">Type your current password, then your new password two times.</p>
+                    </div>
 
-                            {addUserStatus.msg && (
-                                <Alert tone={addUserStatus.type === 'success' ? 'success' : 'error'} className="mb-4">
-                                    {addUserStatus.msg}
-                                </Alert>
+                    {passwordStatus.msg && (
+                        <Alert tone={passwordStatus.type === 'success' ? 'success' : 'error'}>
+                            {passwordStatus.msg}
+                        </Alert>
+                    )}
+
+                    {/* Hidden username helps password managers save the new password */}
+                    <input type="text" name="username" value={originalUsername} autoComplete="username" readOnly hidden />
+
+                    <Field label="Current password" htmlFor="txtCurrentPassword" required>
+                        <input
+                            type="password"
+                            id="txtCurrentPassword"
+                            name="txtCurrentPassword"
+                            maxLength={99}
+                            value={currentPassword}
+                            onChange={(e) => {
+                                setCurrentPassword(e.target.value);
+                                setPasswordStatus({ type: '', msg: '' });
+                            }}
+                            disabled={passwordLoading}
+                            placeholder="Your password now"
+                            autoComplete="current-password"
+                            className="input h-11"
+                        />
+                    </Field>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Field label="New password" htmlFor="txtNewPassword" required hint="At least 8 characters.">
+                            <input
+                                type="password"
+                                id="txtNewPassword"
+                                name="txtNewPassword"
+                                maxLength={99}
+                                value={newPassword}
+                                onChange={(e) => {
+                                    setNewPassword(e.target.value);
+                                    setPasswordStatus({ type: '', msg: '' });
+                                }}
+                                disabled={passwordLoading}
+                                placeholder="New password"
+                                autoComplete="new-password"
+                                className="input h-11"
+                            />
+                        </Field>
+                        <Field label="New password again" htmlFor="txtConfirmPassword" required>
+                            <input
+                                type="password"
+                                id="txtConfirmPassword"
+                                name="txtConfirmPassword"
+                                maxLength={99}
+                                value={confirmPassword}
+                                onChange={(e) => {
+                                    setConfirmPassword(e.target.value);
+                                    setPasswordStatus({ type: '', msg: '' });
+                                }}
+                                disabled={passwordLoading}
+                                placeholder="Same new password"
+                                autoComplete="new-password"
+                                className="input h-11"
+                            />
+                        </Field>
+                    </div>
+
+                    {(currentPassword || newPassword || confirmPassword) && passwordNote && (
+                        <p className="text-sm text-slate-600">{passwordNote}</p>
+                    )}
+
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                        <Button
+                            variant="secondary"
+                            onClick={handleCancelPassword}
+                            disabled={passwordLoading || (!currentPassword && !newPassword && !confirmPassword)}
+                        >
+                            Clear
+                        </Button>
+                        <Button
+                            type="submit"
+                            size="lg"
+                            loading={passwordLoading}
+                            disabled={!!passwordNote}
+                        >
+                            Change password
+                        </Button>
+                    </div>
+                </div>
+            </form>
+
+            {/* ==================== ADD USER SECTION (ADMIN ONLY) ==================== */}
+            {canManageUsers && (
+                <div className="card">
+                    <div className="card-body p-4 sm:p-5">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h2 className={sectionTitle}>Add a new user</h2>
+                                <p className="text-sm text-slate-500 mt-0.5">Give a staff member their own login.</p>
+                            </div>
+                            {!showAddUser && (
+                                <Button variant="secondary" onClick={() => setShowAddUser(true)}>
+                                    Add a user
+                                </Button>
                             )}
+                        </div>
 
-                            <form onSubmit={handleAddUser}>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {showAddUser && (
+                            <form onSubmit={handleAddUser} className="mt-4 space-y-4">
+                                {addUserStatus.msg && (
+                                    <Alert tone={addUserStatus.type === 'success' ? 'success' : 'error'}>
+                                        {addUserStatus.msg}
+                                    </Alert>
+                                )}
 
-                                    {/* Username */}
-                                    <div>
-                                        <label htmlFor="newUserName" className="label">
-                                            Username <span className="text-red-500">*</span>
-                                        </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field label="Username" htmlFor="newUserName" required>
                                         <input
                                             type="text"
                                             id="newUserName"
@@ -493,16 +494,14 @@ const Profile: React.FC = () => {
                                                 setAddUserStatus({ type: '', msg: '' });
                                             }}
                                             disabled={addUserLoading}
-                                            className="input"
-                                            placeholder="Enter username"
+                                            className="input h-11"
+                                            placeholder="Name they will sign in with"
+                                            autoComplete="off"
+                                            autoCapitalize="none"
                                         />
-                                    </div>
+                                    </Field>
 
-                                    {/* Password */}
-                                    <div>
-                                        <label htmlFor="newUserPassword" className="label">
-                                            Password <span className="text-red-500">*</span>
-                                        </label>
+                                    <Field label="Password" htmlFor="newUserPassword" required hint="At least 8 characters.">
                                         <input
                                             type="password"
                                             id="newUserPassword"
@@ -512,18 +511,16 @@ const Profile: React.FC = () => {
                                                 setAddUserStatus({ type: '', msg: '' });
                                             }}
                                             disabled={addUserLoading}
-                                            className="input"
-                                            placeholder="Enter password (min 8 chars)"
+                                            className="input h-11"
+                                            placeholder="Their first password"
+                                            autoComplete="new-password"
                                         />
-                                    </div>
+                                    </Field>
 
-                                    {/* Email */}
-                                    <div>
-                                        <label htmlFor="newUserEmail" className="label">
-                                            Email <span className="text-red-500">*</span>
-                                        </label>
+                                    <Field label="Email" htmlFor="newUserEmail" required>
                                         <input
                                             type="email"
+                                            inputMode="email"
                                             id="newUserEmail"
                                             value={newUserEmail}
                                             onChange={(e) => {
@@ -531,119 +528,96 @@ const Profile: React.FC = () => {
                                                 setAddUserStatus({ type: '', msg: '' });
                                             }}
                                             disabled={addUserLoading}
-                                            className="input"
-                                            placeholder="Enter user email"
+                                            className="input h-11"
+                                            placeholder="name@school.com"
+                                            autoComplete="off"
                                         />
-                                    </div>
+                                    </Field>
 
-                                    {/* Branch Selection */}
-                                    <div>
-                                        <label className="label">
-                                            Allowed Branches <span className="text-red-500">*</span>
-                                        </label>
-                                        <div className="card p-2 h-40 overflow-y-auto">
-                                            {/* All Branches Option */}
-                                            <div className="flex items-center space-x-2 p-2 hover:bg-slate-50 rounded">
-                                                <input
-                                                    type="checkbox"
-                                                    id="branch-all"
-                                                    checked={selectedBranches.includes('All')}
-                                                    onChange={() => handleBranchToggle('All')}
-                                                    disabled={addUserLoading || isBranchLocked}
-                                                    className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
-                                                />
-                                                <label htmlFor="branch-all" className="text-sm font-medium text-slate-700">
-                                                    All Branches
-                                                </label>
-                                            </div>
-
-                                            <hr className="my-1 border-slate-100" />
-
-                                            {/* Individual Branches */}
-                                            {availableBranches.map((b) => (
-                                                <div key={b.branch_code} className="flex items-center space-x-2 p-2 hover:bg-slate-50 rounded">
-                                                    <input
-                                                        type="checkbox"
-                                                        id={`branch-${b.branch_code}`}
-                                                        checked={selectedBranches.includes(b.branch_code)}
-                                                        onChange={() => handleBranchToggle(b.branch_code)}
-                                                        disabled={addUserLoading || isBranchLocked || selectedBranches.includes('All')}
-                                                        className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
-                                                    />
-                                                    <label htmlFor={`branch-${b.branch_code}`} className="text-sm text-slate-700">
-                                                        {b.branch_name}
-                                                    </label>
-                                                </div>
-                                            ))}
-
-                                            {availableBranches.length === 0 && (
-                                                <p className="text-sm text-slate-500 p-2">No branches available</p>
-                                            )}
-                                        </div>
-                                        <p className="text-xs text-slate-500 mt-1">
-                                            Selected: {selectedBranches.length === 0 ? 'None' : selectedBranches.join(', ')}
-                                        </p>
-                                    </div>
-
-                                    {/* Location (Auto-filled) */}
-                                    <div>
-                                        <label htmlFor="newUserLocation" className="label">
-                                            Location
-                                        </label>
-                                        <input
-                                            type="text"
-                                            id="newUserLocation"
-                                            value={newUserLocation}
-                                            onChange={(e) => setNewUserLocation(e.target.value)}
-                                            disabled={addUserLoading}
-                                            className="input"
-                                            placeholder="Auto-filled from branch"
-                                            readOnly
-                                        />
-                                        <p className="text-xs text-slate-500 mt-1">Auto-filled based on branch selection</p>
-                                    </div>
-
-                                    {/* Role */}
-                                    <div>
-                                        <label htmlFor="newUserRole" className="label">
-                                            Role
-                                        </label>
+                                    <Field label="Role" htmlFor="newUserRole">
                                         <select
                                             id="newUserRole"
                                             value={newUserRole}
                                             onChange={(e) => setNewUserRole(e.target.value)}
                                             disabled={addUserLoading}
-                                            className="input"
+                                            className="input h-11"
                                         >
                                             <option value="User">User</option>
                                             <option value="Admin">Admin</option>
                                         </select>
-                                    </div>
+                                    </Field>
                                 </div>
 
-                                {/* Buttons */}
-                                <div className="mt-6 flex items-center space-x-4">
-                                    <button
-                                        type="submit"
+                                <Field
+                                    label="Branches they can open"
+                                    required
+                                    hint={`Chosen: ${selectedBranches.length === 0 ? 'none' : selectedBranches.join(', ')}`}
+                                >
+                                    <div className="rounded-lg border border-slate-200 p-1.5 max-h-60 overflow-y-auto">
+                                        <label htmlFor="branch-all" className="flex items-center gap-3 min-h-[44px] px-2 hover:bg-slate-50 rounded cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                id="branch-all"
+                                                checked={selectedBranches.includes('All')}
+                                                onChange={() => handleBranchToggle('All')}
+                                                disabled={addUserLoading || isBranchLocked}
+                                                className="h-5 w-5 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
+                                            />
+                                            <span className="text-sm font-medium text-slate-800">All branches</span>
+                                        </label>
+
+                                        <hr className="my-1 border-slate-100" />
+
+                                        {availableBranches.map((b) => (
+                                            <label key={b.branch_code} htmlFor={`branch-${b.branch_code}`} className="flex items-center gap-3 min-h-[44px] px-2 hover:bg-slate-50 rounded cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`branch-${b.branch_code}`}
+                                                    checked={selectedBranches.includes(b.branch_code)}
+                                                    onChange={() => handleBranchToggle(b.branch_code)}
+                                                    disabled={addUserLoading || isBranchLocked || selectedBranches.includes('All')}
+                                                    className="h-5 w-5 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
+                                                />
+                                                <span className="text-sm text-slate-800">{b.branch_name}</span>
+                                            </label>
+                                        ))}
+
+                                        {availableBranches.length === 0 && (
+                                            <p className="text-sm text-slate-500 p-2">No branches yet</p>
+                                        )}
+                                    </div>
+                                </Field>
+
+                                <Field label="Location" htmlFor="newUserLocation" hint="Filled in for you from the branch.">
+                                    <input
+                                        type="text"
+                                        id="newUserLocation"
+                                        value={newUserLocation}
+                                        onChange={(e) => setNewUserLocation(e.target.value)}
                                         disabled={addUserLoading}
-                                        className="btn-primary"
-                                    >
-                                        {addUserLoading ? 'Creating...' : 'Create User'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleResetAddUserForm}
+                                        className="input h-11"
+                                        placeholder="Filled in from the branch"
+                                        readOnly
+                                    />
+                                </Field>
+
+                                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => { handleResetAddUserForm(); setShowAddUser(false); }}
                                         disabled={addUserLoading}
-                                        className="btn-secondary"
                                     >
-                                        Reset
-                                    </button>
+                                        Cancel
+                                    </Button>
+                                    <Button type="submit" size="lg" loading={addUserLoading}>
+                                        Create user
+                                    </Button>
                                 </div>
                             </form>
-                        </div>
+                        )}
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 };

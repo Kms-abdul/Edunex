@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../api';
-import { PageHeader, Alert, LoadingState } from './ui';
+import { PageHeader, Alert, LoadingState, Field, ActionBar, Button } from './ui';
 interface Permission {
   id: number;
   dashboard: string;
@@ -162,7 +162,7 @@ const RolePermissions: React.FC = () => {
   };
   const saveRole = async () => {
     if (!roleForm.name.trim()) {
-      setMessage({ type: 'error', text: 'Role name is required' });
+      setMessage({ type: 'error', text: 'Type a role name first.' });
       return;
     }
 
@@ -185,7 +185,7 @@ const RolePermissions: React.FC = () => {
 
       if (selectedRoleId) {
         await api.put(`/rbac/roles/${selectedRoleId}`, payload);
-        setMessage({ type: 'success', text: 'Role permissions updated' });
+        setMessage({ type: 'success', text: 'Role saved' });
         await fetchRolePermissions(selectedRoleId);
       } else {
         const res = await api.post('/rbac/roles', payload);
@@ -197,131 +197,148 @@ const RolePermissions: React.FC = () => {
       }
       await fetchBaseData();
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to save role' });
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Could not save the role. Please try again.' });
     } finally {
       setSaving(false);
     }
   };
+  const allowedCount = permissions.filter(p => isPermissionChecked(p.id)).length;
+  const checkboxClass = 'w-5 h-5 flex-shrink-0 text-brand-600 rounded border-slate-300 focus:ring-brand-500 focus:ring-2';
   return (
-    <div className="min-h-full bg-slate-50 p-4 md:p-6">
+    <div className="min-h-full bg-slate-50 p-4 md:p-6 max-w-6xl mx-auto">
       <PageHeader
         eyebrow="Control Panel"
-        title="Role Permissions"
-        subtitle="Select a role and allow access by modules."
+        title="Roles and access"
+        subtitle="Choose a role, tick what people with that role can open, then save."
       />
       {message && (
         <Alert tone={message.type} className="mb-4" onClose={() => setMessage(null)}>
           {message.text}
         </Alert>
       )}
-      <div className="card">
-        <div className="p-5 border-b border-slate-100">
-          <div className="flex flex-wrap items-center gap-4 md:gap-6">
-            <div className="flex items-center gap-2">
-              <label className="label whitespace-nowrap">User Type :</label>
+
+      {/* Step 1: which role */}
+      <div className="card mb-4">
+        <div className="card-body p-4 sm:p-5">
+          <h2 className="text-base font-semibold text-slate-900 mb-3">1. Choose a role</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Field label="Role" htmlFor="rp-role">
               <select
+                id="rp-role"
                 value={selectedRoleValue}
                 onChange={event => handleRoleChange(event.target.value)}
-                className="input w-auto min-w-[200px]"
+                className="input w-full h-11"
               >
                 {roles.map(role => (
                   <option key={role.id} value={role.id}>{role.name}</option>
                 ))}
-                <option value={NEW_ROLE_VALUE}>+ Add New UserType</option>
+                <option value={NEW_ROLE_VALUE}>+ Add a new role</option>
               </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="label whitespace-nowrap">User Type Name :</label>
+            </Field>
+            <Field
+              label="Role name"
+              htmlFor="rp-name"
+              required
+              hint={selectedRole?.is_system ? 'Built-in role. The name cannot be changed.' : undefined}
+            >
               <input
+                id="rp-name"
                 value={roleForm.name}
                 onChange={event => setRoleForm(form => ({ ...form, name: event.target.value }))}
                 disabled={Boolean(selectedRole?.is_system)}
-                placeholder="Role name"
-                className="input w-auto min-w-[200px]"
+                placeholder="For example: Cashier"
+                className="input w-full h-11"
               />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="label whitespace-nowrap">User Type Display Text :</label>
+            </Field>
+            <Field label="Name shown to people (optional)" htmlFor="rp-desc">
               <input
+                id="rp-desc"
                 value={roleForm.description}
                 onChange={event => setRoleForm(form => ({ ...form, description: event.target.value }))}
-                placeholder="Display text"
-                className="input w-auto min-w-[200px]"
+                placeholder="For example: Fee counter staff"
+                className="input w-full h-11"
               />
-            </div>
-            <label className="inline-flex items-center gap-2 text-sm text-slate-700 font-medium whitespace-nowrap">
-              <input
-                type="checkbox"
-                checked={roleForm.is_active}
-                onChange={event => setRoleForm(form => ({ ...form, is_active: event.target.checked }))}
-                disabled={selectedRole?.name === 'SuperAdmin'}
-                className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500"
-              />
-              Active
-            </label>
+            </Field>
+          </div>
+          <label className="mt-4 inline-flex items-center gap-3 min-h-[44px] text-sm text-slate-800 font-medium cursor-pointer">
+            <input
+              type="checkbox"
+              checked={roleForm.is_active}
+              onChange={event => setRoleForm(form => ({ ...form, is_active: event.target.checked }))}
+              disabled={selectedRole?.name === 'SuperAdmin'}
+              className={checkboxClass}
+            />
+            Role is turned on (people with this role can sign in)
+          </label>
+        </div>
+      </div>
+
+      {/* Step 2: what this role can open (permission grid) */}
+      <div className="card">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">2. What can this role open?</h2>
+            <p className="text-sm text-slate-500 mt-0.5">
+              {allowedCount} of {permissions.length} screens allowed. Tick a section name to allow all screens in it.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => resetMatrix('full')} className="btn-secondary btn-sm min-h-[40px]">
+              Tick all
+            </button>
+            <button type="button" onClick={() => resetMatrix('empty')} className="btn-secondary btn-sm min-h-[40px]">
+              Clear all
+            </button>
           </div>
         </div>
-        <div className="p-5">
-          <div className="mb-6">
-            <h2 className="text-base font-semibold text-slate-900">Modules :</h2>
-          </div>
+        <div className="p-3 sm:p-5">
           {loading ? (
-            <LoadingState label="Loading permission matrix..." />
+            <LoadingState label="Loading screens…" />
           ) : (
-            <div className="space-y-8">
-              {Object.values(groupedPermissions).map(group => (
-                <div key={group.dashboard}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 focus:ring-2"
-                      checked={isGroupChecked(group.rows)}
-                      onChange={(e) => toggleGroup(group.rows, e.target.checked)}
-                    />
-                    <span className="text-sm font-semibold text-brand-700 uppercase tracking-wide">
-                      {group.dashboard}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-y-3 gap-x-6 ml-6">
-                    {group.rows.map(permission => (
-                      <label key={permission.id} className="flex items-start gap-2.5 text-sm text-slate-700 cursor-pointer hover:text-slate-900">
-                        <input
-                          type="checkbox"
-                          className="w-4 h-4 mt-0.5 text-brand-600 rounded border-slate-300 focus:ring-brand-500 focus:ring-2"
-                          checked={isPermissionChecked(permission.id)}
-                          onChange={(e) => togglePermission(permission.id, e.target.checked)}
-                        />
-                        <span className="leading-snug">{permission.component}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            <div className="space-y-5">
+              {Object.values(groupedPermissions).map(group => {
+                const groupAllowed = group.rows.filter(p => isPermissionChecked(p.id)).length;
+                return (
+                  <section key={group.dashboard} className="rounded-xl border border-slate-200">
+                    <label className="flex items-center gap-3 min-h-[48px] px-3 sm:px-4 bg-slate-50 rounded-t-xl border-b border-slate-200 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className={checkboxClass}
+                        checked={isGroupChecked(group.rows)}
+                        onChange={(e) => toggleGroup(group.rows, e.target.checked)}
+                      />
+                      <span className="flex-1 min-w-0 text-[15px] font-semibold text-slate-900">{group.dashboard}</span>
+                      <span className="text-xs text-slate-500 whitespace-nowrap">{groupAllowed} of {group.rows.length}</span>
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-2 p-1.5 sm:p-2">
+                      {group.rows.map(permission => (
+                        <label
+                          key={permission.id}
+                          className="flex items-center gap-3 min-h-[44px] px-2 rounded-lg text-sm text-slate-800 cursor-pointer active:bg-slate-100 hover:bg-slate-50"
+                        >
+                          <input
+                            type="checkbox"
+                            className={checkboxClass}
+                            checked={isPermissionChecked(permission.id)}
+                            onChange={(e) => togglePermission(permission.id, e.target.checked)}
+                          />
+                          <span className="leading-snug">{permission.component}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
             </div>
           )}
         </div>
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-wrap justify-end gap-3 rounded-b-xl">
-          <button
-            onClick={() => resetMatrix('empty')}
-            className="btn-secondary"
-          >
-            Clear All
-          </button>
-          <button
-            onClick={() => resetMatrix('full')}
-            className="btn-secondary"
-          >
-            Select All
-          </button>
-          <button
-            onClick={saveRole}
-            disabled={saving}
-            className="btn-primary"
-          >
-            {saving ? 'Saving...' : selectedRoleId ? 'Save Role' : 'Create Role'}
-          </button>
-        </div>
       </div>
+
+      <ActionBar note={!roleForm.name.trim() ? 'Type a role name first.' : `${allowedCount} screens allowed for this role.`}>
+        <Button onClick={saveRole} loading={saving} size="lg">
+          {saving ? 'Saving…' : selectedRoleId ? 'Save role' : 'Create role'}
+        </Button>
+      </ActionBar>
     </div>
   );
 };

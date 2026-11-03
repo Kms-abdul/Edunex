@@ -22,6 +22,7 @@ interface ControlPanelModule {
     iconColor: string;
     page: Page;
     permission?: string;
+    description?: string;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({ navigateTo }) => {
@@ -30,37 +31,41 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ navigateTo }) => {
     const modules: ControlPanelModule[] = [
         {
             id: 'user-management',
-            name: 'User Management',
+            name: 'Users',
             icon: <UserIcon className="w-6 h-6" />,
             iconBg: 'bg-blue-50',
             iconColor: 'text-blue-600',
+            description: 'Add staff logins and turn them on or off',
             page: 'user-management',
             permission: 'system.users.management',
         },
         {
             id: 'role-permissions',
-            name: 'Role Permissions',
+            name: 'Roles and access',
             icon: <ShieldCheckIcon className="w-6 h-6" />,
             iconBg: 'bg-slate-50',
             iconColor: 'text-slate-600',
+            description: 'Choose what each role can open',
             page: 'role-permissions',
             permission: 'system.roles.permissions',
         },
         {
             id: 'franchise-management',
-            name: 'Franchise Mgmt',
+            name: 'Franchises',
             icon: <BuildingOfficeIcon className="w-6 h-6" />,
             iconBg: 'bg-purple-50',
             iconColor: 'text-purple-600',
+            description: 'Groups of schools and their branches',
             page: 'franchise-management',
             permission: 'system.franchise.management',
         },
         {
             id: 'school-management',
-            name: 'School Mgmt',
+            name: 'Schools',
             icon: <BuildingOfficeIcon className="w-6 h-6" />,
             iconBg: 'bg-emerald-50',
             iconColor: 'text-emerald-600',
+            description: 'School names, addresses and details',
             page: 'school-management',
             permission: 'system.school.school-management',
         }
@@ -82,8 +87,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ navigateTo }) => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
                     <PageHeader
                         eyebrow="System"
-                        title="Control Panel"
-                        subtitle="Manage system users, roles, and franchises"
+                        title="Control panel"
+                        subtitle="Add people who can sign in, choose what they can open, and set up schools."
                         icon={<ControlPanelIcon className="w-6 h-6" />}
                         className="mb-5"
                     />
@@ -97,6 +102,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ navigateTo }) => {
                         <ModuleTile
                             key={module.id}
                             name={module.name}
+                            description={module.description}
                             icon={module.icon}
                             iconClassName={`${module.iconBg} ${module.iconColor}`}
                             active

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PageHeader, Spinner } from './ui';
+import { PageHeader, Spinner, Steps, ActionBar, Field, Button } from './ui';
 
 const StaffSupport: React.FC = () => {
     const WHATSAPP_GROUP_LINK = 'https://chat.whatsapp.com/FFcwsA705dt8mMS4FciHxR';
@@ -13,6 +13,7 @@ const StaffSupport: React.FC = () => {
     const [isCopied, setIsCopied] = useState(false);
     const [errors, setErrors] = useState<{ subject?: string; message?: string }>({});
     const [openFaq, setOpenFaq] = useState<number | null>(null);
+    const [step, setStep] = useState(0);
 
     const categories = [
         { label: 'General',    icon: '💬' },
@@ -84,10 +85,10 @@ const StaffSupport: React.FC = () => {
     const validate = (): boolean => {
         const e: { subject?: string; message?: string } = {};
         if (!subject.trim() || subject.trim().length < 5) {
-            e.subject = 'Subject must be at least 5 characters';
+            e.subject = 'Write a short title of at least 5 letters.';
         }
         if (!message.trim() || message.trim().length < 20) {
-            e.message = 'Please describe your issue in at least 20 characters';
+            e.message = 'Tell us a little more (at least 20 letters).';
         }
         setErrors(e);
         return Object.keys(e).length === 0;
@@ -161,6 +162,7 @@ const StaffSupport: React.FC = () => {
             // Auto-reset after 20s
             setTimeout(() => {
                 setIsSubmitted(false);
+                setStep(0);
                 setIsCopied(false);
                 setSubject('');
                 setMessage('');
@@ -191,97 +193,85 @@ const StaffSupport: React.FC = () => {
         </svg>
     );
 
+    const resetForAnother = () => {
+        setIsSubmitted(false);
+        setIsCopied(false);
+        setSubject('');
+        setMessage('');
+        setCategory('General');
+        setErrors({});
+        setStep(0);
+    };
+
+    const stepLabels = ['What is it about?', 'Write your question', 'Check and send'];
+    const writeNote = subject.trim().length < 5
+        ? 'Write a short title of at least 5 letters.'
+        : message.trim().length < 20
+            ? `Tell us a little more (${Math.max(0, 20 - message.trim().length)} more letters needed).`
+            : '';
+
+    const goToCheck = () => {
+        if (validate()) setStep(2);
+    };
+
+    const openWhatsApp = () => window.open(WHATSAPP_GROUP_LINK, '_blank', 'noopener,noreferrer');
+
     return (
         <div className="min-h-full bg-slate-50 p-4 md:p-6">
             <div className="max-w-6xl mx-auto">
 
                 {/* ── Header ── */}
                 <PageHeader
-                    eyebrow="Support"
-                    title="Staff Support"
-                    subtitle="Get help from our support team via WhatsApp"
+                    eyebrow="Help"
+                    title="Get help"
+                    subtitle="Ask our support team a question on WhatsApp."
                     icon={<WaIcon cls="w-6 h-6 text-emerald-600" />}
                 />
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
 
                     {/* ══════════════════════════════════════════
-                        LEFT — Form
+                        LEFT — Ask a question (step by step)
                     ══════════════════════════════════════════ */}
                     <div className="lg:col-span-2">
-                        <div className="card shadow-pop overflow-hidden">
-
-                            {/* Card header */}
-                            <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-5 flex items-center gap-3">
-                                <div className="bg-white/20 p-2 rounded-lg">
-                                    <WaIcon cls="w-5 h-5 text-white" />
-                                </div>
-                                <div>
-                                    <h2 className="text-base font-semibold text-white">Submit Your Query</h2>
-                                    <p className="text-green-100 text-xs mt-0.5">
-                                        Message is copied to clipboard — just paste it in WhatsApp
-                                    </p>
-                                </div>
-                            </div>
+                        <div className="card overflow-hidden">
 
                             {/* ── Success screen ── */}
                             {isSubmitted ? (
-                                <div className="p-10 flex flex-col items-center text-center min-h-96">
-                                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-5 animate-bounce">
-                                        <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="p-5 sm:p-8 flex flex-col items-center text-center">
+                                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                                        <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                                         </svg>
                                     </div>
 
-                                    <h3 className="text-xl font-semibold text-slate-900 tracking-tight mb-1">
-                                        ✅ WhatsApp Group Opened!
-                                    </h3>
+                                    <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-2">
+                                        WhatsApp is open. Now paste and send.
+                                    </h2>
 
-                                    {/* Clipboard status badge */}
-                                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-4 ${
-                                        isCopied
-                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                            : 'bg-amber-50 text-amber-700 border border-amber-200'
-                                    }`}>
-                                        {isCopied ? (
-                                            <>
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                                </svg>
-                                                Message copied to clipboard!
-                                            </>
-                                        ) : (
-                                            <>
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                Clipboard access denied — copy manually below
-                                            </>
-                                        )}
-                                    </div>
+                                    <p className={`text-sm font-medium mb-4 ${isCopied ? 'text-emerald-700' : 'text-amber-700'}`}>
+                                        {isCopied
+                                            ? 'Your message is copied and ready to paste.'
+                                            : 'We could not copy your message. Tap "Copy message" below.'}
+                                    </p>
 
                                     {/* Step guide */}
-                                    <div className="bg-green-50 border border-green-200 rounded-2xl p-5 text-left w-full max-w-md mb-4">
-                                        <p className="text-sm font-bold text-green-700 mb-4">
-                                            📋 Follow these steps:
-                                        </p>
-                                        <div className="space-y-3">
-                                            {[
-                                                'Switch to the WhatsApp tab that just opened',
-                                                isCopied
-                                                    ? 'Click the message box and press Ctrl+V (or long-press → Paste) to paste'
-                                                    : 'Copy the message manually using the button below',
-                                                'Press Send 🚀',
-                                            ].map((step, i) => (
-                                                <div key={i} className="flex items-start gap-3">
-                                                    <span className="bg-green-500 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold">
-                                                        {i + 1}
-                                                    </span>
-                                                    <p className="text-sm text-green-800">{step}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                                    <ol className="bg-green-50 border border-green-200 rounded-2xl p-4 sm:p-5 text-left w-full max-w-md mb-4 space-y-3">
+                                        {[
+                                            'Go to the WhatsApp group that just opened.',
+                                            isCopied
+                                                ? 'Long-press the message box and tap Paste (on a computer press Ctrl+V).'
+                                                : 'Tap "Copy message" below, then paste it in the message box.',
+                                            'Tap Send.',
+                                        ].map((text, i) => (
+                                            <li key={i} className="flex items-start gap-3">
+                                                <span className="bg-green-600 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold">
+                                                    {i + 1}
+                                                </span>
+                                                <p className="text-[15px] text-green-900">{text}</p>
+                                            </li>
+                                        ))}
+                                    </ol>
 
                                     {/* Message box — for manual copy */}
                                     <div className="w-full max-w-md mb-4">
@@ -293,322 +283,250 @@ const StaffSupport: React.FC = () => {
                                     </div>
 
                                     {/* Action buttons */}
-                                    <div className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
-                                        <button
-                                            type="button"
-                                            onClick={handleManualCopy}
-                                            className={`flex-1 ${ isCopied ? 'btn border bg-emerald-50 text-emerald-700 border-emerald-300' : 'btn-secondary' }`}
-                                        >
-                                            {isCopied ? (
-                                                <>
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                    Copied!
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                    </svg>
-                                                    Copy Message
-                                                </>
-                                            )}
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => window.open(WHATSAPP_GROUP_LINK, '_blank', 'noopener,noreferrer')}
-                                            className="btn-success flex-1"
-                                        >
-                                            <WaIcon cls="w-4 h-4 text-white" />
-                                            Open WhatsApp Again
-                                        </button>
+                                    <div className="flex flex-col gap-2 w-full max-w-md">
+                                        <Button variant="success" size="lg" onClick={openWhatsApp} icon={<WaIcon cls="w-5 h-5 text-white" />}>
+                                            Open WhatsApp again
+                                        </Button>
+                                        <Button variant="secondary" size="lg" onClick={handleManualCopy}>
+                                            {isCopied ? 'Copied' : 'Copy message'}
+                                        </Button>
+                                        <Button variant="ghost" onClick={resetForAnother}>
+                                            Ask another question
+                                        </Button>
                                     </div>
-
-                                    <p className="text-xs text-slate-400 mt-5">
-                                        Resets automatically in a few seconds…
-                                    </p>
                                 </div>
 
                             ) : (
                                 /* ── Form ── */
-                                <form onSubmit={handleSubmit} noValidate className="p-6 space-y-5">
+                                <form
+                                    onSubmit={e => {
+                                        if (step !== 2) { e.preventDefault(); if (step === 1) goToCheck(); return; }
+                                        handleSubmit(e);
+                                    }}
+                                    noValidate
+                                    className="p-4 sm:p-6 space-y-5"
+                                >
+                                    <Steps steps={stepLabels} current={step} onJump={setStep} />
 
-                                    {/* Sender chip */}
-                                    <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                                        <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                            </svg>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs text-slate-400 font-medium">Sending as</p>
-                                            <p className="text-sm font-bold text-slate-800 truncate">
-                                                {userName || (
-                                                    <span className="italic text-slate-400">Staff Member</span>
-                                                )}
+                                    {/* STEP 1: category */}
+                                    {step === 0 && (
+                                        <div className="space-y-4">
+                                            <p className="text-sm text-slate-600">
+                                                Sending as <strong className="text-slate-900">{userName || 'Staff Member'}</strong>
                                             </p>
-                                        </div>
-                                        <span className="badge-success whitespace-nowrap">
-                                            Auto-detected
-                                        </span>
-                                    </div>
-
-                                    {/* Category chips */}
-                                    <div>
-                                        <label className="label">
-                                            Query Category <span className="text-red-500">*</span>
-                                        </label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {categories.map((cat) => (
-                                                <button
-                                                    type="button"
-                                                    key={cat.label}
-                                                    onClick={() => setCategory(cat.label)}
-                                                    className={`btn btn-sm border ${ category === cat.label ? 'bg-green-500 text-white border-green-500 shadow-md scale-105' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-green-400 hover:text-green-600' }`}
-                                                >
-                                                    <span>{cat.icon}</span>
-                                                    {cat.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Subject */}
-                                    <div>
-                                        <label className="label">
-                                            Subject <span className="text-red-500">*</span>
-                                        </label>
-                                        <div className="relative">
-                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                                                </svg>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" role="radiogroup" aria-label="What is it about?">
+                                                {categories.map((cat) => {
+                                                    const active = category === cat.label;
+                                                    return (
+                                                        <button
+                                                            type="button"
+                                                            role="radio"
+                                                            aria-checked={active}
+                                                            key={cat.label}
+                                                            onClick={() => setCategory(cat.label)}
+                                                            className={`min-h-[52px] rounded-xl border px-3 text-left text-[15px] font-medium flex items-center gap-2 transition-colors ${active ? 'bg-green-50 text-green-800 border-green-500 ring-2 ring-green-500/30' : 'bg-white text-slate-700 border-slate-200 hover:border-green-400'}`}
+                                                        >
+                                                            <span aria-hidden="true">{cat.icon}</span>
+                                                            {cat.label}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
-                                            <input
-                                                type="text"
-                                                value={subject}
-                                                onChange={e => {
-                                                    setSubject(e.target.value);
-                                                    if (errors.subject) setErrors(p => ({ ...p, subject: undefined }));
-                                                }}
-                                                placeholder="Brief subject of your query"
-                                                className={`input pl-10 ${
-                                                    errors.subject
-                                                        ? 'border-red-400 focus:ring-red-300'
-                                                        : 'border-slate-200 focus:ring-green-300 focus:border-green-400'
-                                                }`}
-                                            />
-                                        </div>
-                                        {errors.subject && (
-                                            <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
-                                                <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                </svg>
-                                                {errors.subject}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Message */}
-                                    <div>
-                                        <label className="label">
-                                            Your Message <span className="text-red-500">*</span>
-                                        </label>
-                                        <textarea
-                                            value={message}
-                                            onChange={e => {
-                                                setMessage(e.target.value);
-                                                if (errors.message) setErrors(p => ({ ...p, message: undefined }));
-                                            }}
-                                            rows={5}
-                                            placeholder="Describe your issue in detail so we can help you better..."
-                                            className={`input resize-none ${
-                                                errors.message
-                                                    ? 'border-red-400 focus:ring-red-300'
-                                                    : 'border-slate-200 focus:ring-green-300 focus:border-green-400'
-                                            }`}
-                                        />
-                                        <div className="flex justify-between items-center mt-1">
-                                            {errors.message ? (
-                                                <p className="text-xs text-red-500 flex items-center gap-1">
-                                                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                                    </svg>
-                                                    {errors.message}
-                                                </p>
-                                            ) : <span />}
-                                            <span className={`text-xs ml-auto ${message.length >= 20 ? 'text-green-500' : 'text-slate-400'}`}>
-                                                {message.length} chars
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Message preview */}
-                                    {(subject || message) && (
-                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                                            <p className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1">
-                                                <span>👁️</span> Message Preview
-                                            </p>
-                                            <pre className="text-xs text-slate-700 whitespace-pre-wrap font-mono leading-relaxed">
-                                                {buildMessage()}
-                                            </pre>
                                         </div>
                                     )}
 
-                                    {/* How it works */}
-                                    <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-                                        <WaIcon cls="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                                        <div>
-                                            <p className="text-xs font-semibold text-green-700 mb-1">How this works</p>
-                                            <p className="text-xs text-green-600 leading-relaxed">
-                                                ① Click the button below — your message is <strong>copied to clipboard automatically</strong><br />
-                                                ② WhatsApp group opens in a new tab<br />
-                                                ③ Click the message box and press <strong>Ctrl+V</strong> (or long-press → Paste on mobile) to paste<br />
-                                                ④ Press <strong>Send</strong> 🚀
-                                            </p>
+                                    {/* STEP 2: subject + message */}
+                                    {step === 1 && (
+                                        <div className="space-y-4">
+                                            <Field label="Short title" htmlFor="ss-subject" required error={errors.subject} hint="For example: Cannot see my salary slip">
+                                                <input
+                                                    id="ss-subject"
+                                                    type="text"
+                                                    value={subject}
+                                                    onChange={e => {
+                                                        setSubject(e.target.value);
+                                                        if (errors.subject) setErrors(p => ({ ...p, subject: undefined }));
+                                                    }}
+                                                    placeholder="What is the problem?"
+                                                    className={`input h-11 ${errors.subject ? 'border-red-400' : ''}`}
+                                                />
+                                            </Field>
+                                            <Field
+                                                label="Your question"
+                                                htmlFor="ss-message"
+                                                required
+                                                error={errors.message}
+                                                hint={`Tell us what happened and what you need. ${message.length} letters typed.`}
+                                            >
+                                                <textarea
+                                                    id="ss-message"
+                                                    value={message}
+                                                    onChange={e => {
+                                                        setMessage(e.target.value);
+                                                        if (errors.message) setErrors(p => ({ ...p, message: undefined }));
+                                                    }}
+                                                    rows={6}
+                                                    placeholder="Write your question here…"
+                                                    className={`input resize-none ${errors.message ? 'border-red-400' : ''}`}
+                                                />
+                                            </Field>
                                         </div>
-                                    </div>
+                                    )}
 
-                                    {/* Submit */}
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmitting}
-                                        className="btn-success btn-lg w-full text-sm"
+                                    {/* STEP 3: check and send */}
+                                    {step === 2 && (
+                                        <div className="space-y-4">
+                                            <div>
+                                                <p className="text-sm font-medium text-slate-800 mb-2">This is the message we will copy for you:</p>
+                                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4">
+                                                    <pre className="text-xs text-slate-700 whitespace-pre-wrap font-mono leading-relaxed break-words">
+                                                        {buildMessage()}
+                                                    </pre>
+                                                </div>
+                                            </div>
+                                            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+                                                <WaIcon cls="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                                                <p className="text-sm text-green-900 leading-relaxed">
+                                                    When you tap the green button, we copy your message and open the support WhatsApp group.
+                                                    Then paste it in the message box and tap Send.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <ActionBar
+                                        className="!mt-2"
+                                        note={step === 1 && writeNote ? writeNote : undefined}
                                     >
-                                        {isSubmitting ? (
-                                            <>
-                                                <Spinner size="sm" className="text-white" />
-                                                Copying & Opening WhatsApp…
-                                            </>
-                                        ) : (
-                                            <>
-                                                <WaIcon cls="w-5 h-5 text-white" />
-                                                Copy Message & Open WhatsApp
-                                            </>
+                                        {step > 0 && (
+                                            <Button variant="secondary" size="lg" onClick={() => setStep(step - 1)}>
+                                                Back
+                                            </Button>
                                         )}
-                                    </button>
-
-                                    {/* ── Reference Documents ── */}
-                                    <div className="pt-2">
-                                        <p className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1">
-                                            <span>📚</span> Reference Documents
-                                        </p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {referenceDocs.map((doc, i) => (
-                                                <a
-                                                    key={i}
-                                                    href={doc.href}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-semibold text-slate-700 hover:bg-green-50 hover:border-green-400 hover:text-green-700 transition-all duration-200 whitespace-nowrap"
-                                                >
-                                                    <svg className="w-3.5 h-3.5 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                                                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/>
-                                                    </svg>
-                                                    {doc.title}
-                                                    <span className="text-green-600 font-bold ml-0.5">↗</span>
-                                                </a>
-                                            ))}
-                                        </div>
-                                    </div>
-
+                                        {step === 0 && (
+                                            <Button size="lg" onClick={() => setStep(1)}>
+                                                Next
+                                            </Button>
+                                        )}
+                                        {step === 1 && (
+                                            <Button size="lg" onClick={goToCheck} disabled={!!writeNote}>
+                                                Next
+                                            </Button>
+                                        )}
+                                        {step === 2 && (
+                                            <button
+                                                type="submit"
+                                                disabled={isSubmitting}
+                                                className="btn-success btn-lg"
+                                            >
+                                                {isSubmitting ? (
+                                                    <>
+                                                        <Spinner size="sm" className="text-white" />
+                                                        Opening WhatsApp…
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <WaIcon cls="w-5 h-5 text-white" />
+                                                        Copy and open WhatsApp
+                                                    </>
+                                                )}
+                                            </button>
+                                        )}
+                                    </ActionBar>
                                 </form>
                             )}
+                        </div>
+
+                        {/* ── Guides (PDF) ── */}
+                        <div className="card p-4 sm:p-5 mt-4">
+                            <h2 className="text-base font-semibold text-slate-900">How-to guides</h2>
+                            <p className="text-sm text-slate-500 mt-0.5 mb-3">Tap a guide to open it.</p>
+                            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {referenceDocs.map((doc, i) => (
+                                    <li key={i}>
+                                        <a
+                                            href={doc.href}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="flex items-center gap-3 min-h-[48px] px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 hover:bg-green-50 hover:border-green-400"
+                                        >
+                                            <svg className="w-5 h-5 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/>
+                                            </svg>
+                                            <span className="flex-1">{doc.title.replace(' Module', '')} guide</span>
+                                            <span className="text-green-700" aria-hidden="true">↗</span>
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     </div>
 
                     {/* ══════════════════════════════════════════
                         RIGHT — Info panel
                     ══════════════════════════════════════════ */}
-                    <div className="space-y-5">
+                    <div className="space-y-4">
 
                         {/* Join group card */}
-                        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-card p-5 text-white">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="bg-white/20 p-2 rounded-lg">
-                                    <WaIcon cls="w-5 h-5 text-white" />
+                        <div className="card p-4 sm:p-5">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="bg-green-100 p-2 rounded-lg">
+                                    <WaIcon cls="w-5 h-5 text-green-600" />
                                 </div>
-                                <div>
-                                    <h3 className="font-bold text-sm">Support WhatsApp Group</h3>
-                                    <p className="text-green-100 text-xs">Join for instant support</p>
-                                </div>
+                                <h2 className="text-base font-semibold text-slate-900">Support WhatsApp group</h2>
                             </div>
-                            <p className="text-green-100 text-xs mb-4 leading-relaxed">
-                                All staff queries are handled in our dedicated WhatsApp group. Join to get real-time assistance.
+                            <p className="text-sm text-slate-600 mb-3 leading-relaxed">
+                                All staff questions are answered in this group. Join it once so you can get help quickly.
                             </p>
-                            <button
-                                type="button"
-                                onClick={() => window.open(WHATSAPP_GROUP_LINK, '_blank', 'noopener,noreferrer')}
-                                className="btn-secondary w-full text-green-600"
-                            >
-                                <WaIcon cls="w-4 h-4 text-green-600" />
-                                Join Support Group
-                            </button>
+                            <Button variant="secondary" className="w-full min-h-[44px]" onClick={openWhatsApp} icon={<WaIcon cls="w-4 h-4 text-green-600" />}>
+                                Join the support group
+                            </Button>
                         </div>
 
                         {/* Support hours */}
-                        <div className="card p-5">
-                            <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                                <span className="text-lg">🕐</span> Support Hours
-                            </h3>
+                        <div className="card p-4 sm:p-5">
+                            <h2 className="text-base font-semibold text-slate-900 mb-3">When we answer</h2>
                             <div className="space-y-2.5">
                                 {[
                                     { day: 'Monday – Friday', time: '9:00 AM – 6:00 PM', active: true },
                                     { day: 'Saturday',        time: '9:00 AM – 2:00 PM', active: true },
                                     { day: 'Sunday',          time: 'Closed',             active: false },
                                 ].map((item, i) => (
-                                    <div key={i} className="flex justify-between items-center">
-                                        <span className="text-xs text-slate-600">{item.day}</span>
+                                    <div key={i} className="flex justify-between items-center gap-2">
+                                        <span className="text-sm text-slate-700">{item.day}</span>
                                         <span className={item.active ? 'badge-success' : 'badge-danger'}>
                                             {item.time}
                                         </span>
                                     </div>
                                 ))}
                             </div>
-                            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                <span className="text-xs text-green-600 font-medium">Support team is online</span>
-                            </div>
-                        </div>
-
-                        {/* Response times */}
-                        <div className="card p-5">
-                            <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                                <span className="text-lg">⚡</span> Response Times
-                            </h3>
-                            <div className="space-y-3">
+                            <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
                                 {[
-                                    { label: 'WhatsApp Group',  time: '< 1 hour',  color: 'bg-green-500' },
-                                    { label: 'Urgent Issues',   time: '< 30 min',  color: 'bg-emerald-500' },
-                                    { label: 'General Queries', time: '< 4 hours', color: 'bg-brand-500' },
+                                    { label: 'WhatsApp group',  time: 'within 1 hour' },
+                                    { label: 'Urgent problems', time: 'within 30 minutes' },
+                                    { label: 'Other questions', time: 'within 4 hours' },
                                 ].map((item, i) => (
-                                    <div key={i} className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <span className={`w-2 h-2 rounded-full ${item.color}`} />
-                                            <span className="text-xs text-slate-600">{item.label}</span>
-                                        </div>
-                                        <span className="text-xs font-bold text-slate-800">{item.time}</span>
+                                    <div key={i} className="flex items-center justify-between gap-2">
+                                        <span className="text-sm text-slate-700">{item.label}</span>
+                                        <span className="text-sm font-semibold text-slate-900">{item.time}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         {/* FAQ accordion */}
-                        <div className="card p-5">
-                            <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                                <span className="text-lg">❓</span> Quick FAQs
-                            </h3>
+                        <div className="card p-4 sm:p-5">
+                            <h2 className="text-base font-semibold text-slate-900 mb-3">Common questions</h2>
                             <div className="space-y-2">
                                 {faqs.map((faq, i) => (
-                                    <div key={i} className="border border-slate-100 rounded-xl overflow-hidden">
+                                    <div key={i} className="border border-slate-200 rounded-xl overflow-hidden">
                                         <button
                                             type="button"
+                                            aria-expanded={openFaq === i}
                                             onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                                            className="w-full text-left px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                                            className="w-full text-left px-4 min-h-[48px] py-2 flex items-center justify-between hover:bg-slate-50 transition-colors"
                                         >
-                                            <span className="text-xs font-semibold text-slate-700 pr-2">{faq.question}</span>
+                                            <span className="text-sm font-medium text-slate-800 pr-2">{faq.question}</span>
                                             <svg
                                                 className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200 ${openFaq === i ? 'rotate-180' : ''}`}
                                                 fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -618,7 +536,7 @@ const StaffSupport: React.FC = () => {
                                         </button>
                                         {openFaq === i && (
                                             <div className="px-4 pb-3 bg-green-50 border-t border-slate-100">
-                                                <p className="text-xs text-slate-600 leading-relaxed pt-2">{faq.answer}</p>
+                                                <p className="text-sm text-slate-700 leading-relaxed pt-2">{faq.answer}</p>
                                             </div>
                                         )}
                                     </div>

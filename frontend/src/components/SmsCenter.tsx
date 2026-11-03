@@ -3,7 +3,7 @@ import { Page } from '../App';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { notify, confirmDialog } from './ui/feedback';
-import { Alert, LoadingState, EmptyState, PageHeader } from './ui';
+import { Alert, LoadingState, EmptyState, PageHeader, Steps, ActionBar, Button, Field } from './ui';
 
 interface SmsCenterProps {
     navigateTo: (page: Page) => void;
@@ -24,26 +24,15 @@ const PERM_SMS_ACCOUNT_CHOICE   = 'administration.sms.account-choice';     // Ke
 // Each tab shows only if the user has its permission (same pattern as StaffProfile)
 // permission can be one code, or a list (tab shows if the user has ANY of them)
 const TAB_DEFS: { id: SmsTab; label: string; permission: string | string[]; action: PermAction }[] = [
-    { id: 'send',    label: '📱 Send SMS',    permission: PERM_SMS_SEND,    action: 'read' },
-        { id: 'reports', label: '📊 SMS Reports', permission: PERM_SMS_REPORTS, action: 'read' },
-        { id: 'events',    label: '🗂 Events',    permission: PERM_SMS_EVENTS,    action: 'read' },
-        { id: 'templates', label: '📝 Templates', permission: PERM_SMS_TEMPLATES, action: 'read' },
-        { id: 'account',   label: '🔐 SMS Account',
+    { id: 'send',    label: 'Send SMS',    permission: PERM_SMS_SEND,    action: 'read' },
+        { id: 'reports', label: 'Sent SMS report', permission: PERM_SMS_REPORTS, action: 'read' },
+        { id: 'events',    label: 'SMS types (events)',    permission: PERM_SMS_EVENTS,    action: 'read' },
+        { id: 'templates', label: 'Message templates', permission: PERM_SMS_TEMPLATES, action: 'read' },
+        { id: 'account',   label: 'SMS account',
       permission: [PERM_SMS_ACCOUNT, PERM_SMS_BRANCH_ACCOUNT, PERM_SMS_ACCOUNT_CHOICE], action: 'read' },
 ];
 
 // ─── Shared helper ────────────────────────────────────────────────────────────
-const ResultBar: React.FC<{ result: { sent: number; failed: number; skipped: number } | null }> = ({ result }) => {
-    if (!result) return null;
-    return (
-        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800 flex gap-4">
-            <span>✅ Sent: <strong>{result.sent}</strong></span>
-            <span>⏭ Skipped: <strong>{result.skipped}</strong></span>
-            {result.failed > 0 && <span>❌ Failed: <strong>{result.failed}</strong></span>}
-        </div>
-    );
-};
-
 // ─── Tab 3: SMS Reports ───────────────────────────────────────────────────────
 const SMS_TYPE_LABELS: Record<string, string> = {
     ABSENT:      '📋 Absent',
@@ -167,15 +156,15 @@ const SmsReportsTab: React.FC = () => {
     return (
         <div className="space-y-5">
             {/* ── Filters ── */}
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 items-end">
                 <div>
-                    <label className="label">From Date</label>
+                    <label className="label">From date</label>
                     <input type="date" value={fromDate} max={toDate}
                         onChange={e => setFromDate(e.target.value)}
                         className="input" />
                 </div>
                 <div>
-                    <label className="label">To Date</label>
+                    <label className="label">To date</label>
                     <input type="date" value={toDate} max={today} min={fromDate}
                         onChange={e => setToDate(e.target.value)}
                         className="input" />
@@ -184,17 +173,17 @@ const SmsReportsTab: React.FC = () => {
                     <label className="label">Branch</label>
                     <select value={branchFilter} onChange={e => setBranchFilter(e.target.value)}
                         className="input">
-                        <option value="">All Branches</option>
+                        <option value="">All branches</option>
                         {branchOptions.map(b => (
                             <option key={b.id} value={b.id}>{b.branch_name}</option>
                         ))}
                     </select>
                 </div>
                 <div>
-                    <label className="label">SMS Type</label>
+                    <label className="label">SMS type</label>
                     <select value={smsType} onChange={e => setSmsType(e.target.value)}
                         className="input">
-                        <option value="">All Types</option>
+                        <option value="">All types</option>
                         {Object.entries(SMS_TYPE_LABELS).map(([code, label]) => (
                             <option key={code} value={code}>{label}</option>
                         ))}
@@ -204,15 +193,15 @@ const SmsReportsTab: React.FC = () => {
                     <label className="label">Status</label>
                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
                         className="input">
-                        <option value="">All Statuses</option>
+                        <option value="">Any status</option>
                         <option value="sent">Sent</option>
                         <option value="failed">Failed</option>
                         <option value="skipped">Skipped</option>
                     </select>
                 </div>
                 <button onClick={() => fetchReport(1)} disabled={loading}
-                    className="btn-primary">
-                    {loading ? 'Loading…' : '🔍 Run Report'}
+                    className="btn-primary min-h-[44px] w-full">
+                    {loading ? 'Loading…' : 'Show report'}
                 </button>
             </div>
 
@@ -266,13 +255,13 @@ const SmsReportsTab: React.FC = () => {
                     {/* ── Daily Activity Bar Chart ── */}
                     {daily.length > 0 && (
                         <div className="card p-4">
-                            <h4 className="text-sm font-semibold text-slate-700 mb-4">Daily SMS Activity</h4>
+                            <h4 className="text-sm font-semibold text-slate-700 mb-4">SMS per day</h4>
                             <div className="flex items-end gap-1 h-20 overflow-x-auto">
                                 {daily.map(d => {
                                     const heightPct = Math.round((d.total / maxDaily) * 100);
                                     const sentPct   = d.total ? Math.round((d.sent  / d.total) * 100) : 0;
                                     return (
-                                        <div key={d.day} className="flex flex-col items-center flex-shrink-0 group relative" style={{ minWidth: '28px' }}>
+                                        <div key={d.day} title={`${d.day} · Total: ${d.total} · Sent: ${d.sent}`} className="flex flex-col items-center flex-shrink-0 group relative" style={{ minWidth: '28px' }}>
                                             <div className="absolute bottom-full mb-1 hidden group-hover:block bg-slate-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
                                                 {d.day}<br />Total: {d.total} | Sent: {d.sent}
                                             </div>
@@ -297,22 +286,44 @@ const SmsReportsTab: React.FC = () => {
 
                     {/* ── Detail Table ── */}
                     <div className="card overflow-hidden">
-                        <div className="card-header bg-slate-50">
+                        <div className="card-header bg-slate-50 flex-wrap gap-2">
                             <span className="text-sm font-semibold text-slate-700">
-                                SMS Log &nbsp;
+                                Every SMS &nbsp;
                                 <span className="text-slate-400 font-normal">({totalRecords.toLocaleString()} records)</span>
                             </span>
                             <div className="flex items-center gap-3">
                             <button
                                 onClick={() => exportToExcel(records, fromDate, toDate)}
                                 disabled={records.length === 0}
-                                className="btn-success btn-sm">
+                                className="btn-success btn-sm min-h-[40px]">
                                 ⬇ Export Excel
                             </button>
                             <span className="text-xs text-slate-400">Page {page} of {totalPages}</span>
                         </div>
                         </div>
-                        <div className="overflow-x-auto max-h-96">
+                        {/* Phones: cards */}
+                        <ul className="md:hidden divide-y divide-slate-100 max-h-[60vh] overflow-y-auto">
+                            {records.map(r => (
+                                <li key={r.id} className="px-4 py-3">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <div className="text-[15px] font-semibold text-slate-900 break-words">{r.student_name || '—'}</div>
+                                            <div className="text-xs text-slate-500">{r.sent_at} · {r.phone}</div>
+                                        </div>
+                                        <span className={`${STATUS_COLORS[r.status] || 'badge-neutral'} flex-shrink-0`}>{r.status}</span>
+                                    </div>
+                                    <div className="mt-1.5 text-sm text-slate-700">
+                                        {SMS_TYPE_LABELS[r.sms_type] || r.sms_type}{r.event_name ? ` · ${r.event_name}` : ''}{r.branch_name ? ` · ${r.branch_name}` : ''}
+                                    </div>
+                                    {r.reason && <div className="mt-1 text-xs text-slate-500 break-words">{r.reason}</div>}
+                                </li>
+                            ))}
+                            {records.length === 0 && (
+                                <li><EmptyState compact title="No SMS records found for this period." /></li>
+                            )}
+                        </ul>
+                        {/* Wide screens: table */}
+                        <div className="hidden md:block overflow-x-auto max-h-96">
                             <table className="min-w-full text-sm divide-y divide-slate-100">
                                 <thead className="sticky top-0">
                                     <tr>
@@ -361,12 +372,12 @@ const SmsReportsTab: React.FC = () => {
                         {totalPages > 1 && (
                             <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50">
                                 <button onClick={() => fetchReport(page - 1)} disabled={page <= 1 || loading}
-                                    className="btn-secondary btn-sm">
-                                    ← Prev
+                                    className="btn-secondary btn-sm min-h-[40px]">
+                                    ← Previous
                                 </button>
                                 <span className="text-xs text-slate-500">{page} / {totalPages}</span>
                                 <button onClick={() => fetchReport(page + 1)} disabled={page >= totalPages || loading}
-                                    className="btn-secondary btn-sm">
+                                    className="btn-secondary btn-sm min-h-[40px]">
                                     Next →
                                 </button>
                             </div>
@@ -377,7 +388,7 @@ const SmsReportsTab: React.FC = () => {
 
             {!grand && !loading && (
                 <div className="card">
-                    <EmptyState title="No report yet" description={<>Select a date range and click <strong>Run Report</strong></>} />
+                    <EmptyState title="No report yet" description={<>Choose the dates and tap <strong>Show report</strong>.</>} />
                 </div>
             )}
         </div>
@@ -799,6 +810,7 @@ const TemplatesTab: React.FC = () => {
 
             {!error && (
                 <div className="card overflow-x-auto">
+                    <p className="md:hidden px-3 pt-2 text-xs text-slate-500">Swipe sideways to see more.</p>
                     <table className="min-w-full text-sm divide-y divide-slate-200">
                         <thead>
                             <tr>
@@ -838,13 +850,13 @@ const TemplatesTab: React.FC = () => {
                                         {t.updated_at}{t.updated_by ? ` · ${t.updated_by}` : ''}
                                     </td>
                                     <td className="px-3 py-2 whitespace-nowrap text-right space-x-2">
-                                        {canEdit && <button onClick={() => openEdit(t)} className="text-xs text-brand-600 hover:underline">Edit</button>}
+                                        {canEdit && <button onClick={() => openEdit(t)} className="min-h-[40px] px-2 text-sm font-medium text-brand-700 hover:underline">Edit</button>}
                                         {canToggle && (
-                                            <button onClick={() => toggleActive(t)} className="text-xs text-slate-600 hover:underline">
+                                            <button onClick={() => toggleActive(t)} className="min-h-[40px] px-2 text-sm text-slate-700 hover:underline">
                                                 {t.is_active ? 'Deactivate' : 'Activate'}
                                             </button>
                                         )}
-                                        <button onClick={() => openHistory(t)} className="text-xs text-slate-500 hover:underline">History</button>
+                                        <button onClick={() => openHistory(t)} className="min-h-[40px] px-2 text-sm text-slate-600 hover:underline">History</button>
                                     </td>
                                 </tr>
                             ))}
@@ -1682,6 +1694,7 @@ const EventsTab: React.FC = () => {
 
             {!error && (
                 <div className="card overflow-x-auto">
+                    <p className="md:hidden px-3 pt-2 text-xs text-slate-500">Swipe sideways to see more.</p>
                     <table className="min-w-full text-sm divide-y divide-slate-200">
                         <thead>
                             <tr>
@@ -1715,13 +1728,13 @@ const EventsTab: React.FC = () => {
                                         {ev.updated_at}{ev.updated_by ? ` · ${ev.updated_by}` : ''}
                                     </td>
                                     <td className="px-3 py-2 whitespace-nowrap text-right space-x-2">
-                                        {canEdit && <button onClick={() => openEdit(ev)} className="text-xs text-brand-600 hover:underline">Edit</button>}
+                                        {canEdit && <button onClick={() => openEdit(ev)} className="min-h-[40px] px-2 text-sm font-medium text-brand-700 hover:underline">Edit</button>}
                                         {canToggle && (
-                                            <button onClick={() => toggleActive(ev)} className="text-xs text-slate-600 hover:underline">
+                                            <button onClick={() => toggleActive(ev)} className="min-h-[40px] px-2 text-sm text-slate-700 hover:underline">
                                                 {ev.is_active ? 'Deactivate' : 'Activate'}
                                             </button>
                                         )}
-                                        <button onClick={() => openHistory(ev)} className="text-xs text-slate-500 hover:underline">History</button>
+                                        <button onClick={() => openHistory(ev)} className="min-h-[40px] px-2 text-sm text-slate-600 hover:underline">History</button>
                                     </td>
                                 </tr>
                             ))}
@@ -1884,7 +1897,7 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
             setSelected(new Set(list.map(r => r.student_id)));
             setListLoaded(true);
         } catch (e: any) {
-            setError(`Failed to load students: ${e.response?.data?.error || e.message}`);
+            setError(`Could not load students: ${e.response?.data?.error || e.message}`);
         } finally {
             setLoadingList(false);
         }
@@ -1909,8 +1922,8 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
     const handlePreview = async () => {
         setError('');
         setResult(null);
-        if (selected.size === 0) { setError('Select at least one student.'); return; }
-        if (missingFields.length) { setError(`Please fill in: ${missingFields.join(', ')}`); return; }
+        if (selected.size === 0) { setError('Tick at least one student.'); return; }
+        if (missingFields.length) { setError(`Fill in: ${missingFields.join(', ')}`); return; }
         setBusy(true);
         try {
             const res = await api.post('/sms/send', { ...payload(), preview_only: true });
@@ -1925,7 +1938,7 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
 
     const handleSend = async () => {
         if (!preview) return;
-        if (!await confirmDialog(`Send "${event?.name}" SMS to ${preview.count} parent(s)?`)) return;
+        // The "Check and send" step is the review; no extra pop-up needed.
         setBusy(true);
         setError('');
         try {
@@ -1940,212 +1953,284 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
         }
     };
 
-    const inputCls = 'input';
+    const inputCls = 'input h-11';
+
+    // ── Step flow: what → who → message → check and send → sent ──
+    const [step, setStep] = useState(0);
+    const stepLabels = ['Choose the SMS', 'Who gets it?', 'Write the details', 'Check and send'];
+    useEffect(() => { if (preview && step === 2) setStep(3); }, [preview]); // eslint-disable-line
+    useEffect(() => { if (step === 3 && !preview) setStep(2); }, [preview]); // eslint-disable-line
+
+    const startAgain = () => { resetList(); setFields({}); setStep(0); };
 
     if (loadingOptions && !options) return <LoadingState />;
     if (!options) {
         return <Alert tone="warning" onRetry={loadOptions}>{optionsError || 'Could not load SMS options.'}</Alert>;
     }
 
+    const findLabel = !event ? 'Find students'
+        : event.event_type === 'ABSENT' ? 'Find absent students'
+        : event.event_type === 'FEE_DUE' ? 'Find students with fees due'
+        : 'Find students';
+
+    // ── Sent: success state ──
+    if (result) {
+        const notSent = result.results.filter(r => r.status !== 'sent');
+        return (
+            <div className="space-y-4 max-w-2xl">
+                <div className="text-center py-4">
+                    <div className="mx-auto w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3">
+                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <h2 className="text-xl font-semibold text-slate-900">
+                        SMS sent to {result.sent} parent{result.sent === 1 ? '' : 's'}
+                    </h2>
+                    {event && <p className="text-sm text-slate-500 mt-1">{event.name}</p>}
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                        <div className="text-xs text-emerald-700">Sent</div>
+                        <div className="text-xl font-bold text-emerald-800">{result.sent}</div>
+                    </div>
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                        <div className="text-xs text-amber-700">Skipped</div>
+                        <div className="text-xl font-bold text-amber-800">{result.skipped}</div>
+                    </div>
+                    <div className={`rounded-xl border p-3 ${result.failed > 0 ? 'border-red-200 bg-red-50' : 'border-slate-200 bg-slate-50'}`}>
+                        <div className={`text-xs ${result.failed > 0 ? 'text-red-700' : 'text-slate-500'}`}>Failed</div>
+                        <div className={`text-xl font-bold ${result.failed > 0 ? 'text-red-800' : 'text-slate-700'}`}>{result.failed}</div>
+                    </div>
+                </div>
+                {notSent.length > 0 && (
+                    <div className="border border-slate-200 rounded-xl p-3 text-sm max-h-60 overflow-y-auto">
+                        <div className="font-medium text-slate-800 mb-1">Not sent ({notSent.length})</div>
+                        <ul className="space-y-1">
+                            {notSent.map(r => (
+                                <li key={r.student_id} className="text-slate-600">
+                                    {r.name} — <span className={r.status === 'failed' ? 'text-red-600' : 'text-amber-600'}>{r.status}</span>: {r.reason}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+                {error && <Alert tone="error">{error}</Alert>}
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Button size="lg" onClick={startAgain}>Send another SMS</Button>
+                </div>
+            </div>
+        );
+    }
+
+    const canGoFromWhat = !!event && event.ready;
+    const stepNote =
+        step === 0 ? (!event ? 'Choose an SMS first.' : !event.ready ? 'This SMS cannot be sent yet. See the message above.' : '')
+        : step === 1 ? (!listLoaded ? `Tap "${findLabel}" first.` : selected.size === 0 ? 'Tick at least one student.' : `${selected.size} parent${selected.size === 1 ? '' : 's'} chosen.`)
+        : step === 2 ? (missingFields.length ? `Fill in: ${missingFields.join(', ')}` : '')
+        : (!canSend ? 'You do not have permission to send SMS.' : preview?.problem ? 'Fix the problem above before sending.' : '');
+
     return (
-        <div className="space-y-5">
+        <div className="space-y-5 max-w-3xl">
             {/* Branch / account status */}
             {!options.branch ? (
                 <Alert tone="warning">{options.account_message}</Alert>
             ) : !options.account_ready ? (
                 <Alert tone="warning">
-                    ⚠ {options.account_message}. Ask your admin to set it up in <strong>SMS Account</strong>.
+                    {options.account_message}. Ask your admin to set it up in <strong>SMS account</strong>.
                 </Alert>
             ) : null}
 
             {!canSend && (
                 <Alert tone="warning">
-                    You can view this screen but don't have permission to send SMS.
+                    You can look at this screen, but you do not have permission to send SMS.
                 </Alert>
             )}
 
-            {/* Step 1: event */}
-            <div className="flex flex-wrap items-end gap-3">
-                <div className="min-w-[280px]">
-                    <label className="label">1. Event</label>
-                    <select value={eventId} onChange={e => setEventId(Number(e.target.value))} className={inputCls}
-                        disabled={options.events.length === 0}>
-                        {options.events.length === 0 && <option value={0}>No events available</option>}
-                        {options.events.map(ev => (
-                            <option key={ev.id} value={ev.id}>
-                                {ev.name} · {ev.type_label}{ev.ready ? '' : ' (not ready)'}
-                            </option>
-                        ))}
-                    </select>
+            <Steps steps={stepLabels} current={step} onJump={i => setStep(i)} />
+
+            {/* STEP 1: which SMS */}
+            {step === 0 && (
+                <div className="space-y-4">
+                    <Field label="Which SMS do you want to send?" htmlFor="sms-event">
+                        <div className="flex gap-2">
+                            <select id="sms-event" value={eventId} onChange={e => setEventId(Number(e.target.value))} className={`${inputCls} flex-1 min-w-0`}
+                                disabled={options.events.length === 0}>
+                                {options.events.length === 0 && <option value={0}>No SMS types yet</option>}
+                                {options.events.map(ev => (
+                                    <option key={ev.id} value={ev.id}>
+                                        {ev.name} · {ev.type_label}{ev.ready ? '' : ' (not ready)'}
+                                    </option>
+                                ))}
+                            </select>
+                            <button type="button" onClick={loadOptions} disabled={loadingOptions}
+                                className="btn-secondary min-h-[44px]" aria-label="Refresh list">
+                                ↻ <span className="hidden sm:inline">Refresh</span>
+                            </button>
+                        </div>
+                    </Field>
+
+                    {options.branch && options.events.length === 0 && (
+                        <Alert tone="warning">
+                            No SMS types for this branch yet. Add one in <strong>SMS types (events)</strong> and a message in <strong>Message templates</strong>.
+                        </Alert>
+                    )}
+
+                    {event && !event.ready && (
+                        <Alert tone="warning">
+                            <div className="font-semibold mb-1">This SMS cannot be sent yet:</div>
+                            <ul className="list-disc ml-5">{event.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
+                        </Alert>
+                    )}
                 </div>
-                <button onClick={loadOptions} disabled={loadingOptions}
-                    className="btn-secondary btn-sm">
-                    ↻ Refresh
-                </button>
-            </div>
-
-            {options.branch && options.events.length === 0 && (
-                <Alert tone="warning">
-                    No events for this branch yet. Create events in <strong>Events</strong> and templates in <strong>Templates</strong>.
-                </Alert>
             )}
 
-            {event && !event.ready && (
-                <Alert tone="warning">
-                    <div className="font-semibold mb-1">This event can't be sent yet:</div>
-                    <ul className="list-disc ml-5">{event.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
-                </Alert>
-            )}
-
-            {event && event.ready && (
-                <>
-                    {/* Step 2: recipients */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            {/* STEP 2: who */}
+            {step === 1 && event && (
+                <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {event.event_type === 'ABSENT' && (
-                            <div>
-                                <label className="label">2. Attendance date</label>
-                                <input type="date" value={date} max={todayStr()} className={inputCls}
+                            <Field label="Absent on which day?" htmlFor="sms-date">
+                                <input id="sms-date" type="date" value={date} max={todayStr()} className={inputCls}
                                     onChange={e => { setDate(e.target.value); resetList(); }} />
-                            </div>
+                            </Field>
                         )}
                         {event.event_type === 'FEE_DUE' && (
-                            <div>
-                                <label className="label">2. Dues up to</label>
-                                <input type="date" value={cutoffDate} max={todayStr()} className={inputCls}
+                            <Field label="Fees due up to" htmlFor="sms-cutoff">
+                                <input id="sms-cutoff" type="date" value={cutoffDate} max={todayStr()} className={inputCls}
                                     onChange={e => { setCutoffDate(e.target.value); resetList(); }} />
-                            </div>
+                            </Field>
                         )}
                         {event.event_type !== 'FEE_DUE' && (
-                            <div>
-                                <label className="label">
-                                    {event.event_type === 'GENERAL' ? '2. Class' : 'Class (optional)'}
-                                </label>
-                                <select value={selectedClass} className={inputCls}
+                            <Field label={event.event_type === 'GENERAL' ? 'Class' : 'Class (optional)'} htmlFor="sms-class">
+                                <select id="sms-class" value={selectedClass} className={inputCls}
                                     onChange={e => { setSelectedClass(e.target.value); resetList(); }}>
                                     <option value="">All classes</option>
                                     {classOptions.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
                                 </select>
-                            </div>
+                            </Field>
                         )}
-                        <button onClick={loadRecipients} disabled={loadingList}
-                            className="btn-primary">
-                            {loadingList ? 'Loading…'
-                                : event.event_type === 'ABSENT' ? 'Get absent students'
-                                : event.event_type === 'FEE_DUE' ? 'Get overdue students'
-                                : 'Load students'}
-                        </button>
                     </div>
+                    <Button variant={listLoaded ? 'secondary' : 'primary'} onClick={loadRecipients} loading={loadingList} className="w-full sm:w-auto min-h-[44px]">
+                        {loadingList ? 'Loading…' : listLoaded ? `${findLabel} again` : findLabel}
+                    </Button>
 
-                    {/* Step 3: extra fields (General) */}
-                    {event.custom_fields.length > 0 && (
-                        <div className="space-y-2">
-                            <label className="label">3. Message details</label>
-                            {event.custom_fields.map(f => (
-                                <div key={f}>
-                                    <label className="block text-xs text-slate-500 mb-1 font-mono">{`{${f}}`}</label>
-                                    <textarea rows={2} maxLength={500} value={fields[f] || ''} className={inputCls}
-                                        onChange={e => { setPreview(null); setFields(x => ({ ...x, [f]: e.target.value })); }} />
-                                </div>
-                            ))}
-                            <p className="text-xs text-amber-700">⚠ Your DLT template may limit how long each variable can be.</p>
-                        </div>
-                    )}
-
-                    {/* Recipient list */}
+                    {/* Recipient list (tap a row to tick / untick) */}
                     {recipients.length > 0 && (
                         <div className="card overflow-hidden">
-                            <div className="p-2 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
-                                <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+                            <div className="px-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3">
+                                <label className="flex items-center gap-3 min-h-[48px] text-sm font-medium text-slate-800 cursor-pointer select-none">
                                     <input type="checkbox" checked={selected.size === recipients.length}
                                         ref={el => { if (el) el.indeterminate = selected.size > 0 && selected.size < recipients.length; }}
-                                        onChange={e => toggleAll(e.target.checked)} className="h-3.5 w-3.5 accent-brand-600" />
-                                    Select all ({recipients.length})
+                                        onChange={e => toggleAll(e.target.checked)} className="h-5 w-5 accent-brand-600" />
+                                    Tick all ({recipients.length})
                                 </label>
-                                <span className="badge-brand">{selected.size} selected</span>
+                                <span className="badge-brand whitespace-nowrap">{selected.size} chosen</span>
                             </div>
-                            <div className="max-h-80 overflow-y-auto">
-                                <table className="min-w-full text-sm divide-y divide-slate-200">
-                                    <thead className="sticky top-0">
-                                        <tr>
-                                            <th className="px-3 py-2 w-8"></th>
-                                            <th className="px-3 py-2 text-left">Name</th>
-                                            <th className="px-3 py-2 text-left">Class</th>
-                                            <th className="px-3 py-2 text-left">Phone</th>
-                                            {event.event_type === 'FEE_DUE' && <th className="px-3 py-2 text-right">Overdue</th>}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-slate-100">
-                                        {recipients.map(r => (
-                                            <tr key={r.student_id} className="hover:bg-slate-50">
-                                                <td className="px-3 py-2">
-                                                    <input type="checkbox" checked={selected.has(r.student_id)}
-                                                        onChange={() => toggleOne(r.student_id)} className="h-4 w-4 accent-brand-600 cursor-pointer" />
-                                                </td>
-                                                <td className="px-3 py-2 font-medium">{r.name}</td>
-                                                <td className="px-3 py-2 text-slate-600">{r.cls}</td>
-                                                <td className="px-3 py-2 text-slate-500">{r.phone}</td>
-                                                {event.event_type === 'FEE_DUE' && <td className="px-3 py-2 text-right text-red-600 font-semibold">{r.info}</td>}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <ul className="max-h-[50vh] overflow-y-auto divide-y divide-slate-100">
+                                {recipients.map(r => (
+                                    <li key={r.student_id}>
+                                        <label className="flex items-center gap-3 px-3 min-h-[56px] py-2 cursor-pointer active:bg-slate-50 hover:bg-slate-50">
+                                            <input type="checkbox" checked={selected.has(r.student_id)}
+                                                onChange={() => toggleOne(r.student_id)} className="h-5 w-5 flex-shrink-0 accent-brand-600" />
+                                            <span className="flex-1 min-w-0">
+                                                <span className="block text-[15px] font-medium text-slate-900 truncate">{r.name}</span>
+                                                <span className="block text-xs text-slate-500">
+                                                    {r.cls || '—'} · {r.phone}
+                                                </span>
+                                            </span>
+                                            {event.event_type === 'FEE_DUE' && r.info && (
+                                                <span className="text-sm text-red-600 font-semibold whitespace-nowrap">{r.info}</span>
+                                            )}
+                                        </label>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     )}
                     {listLoaded && recipients.length === 0 && (
-                        <EmptyState compact title="No students found." />
+                        <EmptyState compact title="No students found" description="Try a different day or class." />
                     )}
+                </div>
+            )}
 
-                    {/* Step 4: preview → send */}
-                    {recipients.length > 0 && (
-                        <div className="flex flex-wrap gap-3">
-                            <button onClick={handlePreview} disabled={busy || selected.size === 0}
-                                className="btn-soft">
-                                {busy && !preview ? 'Checking…' : '👁 Preview'}
-                            </button>
-                            <button onClick={handleSend}
-                                disabled={!canSend || busy || !preview || !!preview.problem}
-                                className="btn-warn">
-                                {busy && preview ? 'Sending…' : `📱 Send${preview ? ` to ${preview.count}` : ''}`}
-                            </button>
-                        </div>
+            {/* STEP 3: message details */}
+            {step === 2 && event && (
+                <div className="space-y-4">
+                    {event.custom_fields.length > 0 ? (
+                        <>
+                            <p className="text-sm text-slate-600">Fill in these parts of the message.</p>
+                            {event.custom_fields.map(f => (
+                                <Field key={f} label={f.replace(/_/g, ' ')} htmlFor={`sms-f-${f}`} required>
+                                    <textarea id={`sms-f-${f}`} rows={2} maxLength={500} value={fields[f] || ''} className="input"
+                                        onChange={e => { setPreview(null); setFields(x => ({ ...x, [f]: e.target.value })); }} />
+                                </Field>
+                            ))}
+                            <p className="text-xs text-amber-700">Keep each part short. The approved SMS template may limit its length.</p>
+                        </>
+                    ) : (
+                        <Alert tone="info">
+                            This SMS fills in its message by itself. Tap <strong>See the message</strong> to check it.
+                        </Alert>
                     )}
+                </div>
+            )}
 
-                    {preview && (
-                        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-2 max-w-2xl">
-                            <div className="text-xs text-slate-500">
-                                Preview for <strong>{preview.student}</strong> · {preview.count} parent(s) will receive this SMS
+            {/* STEP 4: check and send */}
+            {step === 3 && preview && (
+                <div className="space-y-3">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                        <p className="text-[15px] text-slate-800">
+                            You are sending <strong>{event?.name}</strong> to <strong>{preview.count} parent{preview.count === 1 ? '' : 's'}</strong>.
+                        </p>
+                        <div className="text-xs text-slate-500">This is how the SMS looks for {preview.student}:</div>
+                        {preview.text && (
+                            <div className="bg-white rounded-xl rounded-tl-none shadow-sm p-3 text-sm text-slate-800 whitespace-pre-wrap break-words">
+                                {preview.text}
                             </div>
-                            {preview.text && (
-                                <div className="bg-white rounded-xl rounded-tl-none shadow-sm p-3 text-sm text-slate-800 whitespace-pre-wrap break-words">
-                                    {preview.text}
-                                </div>
-                            )}
-                            {preview.problem && (
-                                <div className="text-sm text-red-600">⚠ {preview.problem}</div>
-                            )}
-                        </div>
-                    )}
-                </>
+                        )}
+                        {preview.problem && (
+                            <Alert tone="error">{preview.problem}</Alert>
+                        )}
+                    </div>
+                </div>
             )}
 
             {error && <Alert tone="error">{error}</Alert>}
 
-            {result && (
-                <div className="space-y-2">
-                    <ResultBar result={result} />
-                    {result.results.filter(r => r.status !== 'sent').length > 0 && (
-                        <div className="border border-slate-200 rounded-lg p-3 text-sm max-h-60 overflow-y-auto">
-                            <div className="label">Not sent:</div>
-                            {result.results.filter(r => r.status !== 'sent').map(r => (
-                                <div key={r.student_id} className="text-slate-600">
-                                    {r.name} — <span className={r.status === 'failed' ? 'text-red-600' : 'text-amber-600'}>{r.status}</span>: {r.reason}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
+            <ActionBar note={stepNote || undefined}>
+                {step > 0 && (
+                    <Button variant="secondary" size="lg" onClick={() => setStep(step - 1)} disabled={busy}>
+                        Back
+                    </Button>
+                )}
+                {step === 0 && (
+                    <Button size="lg" onClick={() => setStep(1)} disabled={!canGoFromWhat}>
+                        Next
+                    </Button>
+                )}
+                {step === 1 && (
+                    <Button size="lg" onClick={() => setStep(2)} disabled={!listLoaded || selected.size === 0}>
+                        Next
+                    </Button>
+                )}
+                {step === 2 && (
+                    <Button size="lg" onClick={handlePreview} loading={busy} disabled={selected.size === 0 || missingFields.length > 0}>
+                        See the message
+                    </Button>
+                )}
+                {step === 3 && (
+                    <Button
+                        variant="warn"
+                        size="lg"
+                        onClick={handleSend}
+                        loading={busy}
+                        disabled={!canSend || !preview || !!preview.problem}
+                    >
+                        {busy ? 'Sending…' : `Send to ${preview?.count ?? 0} parent${preview?.count === 1 ? '' : 's'}`}
+                    </Button>
+                )}
+            </ActionBar>
         </div>
     );
 };
@@ -2185,12 +2270,12 @@ const SmsCenter: React.FC<SmsCenterProps> = ({ navigateTo }) => {
             <div className="bg-white border-b border-slate-200 px-4 sm:px-6 pt-5">
                 <PageHeader
                     eyebrow="Administration"
-                    title="SMS Center"
-                    subtitle="Send attendance, fee, announcement and custom SMS"
+                    title="SMS"
+                    subtitle="Send SMS to parents about absence, fees or school news."
                     className="mb-4"
                     actions={
                         <button onClick={() => navigateTo('administration')}
-                            className="btn-secondary btn-sm">
+                            className="btn-secondary btn-sm min-h-[40px]">
                             ← Back
                         </button>
                     }
@@ -2204,7 +2289,7 @@ const SmsCenter: React.FC<SmsCenterProps> = ({ navigateTo }) => {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+                            className={`px-4 min-h-[48px] text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
                                 activeTab === tab.id
                                     ? 'border-brand-600 text-brand-700'
                                     : 'border-transparent text-slate-500 hover:text-slate-700'

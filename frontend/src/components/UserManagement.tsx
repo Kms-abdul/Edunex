@@ -3,7 +3,9 @@ import api from '../api';
 import { canWrite } from '../utils/permissions';
 import { useAuth } from '../contexts/AuthContext';
 import { confirmDialog } from './ui/feedback';
-import { PageHeader, Alert, LoadingState, EmptyState, Badge } from './ui';
+import { PageHeader, Alert, Badge, Button, Field, Steps, DataList } from './ui';
+import type { Column } from './ui';
+import { Plus, X } from 'lucide-react';
 
 interface SchoolOption { id: number; school_name: string; }
 interface BranchOption { id: number; branch_name: string; branch_code: string; school_id: number | null; }
@@ -169,9 +171,9 @@ const UserManagement: React.FC = () => {
   // ── Save ────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
-    if (!form.username) { setMessage({ type: 'error', text: 'Username is required' }); return; }
-    if (!editingId && !form.password) { setMessage({ type: 'error', text: 'Password is required for new users' }); return; }
-    if (!form.useremail) { setMessage({ type: 'error', text: 'Email is required' }); return; }
+    if (!form.username) { setMessage({ type: 'error', text: 'Type a username first.' }); return; }
+    if (!editingId && !form.password) { setMessage({ type: 'error', text: 'Type a password for the new user.' }); return; }
+    if (!form.useremail) { setMessage({ type: 'error', text: 'Type an email address first.' }); return; }
 
     setMessage(null);
     try {
@@ -189,7 +191,7 @@ const UserManagement: React.FC = () => {
           payload.school_ids = form.school_ids;
         }
         await api.put(`/users/${editingId}`, payload);
-        setMessage({ type: 'success', text: 'User updated successfully' });
+        setMessage({ type: 'success', text: 'User saved' });
       } else {
         // Create new user
         const payload: any = {
@@ -204,7 +206,7 @@ const UserManagement: React.FC = () => {
           branch_ids: form.branch_ids,
         };
         await api.post('/users/add', payload);
-        setMessage({ type: 'success', text: 'User created successfully' });
+        setMessage({ type: 'success', text: 'User created. They can now sign in.' });
       }
       fetchUsers();
       const userRole = roles.find(r => r.name === 'User');
@@ -221,7 +223,13 @@ const UserManagement: React.FC = () => {
 
   const handleToggleActive = async (u: UserRow) => {
     const action = u.is_active ? 'deactivate' : 'reactivate';
-    if (!await confirmDialog(`Are you sure you want to ${action} "${u.username}"?`)) return;
+    const ok = await confirmDialog(
+      u.is_active
+        ? `Turn off the login for "${u.username}"? They will not be able to sign in until you turn it back on.`
+        : `Turn the login for "${u.username}" back on?`,
+      { confirmText: u.is_active ? 'Turn off' : 'Turn on', tone: u.is_active ? 'danger' : 'default' },
+    );
+    if (!ok) return;
     try {
       if (u.is_active) {
         await api.delete(`/users/${u.user_id}`);
@@ -246,6 +254,62 @@ const UserManagement: React.FC = () => {
     return true;
   });
 
+  // ── Steps for the add / edit form ─────────────────────────────────────────
+  type TabKey = 'basic' | 'roles' | 'schools' | 'branches';
+  const stepKeys: TabKey[] = ['basic', 'roles', ...(isGlobalManager ? ['schools' as TabKey] : []), 'branches'];
+  const stepLabels = stepKeys.map(k => ({ basic: 'Login details', roles: 'Choose a role', schools: 'Which schools?', branches: 'Which branches?' }[k]));
+  const stepIndex = Math.max(0, stepKeys.indexOf(activeTab));
+  const isLastStep = stepIndex === stepKeys.length - 1;
+  const basicMissing = !form.username ? 'Type a username first.'
+    : !form.useremail ? 'Type an email address first.'
+    : (!editingId && !form.password) ? 'Type a password first.'
+    : '';
+  const stepNote = stepIndex === 0 ? basicMissing : '';
+  const goNext = () => { if (!isLastStep) setActiveTab(stepKeys[stepIndex + 1]); };
+  const goBack = () => { if (stepIndex > 0) setActiveTab(stepKeys[stepIndex - 1]); else resetForm(); };
+
+  const userColumns: Column<UserRow>[] = [
+    {
+      key: 'user', header: 'User', primary: true,
+      render: u => (
+        <div className={!u.is_active ? 'opacity-60' : ''}>
+          <div className="font-semibold text-slate-900">{u.username}</div>
+          <div className="text-xs text-slate-500 font-normal break-all">{u.useremail}</div>
+        </div>
+      ),
+    },
+    { key: 'role', header: 'Role', render: u => <span className={ROLE_COLORS[u.role] || 'badge-neutral'}>{u.role}</span> },
+    ...(isGlobalManager ? [{ key: 'school', header: 'School', render: (u: UserRow) => u.school_name || '—' }] : []),
+    { key: 'branch', header: 'Branch', render: u => u.branch_name || '—' },
+    {
+      key: 'status', header: 'Status', align: 'center',
+      render: u => <Badge tone={u.is_active ? 'success' : 'danger'}>{u.is_active ? 'On' : 'Off'}</Badge>,
+    },
+    {
+      key: 'actions', header: 'Actions', align: 'right', hideOnMobile: true,
+      render: u => rowActions(u),
+    },
+  ];
+
+  function rowActions(u: UserRow) {
+    return (
+      <div className="flex items-center justify-end gap-2">
+        <button type="button" onClick={() => openEdit(u)} className="btn-secondary btn-sm min-h-[40px]">
+          Edit
+        </button>
+        {u.user_id !== currentUser?.user_id && (
+          <button
+            type="button"
+            onClick={() => handleToggleActive(u)}
+            className={`btn-sm min-h-[40px] ${u.is_active ? 'btn-ghost text-red-600' : 'btn-soft'}`}
+          >
+            {u.is_active ? 'Turn off' : 'Turn on'}
+          </button>
+        )}
+      </div>
+    );
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -253,18 +317,14 @@ const UserManagement: React.FC = () => {
       {/* Header */}
       <PageHeader
         eyebrow="Control Panel"
-        title="User Management"
-        subtitle={isGlobalManager ? 'Manage all users across all schools' : 'Manage users in your school'}
+        title="Users"
+        subtitle={isGlobalManager
+          ? 'People who can sign in to Edunex, in all schools. Add a user, change their role, or turn their login off.'
+          : 'People who can sign in to Edunex in your school. Add a user, change their role, or turn their login off.'}
         actions={
-          <button
-            onClick={openCreate}
-            className="btn-primary"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add User
-          </button>
+          <Button onClick={openCreate} icon={<Plus className="w-4 h-4" />}>
+            Add user
+          </Button>
         }
       />
 
@@ -275,121 +335,88 @@ const UserManagement: React.FC = () => {
         </Alert>
       )}
 
-      {/* ── Create / Edit Form Modal ─────────────────────────────────────────── */}
+      {/* ── Create / Edit Form (step by step) ───────────────────────────────── */}
       {showForm && (
-        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="card shadow-pop w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+          <div className="card shadow-pop w-full sm:max-w-md max-h-[100dvh] sm:max-h-[90vh] flex flex-col rounded-b-none sm:rounded-b-xl overflow-hidden">
             <div className="card-header">
               <h2 className="text-base font-semibold text-slate-900">
-                {editingId ? 'Edit User' : 'Create New User'}
+                {editingId ? `Edit ${form.username}` : 'Add a new user'}
               </h2>
-              <button onClick={resetForm} className="btn-icon" aria-label="Close">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <button type="button" onClick={resetForm} className="btn-icon h-11 w-11" aria-label="Close">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Tabs Header */}
-            <div className="flex border-b border-gray-200 bg-slate-50">
-              <button
-                type="button"
-                onClick={() => setActiveTab('basic')}
-                className={`btn flex-1 text-center border-b-2 ${ activeTab === 'basic' ? 'border-brand-600 text-brand-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100' }`}
-              >
-                Basic Info
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('roles')}
-                className={`btn flex-1 text-center border-b-2 ${ activeTab === 'roles' ? 'border-brand-600 text-brand-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100' }`}
-              >
-                Roles
-              </button>
-              {isGlobalManager && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('schools')}
-                  className={`btn flex-1 text-center border-b-2 ${ activeTab === 'schools' ? 'border-brand-600 text-brand-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100' }`}
-                >
-                  Schools
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setActiveTab('branches')}
-                className={`btn flex-1 text-center border-b-2 ${ activeTab === 'branches' ? 'border-brand-600 text-brand-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100' }`}
-              >
-                Branches
-              </button>
-            </div>
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              <Steps
+                steps={stepLabels}
+                current={stepIndex}
+                onJump={i => setActiveTab(stepKeys[i])}
+              />
 
-            <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
               {message && (
                 <Alert tone={message.type}>
                   {message.text}
                 </Alert>
               )}
 
-              {/* TAB 1: BASIC INFO */}
+              {/* STEP: LOGIN DETAILS */}
               {activeTab === 'basic' && (
                 <div className="space-y-4">
-                  {/* Username (only when creating) */}
                   {!editingId ? (
-                    <div>
-                      <label htmlFor="um-username" className="label">Username *</label>
+                    <Field label="Username" htmlFor="um-username" required hint="The name this person types to sign in.">
                       <input
                         type="text"
                         value={form.username}
                         onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
-                        className="input"
-                        placeholder="e.g. vizag_admin"
+                        className="input h-11"
+                        placeholder="For example: vizag_admin"
                         id="um-username"
+                        autoComplete="off"
+                        autoCapitalize="none"
                       />
-                    </div>
+                    </Field>
                   ) : (
-                    <div>
-                      <label className="label">Username</label>
-                      <div className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 font-semibold">
+                    <Field label="Username" hint="The username cannot be changed.">
+                      <div className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 font-semibold">
                         {form.username}
                       </div>
-                    </div>
+                    </Field>
                   )}
 
-                  {/* Email */}
-                  <div>
-                    <label className="label">Email *</label>
+                  <Field label="Email" htmlFor="um-email" required>
                     <input
                       type="email"
+                      inputMode="email"
                       value={form.useremail}
                       onChange={e => setForm(f => ({ ...f, useremail: e.target.value }))}
-                      className="input"
-                      placeholder="user@school.com"
+                      className="input h-11"
+                      placeholder="name@school.com"
                       id="um-email"
+                      autoComplete="off"
                     />
-                  </div>
+                  </Field>
 
-                  {/* Password (only when creating) */}
                   {!editingId && (
-                    <div>
-                      <label className="label">Password *</label>
+                    <Field label="Password" htmlFor="um-password" required hint="Use at least 8 characters. Share it with the person privately.">
                       <input
                         type="password"
                         value={form.password}
                         onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                        className="input"
-                        placeholder="Min 8 characters"
+                        className="input h-11"
+                        placeholder="At least 8 characters"
                         id="um-password"
+                        autoComplete="new-password"
                       />
-                    </div>
+                    </Field>
                   )}
                 </div>
               )}
 
-              {/* TAB 2: ROLES */}
+              {/* STEP: ROLE */}
               {activeTab === 'roles' && (
-                <div>
-                  <label className="label">Assigned Role *</label>
+                <Field label="Role" htmlFor="um-role" required hint="The role decides which screens this person can open.">
                   <select
                     value={form.role_id || (roles.find(r => r.name === form.role)?.id ?? form.role)}
                     onChange={e => {
@@ -400,7 +427,7 @@ const UserManagement: React.FC = () => {
                         role: selected ? selected.name : e.target.value,
                       }));
                     }}
-                    className="input"
+                    className="input h-11"
                     id="um-role"
                   >
                     {roles.length > 0 ? (
@@ -418,40 +445,35 @@ const UserManagement: React.FC = () => {
                       ))
                     )}
                   </select>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Roles define user permissions across the platform. Changing roles may affect which modules are accessible.
-                  </p>
-                </div>
+                </Field>
               )}
 
-              {/* TAB 3: SCHOOL ACCESS */}
+              {/* STEP: SCHOOLS */}
               {activeTab === 'schools' && isGlobalManager && (
                 <div className="space-y-4">
-                  <div>
-                    <label className="label">Primary School</label>
+                  <Field label="Main school" htmlFor="um-school">
                     <select
                       value={form.school_id}
                       onChange={e => setForm(f => ({ ...f, school_id: e.target.value }))}
-                      className="input"
+                      className="input h-11"
                       id="um-school"
                     >
-                      <option value="">-- Select School --</option>
+                      <option value="">Choose a school</option>
                       {schools.map(s => (
                         <option key={s.id} value={s.id}>{s.school_name}</option>
                       ))}
                     </select>
-                  </div>
+                  </Field>
 
-                  <div>
-                    <label className="label">Assigned Schools</label>
-                    <div className="grid grid-cols-1 gap-2 p-3 bg-slate-50 border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
+                  <Field label="Schools this user can open" hint="Tick every school this person works with.">
+                    <div className="grid grid-cols-1 gap-1 p-2 bg-slate-50 border border-slate-200 rounded-lg max-h-64 overflow-y-auto">
                       {schools.length === 0 ? (
-                        <span className="text-gray-400 text-xs">No schools available</span>
+                        <span className="text-slate-500 text-sm p-2">No schools yet</span>
                       ) : (
                         schools.map(s => {
                           const isChecked = form.school_ids.includes(s.id);
                           return (
-                            <label key={s.id} className="flex items-center space-x-3 text-sm text-gray-700 hover:bg-slate-100 p-2 rounded cursor-pointer transition-colors">
+                            <label key={s.id} className="flex items-center gap-3 min-h-[44px] text-sm text-slate-800 hover:bg-slate-100 active:bg-slate-100 px-2 rounded cursor-pointer transition-colors">
                               <input
                                 type="checkbox"
                                 checked={isChecked}
@@ -468,98 +490,104 @@ const UserManagement: React.FC = () => {
                                     };
                                   });
                                 }}
-                                className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
+                                className="h-5 w-5 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
                               />
-                              <span className="font-medium text-gray-900">{s.school_name}</span>
+                              <span className="font-medium text-slate-900">{s.school_name}</span>
                             </label>
                           );
                         })
                       )}
                     </div>
-                  </div>
+                  </Field>
                 </div>
               )}
 
-              {/* TAB 4: BRANCH ACCESS */}
+              {/* STEP: BRANCHES */}
               {activeTab === 'branches' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="label">Assigned Branches</label>
-                    <div className="grid grid-cols-1 gap-2 p-3 bg-slate-50 border border-gray-200 rounded-lg max-h-56 overflow-y-auto">
-                      {filteredBranches.length === 0 ? (
-                        <span className="text-gray-400 text-xs">No branches available for the selected school(s)</span>
-                      ) : (
-                        filteredBranches.map(b => {
-                          const isChecked = form.branch_ids.includes(b.id);
-                          return (
-                            <label key={b.id} className="flex items-center space-x-3 text-sm text-gray-700 hover:bg-slate-100 p-2 rounded cursor-pointer transition-colors">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => {
-                                  setForm(f => {
-                                    const newBranchIds = f.branch_ids.includes(b.id)
-                                      ? f.branch_ids.filter(id => id !== b.id)
-                                      : [...f.branch_ids, b.id];
-                                    return {
-                                      ...f,
-                                      branch_ids: newBranchIds,
-                                      branch_id: newBranchIds.length > 0 ? String(newBranchIds[0]) : '',
-                                    };
-                                  });
-                                }}
-                                className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
-                              />
-                              <div className="flex flex-col">
-                                <span className="font-medium text-gray-900">{b.branch_name}</span>
-                                <span className="text-gray-400 text-xs">({b.branch_code})</span>
-                              </div>
-                            </label>
-                          );
-                        })
-                      )}
-                    </div>
+                <Field label="Branches this user can open" hint="Tick every branch this person works in.">
+                  <div className="grid grid-cols-1 gap-1 p-2 bg-slate-50 border border-slate-200 rounded-lg max-h-72 overflow-y-auto">
+                    {filteredBranches.length === 0 ? (
+                      <span className="text-slate-500 text-sm p-2">No branches for the chosen school(s)</span>
+                    ) : (
+                      filteredBranches.map(b => {
+                        const isChecked = form.branch_ids.includes(b.id);
+                        return (
+                          <label key={b.id} className="flex items-center gap-3 min-h-[44px] text-sm text-slate-800 hover:bg-slate-100 active:bg-slate-100 px-2 py-1 rounded cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                setForm(f => {
+                                  const newBranchIds = f.branch_ids.includes(b.id)
+                                    ? f.branch_ids.filter(id => id !== b.id)
+                                    : [...f.branch_ids, b.id];
+                                  return {
+                                    ...f,
+                                    branch_ids: newBranchIds,
+                                    branch_id: newBranchIds.length > 0 ? String(newBranchIds[0]) : '',
+                                  };
+                                });
+                              }}
+                              className="h-5 w-5 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
+                            />
+                            <div className="flex flex-col">
+                              <span className="font-medium text-slate-900">{b.branch_name}</span>
+                              <span className="text-slate-500 text-xs">{b.branch_code}</span>
+                            </div>
+                          </label>
+                        );
+                      })
+                    )}
                   </div>
-                </div>
+                </Field>
               )}
             </div>
 
-            <div className="flex gap-3 p-5 border-t border-slate-200 bg-slate-50">
-              <button
-                onClick={handleSave}
-                className="btn-primary flex-1"
-                id="um-save-btn"
-              >
-                {editingId ? 'Update User' : 'Create User'}
-              </button>
-              <button
-                onClick={resetForm}
-                className="btn-secondary flex-1"
-              >
-                Cancel
-              </button>
+            <div className="p-4 border-t border-slate-200 bg-slate-50">
+              {stepNote && <p className="mb-2 text-sm text-slate-600">{stepNote}</p>}
+              <div className="flex gap-2 [&>*]:flex-1">
+                <Button variant="secondary" size="lg" onClick={goBack}>
+                  {stepIndex === 0 ? 'Cancel' : 'Back'}
+                </Button>
+                {isLastStep ? (
+                  <Button size="lg" onClick={handleSave} id="um-save-btn">
+                    {editingId ? 'Save changes' : 'Create user'}
+                  </Button>
+                ) : (
+                  <Button size="lg" onClick={goNext} disabled={!!stepNote}>
+                    Next
+                  </Button>
+                )}
+              </div>
+              {editingId && !isLastStep && (
+                <button type="button" onClick={handleSave} className="mt-2 w-full min-h-[44px] text-sm font-medium text-brand-700">
+                  Save changes now
+                </button>
+              )}
             </div>
           </div>
         </div>
       )}
 
       {/* ── Filters ──────────────────────────────────────────────────────────── */}
-      <div className="card p-4 mb-4 flex flex-col sm:flex-row gap-3">
+      <div className="card p-4 mb-4 grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3">
         <input
-          type="text"
+          type="search"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Search by username or email..."
-          className="input flex-1"
+          placeholder="Search by username or email"
+          className="input h-11"
           id="um-search"
+          aria-label="Search users"
         />
         {isGlobalManager && (
           <select
             value={filterSchool}
             onChange={e => setFilterSchool(e.target.value)}
-            className="input w-auto"
+            className="input h-11 sm:w-auto"
+            aria-label="Filter by school"
           >
-            <option value="">All Schools</option>
+            <option value="">All schools</option>
             {schools.map(s => (
               <option key={s.id} value={s.id}>{s.school_name}</option>
             ))}
@@ -568,9 +596,10 @@ const UserManagement: React.FC = () => {
         <select
           value={filterRole}
           onChange={e => setFilterRole(e.target.value)}
-          className="input w-auto"
+          className="input h-11 sm:w-auto"
+          aria-label="Filter by role"
         >
-          <option value="">All Roles</option>
+          <option value="">All roles</option>
           {roles.length > 0
             ? roles.map(r => <option key={r.id} value={r.name}>{r.name}</option>)
             : ROLES.map(r => <option key={r} value={r}>{r}</option>)
@@ -578,98 +607,21 @@ const UserManagement: React.FC = () => {
         </select>
       </div>
 
-      {/* ── Users Table ──────────────────────────────────────────────────────── */}
-      <div className="card overflow-hidden">
-        {loading ? (
-          <LoadingState label="Loading users..." />
-        ) : displayedUsers.length === 0 ? (
-          <EmptyState
-            title="No users found"
-            icon={
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            }
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 text-left">#</th>
-                  <th className="px-4 py-3 text-left">User</th>
-                  <th className="px-4 py-3 text-left">Role</th>
-                  {isGlobalManager && (
-                    <th className="px-4 py-3 text-left">School</th>
-                  )}
-                  <th className="px-4 py-3 text-left">Branch</th>
-                  <th className="px-4 py-3 text-center">Status</th>
-                  <th className="px-4 py-3 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {displayedUsers.map((u, idx) => (
-                  <tr key={u.user_id} className={`hover:bg-gray-50 transition-colors ${!u.is_active ? 'opacity-50' : ''}`}>
-                    <td className="px-4 py-3 text-gray-400">{idx + 1}</td>
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-gray-800">{u.username}</div>
-                      <div className="text-xs text-gray-400">{u.useremail}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={ROLE_COLORS[u.role] || 'badge-neutral'}>
-                        {u.role}
-                      </span>
-                    </td>
-                    {isGlobalManager && (
-                      <td className="px-4 py-3 text-gray-600 text-xs">{u.school_name || '—'}</td>
-                    )}
-                    <td className="px-4 py-3 text-gray-600 text-xs">{u.branch_name || '—'}</td>
-                    <td className="px-4 py-3 text-center">
-                      <Badge tone={u.is_active ? 'success' : 'danger'}>
-                        {u.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => openEdit(u)}
-                          className="btn-icon h-8 w-8 text-brand-600 hover:bg-brand-50 hover:text-brand-700"
-                          title="Edit"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        {u.user_id !== currentUser?.user_id && (
-                          <button
-                            onClick={() => handleToggleActive(u)}
-                            className={`btn-icon h-8 w-8 ${u.is_active ? 'text-red-500 hover:text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'}`}
-                            title={u.is_active ? 'Deactivate' : 'Reactivate'}
-                          >
-                            {u.is_active ? (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                              </svg>
-                            ) : (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {/* Footer */}
-        <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 text-xs text-slate-500">
+      {/* ── Users list (table on desktop, cards on phones) ───────────────────── */}
+      <DataList
+        columns={userColumns}
+        rows={displayedUsers}
+        rowKey={u => u.user_id}
+        loading={loading}
+        emptyTitle="No users found"
+        emptyHint={searchQuery || filterRole || filterSchool ? 'Try a different search or filter.' : 'Tap "Add user" to add the first one.'}
+        mobileActions={u => rowActions(u)}
+      />
+      {!loading && (
+        <p className="mt-3 text-sm text-slate-500">
           Showing {displayedUsers.length} of {users.length} users
-        </div>
-      </div>
+        </p>
+      )}
     </div>
   );
 };
