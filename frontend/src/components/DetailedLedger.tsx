@@ -23,7 +23,8 @@ interface DetailedLedgerProps {
 const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
     const globalYear = localStorage.getItem('academicYear') || '2026-2027';
     const globalBranchName = localStorage.getItem('currentBranch') || 'All';
-    const [academicYear, setAcademicYear] = useState(globalYear);
+    // The financial year always follows the academic year chosen in the header.
+    const academicYear = globalYear;
     const [branches, setBranches] = useState<any[]>([]);
     const [selectedBranch, setSelectedBranch] = useState<string>('All');
     const [detailsData, setDetailsData] = useState<LedgerDetailRow[]>([]);
@@ -165,15 +166,8 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="font-medium text-sm text-slate-700">FY:</span>
-                            <select
-                                className="input w-auto"
-                                value={academicYear}
-                                onChange={(e) => setAcademicYear(e.target.value)}
-                            >
-                                <option value="2025-2026">2025-2026</option>
-                                <option value="2026-2027">2026-2027</option>
-                                <option value="2027-2028">2027-2028</option>
-                            </select>
+                            {/* Follows the academic year selected in the header (Apr–Mar of that year) */}
+                            <span className="badge-brand text-xs" title="Change the academic year from the header">{academicYear}</span>
                         </div>
                         <button
                             onClick={handleExcelExport}
