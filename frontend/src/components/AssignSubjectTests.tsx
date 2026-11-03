@@ -196,14 +196,14 @@ export default function AssignSubjectTests() {
 
     /* ---------------- RENDER ---------------- */
     return (
-        <div className="p-6 bg-white rounded-lg shadow-md min-h-screen">
+        <div className="card p-6 min-h-full">
             {/* HEADER */}
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Assign Subjects to Test</h2>
+                <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Assign Subjects to Test</h2>
                 {classTestId && (
                     <button
                         onClick={() => setIsCopyModalOpen(true)}
-                        className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition"
+                        className="btn-primary"
                     >
                         <Copy size={16} /> <span>Copy Structure</span>
                     </button>
@@ -214,9 +214,9 @@ export default function AssignSubjectTests() {
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 bg-gray-50 p-4 rounded border">
                 {/* Academic Year */}
                 <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Academic Year</label>
+                    <label className="label">Academic Year</label>
                     <select
-                        className="w-full border p-2 rounded"
+                        className="input"
                         value={filters.academic_year_id}
                         disabled
                         onChange={e => setFilters({ ...filters, academic_year_id: e.target.value })}
@@ -228,9 +228,9 @@ export default function AssignSubjectTests() {
 
                 {/* Branch */}
                 <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Branch</label>
+                    <label className="label">Branch</label>
                     <select
-                        className="w-full border p-2 rounded"
+                        className="input"
                         value={filters.branch_id}
                         disabled
                         onChange={e => setFilters({ ...filters, branch_id: e.target.value })}
@@ -242,9 +242,9 @@ export default function AssignSubjectTests() {
 
                 {/* Class */}
                 <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Class</label>
+                    <label className="label">Class</label>
                     <select
-                        className="w-full border p-2 rounded"
+                        className="input"
                         value={filters.class_id}
                         onChange={e => setFilters({ ...filters, class_id: e.target.value })}
                     >
@@ -255,9 +255,9 @@ export default function AssignSubjectTests() {
 
                 {/* Test */}
                 <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Test</label>
+                    <label className="label">Test</label>
                     <select
-                        className="w-full border p-2 rounded"
+                        className="input"
                         value={filters.test_id}
                         onChange={e => setFilters({ ...filters, test_id: e.target.value })}
                     >
@@ -268,9 +268,9 @@ export default function AssignSubjectTests() {
 
                 {/* Subject Type */}
                 <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Subject Type</label>
+                    <label className="label">Subject Type</label>
                     <select
-                        className="w-full border p-2 rounded"
+                        className="input"
                         value={filters.subject_type}
                         onChange={e => setFilters({ ...filters, subject_type: e.target.value })}
                     >
@@ -301,7 +301,7 @@ export default function AssignSubjectTests() {
                     {/* TABLE */}
                     <div className="overflow-x-auto border rounded shadow-sm">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-100 text-gray-700 uppercase">
+                            <thead className="">
                                 <tr>
                                     <th className="px-4 py-3">Subject Name</th>
                                     <th className="px-4 py-3">Type</th>
@@ -326,7 +326,7 @@ export default function AssignSubjectTests() {
                                         <td className="px-4 py-2">
                                             <input
                                                 type="number"
-                                                className={`w-full border rounded p-1 ${!s.assigned ? 'bg-gray-100' : ''}`}
+                                                className={`input ${!s.assigned ? 'bg-gray-100' : ''}`}
                                                 disabled={!s.assigned}
                                                 value={s.max_marks ?? ''}
                                                 onChange={(e) => updateSubject(idx, 'max_marks', Number(e.target.value))}
@@ -335,7 +335,7 @@ export default function AssignSubjectTests() {
                                         <td className="px-4 py-2">
                                             <input
                                                 type="number"
-                                                className={`w-full border rounded p-1 ${!s.assigned ? 'bg-gray-100' : ''}`}
+                                                className={`input ${!s.assigned ? 'bg-gray-100' : ''}`}
                                                 disabled={!s.assigned}
                                                 value={s.subject_order ?? ''}
                                                 onChange={(e) => updateSubject(idx, 'subject_order', Number(e.target.value))}
@@ -352,14 +352,14 @@ export default function AssignSubjectTests() {
                         <button
                             onClick={() => loadMatrix()}
                             disabled={saving}
-                            className="bg-gray-200 text-gray-700 px-8 py-3 rounded shadow hover:bg-gray-300 flex items-center space-x-2"
+                            className="btn-secondary btn-lg"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
                             disabled={saving}
-                            className="bg-blue-600 text-white px-8 py-3 rounded shadow hover:bg-blue-700 flex items-center space-x-2"
+                            className="btn-primary btn-lg"
                         >
                             <Save size={16} /> <span>{saving ? "Saving..." : "Save Assignments"}</span>
                         </button>

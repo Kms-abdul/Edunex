@@ -87,16 +87,16 @@ export const DesignationMaster: React.FC = () => {
     const currentSchoolId = localStorage.getItem('currentSchoolId');
     if (!currentSchoolId || currentSchoolId === 'all') {
         return (
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center">
-                <h2 className="text-lg font-bold text-slate-800 mb-2">Designation Master</h2>
+            <div className="card p-6 text-center">
+                <h2 className="text-base font-semibold text-slate-900 mb-2">Designation Master</h2>
                 <p className="text-slate-500 text-sm">Please select a specific school from the top navigation to view and manage designations.</p>
             </div>
         );
     }
 
     return (
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-4">Designation Master</h2>
+        <div className="card p-6">
+            <h2 className="text-base font-semibold text-slate-900 mb-4">Designation Master</h2>
 
             {msg && (
                 <div className={`mb-4 p-3 rounded text-sm ${msg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
@@ -106,32 +106,32 @@ export const DesignationMaster: React.FC = () => {
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Department *</label>
-                    <select required value={form.department_id} onChange={e => setForm({ ...form, department_id: e.target.value })} className="w-full border rounded p-2 text-sm">
+                    <label className="label">Department *</label>
+                    <select required value={form.department_id} onChange={e => setForm({ ...form, department_id: e.target.value })} className="input">
                         <option value="">Select Department</option>
                         {departments.map(d => <option key={d.id} value={d.id}>{d.department_name}</option>)}
                     </select>
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Code *</label>
-                    <input type="text" required value={form.designation_code} onChange={e => setForm({ ...form, designation_code: e.target.value.replace(/^0+/, '') })} disabled={!!editingId} className="w-full border rounded p-2 text-sm disabled:bg-gray-100" />
+                    <label className="label">Code *</label>
+                    <input type="text" required value={form.designation_code} onChange={e => setForm({ ...form, designation_code: e.target.value.replace(/^0+/, '') })} disabled={!!editingId} className="input" />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Name *</label>
-                    <input type="text" required value={form.designation_name} onChange={e => setForm({ ...form, designation_name: e.target.value })} className="w-full border rounded p-2 text-sm" />
+                    <label className="label">Name *</label>
+                    <input type="text" required value={form.designation_name} onChange={e => setForm({ ...form, designation_name: e.target.value })} className="input" />
                 </div>
                 <div className="md:col-span-3 flex gap-2">
-                    <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700">{editingId ? 'Update' : 'Save'} Designation</button>
+                    <button type="submit" className="btn-primary">{editingId ? 'Update' : 'Save'} Designation</button>
                     {editingId && (
-                        <button type="button" onClick={() => { setEditingId(null); setForm({ department_id: '', designation_code: '', designation_name: '', description: '', display_order: 0, status: 'ACTIVE' }); }} className="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-300">Cancel</button>
+                        <button type="button" onClick={() => { setEditingId(null); setForm({ department_id: '', designation_code: '', designation_name: '', description: '', display_order: 0, status: 'ACTIVE' }); }} className="btn-secondary">Cancel</button>
                     )}
                 </div>
             </form>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
                 <table className="w-full text-left text-sm">
                     <thead>
-                        <tr className="bg-slate-50 text-slate-600">
+                        <tr className="">
                             <th className="p-2 border-b">Department</th>
                             <th className="p-2 border-b">Code</th>
                             <th className="p-2 border-b">Name</th>

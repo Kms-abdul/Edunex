@@ -390,14 +390,14 @@ const MarksEntryAllSubjects: React.FC = () => {
             <h2 className="text-xl font-bold text-gray-700 mb-4 border-b pb-2">Enter All Subject Marks</h2>
 
             {/* --- FILTERS --- */}
-            <div className="bg-white p-4 rounded shadow-sm mb-6 grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="card p-4 mb-6 grid grid-cols-1 md:grid-cols-5 gap-4">
                 {/* Class */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Class</label>
+                    <label className="label">Class</label>
                     <select
                         value={selectedClass}
                         onChange={e => setSelectedClass(e.target.value)}
-                        className="mt-1 block w-full rounded-md border p-2 border-gray-300 shadow-sm"
+                        className="input mt-1"
                     >
                         <option value="">Select Class</option>
                         {classes.map(c => <option key={c.id} value={c.id}>{c.class_name}</option>)}
@@ -406,11 +406,11 @@ const MarksEntryAllSubjects: React.FC = () => {
 
                 {/* Section */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Section</label>
+                    <label className="label">Section</label>
                     <select
                         value={selectedSection}
                         onChange={e => setSelectedSection(e.target.value)}
-                        className="mt-1 block w-full rounded-md border p-2 border-gray-300 shadow-sm"
+                        className="input mt-1"
                     >
                         <option value="">Select Section</option>
                         {sections.map(s => <option key={s} value={s}>{s}</option>)}
@@ -419,11 +419,11 @@ const MarksEntryAllSubjects: React.FC = () => {
 
                 {/* Subject Type */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Subject Type</label>
+                    <label className="label">Subject Type</label>
                     <select
                         value={selectedSubjectType}
                         onChange={e => setSelectedSubjectType(e.target.value)}
-                        className="mt-1 block w-full rounded-md border p-2 border-gray-300 shadow-sm"
+                        className="input mt-1"
                     >
                         <option value="All">All Types</option>
                         <option value="Academic">Academic</option>
@@ -434,11 +434,11 @@ const MarksEntryAllSubjects: React.FC = () => {
 
                 {/* Exam Type / Test */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Exam Type</label>
+                    <label className="label">Exam Type</label>
                     <select
                         value={selectedTestId}
                         onChange={e => setSelectedTestId(e.target.value)}
-                        className="mt-1 block w-full rounded-md border p-2 border-gray-300 shadow-sm"
+                        className="input mt-1"
                     >
                         <option value="">Select Exam</option>
                         {tests.map(t => <option key={t.test_id} value={t.test_id}>{t.test_name}</option>)}
@@ -447,9 +447,9 @@ const MarksEntryAllSubjects: React.FC = () => {
 
                 {/* Select Subjects (Multiple) */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Select Subjects</label>
+                    <label className="label">Select Subjects</label>
                     <div className="relative group">
-                        <button className="mt-1 block w-full text-left rounded-md border p-2 border-gray-300 shadow-sm bg-white overflow-hidden text-ellipsis whitespace-nowrap">
+                        <button className="btn-secondary mt-1 block w-full text-left overflow-hidden text-ellipsis">
                             {selectedSubjectIds.length === filteredSubjects.length && filteredSubjects.length > 0 ? `All ${selectedSubjectType === 'All' ? '' : selectedSubjectType} Subjects` : `${selectedSubjectIds.length} Selected`}
                         </button>
                         {/* Simple Dropdown for Multi-select */}
@@ -481,7 +481,7 @@ const MarksEntryAllSubjects: React.FC = () => {
                 <button
                     onClick={handleGetData}
                     disabled={loading || !selectedTestId}
-                    className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
+                    className="btn-primary"
                 >
                     {loading ? "Loading..." : "GET Button"}
                 </button>
@@ -496,31 +496,31 @@ const MarksEntryAllSubjects: React.FC = () => {
 
             {/* --- TABLE --- */}
             {students.length > 0 && (
-                <div className="bg-white shadow rounded overflow-hidden">
+                <div className="card overflow-hidden">
                     <div className="p-3 bg-gray-50 border-b flex justify-between items-center">
                         <div className="font-bold text-gray-700">Student Marks</div>
                     </div>
 
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto rounded-lg border border-slate-200">
                         <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
+                            <thead className="">
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">S.no</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-12 bg-gray-50 z-10">Student Name</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll No</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Adm No</th>
+                                    <th className="px-4 py-3 text-left sticky left-0 z-10">S.no</th>
+                                    <th className="px-4 py-3 text-left sticky left-12 z-10">Student Name</th>
+                                    <th className="px-4 py-3 text-left">Roll No</th>
+                                    <th className="px-4 py-3 text-left">Adm No</th>
 
                                     {/* Subject Columns */}
                                     {subjects.filter(s => selectedSubjectIds.includes(s.id)).map(s => {
                                         const max = subjectMaxMarks[s.id];
                                         return (
-                                            <th key={s.id} className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                                            <th key={s.id} className="px-4 py-3 text-center min-w-[100px]">
                                                 {s.subject_name} ({max !== undefined ? max : '-'})
                                             </th>
                                         );
                                     })}
 
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                    <th className="px-4 py-3 text-left">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
@@ -555,10 +555,103 @@ const MarksEntryAllSubjects: React.FC = () => {
                                                                 onChange={(e) => handleMarkChange(sId, s.id, e.target.value)}
                                                                 onBlur={() => handleMarkBlur(sId, s.id)}
                                                                 placeholder={!isAssigned ? "-" : ""}
-                                                                className={`w-16 text-center border rounded py-1 focus:ring-2 focus:outline-none 
+                                                                className={`input w-16 text-center 
                                                                 ${isAbsent ? 'bg-red-50 text-red-600 font-bold border-red-300' : 'border-gray-300'}
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
                                                                 ${!isRowEditing || !isAssigned ? 'bg-gray-100' : ''}
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
+                                                                
                                                                 ${!isAssigned ? 'cursor-not-allowed opacity-50 placeholder-gray-400' : ''}
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
                                                             `}
                                                             />
                                                         </div>
@@ -570,7 +663,7 @@ const MarksEntryAllSubjects: React.FC = () => {
                                                 {!isRowEditing ? (
                                                     <button
                                                         onClick={() => handleEditRow(sId)}
-                                                        className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium text-xs px-2 py-1 border border-blue-200 rounded hover:bg-blue-50"
+                                                        className="btn-secondary btn-sm text-blue-600 hover:text-blue-800 border-blue-200"
                                                     >
                                                         <Edit size={14} /> Edit
                                                     </button>
@@ -578,7 +671,7 @@ const MarksEntryAllSubjects: React.FC = () => {
                                                     <button
                                                         onClick={() => handleSaveRow(sId)}
                                                         disabled={isRowSaving}
-                                                        className="flex items-center gap-1 text-white bg-green-600 hover:bg-green-700 font-medium text-xs px-2 py-1 rounded shadow-sm disabled:bg-gray-400"
+                                                        className="btn-success btn-sm"
                                                     >
                                                         {isRowSaving ? '...' : <><Save size={14} /> Save</>}
                                                     </button>
@@ -597,7 +690,7 @@ const MarksEntryAllSubjects: React.FC = () => {
                 <div className="mt-4 flex justify-end">
                     <button
                         onClick={handleDownload}
-                        className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                        className="btn-success"
                     >
                         <FileDown size={16} /> Download Excel
                     </button>

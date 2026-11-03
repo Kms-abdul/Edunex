@@ -1,8 +1,8 @@
 import os
 # pyrefly: ignore [missing-import]
-from flask import Blueprint, jsonify, request, current_app, send_from_directory
+from flask import Blueprint, jsonify, request, current_app, send_from_directory, send_file
 from extensions import db
-from models import Branch, School, OrgMaster, User, UserBranchAccess, ClassMaster, ClassSection
+from models import Branch, School, OrgMaster, User, UserBranchAccess, ClassMaster, ClassSection, ClassDisplayOrder
 from services.sequence_service import SequenceService
 from helpers import token_required, require_academic_year, get_branch_query_filter, get_user_allowed_branches, has_permission, validate_cross_branch_access
 from datetime import date, datetime
@@ -196,47 +196,52 @@ def upload_school_logo(current_user, school_id):
     if not _allowed_logo(file.filename):
         return jsonify({"error": f"File type not allowed. Use: {', '.join(ALLOWED_LOGO_EXTENSIONS)}"}), 400
 
-    ext = file.filename.rsplit('.', 1)[1].lower()
-    filename = f"school_{school_id}.{ext}"
+    import traceback
     
     try:
-        from services.storage_service import upload_file_to_storage
-        upload_file_to_storage(file, filename, folder="franchise/public/logos")
-    except (ValueError, ImportError):
-        folder = get_logo_folder()
-        os.makedirs(folder, exist_ok=True)
-        filepath = os.path.join(folder, filename)
-        file.save(filepath)
+        filename = secure_filename(file.filename)
+        
+        logos_folder = os.path.abspath(os.path.join(current_app.root_path, 'static', 'logos'))
+        os.makedirs(logos_folder, exist_ok=True)
+        
+        file_path = os.path.join(logos_folder, filename)
+        file.save(file_path)
+        
+        school.logo_url = f"/static/logos/{filename}"
+        school.updated_by = current_user.user_id
 
-    logo_url = f"/static/logos/{filename}"
-    school.logo_url = logo_url
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to save logo locally: {str(e)}"}), 500
+
     try:
         db.session.commit()
-        return jsonify({"message": "Logo uploaded", "logo_url": logo_url}), 200
+
+        return jsonify({
+            "message": "Logo uploaded successfully",
+            "logo_url": school.logo_url
+        }), 200
+
     except Exception as e:
         db.session.rollback()
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # SERVE SCHOOL LOGOS
 # ─────────────────────────────────────────────────────────────────────────────
 
-@bp.route("/static/logos/<path:filename>", methods=["GET"])
-def serve_logo(filename):
-    try:
-        from services.storage_service import get_file_stream
-        stream = get_file_stream(f"franchise/public/logos/{filename}")
-    except ImportError:
-        stream = None
+@bp.route("/schools/<int:school_id>/logo", methods=["GET"])
+def get_school_logo(school_id):
+    school = School.query.get(school_id)
+    if not school or not school.logo_url:
+        return jsonify({"message": "Logo not found"}), 404
 
-    if stream:
-        from flask import send_file
-        import io
-        ext = filename.rsplit('.', 1)[-1].lower()
-        mimetype = f"image/{ext}" if ext != 'jpg' else "image/jpeg"
-        return send_file(io.BytesIO(stream.read()), mimetype=mimetype)
+    # School logos are always stored locally
+    filename = school.logo_url.split("/")[-1]
     return send_from_directory(get_logo_folder(), filename)
+
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -453,7 +458,7 @@ def create_location(current_user):
 @bp.route("/api/org/academic-years", methods=["GET"])
 def get_all_academic_years():
     try:
-        years = OrgMaster.query.filter_by(master_type='ACADEMIC_YEAR', is_active=True).all()
+        years = OrgMaster.query.filter_by(master_type='ACADEMIC_YEAR', is_active=True).order_by(OrgMaster.code.desc()).all()
         return jsonify({
             "academic_years": [{"id": y.id, "code": y.code, "name": y.display_name} for y in years]
         }), 200
@@ -588,9 +593,24 @@ def get_classes(current_user):
             )
             query = query.filter(branch_cond)
 
-    query = query.distinct(ClassMaster.id)
-    classes = query.order_by(ClassMaster.id.asc()).all()
+    from sqlalchemy import and_
+    if branch_obj:
+        query = query.outerjoin(ClassDisplayOrder, and_(
+            ClassDisplayOrder.class_id == ClassMaster.id,
+            ClassDisplayOrder.branch_id == branch_obj.id
+        ))
+        
+        query = query.with_entities(ClassMaster, ClassDisplayOrder.display_order)
+        # We group by ClassMaster.id to ensure uniqueness and allow ordering in MySQL
+        query = query.group_by(ClassMaster.id, ClassDisplayOrder.display_order)
+        results = query.order_by(ClassDisplayOrder.display_order.asc(), ClassMaster.id.asc()).all()
+        
+        classes_list = [{"id": r[0].id, "class_name": r[0].class_name} for r in results]
+    else:
+        query = query.distinct()
+        classes_obj = query.order_by(ClassMaster.id.asc()).all()
+        classes_list = [{"id": c.id, "class_name": c.class_name} for c in classes_obj]
     
     return jsonify({
-        "classes": [{"id": c.id, "class_name": c.class_name} for c in classes]
+        "classes": classes_list
     }), 200

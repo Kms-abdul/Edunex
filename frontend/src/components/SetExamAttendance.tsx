@@ -296,6 +296,37 @@ const SetExamAttendance: React.FC = () => {
                                 ${selectedMonths.has(m.key)
                                     ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200'
                                     : 'hover:bg-gray-50 border-gray-200'}
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
+                            
                             `}
                         >
                             <input
@@ -316,17 +347,17 @@ const SetExamAttendance: React.FC = () => {
 
     return (
         <div className="p-6 max-w-5xl mx-auto">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <Calendar className="text-[#337ab7]" />
+            <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 flex items-center gap-2">
+                <Calendar className="text-brand-600" />
                 Set Exam Attendance
             </h2>
 
             {/* Config Area */}
-            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            <div className="card p-6 mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     {/* Academic Year */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                        <label className="label">Academic Year</label>
                         <div className="p-2 bg-gray-100 rounded border text-gray-700 font-medium">
                             {academicYear}
                         </div>
@@ -334,7 +365,7 @@ const SetExamAttendance: React.FC = () => {
 
                     {/* Branch Selector */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+                        <label className="label">Branch</label>
                         <select
                             value={selectedBranch}
                             disabled={true}
@@ -342,7 +373,7 @@ const SetExamAttendance: React.FC = () => {
                                 setSelectedBranch(e.target.value);
                                 setSelectedClass(''); // Reset class on branch change
                             }}
-                            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="input"
                         >
                             <option value="">-- Select Branch --</option>
                             {branches.map(b => (
@@ -353,11 +384,11 @@ const SetExamAttendance: React.FC = () => {
 
                     {/* Class Selector */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                        <label className="label">Class</label>
                         <select
                             value={selectedClass}
                             onChange={(e) => setSelectedClass(e.target.value)}
-                            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="input"
                             disabled={!selectedBranch || loadingClasses}
                         >
                             <option value="">-- Select Class --</option>
@@ -369,11 +400,11 @@ const SetExamAttendance: React.FC = () => {
 
                     {/* Test Selector */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Select Exam</label>
+                        <label className="label">Select Exam</label>
                         <select
                             value={selectedTestId || ''}
                             onChange={(e) => setSelectedTestId(Number(e.target.value) || null)}
-                            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="input"
                             disabled={loadingTests}
                         >
                             <option value="">-- Select Exam --</option>
@@ -431,7 +462,7 @@ const SetExamAttendance: React.FC = () => {
                             <button
                                 onClick={handleSave}
                                 disabled={saving || loadingMapping || selectedMonths.size === 0}
-                                className="bg-[#337ab7] text-white px-6 py-2 rounded shadow hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 font-medium"
+                                className="btn-primary"
                             >
                                 {saving ? 'Saving...' : <><Save size={18} /> Save Settings</>}
                             </button>

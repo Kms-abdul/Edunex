@@ -179,13 +179,13 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         const filters = ['All', 'Active', 'Inactive', 'TC'];
 
         return (
-            <div className="bg-white rounded-lg shadow h-full flex flex-col border border-gray-200 print:hidden">
+            <div className="card h-full flex flex-col print:hidden">
                 {/* Status Dropdown / List */}
                 <div className="p-2 border-b bg-white">
                     {/* Dropdown for Status */}
                     <div className="relative mb-2">
                         <select
-                            className="w-full border border-gray-300 rounded-md px-3 py-1.5 bg-white text-gray-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="input font-medium"
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
                         >
@@ -198,7 +198,7 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         {/* Status Items mimicking list group */}
                         {/* Header Total */}
                         <div
-                            className="flex justify-between p-2 bg-blue-600 text-white cursor-pointer"
+                            className="bg-slate-50 text-slate-800 text-sm border-b border-slate-200 rounded-t-xl flex justify-between p-2 cursor-pointer"
                             onClick={() => setStatusFilter('All')}
                         >
                             <span className="font-semibold">All</span>
@@ -251,13 +251,13 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
     const renderMiddleSidebar = () => {
         if (!selectedClass || !selectedClassObject) return (
-            <div className="bg-white rounded-lg shadow h-full flex items-center justify-center text-gray-400 text-sm p-4 text-center border border-gray-200 print:hidden">
+            <div className="card h-full flex items-center justify-center text-gray-400 text-sm p-4 text-center print:hidden">
                 <span className="italic">Select Class</span>
             </div>
         );
 
         return (
-            <div className="bg-white rounded-lg shadow h-full flex flex-col border border-green-100 print:hidden">
+            <div className="card h-full flex flex-col border-green-100 print:hidden">
                 {/* Header Style Match: Green icons and text */}
                 <div className="p-3 border-b border-green-100 flex justify-between items-center text-green-700 bg-white">
                     <div className="flex items-center gap-2">
@@ -280,7 +280,7 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
                 <div className="flex-1 overflow-y-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b hidden">
+                        <thead className="border-b hidden">
                             <tr>
                                 <th className="px-3 py-2">Section</th>
                                 <th className="px-3 py-2 text-right">Total</th>
@@ -315,18 +315,18 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     // Pagination placeholder (Functional in logic but not connected to backend for now)
     const renderPagination = () => (
         <div className="flex items-center gap-1">
-            <button className="p-1 w-8 h-8 flex items-center justify-center bg-green-500 text-white rounded hover:bg-green-600 font-bold text-xs" title="First">«</button>
-            <button className="p-1 w-8 h-8 flex items-center justify-center bg-orange-400 text-white rounded hover:bg-orange-500 font-bold text-xs" title="Prev">‹ 1</button>
+            <button className="btn-success btn-sm w-8 h-8" title="First">«</button>
+            <button className="btn-warn btn-sm w-8 h-8" title="Prev">‹ 1</button>
             <div className="flex items-center justify-center w-8 h-8 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold border border-yellow-300">10</div>
-            <button className="p-1 w-8 h-8 flex items-center justify-center bg-green-500 text-white rounded hover:bg-green-600 font-bold text-xs" title="Next">N</button>
-            <button className="p-1 w-8 h-8 flex items-center justify-center bg-orange-300 text-white rounded hover:bg-orange-400 font-bold text-xs" title="PerPage">10</button>
+            <button className="btn-success btn-sm w-8 h-8" title="Next">N</button>
+            <button className="btn-warn btn-sm w-8 h-8" title="PerPage">10</button>
         </div>
     );
 
     const renderStudentList = () => {
         if (viewMode === 'create') {
             return (
-                <div className="bg-white rounded-lg shadow h-full p-4 overflow-y-auto">
+                <div className="card h-full p-4 overflow-y-auto">
                     <button onClick={() => setViewMode('summary')} className="mb-4 text-sm text-blue-600 hover:underline">← Back to List</button>
                     <CreateStudent mode="create" onSave={() => { setViewMode('summary'); fetchStudents(); fetchSummary(); }} onCancel={() => setViewMode('summary')} />
                 </div>
@@ -337,7 +337,7 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             <div className="h-full flex flex-col gap-4 print:h-auto print:block">
               
                 {/* Main Content Card */}
-                <div className="bg-white rounded-lg shadow flex-1 flex flex-col overflow-hidden print:shadow-none print:h-auto">
+                <div className="card flex-1 flex flex-col overflow-hidden print:shadow-none print:h-auto">
                     {/* Sub Header */}
                     <div className="p-3 bg-violet-50 border-b flex justify-between items-center flex-wrap gap-2 print:bg-white print:border-none">
                         <div className="font-bold text-gray-800 text-lg flex items-center gap-2">
@@ -363,7 +363,7 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
                             <div className="relative">
                                 <input
-                                    className="border border-purple-200 rounded-full px-4 py-1 text-sm w-48 focus:ring-2 focus:ring-purple-500 outline-none"
+                                    className="input border-purple-200 rounded-full w-48"
                                     placeholder="Search"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
@@ -375,9 +375,9 @@ const ClassSummary: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     {/* Table */}
                     <div className="flex-1 overflow-auto print:overflow-visible">
                         <table className="min-w-full text-sm divide-y divide-gray-200">
-                            <thead className="bg-gray-50 text-gray-500 font-semibold print:bg-white print:border-b-2 print:border-black">
+                            <thead className="print:bg-white print:border-b-2 print:border-black">
                                 <tr>
-                                    <th className="px-4 py-3 text-left w-12 text-gray-700">#</th>
+                                    <th className="px-4 py-3 text-left w-12">#</th>
                                     <th className="px-4 py-3 text-left">Roll</th>
                                     <th className="px-4 py-3 text-left">Status</th>
                                     <th className="px-4 py-3 text-left">Name</th>

@@ -191,7 +191,7 @@ const UpdateStudentFeeStructure: React.FC = () => {
     const selectedStudent = students.find(s => s.student_id === selectedStudentId);
 
     return (
-        <div className="container-fluid mx-auto p-4 bg-gray-50 min-h-screen">
+        <div className="container-fluid mx-auto p-4 bg-gray-50 min-h-full">
             {/* Header */}
             <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 mb-6 flex justify-between items-center rounded-r shadow-sm">
                 <div className="flex items-center">
@@ -210,7 +210,7 @@ const UpdateStudentFeeStructure: React.FC = () => {
                                 type="text"
                                 value={displayBranch}
                                 readOnly
-                                className="border rounded px-2 py-1 text-sm outline-none bg-gray-100 cursor-not-allowed w-32 focus:ring-2 ring-indigo-300"
+                                className="input w-32 ring-indigo-300"
                                 title="Current Branch"
                             />
                         );
@@ -220,12 +220,12 @@ const UpdateStudentFeeStructure: React.FC = () => {
                         placeholder="Search Name/AdmNo/EnrollmentNo"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="border rounded px-3 py-1 text-sm outline-none w-40 focus:ring-2 ring-indigo-300"
+                        className="input w-40 ring-indigo-300"
                     />
                     <select
                         value={selectedClass}
                         onChange={e => setSelectedClass(e.target.value)}
-                        className="border rounded px-2 py-1 text-sm outline-none w-24 focus:ring-2 ring-indigo-300"
+                        className="input w-24 ring-indigo-300"
                     >
                         <option value="">Class</option>
                         {classes.map(c => <option key={c} value={c}>{c}</option>)}
@@ -233,7 +233,7 @@ const UpdateStudentFeeStructure: React.FC = () => {
                     <select
                         value={selectedStudentId || ''}
                         onChange={e => setSelectedStudentId(Number(e.target.value) || null)}
-                        className="border rounded px-2 py-1 text-sm outline-none w-64 focus:ring-2 ring-indigo-300"
+                        className="input w-64 ring-indigo-300"
                     >
                         <option value="">Select Student</option>
                         {students.map(s => (
@@ -257,7 +257,7 @@ const UpdateStudentFeeStructure: React.FC = () => {
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setShowAssignStandardModal(true)}
-                                className="px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 shadow-sm flex items-center gap-1"
+                                className="btn-success btn-sm"
                             >
                                 <RefreshIcon className="w-4 h-4" />
                                 Assign Standard Fee
@@ -337,7 +337,7 @@ const InstallmentCard: React.FC<{
     const headerColor = isPaid ? 'bg-green-50' : 'bg-orange-50';
 
     return (
-        <div className="bg-white rounded shadow-sm border border-gray-200 overflow-hidden">
+        <div className="card overflow-hidden">
             <div className={`px-4 py-2 flex justify-between items-center ${headerColor}`}>
                 <span className="font-semibold text-gray-700 text-sm">{installment.title}</span>
                 <span className={`text-xs px-2 py-0.5 rounded ${badgeColor}`}>{installment.status}</span>
@@ -365,7 +365,7 @@ const InstallmentCard: React.FC<{
                     <div className="mt-3 flex justify-end gap-2">
                         <button
                             onClick={onEdit}
-                            className="p-1.5 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
+                            className="btn bg-blue-100 text-blue-600 hover:bg-blue-200"
                             title="Edit"
                         >
                             <PencilIcon className="w-4 h-4" />
@@ -373,7 +373,7 @@ const InstallmentCard: React.FC<{
                         {installment.paidAmount === 0 && (
                             <button
                                 onClick={onDelete}
-                                className="p-1.5 bg-red-100 text-red-600 rounded hover:bg-red-200"
+                                className="btn bg-red-100 text-red-600 hover:bg-red-200"
                                 title="Delete"
                             >
                                 <TrashIcon className="w-4 h-4" />
@@ -395,12 +395,12 @@ const EditFeeModal: React.FC<{
     const [concession, setConcession] = useState(fee.concession);
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
             <div className="bg-white p-6 rounded-lg w-96">
-                <h3 className="text-lg font-bold mb-4">Edit Fee: {fee.title}</h3>
+                <h3 className="text-base font-semibold text-slate-900 mb-4">Edit Fee: {fee.title}</h3>
 
                 <div className="mb-4">
-                    <label className="block text-sm text-gray-600 mb-1">Total Amount</label>
+                    <label className="label">Total Amount</label>
                     <input
                         type="number"
                         value={total}
@@ -412,20 +412,20 @@ const EditFeeModal: React.FC<{
                 </div>
 
                 <div className="mb-6">
-                    <label className="block text-sm text-gray-600 mb-1">Concession</label>
+                    <label className="label">Concession</label>
                     <input
                         type="number"
                         value={concession}
                         onChange={e => setConcession(parseFloat(e.target.value) || 0)}
-                        className="w-full border rounded px-3 py-2"
+                        className="input"
                     />
                 </div>
 
                 <div className="flex justify-end gap-3">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                    <button onClick={onClose} className="btn-secondary">Cancel</button>
                     <button
                         onClick={() => onSave(fee.student_fee_id, total, concession)}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                        className="btn-primary"
                     >
                         Save
                     </button>
@@ -448,16 +448,16 @@ const AddFeeModal: React.FC<{
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December", "One-Time"];
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
             <div className="bg-white p-6 rounded-lg w-96">
-                <h3 className="text-lg font-bold mb-4">Add Student Fee</h3>
+                <h3 className="text-base font-semibold text-slate-900 mb-4">Add Student Fee</h3>
 
                 <div className="mb-4">
-                    <label className="block text-sm text-gray-600 mb-1">Fee Type</label>
+                    <label className="label">Fee Type</label>
                     <select
                         value={feeTypeId}
                         onChange={e => setFeeTypeId(Number(e.target.value))}
-                        className="w-full border rounded px-3 py-2"
+                        className="input"
                     >
                         <option value="">Select Fee Type</option>
                         {feeTypes.map(ft => <option key={ft.id} value={ft.id}>{ft.fee_type}</option>)}
@@ -465,31 +465,31 @@ const AddFeeModal: React.FC<{
                 </div>
 
                 <div className="mb-4">
-                    <label className="block text-sm text-gray-600 mb-1">Month / Label</label>
+                    <label className="label">Month / Label</label>
                     <select
                         value={month}
                         onChange={e => setMonth(e.target.value)}
-                        className="w-full border rounded px-3 py-2"
+                        className="input"
                     >
                         {months.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
                 </div>
 
                 <div className="mb-6">
-                    <label className="block text-sm text-gray-600 mb-1">Amount</label>
+                    <label className="label">Amount</label>
                     <input
                         type="number"
                         value={amount}
                         onChange={e => setAmount(parseFloat(e.target.value))}
-                        className="w-full border rounded px-3 py-2"
+                        className="input"
                     />
                 </div>
 
                 <div className="flex justify-end gap-3">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                    <button onClick={onClose} className="btn-secondary">Cancel</button>
                     <button
                         onClick={() => feeTypeId && amount && onSave(feeTypeId as number, amount as number, month)}
-                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                        className="btn-success"
                         disabled={!feeTypeId || !amount}
                     >
                         Add
@@ -517,15 +517,15 @@ const AssignStandardFeeModal: React.FC<{
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+        <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-center z-50">
             <div className="bg-white p-6 rounded-lg w-96">
-                <h3 className="text-lg font-bold mb-4">Assign Standard Fees</h3>
+                <h3 className="text-base font-semibold text-slate-900 mb-4">Assign Standard Fees</h3>
                 <p className="text-sm text-gray-500 mb-4">
                     Select standard fees to assign. The amounts will be automatically determined from the class fee structure.
                 </p>
 
                 <div className="mb-6 max-h-60 overflow-y-auto">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Standard Fee Types</label>
+                    <label className="label">Standard Fee Types</label>
                     {standardFeeTypes.length === 0 ? (
                         <p className="text-sm text-gray-500 italic">No standard fee types available.</p>
                     ) : (
@@ -546,10 +546,10 @@ const AssignStandardFeeModal: React.FC<{
                 </div>
 
                 <div className="flex justify-end gap-3">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                    <button onClick={onClose} className="btn-secondary">Cancel</button>
                     <button
                         onClick={() => selectedFeeTypeIds.length > 0 && onSave(selectedFeeTypeIds)}
-                        className={`px-4 py-2 text-white rounded ${selectedFeeTypeIds.length > 0 ? 'bg-green-600 hover:bg-green-700' : 'bg-green-300 cursor-not-allowed'}`}
+                        className={`btn text-white ${selectedFeeTypeIds.length > 0 ? 'bg-green-600 hover:bg-green-700' : 'bg-green-300 cursor-not-allowed'}`}
                         disabled={selectedFeeTypeIds.length === 0}
                     >
                         Assign

@@ -80,16 +80,16 @@ export const ShiftMaster: React.FC = () => {
     const currentSchoolId = localStorage.getItem('currentSchoolId');
     if (!currentSchoolId || currentSchoolId === 'all') {
         return (
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center">
-                <h2 className="text-lg font-bold text-slate-800 mb-2">Shift Master</h2>
+            <div className="card p-6 text-center">
+                <h2 className="text-base font-semibold text-slate-900 mb-2">Shift Master</h2>
                 <p className="text-slate-500 text-sm">Please select a specific school from the top navigation to view and manage shifts.</p>
             </div>
         );
     }
 
     return (
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-4">Shift Master</h2>
+        <div className="card p-6">
+            <h2 className="text-base font-semibold text-slate-900 mb-4">Shift Master</h2>
             
             {msg && (
                 <div className={`mb-4 p-3 rounded text-sm ${msg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
@@ -99,41 +99,41 @@ export const ShiftMaster: React.FC = () => {
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Code *</label>
-                    <input type="text" required value={form.shift_code} onChange={e => setForm({...form, shift_code: e.target.value})} disabled={!!editingId} className="w-full border rounded p-2 text-sm disabled:bg-gray-100" />
+                    <label className="label">Code *</label>
+                    <input type="text" required value={form.shift_code} onChange={e => setForm({...form, shift_code: e.target.value})} disabled={!!editingId} className="input" />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Name *</label>
-                    <input type="text" required value={form.shift_name} onChange={e => setForm({...form, shift_name: e.target.value})} className="w-full border rounded p-2 text-sm" />
+                    <label className="label">Name *</label>
+                    <input type="text" required value={form.shift_name} onChange={e => setForm({...form, shift_name: e.target.value})} className="input" />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Start Time *</label>
-                    <input type="time" required value={form.start_time} onChange={e => setForm({...form, start_time: e.target.value})} className="w-full border rounded p-2 text-sm" />
+                    <label className="label">Start Time *</label>
+                    <input type="time" required value={form.start_time} onChange={e => setForm({...form, start_time: e.target.value})} className="input" />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">End Time *</label>
-                    <input type="time" required value={form.end_time} onChange={e => setForm({...form, end_time: e.target.value})} className="w-full border rounded p-2 text-sm" />
+                    <label className="label">End Time *</label>
+                    <input type="time" required value={form.end_time} onChange={e => setForm({...form, end_time: e.target.value})} className="input" />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Grace In (mins)</label>
-                    <input type="number" value={form.grace_in_minutes} onChange={e => setForm({...form, grace_in_minutes: Number(e.target.value)})} className="w-full border rounded p-2 text-sm" />
+                    <label className="label">Grace In (mins)</label>
+                    <input type="number" value={form.grace_in_minutes} onChange={e => setForm({...form, grace_in_minutes: Number(e.target.value)})} className="input" />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Grace Out (mins)</label>
-                    <input type="number" value={form.grace_out_minutes} onChange={e => setForm({...form, grace_out_minutes: Number(e.target.value)})} className="w-full border rounded p-2 text-sm" />
+                    <label className="label">Grace Out (mins)</label>
+                    <input type="number" value={form.grace_out_minutes} onChange={e => setForm({...form, grace_out_minutes: Number(e.target.value)})} className="input" />
                 </div>
                 <div className="md:col-span-4 flex gap-2">
-                    <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700">{editingId ? 'Update' : 'Save'} Shift</button>
+                    <button type="submit" className="btn-primary">{editingId ? 'Update' : 'Save'} Shift</button>
                     {editingId && (
-                        <button type="button" onClick={() => { setEditingId(null); setForm({ shift_code: '', shift_name: '', start_time: '', end_time: '', grace_in_minutes: 0, grace_out_minutes: 0, status: 'ACTIVE' }); }} className="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-300">Cancel</button>
+                        <button type="button" onClick={() => { setEditingId(null); setForm({ shift_code: '', shift_name: '', start_time: '', end_time: '', grace_in_minutes: 0, grace_out_minutes: 0, status: 'ACTIVE' }); }} className="btn-secondary">Cancel</button>
                     )}
                 </div>
             </form>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
                 <table className="w-full text-left text-sm">
                     <thead>
-                        <tr className="bg-slate-50 text-slate-600">
+                        <tr className="">
                             <th className="p-2 border-b">Code</th>
                             <th className="p-2 border-b">Name</th>
                             <th className="p-2 border-b">Timings</th>

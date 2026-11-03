@@ -86,8 +86,8 @@ export const StaffCategoryMaster: React.FC = () => {
     const currentSchoolId = localStorage.getItem('currentSchoolId');
     if (!currentSchoolId || currentSchoolId === 'all') {
         return (
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center mt-6">
-                <h2 className="text-lg font-bold text-slate-800 mb-2">Staff Categories</h2>
+            <div className="card p-6 text-center mt-6">
+                <h2 className="text-base font-semibold text-slate-900 mb-2">Staff Categories</h2>
                 <p className="text-slate-500 text-sm">Please select a specific school from the top navigation to view and manage staff categories.</p>
             </div>
         );
@@ -107,7 +107,7 @@ export const StaffCategoryMaster: React.FC = () => {
                     <button
                         id="btn-add-category"
                         onClick={() => { setShowForm(!showForm); setMsg(null); }}
-                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg shadow-sm transition-colors"
+                        className="btn-primary"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showForm ? "M6 18L18 6M6 6l12 12" : "M12 4v16m8-8H4"} />
@@ -126,16 +126,16 @@ export const StaffCategoryMaster: React.FC = () => {
 
             {/* Form */}
             {showForm && canWrite && (
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                <div className="card p-6">
                     <h3 className="text-sm font-bold text-slate-700 mb-5">New Staff Category</h3>
                     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+                            <label className="label">
                                 Category Code <span className="text-red-500">*</span>
                             </label>
                             <input
                                 id="cat-code"
-                                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5 bg-white focus:ring-2 focus:ring-indigo-500 outline-none font-mono uppercase"
+                                className="input font-mono uppercase"
                                 placeholder="e.g. TEACH"
                                 value={form.category_code}
                                 onChange={e => setForm({ ...form, category_code: e.target.value })}
@@ -146,12 +146,12 @@ export const StaffCategoryMaster: React.FC = () => {
                             <p className="text-xs text-slate-400 mt-1">Short unique code. Stored as uppercase.</p>
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">
+                            <label className="label">
                                 Category Name <span className="text-red-500">*</span>
                             </label>
                             <input
                                 id="cat-name"
-                                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5 bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                className="input"
                                 placeholder="e.g. Teaching"
                                 value={form.category_name}
                                 onChange={e => setForm({ ...form, category_name: e.target.value })}
@@ -159,38 +159,38 @@ export const StaffCategoryMaster: React.FC = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Description</label>
+                            <label className="label">Description</label>
                             <input
-                                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5 bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                className="input"
                                 placeholder="Optional description"
                                 value={form.description}
                                 onChange={e => setForm({ ...form, description: e.target.value })}
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-slate-600 mb-1 uppercase tracking-wide">Display Order</label>
+                            <label className="label">Display Order</label>
                             <input
                                 type="number"
-                                className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5 bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                className="input"
                                 value={form.display_order}
                                 onChange={e => setForm({ ...form, display_order: Number(e.target.value) })}
                                 min={0}
                             />
                         </div>
                         <div className="md:col-span-4 flex justify-end gap-3 pt-2 border-t border-slate-100">
-                            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition">
+                            <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">
                                 Cancel
                             </button>
                             <button
                                 id="btn-save-category"
                                 type="submit"
                                 disabled={saving}
-                                className="px-6 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg disabled:opacity-60 transition"
+                                className="btn-primary"
                             >
                                 {saving ? 'Saving…' : editingId ? 'Update Category' : 'Save Category'}
                             </button>
                             {editingId && (
-                                <button type="button" onClick={() => { setEditingId(null); setForm(blank); setShowForm(false); }} className="px-6 py-2 text-sm font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition ml-2">Cancel</button>
+                                <button type="button" onClick={() => { setEditingId(null); setForm(blank); setShowForm(false); }} className="btn-secondary ml-2">Cancel</button>
                             )}
                         </div>
                     </form>
@@ -198,17 +198,17 @@ export const StaffCategoryMaster: React.FC = () => {
             )}
 
             {/* Table */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="card overflow-hidden">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 border-b border-slate-200">
+                    <thead className="border-b border-slate-200">
                         <tr>
-                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">#</th>
-                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Code</th>
-                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Name</th>
-                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Description</th>
-                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Order</th>
-                            <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                            {canWrite && <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>}
+                            <th className="px-4 py-3">#</th>
+                            <th className="px-4 py-3">Code</th>
+                            <th className="px-4 py-3">Name</th>
+                            <th className="px-4 py-3">Description</th>
+                            <th className="px-4 py-3">Order</th>
+                            <th className="px-4 py-3">Status</th>
+                            {canWrite && <th className="px-4 py-3">Actions</th>}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">

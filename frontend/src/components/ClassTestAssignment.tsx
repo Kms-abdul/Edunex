@@ -403,7 +403,7 @@ const ClassTestAssignment: React.FC = () => {
     }
 
     return (
-        <div className="p-2 bg-white rounded shadow border">
+        <div className="card p-2">
             <div className="flex justify-between items-center mb-2">
                 <h2 className="text-xl font-bold text-gray-800">Assign Tests to Classes</h2>
             </div>
@@ -411,13 +411,13 @@ const ClassTestAssignment: React.FC = () => {
             {/* Filters */}
             <div className="flex gap-4 mb-2">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Academic Year</label>
+                    <label className="label">Academic Year</label>
                     <div className="border p-2 rounded bg-gray-100 min-w-[150px] text-gray-700">
                         {selectedYear || "Loading..."}
                     </div>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Branch</label>
+                    <label className="label">Branch</label>
                     <div className="border p-2 rounded bg-gray-100 min-w-[200px] text-gray-700">
                         {selectedBranch || "Loading..."}
                     </div>
@@ -427,11 +427,11 @@ const ClassTestAssignment: React.FC = () => {
             {/* Matrix */}
             <div className="border rounded overflow-x-auto mb-4">
                 <table className="w-full text-sm text-left collapse-borders">
-                    <thead className="bg-[#1a202c] text-white">
+                    <thead className="">
                         <tr>
-                            <th className="p-3 border-r border-gray-600 sticky left-0 z-10 bg-[#1a202c]">Class</th>
+                            <th className="p-3 border-r border-slate-200 sticky left-0 z-10 bg-slate-50">Class</th>
                             {testTypes.map(t => (
-                                <th key={t.id} className="p-3 text-center border-r border-gray-600 min-w-[100px]">
+                                <th key={t.id} className="p-3 text-center border-r border-slate-200 min-w-[100px]">
                                     <div>{t.name}</div>
                                     <input
                                         type="checkbox"
@@ -441,7 +441,7 @@ const ClassTestAssignment: React.FC = () => {
                                     />
                                 </th>
                             ))}
-                            <th className="p-3 text-center border-r border-gray-600 min-w-[50px] bg-[#1a202c]">
+                            <th className="p-3 text-center border-r border-slate-200 min-w-[50px] bg-slate-50">
                                 All
                             </th>
                         </tr>
@@ -472,7 +472,7 @@ const ClassTestAssignment: React.FC = () => {
                                                             type="number"
                                                             value={order || ''}
                                                             onChange={e => handleOrderChange(cls.id, t.id, parseInt(e.target.value) || 0)}
-                                                            className="w-8 p-0.5 text-center border rounded text-xs no-spinner"
+                                                            className="input py-1 px-2 w-8 text-center no-spinner text-xs"
                                                         />
                                                         <span className="text-gray-500 text-xs ml-1">)</span>
                                                     </div>
@@ -503,12 +503,12 @@ const ClassTestAssignment: React.FC = () => {
                 <div className="relative" ref={copyDropdownRef}>
                     <button
                         onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
-                        className="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700 flex items-center gap-2"
+                        className="btn-primary"
                     >
                         Copy to Branches ▼
                     </button>
                     {isCopyDropdownOpen && (
-                        <div className="absolute left-full top-0 ml-2 w-72 bg-white border shadow-xl rounded z-20 max-h-80 overflow-y-auto">
+                        <div className="card shadow-pop absolute left-full top-0 ml-2 w-72 z-20 max-h-80 overflow-y-auto">
                             <div className="p-2 border-b font-bold bg-gray-50">Select Target Branches</div>
                             {Object.keys(branchesByLocation).map(loc => (
                                 <div key={loc}>
@@ -537,7 +537,7 @@ const ClassTestAssignment: React.FC = () => {
                                 <button
                                     onClick={handleCopy}
                                     disabled={copying || copyTargets.size === 0}
-                                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                                    className="btn-success btn-sm"
                                 >
                                     {copying ? 'Copying...' : 'Confirm'}
                                 </button>
@@ -549,14 +549,14 @@ const ClassTestAssignment: React.FC = () => {
                     <button
                         onClick={() => fetchMatrix()}
                         disabled={saving}
-                        className={`px-6 py-2 rounded text-blue-700 border transition hover:bg-blue-100 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`btn text-blue-700 border hover:bg-blue-100 ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="bg-[#337ab7] text-white px-6 py-2 rounded shadow hover:bg-blue-700 disabled:opacity-50"
+                        className="btn-primary"
                     >
                         {saving ? 'Saving...' : 'Save Test'}
                     </button>

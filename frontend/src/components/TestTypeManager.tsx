@@ -153,21 +153,21 @@ const TestTypeManager: React.FC = () => {
     return (
         <div className="p-6 max-w-6xl mx-auto">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Create-TestType
+                <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Create-TestType
                 </h2>
                 <button
                     onClick={openAddModal}
                     disabled={!academicYear}
-                    className="flex items-center gap-2 bg-[#337ab7] text-white px-4 py-2 rounded shadow hover:bg-blue-700 disabled:opacity-50"
+                    className="btn-primary"
                 >
                     <Plus size={18} /> Add Test Type
                 </button>
             </div>
 
             {/* Filters */}
-            <div className="flex flex-wrap gap-4 mb-6 bg-white p-4 rounded shadow-sm border">
+            <div className="card flex flex-wrap gap-4 mb-6 p-4">
                 <div>
-                    <label className="text-sm font-semibold text-gray-600 block mb-1">Academic Year</label>
+                    <label className="label">Academic Year</label>
                     <div className="px-3 py-2 bg-gray-100 rounded text-gray-700 border min-w-[150px]">
                         {academicYear}
                     </div>
@@ -178,7 +178,7 @@ const TestTypeManager: React.FC = () => {
             </div>
 
             {/* List */}
-            <div className="bg-white rounded shadow text-sm">
+            <div className="card text-sm">
                 <div className="grid grid-cols-12 bg-gray-100 p-3 font-semibold text-gray-700 border-b">
                     <div className="col-span-1 text-center">Order</div>
                     <div className="col-span-5">Test Name</div>
@@ -206,7 +206,7 @@ const TestTypeManager: React.FC = () => {
                             <div className="col-span-2 flex justify-center">
                                 <button
                                     onClick={() => toggleStatus(t.id)}
-                                    className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${t.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}
+                                    className={`btn btn-sm ${t.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}
                                 >
                                     {t.is_active ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
                                     {t.is_active ? 'Active' : 'Inactive'}
@@ -224,10 +224,10 @@ const TestTypeManager: React.FC = () => {
 
             {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+                <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
+                    <div className="card shadow-pop w-full max-w-md p-6">
                         <div className="flex justify-between items-center mb-4 border-b pb-2">
-                            <h3 className="text-lg font-bold text-gray-800">
+                            <h3 className="text-base font-semibold text-slate-900">
                                 {editingId ? 'Edit Test Type' : 'Add Test Type'}
                             </h3>
                             <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-red-500">
@@ -237,12 +237,12 @@ const TestTypeManager: React.FC = () => {
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Test Name *</label>
+                                <label className="label">Test Name *</label>
                                 <input
                                     type="text"
                                     value={formData.test_name}
                                     onChange={e => setFormData({ ...formData, test_name: e.target.value })}
-                                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="input"
                                     placeholder="e.g. Unit Test 1"
                                     autoFocus
                                 />
@@ -250,23 +250,23 @@ const TestTypeManager: React.FC = () => {
 
                             <div className="grid grid-cols-1 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Marks (Ref) *</label>
+                                    <label className="label">Max Marks (Ref) *</label>
                                     <input
                                         type="number"
                                         value={formData.max_marks}
                                         onChange={e => setFormData({ ...formData, max_marks: parseInt(e.target.value) || 0 })}
-                                        className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="input"
                                     />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Display Order</label>
+                                <label className="label">Display Order</label>
                                 <input
                                     type="number"
                                     value={formData.display_order ?? ''}
                                     onChange={e => setFormData({ ...formData, display_order: e.target.value ? parseInt(e.target.value) : undefined })}
-                                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="input"
                                     placeholder="Auto"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">Leave empty for auto-increment</p>
@@ -287,7 +287,7 @@ const TestTypeManager: React.FC = () => {
                             <button
                                 onClick={handleSave}
                                 disabled={!formData.test_name}
-                                className="px-4 py-2 bg-[#337ab7] text-white rounded hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
+                                className="btn-primary"
                             >
                                 <Save size={16} /> Save
                             </button>

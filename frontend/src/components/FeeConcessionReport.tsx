@@ -41,7 +41,7 @@ const FeeConcessionReport: React.FC = () => {
 
     return (
         <div className="container mx-auto p-6 font-sans">
-            <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center">
+            <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 flex items-center">
                 <span className="bg-blue-100 text-blue-600 p-2 rounded-lg mr-3">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
@@ -51,14 +51,14 @@ const FeeConcessionReport: React.FC = () => {
             </h2>
 
             {loading ? (
-                <div className="p-4 bg-white rounded-xl shadow-sm text-center">Loading report...</div>
+                <div className="card p-4 text-center">Loading report...</div>
             ) : error ? (
-                <div className="p-4 bg-white rounded-xl shadow-sm text-red-500 text-center">Error: {error}</div>
+                <div className="card p-4 text-red-500 text-center">Error: {error}</div>
             ) : (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div className="overflow-x-auto">
+                <div className="card overflow-hidden">
+                    <div className="overflow-x-auto rounded-lg border border-slate-200">
                         <table className="min-w-full text-sm text-left">
-                            <thead className="bg-slate-50 border-b border-slate-100 text-slate-600 font-semibold uppercase text-xs tracking-wider">
+                            <thead className="border-b border-slate-100">
                                 <tr>
                                     <th className="px-4 py-4">Student</th>
                                     <th className="px-4 py-4">Adm No</th>
@@ -90,7 +90,7 @@ const FeeConcessionReport: React.FC = () => {
                                             <td className="px-4 py-4 text-center">
                                                 <button
                                                     onClick={() => handleViewDetails(c)}
-                                                    className="text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                                    className="btn-primary btn-sm"
                                                 >
                                                     View
                                                 </button>
@@ -107,7 +107,7 @@ const FeeConcessionReport: React.FC = () => {
             {/* Modal for Details */}
             {selectedStudent && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="card shadow-pop w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <div>
                                 <h3 className="text-xl font-bold text-slate-800">Concession Details</h3>
@@ -115,7 +115,7 @@ const FeeConcessionReport: React.FC = () => {
                             </div>
                             <button
                                 onClick={() => setSelectedStudent(null)}
-                                className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-200 transition-colors"
+                                className="btn-icon text-slate-400 hover:text-slate-600"
                             >
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
@@ -126,14 +126,14 @@ const FeeConcessionReport: React.FC = () => {
                                 <div className="text-center py-8 text-slate-500">Loading details...</div>
                             ) : (
                                 <table className="w-full text-sm text-left border border-slate-200 rounded-lg overflow-hidden">
-                                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-700">
+                                    <thead className="border-b border-slate-200">
                                         <tr>
-                                            <th className="px-4 py-3 font-semibold">Installment</th>
-                                            <th className="px-4 py-3 font-semibold">Fee Type</th>
-                                            <th className="px-4 py-3 text-right font-semibold">Total Fee</th>
-                                            <th className="px-4 py-3 text-right font-semibold">Concession</th>
-                                            <th className="px-4 py-3 text-right font-semibold">Paid</th>
-                                            <th className="px-4 py-3 font-semibold">Status</th>
+                                            <th className="px-4 py-3">Installment</th>
+                                            <th className="px-4 py-3">Fee Type</th>
+                                            <th className="px-4 py-3 text-right">Total Fee</th>
+                                            <th className="px-4 py-3 text-right">Concession</th>
+                                            <th className="px-4 py-3 text-right">Paid</th>
+                                            <th className="px-4 py-3">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">

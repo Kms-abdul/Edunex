@@ -3,9 +3,8 @@ import api from "../api";
 import { UserIcon } from "./icons";
 
 // --- Constants & Styles ---
-const INPUT_STYLE =
-  "w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 text-sm disabled:bg-gray-100 disabled:text-gray-500";
-const LABEL_STYLE = "block text-sm font-medium text-gray-700 mb-1";
+const INPUT_STYLE = "input";
+const LABEL_STYLE = "label";
 
 // --- Helper Components ---
 
@@ -22,7 +21,7 @@ const CollapsibleSection = React.memo(
   }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
     return (
-      <div className="md:col-span-4 mt-6 border rounded-lg overflow-hidden shadow-sm bg-white">
+      <div className="card md:col-span-4 mt-6 overflow-hidden">
         <div
           className="flex justify-between items-center p-4 bg-gray-50 cursor-pointer border-b hover:bg-gray-100 transition-colors"
           onClick={() => setIsOpen(!isOpen)}
@@ -107,7 +106,7 @@ const FormField = React.memo(
           />
           <label
             htmlFor={inputId}
-            className="ml-2 text-sm text-gray-700 cursor-pointer select-none"
+            className="label ml-2 cursor-pointer select-none"
           >
             {label}
           </label>
@@ -1011,9 +1010,9 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
   };
 
   return (
-    <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
+    <div className="p-4 md:p-6 bg-gray-50 min-h-full">
       <form ref={formRef} id="create-student-form">
-        <div className="bg-white p-6 rounded-lg shadow-md border space-y-4">
+        <div className="card p-6 space-y-4">
           {/* HEADER */}
           <div className="flex justify-between items-center border-b pb-4 mb-4 bg-gray-100 p-4 -m-6 rounded-t-lg">
             <h2 className="text-xl font-semibold text-gray-700">
@@ -1027,14 +1026,14 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
               <button
                 type="button"
                 onClick={onEdit}
-                className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition-colors text-sm font-medium"
+                className="btn-primary"
               >
                 Edit Student
               </button>
             )}
           </div>
 
-          <div className="md:col-span-4 border p-4 rounded-md grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-white">
+          <div className="card md:col-span-4 p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <FormField
               label="Class"
               name="class"
@@ -1703,7 +1702,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
                   <button
                     type="button"
                     onClick={handleAddPendingDocument}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+                    className="btn-primary"
                   >
                     Add Document
                   </button>
@@ -1749,14 +1748,14 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
             <CollapsibleSection title="Promotion History" defaultOpen={true}>
               <div className="md:col-span-4 overflow-x-auto">
                 <table className="min-w-full text-sm divide-y divide-gray-200 border">
-                  <thead className="bg-gray-50">
+                  <thead className="">
                     <tr>
-                      <th className="px-4 py-2 text-left font-medium text-gray-500">Academic Year</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-500">Class</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-500">Section</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-500">Roll No</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-500">Status</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-500">Date</th>
+                      <th className="px-4 py-2 text-left">Academic Year</th>
+                      <th className="px-4 py-2 text-left">Class</th>
+                      <th className="px-4 py-2 text-left">Section</th>
+                      <th className="px-4 py-2 text-left">Roll No</th>
+                      <th className="px-4 py-2 text-left">Status</th>
+                      <th className="px-4 py-2 text-left">Date</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -1789,7 +1788,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+              className="btn-secondary"
             >
               {mode === "view" ? "Back" : "Cancel"}
             </button>
@@ -1798,14 +1797,14 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
                 <button
                   type="button"
                   onClick={handleResetClick}
-                  className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+                  className="btn-secondary"
                 >
                   Reset
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSaveClick(true)}
-                  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  className="btn-success"
                 >
                   Save & Exit
                 </button>

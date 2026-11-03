@@ -88,7 +88,7 @@ const DeletedReceiptsReport: React.FC = () => {
 
     return (
         <div className="container mx-auto p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+            <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6 flex items-center">
                 <span className="bg-red-100 text-red-600 p-2 rounded mr-3">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -97,7 +97,7 @@ const DeletedReceiptsReport: React.FC = () => {
                 Deleted Receipts Report
             </h2>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 p-4">
+            <div className="card mb-6 p-4">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-4">
                     <div className="w-full md:w-1/3">
                         <input
@@ -105,19 +105,19 @@ const DeletedReceiptsReport: React.FC = () => {
                             placeholder="Search by Student, Adm No, Receipt No..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="input"
                         />
                     </div>
                     <div className="flex gap-2 mt-2 md:mt-0">
-                        <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 flex items-center">
+                        <button onClick={exportToExcel} className="btn-success">
                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             Excel
                         </button>
-                        <button onClick={exportToPDF} className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 flex items-center">
+                        <button onClick={exportToPDF} className="btn-danger">
                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             PDF
                         </button>
-                        <button onClick={fetchReport} className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">
+                        <button onClick={fetchReport} className="btn-primary">
                             Refresh
                         </button>
                     </div>
@@ -130,22 +130,22 @@ const DeletedReceiptsReport: React.FC = () => {
                 ) : filteredReceipts.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">No deleted receipts found.</div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto rounded-lg border border-slate-200">
                         <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead className="bg-gray-50 text-gray-700">
+                            <thead className="">
                                 <tr>
-                                    <th className="px-3 py-2 text-left font-semibold">S.No</th>
-                                    <th className="px-3 py-2 text-left font-semibold">Student Name</th>
-                                    <th className="px-3 py-2 text-left font-semibold">Adm No.</th>
-                                    <th className="px-3 py-2 text-left font-semibold">Class</th>
-                                    <th className="px-3 py-2 text-left font-semibold">Branch</th>
-                                    <th className="px-3 py-2 text-left font-semibold">Rcpt No</th>
-                                    <th className="px-3 py-2 text-left font-semibold">Fee Type</th>
-                                    <th className="px-3 py-2 text-right font-semibold">Amount</th>
-                                    <th className="px-3 py-2 text-left font-semibold">Mode</th>
-                                    <th className="px-3 py-2 text-left font-semibold">Deleted By</th>
-                                    <th className="px-3 py-2 text-left font-semibold">Deleted At</th>
-                                    <th className="px-3 py-2 text-left font-semibold">Cancel Reason</th>
+                                    <th className="px-3 py-2 text-left">S.No</th>
+                                    <th className="px-3 py-2 text-left">Student Name</th>
+                                    <th className="px-3 py-2 text-left">Adm No.</th>
+                                    <th className="px-3 py-2 text-left">Class</th>
+                                    <th className="px-3 py-2 text-left">Branch</th>
+                                    <th className="px-3 py-2 text-left">Rcpt No</th>
+                                    <th className="px-3 py-2 text-left">Fee Type</th>
+                                    <th className="px-3 py-2 text-right">Amount</th>
+                                    <th className="px-3 py-2 text-left">Mode</th>
+                                    <th className="px-3 py-2 text-left">Deleted By</th>
+                                    <th className="px-3 py-2 text-left">Deleted At</th>
+                                    <th className="px-3 py-2 text-left">Cancel Reason</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">

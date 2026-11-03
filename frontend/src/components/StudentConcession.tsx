@@ -267,32 +267,32 @@ const StudentConcession: React.FC = () => {
     const selectedConcession = concessions.find(c => c.title === selectedConcessionTitle);
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="p-6 bg-gray-50 min-h-full">
             <div className="max-w-7xl mx-auto space-y-6">
-                <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+                <h2 className="text-xl font-semibold text-slate-900 tracking-tight flex items-center">
                     <span className="text-violet-600 mr-2">₹</span> Student Concession
                 </h2>
 
                 {/* Filters */}
-                <div className="bg-white p-4 rounded-lg shadow border grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="card p-4 grid grid-cols-1 md:grid-cols-5 gap-4">
                     {/* <div>
                         <input
                             type="text"
                             value={localStorage.getItem('currentBranch') || 'All'}
                             readOnly
-                            className="border p-2 rounded w-full bg-gray-100 text-gray-600 cursor-not-allowed"
+                            className="input"
                             title="Current Branch"
                         />
                     </div>*/}
                     <input
                         type="text"
                         placeholder="Search Admission No..."
-                        className="border p-2 rounded"
+                        className="input w-auto"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
                     <select
-                        className="border p-2 rounded"
+                        className="input w-auto"
                         value={selectedClass}
                         onChange={e => { setSelectedClass(e.target.value); setSelectedSection(''); }}
                     >
@@ -300,7 +300,7 @@ const StudentConcession: React.FC = () => {
                         {classes.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                     <select
-                        className="border p-2 rounded"
+                        className="input w-auto"
                         value={selectedSection}
                         onChange={e => setSelectedSection(e.target.value)}
                     >
@@ -308,7 +308,7 @@ const StudentConcession: React.FC = () => {
                         {sections.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                     <select
-                        className="border p-2 rounded"
+                        className="input w-auto"
                         value={selectedStudentId || ''}
                         onChange={e => setSelectedStudentId(Number(e.target.value) || null)}
                     >
@@ -319,11 +319,11 @@ const StudentConcession: React.FC = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Left: Concession Rules */}
-                    <div className="bg-white p-4 rounded-lg shadow border">
+                    <div className="card p-4">
                         <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Select Concession Template</label>
+                            <label className="label">Select Concession Template</label>
                             <select
-                                className="w-full border p-2 rounded focus:ring-violet-500 focus:border-violet-500"
+                                className="input"
                                 value={selectedConcessionTitle}
                                 onChange={e => setSelectedConcessionTitle(e.target.value)}
                             >
@@ -339,10 +339,10 @@ const StudentConcession: React.FC = () => {
                                 <h3 className="font-semibold text-gray-700 mb-2">Concession Rules</h3>
                                 <div className="border rounded overflow-hidden">
                                     <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                        <thead className="bg-gray-50">
+                                        <thead className="">
                                             <tr>
-                                                <th className="px-3 py-2 text-left font-medium text-gray-500">Fee Type</th>
-                                                <th className="px-3 py-2 text-right font-medium text-gray-500">Value ({selectedConcession.is_percentage ? '%' : '₹'})</th>
+                                                <th className="px-3 py-2 text-left">Fee Type</th>
+                                                <th className="px-3 py-2 text-right">Value ({selectedConcession.is_percentage ? '%' : '₹'})</th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
@@ -360,7 +360,7 @@ const StudentConcession: React.FC = () => {
                     </div>
 
                     {/* Right: Student Installments */}
-                    <div className="lg:col-span-2 bg-white p-4 rounded-lg shadow border">
+                    <div className="card lg:col-span-2 p-4">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-semibold text-gray-800">Student Installments</h3>
                             {message && <span className={`text-sm ${message.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>{message}</span>}
@@ -369,19 +369,19 @@ const StudentConcession: React.FC = () => {
                         {installments.length === 0 ? (
                             <p className="text-gray-500 text-center py-8">Select a student to view installments.</p>
                         ) : (
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto rounded-lg border border-slate-200">
                                 <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                    <thead className="bg-gray-50">
+                                    <thead className="">
                                         <tr>
                                             <th className="px-3 py-2 w-10">
                                                 <input type="checkbox" onChange={handleSelectAll} />
                                             </th>
-                                            <th className="px-3 py-2 text-left font-medium text-gray-500">Installment</th>
-                                            <th className="px-3 py-2 text-right font-medium text-gray-500">Total Fee</th>
-                                            <th className="px-3 py-2 text-right font-medium text-gray-500">Paid</th>
-                                            <th className="px-3 py-2 text-right font-medium text-gray-500">Current Concession</th>
-                                            <th className="px-3 py-2 text-right font-medium text-violet-600">New Concession</th>
-                                            <th className="px-3 py-2 text-center font-medium text-gray-500">Status</th>
+                                            <th className="px-3 py-2 text-left">Installment</th>
+                                            <th className="px-3 py-2 text-right">Total Fee</th>
+                                            <th className="px-3 py-2 text-right">Paid</th>
+                                            <th className="px-3 py-2 text-right">Current Concession</th>
+                                            <th className="px-3 py-2 text-right text-violet-600">New Concession</th>
+                                            <th className="px-3 py-2 text-center">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
@@ -438,7 +438,7 @@ const StudentConcession: React.FC = () => {
                             <button
                                 onClick={handleAssign}
                                 disabled={loading || selectedInstallmentIds.length === 0}
-                                className="bg-violet-600 text-white px-6 py-2 rounded shadow hover:bg-violet-700 disabled:opacity-50"
+                                className="btn-primary"
                             >
                                 {loading ? 'Assigning...' : 'Assign Concession'}
                             </button>

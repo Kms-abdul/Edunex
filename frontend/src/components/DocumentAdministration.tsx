@@ -126,7 +126,7 @@ const DocumentAdministration: React.FC = () => {
     });
 
     return (
-        <div className="min-h-screen bg-slate-50 p-6">
+        <div className="min-h-full bg-slate-50 p-6">
             <div className="max-w-7xl mx-auto">
 
                 {/* Header */}
@@ -146,7 +146,7 @@ const DocumentAdministration: React.FC = () => {
                     {/* LEFT: Add / Edit Form — Admin @ All Branches only */}
                     <div className="lg:col-span-2">
                         {isAdminAllBranches ? (
-                            <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                            <div className="card">
                                 <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl">
                                     <h2 className="text-sm font-semibold text-slate-700">
                                         {editingDocType ? '✏️ Edit Document Category' : '➕ Add Document Category'}
@@ -168,13 +168,13 @@ const DocumentAdministration: React.FC = () => {
 
                                     {/* Document Name */}
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        <label className="label">
                                             Document Name <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                             type="text"
                                             required
-                                            className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                            className="input"
                                             placeholder="e.g. Aadhaar Card"
                                             value={formData.name}
                                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -183,7 +183,7 @@ const DocumentAdministration: React.FC = () => {
 
                                     {/* Document Code */}
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        <label className="label">
                                             Document Code <span className="text-red-500">*</span>
                                         </label>
                                         <div className="flex items-center gap-3">
@@ -191,7 +191,7 @@ const DocumentAdministration: React.FC = () => {
                                                 type="text"
                                                 required
                                                 disabled={!!editingDocType}
-                                                className={`flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${editingDocType ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
+                                                className={`input flex-1 ${editingDocType ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
                                                 placeholder="e.g. AADHAAR"
                                                 value={formData.code}
                                                 onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
@@ -213,10 +213,10 @@ const DocumentAdministration: React.FC = () => {
 
                                     {/* Description */}
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                                        <label className="label">Description</label>
                                         <textarea
                                             rows={3}
-                                            className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                                            className="input resize-none"
                                             placeholder="Document Description"
                                             value={formData.description}
                                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -228,14 +228,14 @@ const DocumentAdministration: React.FC = () => {
                                         <button
                                             type="submit"
                                             disabled={loading}
-                                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-md shadow-sm transition-colors"
+                                            className="btn-primary"
                                         >
                                             {loading ? 'Saving...' : 'Save'}
                                         </button>
                                         <button
                                             type="button"
                                             onClick={handleReset}
-                                            className="bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium px-5 py-2 rounded-md border border-slate-300 shadow-sm transition-colors"
+                                            className="btn-secondary"
                                         >
                                             Reset
                                         </button>
@@ -243,7 +243,7 @@ const DocumentAdministration: React.FC = () => {
                                 </form>
                             </div>
                         ) : (
-                            <div className="bg-white rounded-xl shadow-sm border border-amber-200 flex flex-col items-center justify-center p-8 text-center h-full min-h-[200px]">
+                            <div className="card border-amber-200 flex flex-col items-center justify-center p-8 text-center h-full min-h-[200px]">
                                 <div className="text-3xl mb-3">🔒</div>
                                 <h3 className="text-sm font-semibold text-slate-700 mb-1">Access Restricted</h3>
                                 <p className="text-xs text-slate-500">
@@ -257,7 +257,7 @@ const DocumentAdministration: React.FC = () => {
 
                     {/* RIGHT: Document Categories Table */}
                     <div className="lg:col-span-3">
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                        <div className="card">
                             <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl flex flex-wrap items-center justify-between gap-3">
                                 <div className="flex items-center gap-3">
                                     <h2 className="text-sm font-semibold text-slate-700">📋 Document categories</h2>
@@ -271,14 +271,14 @@ const DocumentAdministration: React.FC = () => {
                                         placeholder="Category name"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none w-40"
+                                        className="input w-40"
                                     />
                                     <select
                                         value={statusFilter}
                                         onChange={(e) =>
                                             setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')
                                         }
-                                        className="border border-slate-300 rounded-md px-2 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                                        className="input w-auto"
                                     >
                                         <option value="all">All Type</option>
                                         <option value="active">Active</option>
@@ -286,7 +286,7 @@ const DocumentAdministration: React.FC = () => {
                                     </select>
                                     <button
                                         onClick={fetchDocumentTypes}
-                                        className="p-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md transition-colors"
+                                        className="btn-warn"
                                         title="Refresh"
                                     >
                                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -296,20 +296,20 @@ const DocumentAdministration: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto rounded-lg border border-slate-200">
                                 <table className="min-w-full divide-y divide-slate-200">
-                                    <thead className="bg-slate-50">
+                                    <thead className="">
                                         <tr>
-                                            <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                            <th className="px-5 py-3 text-left">
                                                 Document category
                                             </th>
-                                            <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                            <th className="px-5 py-3 text-left">
                                                 Code
                                             </th>
-                                            <th className="px-5 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                            <th className="px-5 py-3 text-left">
                                                 Type
                                             </th>
-                                            <th className="px-5 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                            <th className="px-5 py-3 text-right">
                                                 Edit | Delete
                                             </th>
                                         </tr>
@@ -354,13 +354,13 @@ const DocumentAdministration: React.FC = () => {
                                                             <>
                                                                 <button
                                                                     onClick={() => handleEdit(type)}
-                                                                    className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 p-1.5 rounded-md transition-colors mr-1"
+                                                                    className="btn text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 mr-1"
                                                                     title="Edit"
                                                                 >
                                                                     <PencilIcon className="w-3.5 h-3.5" />
                                                                 </button>
                                                                 <button
-                                                                    className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded-md transition-colors"
+                                                                    className="btn text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100"
                                                                     title="Delete (Deactivate)"
                                                                     onClick={() => {
                                                                         handleEdit(type);

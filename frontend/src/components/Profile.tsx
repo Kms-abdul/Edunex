@@ -306,17 +306,21 @@ const Profile: React.FC = () => {
 
     return (
         <div className="container mx-auto p-4 md:p-6">
-            <div className="mb-6">
-                <h4 className="text-xl font-semibold text-gray-700">CHANGE USERNAME/PASSWORD</h4>
+            <div className="page-header">
+                <div>
+                    <p className="page-eyebrow">My Account</p>
+                    <h4 className="page-title">Username &amp; Password</h4>
+                    <p className="page-subtitle">Update your login credentials and manage users.</p>
+                </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="card p-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
                     {/* ==================== CHANGE USERNAME FORM ==================== */}
                     <form onSubmit={(e) => e.preventDefault()}>
                         <div className="space-y-4 border border-gray-200 p-6 rounded-lg h-full">
-                            <h3 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Change Username</h3>
+                            <h3 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-4">Change Username</h3>
 
                             {usernameStatus.msg && (
                                 <div className={`p-3 rounded-md text-sm ${usernameStatus.type === 'success'
@@ -328,7 +332,7 @@ const Profile: React.FC = () => {
                             )}
 
                             <div>
-                                <label htmlFor="txtuserName" className="block text-sm font-medium text-gray-700 mb-1">
+                                <label htmlFor="txtuserName" className="label">
                                     Username
                                 </label>
                                 <input
@@ -343,7 +347,7 @@ const Profile: React.FC = () => {
                                         setUsernameStatus({ type: '', msg: '' });
                                     }}
                                     // disabled={usernameLoading}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 disabled:bg-gray-100"
+                                    className="input"
                                 />
                             </div>
 
@@ -352,7 +356,7 @@ const Profile: React.FC = () => {
                                     type="button"
                                     onClick={handleSaveUsername}
                                     disabled={usernameLoading || username === originalUsername}
-                                    className="bg-violet-600 text-white px-4 py-2 rounded-md hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                    className="btn-primary"
                                 >
                                     {usernameLoading ? 'Saving...' : 'Save'}
                                 </button>
@@ -360,7 +364,7 @@ const Profile: React.FC = () => {
                                     type="button"
                                     onClick={handleCancelUsername}
                                     disabled={usernameLoading || username === originalUsername}
-                                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                    className="btn-secondary"
                                 >
                                     Cancel
                                 </button>
@@ -370,8 +374,8 @@ const Profile: React.FC = () => {
 
                     {/* ==================== CHANGE PASSWORD FORM ==================== */}
                     <form onSubmit={(e) => e.preventDefault()}>
-                        <div className="space-y-4 border border-green-200 p-6 rounded-lg h-full">
-                            <h3 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Change Password</h3>
+                        <div className="space-y-4 border border-slate-200 p-6 rounded-lg h-full">
+                            <h3 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-4">Change Password</h3>
 
                             {passwordStatus.msg && (
                                 <div className={`p-3 rounded-md text-sm ${passwordStatus.type === 'success'
@@ -384,7 +388,7 @@ const Profile: React.FC = () => {
 
                             <div className="grid grid-cols-1 gap-4">
                                 <div>
-                                    <label htmlFor="txtCurrentPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                                    <label htmlFor="txtCurrentPassword" className="label">
                                         Current Password <span className="text-red-500">*</span>
                                     </label>
                                     <input
@@ -399,11 +403,11 @@ const Profile: React.FC = () => {
                                         }}
                                         disabled={passwordLoading}
                                         placeholder="Enter current password"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 disabled:bg-gray-100"
+                                        className="input"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="txtNewPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                                    <label htmlFor="txtNewPassword" className="label">
                                         New Password <span className="text-red-500">*</span>
                                     </label>
                                     <input
@@ -418,11 +422,11 @@ const Profile: React.FC = () => {
                                         }}
                                         disabled={passwordLoading}
                                         placeholder="Enter new password"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 disabled:bg-gray-100"
+                                        className="input"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="txtConfirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                                    <label htmlFor="txtConfirmPassword" className="label">
                                         Confirm Password <span className="text-red-500">*</span>
                                     </label>
                                     <input
@@ -437,7 +441,7 @@ const Profile: React.FC = () => {
                                         }}
                                         disabled={passwordLoading}
                                         placeholder="Confirm new password"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500 disabled:bg-gray-100"
+                                        className="input"
                                     />
                                 </div>
                             </div>
@@ -447,7 +451,7 @@ const Profile: React.FC = () => {
                                     type="button"
                                     onClick={handleSavePassword}
                                     disabled={passwordLoading || (!newPassword && !confirmPassword)}
-                                    className="bg-violet-600 text-white px-4 py-2 rounded-md hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                    className="btn-primary"
                                 >
                                     {passwordLoading ? 'Saving...' : 'Save Password'}
                                 </button>
@@ -455,7 +459,7 @@ const Profile: React.FC = () => {
                                     type="button"
                                     onClick={handleCancelPassword}
                                     disabled={passwordLoading || (!newPassword && !confirmPassword)}
-                                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                    className="btn-secondary"
                                 >
                                     Cancel
                                 </button>
@@ -468,8 +472,8 @@ const Profile: React.FC = () => {
                 {/* ==================== ADD USER SECTION (ADMIN ONLY) ==================== */}
                 {canManageUsers && (
                     <div className="mt-8">
-                        <div className="bg-white p-6 rounded-lg shadow-md border border-blue-200">
-                            <h3 className="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">
+                        <div className="card p-6">
+                            <h3 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-4">
                                 Add New User
                             </h3>
 
@@ -487,7 +491,7 @@ const Profile: React.FC = () => {
 
                                     {/* Username */}
                                     <div>
-                                        <label htmlFor="newUserName" className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label htmlFor="newUserName" className="label">
                                             Username <span className="text-red-500">*</span>
                                         </label>
                                         <input
@@ -499,14 +503,14 @@ const Profile: React.FC = () => {
                                                 setAddUserStatus({ type: '', msg: '' });
                                             }}
                                             disabled={addUserLoading}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                                            className="input"
                                             placeholder="Enter username"
                                         />
                                     </div>
 
                                     {/* Password */}
                                     <div>
-                                        <label htmlFor="newUserPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label htmlFor="newUserPassword" className="label">
                                             Password <span className="text-red-500">*</span>
                                         </label>
                                         <input
@@ -518,14 +522,14 @@ const Profile: React.FC = () => {
                                                 setAddUserStatus({ type: '', msg: '' });
                                             }}
                                             disabled={addUserLoading}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                                            className="input"
                                             placeholder="Enter password (min 8 chars)"
                                         />
                                     </div>
 
                                     {/* Email */}
                                     <div>
-                                        <label htmlFor="newUserEmail" className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label htmlFor="newUserEmail" className="label">
                                             Email <span className="text-red-500">*</span>
                                         </label>
                                         <input
@@ -537,17 +541,17 @@ const Profile: React.FC = () => {
                                                 setAddUserStatus({ type: '', msg: '' });
                                             }}
                                             disabled={addUserLoading}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                                            className="input"
                                             placeholder="Enter user email"
                                         />
                                     </div>
 
                                     {/* Branch Selection */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label className="label">
                                             Allowed Branches <span className="text-red-500">*</span>
                                         </label>
-                                        <div className="border border-gray-300 rounded-md p-2 h-40 overflow-y-auto bg-white">
+                                        <div className="card p-2 h-40 overflow-y-auto">
                                             {/* All Branches Option */}
                                             <div className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded">
                                                 <input
@@ -558,7 +562,7 @@ const Profile: React.FC = () => {
                                                     disabled={addUserLoading || isBranchLocked}
                                                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                                 />
-                                                <label htmlFor="branch-all" className="text-sm font-medium text-gray-700">
+                                                <label htmlFor="branch-all" className="label">
                                                     All Branches
                                                 </label>
                                             </div>
@@ -576,7 +580,7 @@ const Profile: React.FC = () => {
                                                         disabled={addUserLoading || isBranchLocked || selectedBranches.includes('All')}
                                                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                                     />
-                                                    <label htmlFor={`branch-${b.branch_code}`} className="text-sm text-gray-700">
+                                                    <label htmlFor={`branch-${b.branch_code}`} className="label">
                                                         {b.branch_name}
                                                     </label>
                                                 </div>
@@ -593,7 +597,7 @@ const Profile: React.FC = () => {
 
                                     {/* Location (Auto-filled) */}
                                     <div>
-                                        <label htmlFor="newUserLocation" className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label htmlFor="newUserLocation" className="label">
                                             Location
                                         </label>
                                         <input
@@ -602,7 +606,7 @@ const Profile: React.FC = () => {
                                             value={newUserLocation}
                                             onChange={(e) => setNewUserLocation(e.target.value)}
                                             disabled={addUserLoading}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 bg-gray-50"
+                                            className="input"
                                             placeholder="Auto-filled from branch"
                                             readOnly
                                         />
@@ -611,7 +615,7 @@ const Profile: React.FC = () => {
 
                                     {/* Role */}
                                     <div>
-                                        <label htmlFor="newUserRole" className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label htmlFor="newUserRole" className="label">
                                             Role
                                         </label>
                                         <select
@@ -619,7 +623,7 @@ const Profile: React.FC = () => {
                                             value={newUserRole}
                                             onChange={(e) => setNewUserRole(e.target.value)}
                                             disabled={addUserLoading}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                                            className="input"
                                         >
                                             <option value="User">User</option>
                                             <option value="Admin">Admin</option>
@@ -632,7 +636,7 @@ const Profile: React.FC = () => {
                                     <button
                                         type="submit"
                                         disabled={addUserLoading}
-                                        className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                        className="btn-primary"
                                     >
                                         {addUserLoading ? 'Creating...' : 'Create User'}
                                     </button>
@@ -640,7 +644,7 @@ const Profile: React.FC = () => {
                                         type="button"
                                         onClick={handleResetAddUserForm}
                                         disabled={addUserLoading}
-                                        className="bg-gray-200 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-300 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                        className="btn-secondary"
                                     >
                                         Reset
                                     </button>

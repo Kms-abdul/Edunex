@@ -7,6 +7,8 @@ import {
     ShieldCheckIcon,
 } from './icons';
 import { useAuth } from '../contexts/AuthContext';
+import PageHeader from './ui/PageHeader';
+import ModuleTile from './ui/ModuleTile';
 
 interface ControlPanelProps {
     navigateTo: (page: Page) => void;
@@ -29,7 +31,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ navigateTo }) => {
         {
             id: 'user-management',
             name: 'User Management',
-            icon: <UserIcon className="w-8 h-8" />,
+            icon: <UserIcon className="w-6 h-6" />,
             iconBg: 'bg-blue-50',
             iconColor: 'text-blue-600',
             page: 'user-management',
@@ -38,7 +40,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ navigateTo }) => {
         {
             id: 'role-permissions',
             name: 'Role Permissions',
-            icon: <ShieldCheckIcon className="w-8 h-8" />,
+            icon: <ShieldCheckIcon className="w-6 h-6" />,
             iconBg: 'bg-slate-50',
             iconColor: 'text-slate-600',
             page: 'role-permissions',
@@ -47,7 +49,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ navigateTo }) => {
         {
             id: 'franchise-management',
             name: 'Franchise Mgmt',
-            icon: <BuildingOfficeIcon className="w-8 h-8" />,
+            icon: <BuildingOfficeIcon className="w-6 h-6" />,
             iconBg: 'bg-purple-50',
             iconColor: 'text-purple-600',
             page: 'franchise-management',
@@ -56,7 +58,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ navigateTo }) => {
         {
             id: 'school-management',
             name: 'School Mgmt',
-            icon: <BuildingOfficeIcon className="w-8 h-8" />,
+            icon: <BuildingOfficeIcon className="w-6 h-6" />,
             iconBg: 'bg-emerald-50',
             iconColor: 'text-emerald-600',
             page: 'school-management',
@@ -75,46 +77,31 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ navigateTo }) => {
     });
 
     return (
-        <div className="min-h-screen bg-slate-50">
-            {/* Professional Header */}
-            <div className="bg-white shadow-sm border-b border-slate-200">
-                <div className="max-w-7xl mx-auto px-6 py-5">
-                    <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-indigo-50 rounded-lg">
-                            <ControlPanelIcon className="w-6 h-6 text-indigo-600" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-semibold text-slate-900">Control Panel</h1>
-                            <p className="text-sm text-slate-600 mt-0.5">Manage system users, roles, and franchises</p>
-                        </div>
-                    </div>
+        <div className="min-h-full bg-surface-muted">
+            <div className="bg-white border-b border-slate-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
+                    <PageHeader
+                        eyebrow="System"
+                        title="Control Panel"
+                        subtitle="Manage system users, roles, and franchises"
+                        icon={<ControlPanelIcon className="w-6 h-6" />}
+                        className="mb-5"
+                    />
                 </div>
             </div>
 
             {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-6 py-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {visibleModules.map((module) => (
-                        <button
+                        <ModuleTile
                             key={module.id}
+                            name={module.name}
+                            icon={module.icon}
+                            iconClassName={`${module.iconBg} ${module.iconColor}`}
+                            active
                             onClick={() => handleModuleClick(module)}
-                            className="group relative bg-white rounded-xl p-6 border border-slate-200 text-left focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200 hover:border-indigo-300 hover:shadow-lg cursor-pointer"
-                        >
-                            {/* Icon */}
-                            <div className={`${module.iconBg} ${module.iconColor} w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform duration-200`}>
-                                {module.icon}
-                            </div>
-
-                            {/* Module Name */}
-                            <h3 className="font-semibold text-slate-900 text-base mb-1 group-hover:text-indigo-600 transition-colors">
-                                {module.name}
-                            </h3>
-
-                            {/* Active Badge */}
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                Active
-                            </span>
-                        </button>
+                        />
                     ))}
                 </div>
             </div>

@@ -497,9 +497,9 @@ const ClassFeeStructure: React.FC = () => {
     });
 
     return (
-        <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">Create Class Fee Structure</h2>
+        <div className="container mx-auto p-6 bg-gray-50 min-h-full">
+            <div className="card p-6 mb-6">
+                <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-6">Create Class Fee Structure</h2>
 
                 {isAllBranchesMode && (
                     <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
@@ -523,11 +523,11 @@ const ClassFeeStructure: React.FC = () => {
                 {/* Class and Academic Year Selection */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Class *</label>
+                        <label className="label">Class *</label>
                         <select
                             value={selectedClass}
                             onChange={(e) => setSelectedClass(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                            className="input"
                         >
                             <option value="">Select Class</option>
                             {classes.map(c => <option key={c} value={c}>{c}</option>)}
@@ -535,13 +535,13 @@ const ClassFeeStructure: React.FC = () => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Academic Year *</label>
+                        <label className="label">Academic Year *</label>
                         <input
                             type="text"
                             value={academicYear}
                             readOnly
                             disabled
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                            className="input"
                         />
                     </div>
                 </div>
@@ -552,7 +552,7 @@ const ClassFeeStructure: React.FC = () => {
                         <h3 className="text-lg font-semibold text-gray-800">Fee for New Admissions</h3>
                         <button
                             onClick={() => setShowNewAdmissionForm(!showNewAdmissionForm)}
-                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                            className="btn-primary"
                         >
                             {showNewAdmissionForm ? 'Cancel' : '+ Add Fee'}
                         </button>
@@ -585,7 +585,7 @@ const ClassFeeStructure: React.FC = () => {
                         <h3 className="text-lg font-semibold text-gray-800">Fee Structure for Existing Students</h3>
                         <button
                             onClick={() => setShowExistingStudentForm(!showExistingStudentForm)}
-                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                            className="btn-primary"
                         >
                             {showExistingStudentForm ? 'Cancel' : '+ Add Fee'}
                         </button>
@@ -619,7 +619,7 @@ const ClassFeeStructure: React.FC = () => {
                         {!isAllBranchesMode && selectedClass && (
                             <div className="relative" ref={copyDropdownRef}>
                                 <button
-                                    className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center gap-2 shadow-sm"
+                                    className="btn-primary"
                                     onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
                                 >
                                     <span>Copy to Branches</span>
@@ -627,7 +627,7 @@ const ClassFeeStructure: React.FC = () => {
                                 </button>
                                 {/* Grouped Dropdown */}
                                 {isCopyDropdownOpen && (
-                                    <div className="absolute bottom-12 left-0 w-80 bg-white border shadow-xl rounded z-50 p-2 max-h-96 overflow-y-auto">
+                                    <div className="card shadow-pop absolute bottom-12 left-0 w-80 z-50 p-2 max-h-96 overflow-y-auto">
                                         <div className="mb-2 text-sm font-semibold text-gray-700 pb-2 border-b">
                                             Select Target Branches
                                         </div>
@@ -662,7 +662,7 @@ const ClassFeeStructure: React.FC = () => {
                                             <button
                                                 onClick={handleCopy}
                                                 disabled={copying || copyTargets.size === 0}
-                                                className={`px-3 py-1 text-xs text-white rounded ${copying || copyTargets.size === 0 ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
+                                                className={`btn btn-sm text-white ${copying || copyTargets.size === 0 ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
                                             >
                                                 {copying ? "Copying..." : "Confirm Copy"}
                                             </button>
@@ -685,13 +685,13 @@ const ClassFeeStructure: React.FC = () => {
                         </label>
                         <button
                             onClick={resetForm}
-                            className="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                            className="btn-secondary"
                         >
                             Reset
                         </button>
                         <button
                             onClick={saveFeeStructure}
-                            className="px-6 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 shadow-md"
+                            className="btn-primary"
                         >
                             Save Fee Structure
                         </button>
@@ -722,11 +722,11 @@ const AddFeeForm: React.FC<{
         <div className="bg-gray-50 p-4 rounded-md mb-4 border border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Fee Type</label>
+                    <label className="label">Fee Type</label>
                     <select
                         value={selectedFeeType}
                         onChange={(e) => setSelectedFeeType(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        className="input"
                     >
                         <option value="">Select Fee Type</option>
                         {feeTypes.map(ft => (
@@ -737,19 +737,19 @@ const AddFeeForm: React.FC<{
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
+                    <label className="label">Total Amount</label>
                     <input
                         type="number"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         placeholder="12000"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        className="input"
                     />
                 </div>
                 <div className="flex items-end">
                     <button
                         onClick={handleSubmit}
-                        className="w-full px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                        className="btn-success w-full"
                     >
                         Add Fee
                     </button>
@@ -791,12 +791,12 @@ const FeeStructureTable: React.FC<{
                                             type="number"
                                             value={fee.total_amount}
                                             onChange={(e) => onUpdateTotalAmount(feeIndex, parseFloat(e.target.value) || 0)}
-                                            className="px-2 py-1 border border-gray-300 rounded text-sm w-32"
+                                            className="input w-32"
                                             autoFocus
                                         />
                                         <button
                                             onClick={() => setEditingTotalIndex(null)}
-                                            className="px-2 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded text-xs font-medium"
+                                            className="btn btn-sm bg-green-100 text-green-700 hover:bg-green-200 text-xs"
                                         >
                                             Done
                                         </button>
@@ -821,7 +821,7 @@ const FeeStructureTable: React.FC<{
                             {fee.installments.length > 0 && (
                                 <button
                                     onClick={() => onRecalculate(feeIndex)}
-                                    className="px-3 py-1 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-sm"
+                                    className="btn-warn btn-sm"
                                     title="Recalculate installments based on total amount"
                                 >
                                     Recalculate
@@ -829,7 +829,7 @@ const FeeStructureTable: React.FC<{
                             )}
                             <button
                                 onClick={() => onRemove(feeIndex)}
-                                className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm"
+                                className="btn-danger btn-sm"
                             >
                                 Remove
                             </button>
@@ -842,12 +842,12 @@ const FeeStructureTable: React.FC<{
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                                 {fee.installments.map((inst, monthIndex) => (
                                     <div key={monthIndex} className="flex flex-col">
-                                        <label className="text-xs text-gray-600 mb-1">{inst.month}</label>
+                                        <label className="label">{inst.month}</label>
                                         <input
                                             type="number"
                                             value={inst.amount}
                                             onChange={(e) => onUpdateInstallment(feeIndex, monthIndex, parseFloat(e.target.value) || 0)}
-                                            className="px-2 py-1 border border-gray-300 rounded text-sm"
+                                            className="input w-auto"
                                         />
                                     </div>
                                 ))}

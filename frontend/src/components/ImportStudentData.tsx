@@ -101,7 +101,7 @@ const ImportStudentData: React.FC<ImportStudentDataProps> = ({ onImportSuccess }
         <div className="p-4 md:p-6 bg-gray-100">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Left Side: Upload Section */}
-                <div className="bg-white rounded-lg shadow-md border">
+                <div className="card">
                     <div className="p-4 border-b flex items-center space-x-2">
                         <ImportIcon className="w-6 h-6 text-gray-600" />
                         <h2 className="text-lg font-semibold text-gray-700">Import Student Data</h2>
@@ -118,9 +118,9 @@ const ImportStudentData: React.FC<ImportStudentDataProps> = ({ onImportSuccess }
                                 type="text"
                                 value={selectedFile ? selectedFile.name : "No file chosen"}
                                 readOnly
-                                className="w-full px-3 py-2 border border-gray-300 rounded-r-md bg-gray-50 focus:outline-none"
+                                className="input rounded-r-md"
                             />
-                            <button onClick={handleUpload} className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 whitespace-nowrap">
+                            <button onClick={handleUpload} className="btn-success">
                                 Upload Excel
                             </button>
                         </div>
@@ -131,7 +131,7 @@ const ImportStudentData: React.FC<ImportStudentDataProps> = ({ onImportSuccess }
                 {/* Right Side: Instructions Section */}
                 <div className="bg-[#fff0f0] rounded-lg shadow-md border-l-4 border-red-500">
                     <div className="p-6">
-                        <h3 className="text-lg font-bold text-red-700 mb-3">Important Instruction</h3>
+                        <h3 className="text-base font-semibold text-slate-900 text-red-700 mb-3">Important Instruction</h3>
                         <p className="text-sm text-gray-800 mb-4">Note: Please read the following instructions:</p>
                         <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
                             {instructions.map((inst, index) => (
@@ -141,7 +141,7 @@ const ImportStudentData: React.FC<ImportStudentDataProps> = ({ onImportSuccess }
                         <div className="mt-6">
                             <button
                                 onClick={handleDownloadTemplate}
-                                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center space-x-2 shadow-md"
+                                className="btn-primary"
                             >
                                 <DownloadIcon className="w-5 h-5" />
                                 <span>Download Excel Template</span>

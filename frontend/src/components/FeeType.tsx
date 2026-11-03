@@ -244,22 +244,22 @@ const FeeTypeManagement: React.FC = () => {
     return (
         <div className="container mx-auto p-6">
             {/* Header */}
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="card p-6 mb-6">
                 <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold text-gray-800">Fee Types</h2>
+                    <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Fee Types</h2>
                     <div className="flex gap-2">
                         {/* Copy Button */}
                         {isSpecificBranch && (
                             <div className="relative" ref={copyDropdownRef}>
                                 <button
-                                    className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center gap-2 shadow-sm"
+                                    className="btn-primary"
                                     onClick={() => setIsCopyDropdownOpen(!isCopyDropdownOpen)}
                                 >
                                     <span>Copy to Branches</span>
                                     <span className="text-xs">▼</span>
                                 </button>
                                 {isCopyDropdownOpen && (
-                                    <div className="absolute top-12 right-0 w-80 bg-white border shadow-xl rounded z-50 p-2 max-h-96 overflow-y-auto">
+                                    <div className="card shadow-pop absolute top-12 right-0 w-80 z-50 p-2 max-h-96 overflow-y-auto">
                                         <div className="mb-2 text-sm font-semibold text-gray-700 pb-2 border-b">
                                             Select Target Branches
                                         </div>
@@ -292,7 +292,7 @@ const FeeTypeManagement: React.FC = () => {
                                             <button
                                                 onClick={handleCopy}
                                                 disabled={copying || copyTargets.size === 0}
-                                                className={`px-3 py-1 text-xs text-white rounded ${copying || copyTargets.size === 0 ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
+                                                className={`btn btn-sm text-white ${copying || copyTargets.size === 0 ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
                                             >
                                                 {copying ? "Copying..." : "Confirm Copy"}
                                             </button>
@@ -304,7 +304,7 @@ const FeeTypeManagement: React.FC = () => {
 
                         <button
                             onClick={() => setShowForm(!showForm)}
-                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md flex items-center gap-2"
+                            className="btn-success"
                         >
                             <span>⊕</span> Add New Fee Type
                         </button>
@@ -314,7 +314,7 @@ const FeeTypeManagement: React.FC = () => {
 
             {/* Add/Edit Form */}
             {showForm && (
-                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div className="card p-6 mb-6">
                     <h3 className="text-xl font-semibold text-gray-800 mb-4">
                         {editingId ? 'Edit Fee Type' : 'Add New Fee Type'}
                     </h3>
@@ -323,7 +323,7 @@ const FeeTypeManagement: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Fee Type */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="label">
                                     Fee Type <span className="text-red-500">*</span>
                                 </label>
                                 <input
@@ -332,21 +332,21 @@ const FeeTypeManagement: React.FC = () => {
                                     value={formData.fee_type}
                                     onChange={handleInputChange}
                                     required
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    className="input"
                                     placeholder="e.g., Transport Fee"
                                 />
                             </div>
 
                             {/* Fee Category */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="label">
                                     Fee Category
                                 </label>
                                 <select
                                     name="category"
                                     value={formData.category}
                                     onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    className="input"
                                 >
                                     <option value="">Select Fee category</option>
                                     <option value="Academic">Academic</option>
@@ -363,7 +363,7 @@ const FeeTypeManagement: React.FC = () => {
 
                             {/* Branch Selection */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="label">
                                     Branch
                                 </label>
                                 <input
@@ -371,13 +371,13 @@ const FeeTypeManagement: React.FC = () => {
                                     name="branch"
                                     value={formData.branch}
                                     readOnly
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                                    className="input"
                                 />
                             </div>
 
                             {/* Academic Year Selection */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="label">
                                     Academic Year
                                 </label>
                                 <input
@@ -385,20 +385,20 @@ const FeeTypeManagement: React.FC = () => {
                                     name="academic_year"
                                     value={formData.academic_year}
                                     readOnly
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                                    className="input"
                                 />
                             </div>
 
                             {/* Fee Type Group */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="label">
                                     Fee Type Group
                                 </label>
                                 <select
                                     name="fee_type_group"
                                     value={formData.fee_type_group}
                                     onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    className="input"
                                 >
                                     <option value="">Select Fee Type Group</option>
                                     <option value="Standard">Standard</option>
@@ -408,7 +408,7 @@ const FeeTypeManagement: React.FC = () => {
 
                             {/* Display Name */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="label">
                                     Display Name
                                 </label>
                                 <input
@@ -416,21 +416,21 @@ const FeeTypeManagement: React.FC = () => {
                                     name="display_name"
                                     value={formData.display_name}
                                     onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    className="input"
                                     placeholder="Display name for receipts"
                                 />
                             </div>
 
                             {/* Type */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="label">
                                     Type
                                 </label>
                                 <select
                                     name="type"
                                     value={formData.type}
                                     onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    className="input"
                                 >
                                     <option value="Installment">Installment</option>
                                     <option value="One-Time">One-Time</option>
@@ -448,14 +448,14 @@ const FeeTypeManagement: React.FC = () => {
                                 onChange={handleInputChange}
                                 className="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
                             />
-                            <label htmlFor="is_refundable" className="ml-2 text-sm text-gray-700">
+                            <label htmlFor="is_refundable" className="label ml-2">
                                 Is Fee Refundable?
                             </label>
                         </div>
 
                         {/* Description */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="label">
                                 Description
                             </label>
                             <textarea
@@ -463,7 +463,7 @@ const FeeTypeManagement: React.FC = () => {
                                 value={formData.description}
                                 onChange={handleInputChange}
                                 rows={3}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                className="input"
                                 placeholder="Optional description"
                             />
                         </div>
@@ -473,13 +473,13 @@ const FeeTypeManagement: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={resetForm}
-                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                                className="btn-secondary"
                             >
                                 Reset
                             </button>
                             <button
                                 type="submit"
-                                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md"
+                                className="btn-success"
                             >
                                 ✓ Save Fee Type
                             </button>
@@ -489,33 +489,33 @@ const FeeTypeManagement: React.FC = () => {
             )}
 
             {/* Fee Types Table */}
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="card overflow-hidden">
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
                     <table className="w-full">
-                        <thead className="bg-gray-50 border-b">
+                        <thead className="border-b">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left">
                                     Fee Type
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left">
                                     Branch
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left">
                                     Category
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left">
                                     Fee Type Group
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left">
                                     Type
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left">
                                     Display Name
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left">
                                     Fee Refundable
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left">
                                     Action
                                 </th>
                             </tr>
@@ -567,13 +567,13 @@ const FeeTypeManagement: React.FC = () => {
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => handleEdit(feeType)}
-                                                    className="text-blue-600 hover:text-blue-900 px-3 py-1 bg-blue-50 rounded"
+                                                    className="btn text-blue-600 hover:text-blue-900 bg-blue-50"
                                                 >
                                                     ✎ Edit
                                                 </button>
                                                 <button
                                                     onClick={() => feeType.id && handleDelete(feeType.id)}
-                                                    className="text-red-600 hover:text-red-900 px-3 py-1 bg-red-50 rounded"
+                                                    className="btn text-red-600 hover:text-red-900 bg-red-50"
                                                 >
                                                     🗑 Delete
                                                 </button>

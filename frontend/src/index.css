@@ -2,29 +2,352 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ------------------------------------------------------------------
+   LearnSpace ERP – global design system
+   White-label brand colour is injected at runtime by src/theme.ts.
+   ------------------------------------------------------------------ */
+
+:root {
+  /* Default brand (professional blue) – overridden per school at runtime */
+  --brand-50: 239 244 255;
+  --brand-100: 224 234 255;
+  --brand-200: 193 213 255;
+  --brand-300: 154 184 255;
+  --brand-400: 107 143 250;
+  --brand-500: 66 106 242;
+  --brand-600: 37 99 235;
+  --brand-700: 30 78 191;
+  --brand-800: 26 61 148;
+  --brand-900: 20 45 104;
+  --brand-contrast: 255 255 255;
+  --brand-hex: #2563eb;
+
+  --app-bg: #f6f7f9;
+  --app-border: #e6e8ec;
+  --app-topbar-h: 60px;
+  --app-sidebar-w: 248px;
+  --app-sidebar-w-collapsed: 72px;
+}
+
 @layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
-    font-family: 'Poppins', 'Noto Sans Arabic', sans-serif;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Arabic', sans-serif;
+    background-color: var(--app-bg);
+    color: theme('colors.slate.800');
+    font-size: 14px;
+    line-height: 1.5;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: theme('colors.slate.900');
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background: rgb(var(--brand-200));
+    color: theme('colors.slate.900');
+  }
+
+  /* Form controls – consistent look everywhere without touching page code */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']),
+  select,
+  textarea {
+    background-color: #fff;
+    border-color: theme('colors.slate.300');
+    color: theme('colors.slate.800');
+    transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: theme('colors.slate.400');
+  }
+
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):hover:not(:disabled):not(:focus),
+  select:hover:not(:disabled):not(:focus),
+  textarea:hover:not(:disabled):not(:focus) {
+    border-color: theme('colors.slate.400');
+  }
+
+  input:not([type='checkbox']):not([type='radio']):focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    border-color: rgb(var(--brand-500));
+    box-shadow: 0 0 0 3px rgb(var(--brand-500) / 0.18);
+  }
+
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    background-color: theme('colors.slate.50');
+    color: theme('colors.slate.500');
+    cursor: not-allowed;
+  }
+
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: rgb(var(--brand-600));
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+  }
+
+  select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.1em 1.1em;
+    padding-right: 2rem;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  select[multiple],
+  select[size] {
+    background-image: none;
+    padding-right: 0.5rem;
+  }
+
+  button,
+  [role='button'] {
+    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease, transform 120ms ease;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  button:focus-visible,
+  a:focus-visible {
+    outline: 2px solid rgb(var(--brand-500));
+    outline-offset: 2px;
+  }
+
+  /* Tables */
+  table {
+    border-color: var(--app-border);
+  }
+
+  thead th {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* Only skin header cells that carry no explicit colour utilities of their own */
+  thead:not([class*='bg-']):not([class*='text-']) > tr:not([class*='bg-']):not([class*='text-']) > th:not([class*='bg-']):not([class*='text-']) {
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: theme('colors.slate.500');
+    background-color: theme('colors.slate.50');
+  }
+
+  tbody tr {
+    transition: background-color 100ms ease;
+  }
+
+  tbody > tr:not([class*='bg-']):hover {
+    background-color: theme('colors.slate.50');
+  }
+
+  td, th {
+    border-color: var(--app-border);
+  }
+
+  hr {
+    border-color: var(--app-border);
+  }
+
+  /* Scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.slate.300') transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: theme('colors.slate.300');
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: theme('colors.slate.400');
+    background-clip: content-box;
+    border: 2px solid transparent;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  /* Surfaces */
+  .card {
+    @apply bg-white rounded-xl border border-slate-200 shadow-card;
+  }
+  .card-header {
+    @apply px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3;
+  }
+  .card-body {
+    @apply p-5;
+  }
+
+  /* Page header */
+  .page-header {
+    @apply flex flex-wrap items-end justify-between gap-4 mb-6;
+  }
+  .page-title {
+    @apply text-xl font-semibold text-slate-900 tracking-tight;
+  }
+  .page-subtitle {
+    @apply text-sm text-slate-500 mt-0.5;
+  }
+  .page-eyebrow {
+    @apply text-2xs font-semibold uppercase tracking-wider text-brand-600;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 h-9 px-3.5 rounded-lg text-sm font-medium whitespace-nowrap select-none disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+  .btn-sm {
+    @apply h-8 px-3 text-xs;
+  }
+  .btn-lg {
+    @apply h-11 px-5 text-base;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-brand-contrast shadow-sm hover:bg-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-slate-700 border border-slate-300 shadow-sm hover:bg-slate-50 hover:border-slate-400;
+  }
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+  }
+  .btn-soft {
+    @apply btn bg-brand-50 text-brand-700 hover:bg-brand-100;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white shadow-sm hover:bg-red-700;
+  }
+  .btn-success {
+    @apply btn bg-emerald-600 text-white shadow-sm hover:bg-emerald-700;
+  }
+  .btn-warn {
+    @apply btn bg-amber-500 text-white shadow-sm hover:bg-amber-600;
+  }
+  .btn-icon {
+    @apply inline-flex items-center justify-center h-9 w-9 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900;
+  }
+
+  /* Inputs */
+  .label {
+    @apply block text-xs font-medium text-slate-600 mb-1.5;
+  }
+  .input {
+    @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm leading-5 text-slate-800 placeholder:text-slate-400;
+  }
+  select.input {
+    @apply pr-8;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold tracking-wide;
+  }
+  .badge-success {
+    @apply badge bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20;
+  }
+  .badge-danger {
+    @apply badge bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20;
+  }
+  .badge-warning {
+    @apply badge bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20;
+  }
+  .badge-neutral {
+    @apply badge bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-500/10;
+  }
+  .badge-brand {
+    @apply badge bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-600/20;
+  }
+
+  /* Navigation */
+  .nav-item {
+    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+  }
+  .nav-item-active {
+    @apply bg-brand-50 text-brand-700 hover:bg-brand-50 hover:text-brand-700;
+  }
+
+  /* Dropdown menus */
+  .menu {
+    @apply absolute mt-1.5 min-w-[11rem] rounded-xl bg-white border border-slate-200 shadow-pop py-1.5 z-40 animate-scale-in origin-top;
+  }
+  .menu-item {
+    @apply flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 text-left;
+  }
+  .menu-item-active {
+    @apply bg-brand-50 text-brand-700 font-medium hover:bg-brand-50;
+  }
+
+  /* Module tiles */
+  .tile {
+    @apply relative bg-white rounded-xl p-5 border border-slate-200 text-left shadow-card transition-all duration-200 hover:border-brand-300 hover:shadow-card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2;
+  }
+  .tile-icon {
+    @apply w-11 h-11 rounded-lg flex items-center justify-center mb-4 transition-transform duration-200 group-hover:scale-105;
+  }
+
+  /* KPI cards */
+  .kpi {
+    @apply card p-5 flex items-center gap-4;
+  }
+
+  .divider {
+    @apply border-t border-slate-100;
+  }
+
+  .segmented {
+    @apply inline-flex items-center rounded-lg bg-slate-100 p-1 gap-0.5;
+  }
+  .segmented-item {
+    @apply px-3 py-1.5 text-sm font-medium rounded-md text-slate-600 hover:text-slate-900;
+  }
+  .segmented-item-active {
+    @apply bg-white text-slate-900 shadow-sm;
   }
 }
 
 /* Fix for mixed language in charts (Arabic/Urdu) */
-.recharts-text, 
-text,  
+.recharts-text,
+text,
 tspan {
-    font-family: 'Poppins', 'Noto Sans Arabic', sans-serif !important;
+  font-family: 'Inter', 'Noto Sans Arabic', sans-serif !important;
 }
 
 @media print {
+  .no-print {
+    display: none !important;
+  }
 
-    /* Hide non-printable elements */
-    .no-print {
-        display: none !important;
-    }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 
-    /* Ensure all background colors print */
-    * {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
+  body {
+    background: #fff;
+  }
 }

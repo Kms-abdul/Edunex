@@ -202,9 +202,9 @@ const RolePermissions: React.FC = () => {
     }
   };
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <div className="min-h-full bg-slate-50 p-4 md:p-6">
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-gray-900">Role Permissions</h1>
+        <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Role Permissions</h1>
         <p className="text-sm text-gray-500 mt-0.5">Select a role and allow access by modules.</p>
       </div>
       {message && (
@@ -214,15 +214,15 @@ const RolePermissions: React.FC = () => {
           {message.text}
         </div>
       )}
-      <div className="bg-white border border-gray-200 rounded-md shadow-sm">
+      <div className="card">
         <div className="p-6 border-b bg-white">
           <div className="flex flex-wrap items-center gap-4 md:gap-6">
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">User Type :</label>
+              <label className="label whitespace-nowrap">User Type :</label>
               <select
                 value={selectedRoleValue}
                 onChange={event => handleRoleChange(event.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[200px]"
+                className="input w-auto min-w-[200px]"
               >
                 {roles.map(role => (
                   <option key={role.id} value={role.id}>{role.name}</option>
@@ -231,22 +231,22 @@ const RolePermissions: React.FC = () => {
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">User Type Name :</label>
+              <label className="label whitespace-nowrap">User Type Name :</label>
               <input
                 value={roleForm.name}
                 onChange={event => setRoleForm(form => ({ ...form, name: event.target.value }))}
                 disabled={Boolean(selectedRole?.is_system)}
                 placeholder="Role name"
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 min-w-[200px]"
+                className="input w-auto min-w-[200px]"
               />
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">User Type Display Text :</label>
+              <label className="label whitespace-nowrap">User Type Display Text :</label>
               <input
                 value={roleForm.description}
                 onChange={event => setRoleForm(form => ({ ...form, description: event.target.value }))}
                 placeholder="Display text"
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[200px]"
+                className="input w-auto min-w-[200px]"
               />
             </div>
             <label className="inline-flex items-center gap-2 text-sm text-gray-700 font-medium whitespace-nowrap">
@@ -303,20 +303,20 @@ const RolePermissions: React.FC = () => {
         <div className="p-4 border-t bg-gray-50 flex justify-end gap-3 rounded-b-md">
           <button
             onClick={() => resetMatrix('empty')}
-            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50"
+            className="btn-secondary"
           >
             Clear All
           </button>
           <button
             onClick={() => resetMatrix('full')}
-            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50"
+            className="btn-secondary"
           >
             Select All
           </button>
           <button
             onClick={saveRole}
             disabled={saving}
-            className="px-5 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
+            className="btn-primary"
           >
             {saving ? 'Saving...' : selectedRoleId ? 'Save Role' : 'Create Role'}
           </button>

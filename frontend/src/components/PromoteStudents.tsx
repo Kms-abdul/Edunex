@@ -197,33 +197,33 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
     };
 
     return (
-        <div className="p-4 bg-gray-100 min-h-screen">
+        <div className="p-4 bg-gray-100 min-h-full">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold">Bulk Student Upgrade</h2>
-                {onBack && <button onClick={onBack} className="text-sm bg-gray-200 px-3 py-1 rounded">Back</button>}
+                {onBack && <button onClick={onBack} className="btn-secondary btn-sm">Back</button>}
             </div>
 
             <div className="flex gap-4 h-[80vh]">
                 {/* ----------------- SOURCE PANEL ----------------- */}
-                <div className="flex-1 bg-white rounded shadow flex flex-col">
+                <div className="card flex-1 flex flex-col">
                     <div className="p-3 border-b bg-indigo-50 rounded-t">
                         <h3 className="font-semibold text-indigo-700">Source (Current State)</h3>
                         <div className="flex gap-2 mt-2">
-                            <select value={sourceYear} onChange={e => setSourceYear(e.target.value)} className="border p-1 rounded text-sm w-1/3">
+                            <select value={sourceYear} onChange={e => setSourceYear(e.target.value)} className="input w-1/3">
                                 {years.map(y => <option key={y} value={y}>{y}</option>)}
                             </select>
-                            <select value={sourceClass} onChange={e => setSourceClass(e.target.value)} className="border p-1 rounded text-sm w-1/3">
+                            <select value={sourceClass} onChange={e => setSourceClass(e.target.value)} className="input w-1/3">
                                 <option value="">Select Class</option>
                                 {classes.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
                             </select>
-                            <select value={sourceSection} onChange={e => setSourceSection(e.target.value)} className="border p-1 rounded text-sm w-1/4">
+                            <select value={sourceSection} onChange={e => setSourceSection(e.target.value)} className="input w-1/4">
                                 <option value="">All Sec</option>
                                 {sourceSections.map(section => <option key={section} value={section}>{section}</option>)}
                             </select>
                         </div>
                         <input
                             placeholder="Search Source Students..."
-                            className="w-full border p-1 rounded text-sm mt-2"
+                            className="input mt-2"
                             value={sourceSearch}
                             onChange={e => setSourceSearch(e.target.value)}
                         />
@@ -233,7 +233,7 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
                         <h4 className="text-sm font-bold mb-2">{sourceStudents.length} Students Found</h4>
                         <table className="w-full text-sm border-collapse">
                             <thead>
-                                <tr className="bg-gray-100 text-left">
+                                <tr className="text-left">
                                     <th className="p-2 border"><input type="checkbox" onChange={handleSelectAll} checked={eligibleStudents.length > 0 && selectedStudentIds.length === eligibleStudents.length} /></th>
                                     <th className="p-2 border">Adm No</th>
                                     <th className="p-2 border">Name</th>
@@ -281,9 +281,7 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
                     <button
                         onClick={handleUpgrade}
                         disabled={selectedStudentIds.length === 0 || processing}
-                        className={`px-4 py-8 rounded font-bold shadow-lg transform transition-all 
-                            ${selectedStudentIds.length > 0 && !processing ? 'bg-indigo-600 text-white hover:scale-105 hover:bg-indigo-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}
-                        `}
+                        className={`btn shadow-lg transform ${selectedStudentIds.length > 0 && !processing ? 'bg-indigo-600 text-white hover:scale-105 hover:bg-indigo-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                     >
                         {processing ? '...' : 'Upgrade >>'}
                     </button>
@@ -293,18 +291,18 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
                 </div>
 
                 {/* ----------------- TARGET PANEL ----------------- */}
-                <div className="flex-1 bg-white rounded shadow flex flex-col">
+                <div className="card flex-1 flex flex-col">
                     <div className="p-3 border-b bg-green-50 rounded-t">
                         <h3 className="font-semibold text-green-700">Target (Promote To)</h3>
                         <div className="flex gap-2 mt-2">
-                            <select value={targetYear} onChange={e => setTargetYear(e.target.value)} className="border p-1 rounded text-sm w-1/2">
+                            <select value={targetYear} onChange={e => setTargetYear(e.target.value)} className="input w-1/2">
                                 {years.map(y => <option key={y} value={y}>{y}</option>)}
                             </select>
-                            <select value={targetClass} onChange={e => setTargetClass(e.target.value)} className="border p-1 rounded text-sm w-1/3">
+                            <select value={targetClass} onChange={e => setTargetClass(e.target.value)} className="input w-1/3">
                                 <option value="">Select Class</option>
                                 {classes.map(c => <option key={c.id} value={c.class_name}>{c.class_name}</option>)}
                             </select>
-                            <select value={targetSection} onChange={e => setTargetSection(e.target.value)} className="border p-1 rounded text-sm w-1/4">
+                            <select value={targetSection} onChange={e => setTargetSection(e.target.value)} className="input w-1/4">
                                 <option value="">All Sec</option>
                                 {targetSections.map(section => <option key={section} value={section}>{section}</option>)}
                             </select>
@@ -315,7 +313,7 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
                         <h4 className="text-sm font-bold mb-2">{targetStudents.length} Students Already in Target</h4>
                         <table className="w-full text-sm border-collapse">
                             <thead>
-                                <tr className="bg-gray-100 text-left">
+                                <tr className="text-left">
                                     <th className="p-2 border">Adm No</th>
                                     <th className="p-2 border">Name</th>
                                     <th className="p-2 border">Status</th>

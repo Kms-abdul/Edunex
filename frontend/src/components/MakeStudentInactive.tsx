@@ -228,7 +228,7 @@ const MakeStudentInactive: React.FC = () => {
                 {/* ── LEFT PANEL ──────────────────────────────────────────── */}
                 <div className="w-1/2">
                     {/* Search Panel */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm mb-4">
+                    <div className="card p-4 mb-4">
                         <h3 className="text-base font-semibold text-gray-700 mb-3">
                             Make Student Inactive
                             <span className="ml-2 text-xs text-blue-500 cursor-pointer hover:underline">Get Help</span>
@@ -241,14 +241,14 @@ const MakeStudentInactive: React.FC = () => {
                                 placeholder="search adm. number"
                                 value={admSearch}
                                 onChange={e => setAdmSearch(e.target.value)}
-                                className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-violet-400"
+                                className="input w-auto"
                             />
                             <input
                                 type="text"
                                 placeholder="search student name"
                                 value={nameSearch}
                                 onChange={e => setNameSearch(e.target.value)}
-                                className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-violet-400"
+                                className="input w-auto"
                             />
                         </div>
 
@@ -257,7 +257,7 @@ const MakeStudentInactive: React.FC = () => {
                             <select
                                 value={selectedClass}
                                 onChange={e => setSelectedClass(e.target.value)}
-                                className="border border-gray-300 rounded px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                                className="input flex-1"
                             >
                                 <option value="">Select Class</option>
                                 {classOptions.map(c => (
@@ -269,7 +269,7 @@ const MakeStudentInactive: React.FC = () => {
                                 value={selectedStudentId ?? ''}
                                 onChange={e => setSelectedStudentId(Number(e.target.value) || null)}
                                 disabled={!selectedClass}
-                                className="border border-gray-300 rounded px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-1 focus:ring-violet-400 disabled:bg-gray-100"
+                                className="input flex-1"
                             >
                                 <option value="">Select Student</option>
                                 {studentOptions.map(s => (
@@ -281,7 +281,7 @@ const MakeStudentInactive: React.FC = () => {
 
                             <button
                                 onClick={handleGo}
-                                className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded text-sm font-medium flex items-center gap-1 transition-colors"
+                                className="btn-primary"
                             >
                                 Go ▶
                             </button>
@@ -295,7 +295,7 @@ const MakeStudentInactive: React.FC = () => {
                                         type="date"
                                         value={inactivationDate}
                                         onChange={e => setInactivationDate(e.target.value)}
-                                        className="border border-gray-300 rounded px-3 py-2 text-sm w-40 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                                        className="input w-40"
                                         placeholder="date"
                                     />
                                     <input
@@ -303,12 +303,12 @@ const MakeStudentInactive: React.FC = () => {
                                         placeholder="reason"
                                         value={reason}
                                         onChange={e => setReason(e.target.value)}
-                                        className="border border-gray-300 rounded px-3 py-2 text-sm flex-1 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                                        className="input flex-1"
                                     />
                                     <button
                                         onClick={handleMakeInactive}
                                         disabled={submitting}
-                                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors disabled:opacity-60"
+                                        className="btn-danger"
                                     >
                                         {submitting ? 'Saving...' : 'Make Inactive'}
                                     </button>
@@ -329,7 +329,7 @@ const MakeStudentInactive: React.FC = () => {
 
                     {/* Fee Table */}
                     {student && (
-                        <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                        <div className="card">
                             {/* Fee Header */}
                             <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200">
                                 <span className="font-semibold text-gray-700 flex items-center gap-1">
@@ -338,7 +338,7 @@ const MakeStudentInactive: React.FC = () => {
                                 <button
                                     onClick={handleNullify}
                                     disabled={nullifying}
-                                    className="bg-violet-500 hover:bg-violet-600 text-white px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1 transition-colors disabled:opacity-60"
+                                    className="btn-primary btn-sm"
                                 >
                                     <span>⊘</span> {nullifying ? 'Nullifying...' : 'Nullify fee Structure'}
                                 </button>
@@ -351,7 +351,7 @@ const MakeStudentInactive: React.FC = () => {
                             ) : (
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="bg-gray-50 text-gray-600 text-xs">
+                                        <tr className="">
                                             <th className="w-8 px-2 py-2">
                                                 <input type="checkbox" className="rounded" />
                                             </th>
@@ -391,7 +391,7 @@ const MakeStudentInactive: React.FC = () => {
 
                 {/* ── RIGHT PANEL ─────────────────────────────────────────── */}
                 <div className="w-1/2">
-                    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5">
+                    <div className="card p-5">
                         <h3 className="text-base font-semibold text-gray-700 mb-4 flex items-center gap-1">
                             <span className="text-blue-500">ℹ</span> Student Detail
                         </h3>

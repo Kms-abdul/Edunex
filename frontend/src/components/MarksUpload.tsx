@@ -286,15 +286,15 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
                 Import Subject Marks
             </h2>
 
-            <div className="bg-white p-4 rounded shadow-sm border mb-6">
+            <div className="card p-4 mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     {/* Class */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Select Class <span className="text-red-500">*</span></label>
+                        <label className="label">Select Class <span className="text-red-500">*</span></label>
                         <select
                             value={selectedClass}
                             onChange={e => setSelectedClass(e.target.value)}
-                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 bg-white"
+                            className="input"
                         >
                             <option value="">Select Class</option>
                             {classes.map(c => <option key={c.id} value={c.id}>{c.class_name}</option>)}
@@ -303,11 +303,11 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
 
                     {/* Test */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Select Schedule Test <span className="text-red-500">*</span></label>
+                        <label className="label">Select Schedule Test <span className="text-red-500">*</span></label>
                         <select
                             value={selectedTestId}
                             onChange={e => setSelectedTestId(e.target.value)}
-                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 bg-white"
+                            className="input"
                         >
                             <option value="">Select Test</option>
                             {tests.map(t => <option key={t.test_id} value={t.test_id}>{t.test_name}</option>)}
@@ -316,11 +316,11 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
 
                     {/* Subject */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Select Subject <span className="text-red-500">*</span></label>
+                        <label className="label">Select Subject <span className="text-red-500">*</span></label>
                         <select
                             value={selectedSubjectId}
                             onChange={e => setSelectedSubjectId(e.target.value)}
-                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 bg-white"
+                            className="input"
                         >
                             <option value="">Select Subject</option>
                             {subjects.map(s => <option key={s.id} value={s.id}>{s.subject_name}</option>)}
@@ -333,13 +333,13 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
                 {/* Upload Section */}
                 <div className="flex flex-col md:flex-row items-end gap-4 border-t pt-4">
                     <div className="flex-1 w-full">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Browse for the excel sheet:</label>
+                        <label className="label">Browse for the excel sheet:</label>
                         <div className="flex gap-2">
                             <input
                                 type="text"
                                 readOnly
                                 placeholder="No file chosen"
-                                className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm border p-2 bg-gray-50 text-gray-500"
+                                className="input"
                             />
                             <input
                                 type="file"
@@ -351,7 +351,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
                             <button
                                 type="button"
                                 onClick={handleTriggerUpload}
-                                className="bg-gray-200 border border-gray-300 text-gray-700 px-3 py-2 rounded hover:bg-gray-300 text-xs whitespace-nowrap"
+                                className="btn-secondary"
                             >
                                 Choose File
                             </button>
@@ -362,7 +362,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
                         type="button"
                         onClick={handleTriggerUpload}
                         disabled={saving || !selectedTestId || !selectedSubjectId}
-                        className={`bg-blue-500 text-white px-6 py-2.5 rounded hover:bg-blue-600 flex items-center gap-2 font-medium ${saving || !selectedTestId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`btn bg-blue-500 text-white hover:bg-blue-600 ${saving || !selectedTestId ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         {saving ? "Uploading..." : "Upload Excel"}
                     </button>
@@ -371,7 +371,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
                         type="button"
                         onClick={handleDownloadTemplate}
                         disabled={loading || !selectedTestId || students.length === 0}
-                        className={`bg-emerald-500 text-white px-6 py-2.5 rounded hover:bg-emerald-600 flex items-center gap-2 font-medium ${students.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`btn bg-emerald-500 text-white hover:bg-emerald-600 ${students.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         <FileDown size={18} />
                         Download Template

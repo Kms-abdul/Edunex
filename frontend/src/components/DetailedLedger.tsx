@@ -142,11 +142,11 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
     };
 
     return (
-        <div className="p-4 bg-gray-50 min-h-screen space-y-6">
+        <div className="p-4 bg-gray-50 min-h-full space-y-6">
             <h2 className="text-xl font-semibold text-blue-700 mb-4">
                 Cash ledger in details {filterMonth ? `(${filterMonth})` : ''}
             </h2>
-            <div className="bg-white rounded shadow p-4">
+            <div className="card p-4">
                 <div className="flex flex-wrap items-center justify-between mb-6 pb-2 border-b">
                     <div className="flex items-center gap-2">
                         <span className="text-blue-600 font-medium">📜 Cash ledger in details</span>
@@ -155,7 +155,7 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
                         <div className="flex items-center gap-2">
                             <span className="font-medium text-sm text-gray-700">Branch:</span>
                             <select
-                                className="border rounded px-2 py-1 text-sm"
+                                className="input w-auto"
                                 value={selectedBranch}
                                 onChange={(e) => setSelectedBranch(e.target.value)}
                             >
@@ -165,7 +165,7 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
                         <div className="flex items-center gap-2">
                             <span className="font-medium text-sm text-gray-700">FY:</span>
                             <select
-                                className="border rounded px-2 py-1 text-sm"
+                                className="input w-auto"
                                 value={academicYear}
                                 onChange={(e) => setAcademicYear(e.target.value)}
                             >
@@ -176,25 +176,25 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
                         </div>
                         <button
                             onClick={handleExcelExport}
-                            className="flex items-center gap-1 text-sm bg-green-50 text-green-700 px-3 py-1.5 rounded hover:bg-green-100 border border-green-200"
+                            className="btn btn-sm text-sm bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
                         >
                             <FileSpreadsheet size={16} /> Excel
                         </button>
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-100">
+                        <thead className="">
                             <tr>
-                                <th className="p-3 border font-semibold text-gray-700 w-12 text-center">S.No</th>
-                                <th className="p-3 border font-semibold text-gray-700">Voucher Date</th>
-                                <th className="p-3 border font-semibold text-gray-700">Voucher No</th>
-                                <th className="p-3 border font-semibold text-gray-700">Ledger Type</th>
-                                <th className="p-3 border font-semibold text-gray-700">Ledger Head</th>
-                                <th className="p-3 border font-semibold text-gray-700">Narration</th>
-                                <th className="p-3 border font-semibold text-gray-700 text-right">Debit (Dr)</th>
-                                <th className="p-3 border font-semibold text-gray-700 text-right">Credit (Cr)</th>
+                                <th className="p-3 border w-12 text-center">S.No</th>
+                                <th className="p-3 border">Voucher Date</th>
+                                <th className="p-3 border">Voucher No</th>
+                                <th className="p-3 border">Ledger Type</th>
+                                <th className="p-3 border">Ledger Head</th>
+                                <th className="p-3 border">Narration</th>
+                                <th className="p-3 border text-right">Debit (Dr)</th>
+                                <th className="p-3 border text-right">Credit (Cr)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -233,7 +233,7 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
                                 </tr>
                             ))}
                             {filteredData.length > 0 && (
-                                <tr className="bg-gray-100 font-semibold text-gray-800">
+                                <tr className="">
                                     <td colSpan={6} className="p-3 border text-right">Total:</td>
                                     <td className="p-3 border text-right text-emerald-700">
                                         {filteredData.reduce((sum, row) => sum + row.debit, 0).toFixed(2)}
@@ -249,8 +249,8 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
 
                 {/* Modal */}
                 {selectedTxn && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full mx-4">
+                    <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
+                        <div className="card shadow-pop p-6 max-w-2xl w-full mx-4">
                             <div className="flex justify-between items-center mb-4 border-b pb-2">
                                 <h3 className="text-xl font-semibold text-gray-800">
                                     Voucher Details: {selectedTxn.voucher_no}
@@ -275,10 +275,10 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
                                     <h4 className="font-semibold text-gray-700 mb-2">Items Breakdown</h4>
                                     <div className="border rounded overflow-hidden">
                                         <table className="w-full text-sm text-left">
-                                            <thead className="bg-gray-50 border-b">
+                                            <thead className="border-b">
                                                 <tr>
-                                                    <th className="p-2 border-r text-gray-600 font-medium">Item Name</th>
-                                                    <th className="p-2 text-right text-gray-600 font-medium">Amount</th>
+                                                    <th className="p-2 border-r">Item Name</th>
+                                                    <th className="p-2 text-right">Amount</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -302,7 +302,7 @@ const DetailedLedger: React.FC<DetailedLedgerProps> = ({ filterMonth }) => {
                                 </div>
                             )}
                             <div className="mt-6 text-right">
-                                <button onClick={() => setSelectedTxn(null)} className="bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200 border">
+                                <button onClick={() => setSelectedTxn(null)} className="btn-secondary">
                                     Close
                                 </button>
                             </div>

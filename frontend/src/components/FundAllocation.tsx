@@ -94,22 +94,22 @@ const FundAllocation: React.FC = () => {
     };
 
     return (
-        <div className="p-4 bg-gray-50 min-h-screen space-y-6">
+        <div className="p-4 bg-gray-50 min-h-full space-y-6">
             <h2 className="text-xl font-semibold text-blue-700 mb-4">
                 Fund Allocation
             </h2>
-            <div className="bg-white rounded shadow p-6">
+            <div className="card p-6">
                 <h3 className="text-lg font-medium text-gray-800 mb-4">New Fund Allocation</h3>
                 {message && <div className="mb-4 text-blue-600 font-medium">{message}</div>}
 
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div>
-                        <label className="block text-sm text-gray-600 mb-1">Branch *</label>
+                        <label className="label">Branch *</label>
                         <select
                             name="branch_id"
                             value={formData.branch_id}
                             onChange={handleChange}
-                            className="w-full border rounded p-2"
+                            className="input"
                             required
                         >
                             <option value="">Select Branch</option>
@@ -119,45 +119,45 @@ const FundAllocation: React.FC = () => {
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm text-gray-600 mb-1">Date *</label>
+                        <label className="label">Date *</label>
                         <input
                             type="date"
                             name="allocation_date"
                             value={formData.allocation_date}
                             onChange={handleChange}
-                            className="w-full border rounded p-2"
+                            className="input"
                             required
                         />
                     </div>
                     <div>
-                        <label className="block text-sm text-gray-600 mb-1">Amount *</label>
+                        <label className="label">Amount *</label>
                         <input
                             type="number"
                             step="0.01"
                             name="amount"
                             value={formData.amount}
                             onChange={handleChange}
-                            className="w-full border rounded p-2"
+                            className="input"
                             required
                         />
                     </div>
                     <div>
-                        <label className="block text-sm text-gray-600 mb-1">Approved By</label>
+                        <label className="label">Approved By</label>
                         <input
                             type="text"
                             name="approved_by"
                             value={formData.approved_by}
                             onChange={handleChange}
-                            className="w-full border rounded p-2"
+                            className="input"
                         />
                     </div>
                     <div>
-                        <label className="block text-sm text-gray-600 mb-1">Remarks</label>
+                        <label className="label">Remarks</label>
                         <textarea
                             name="remarks"
                             value={formData.remarks}
                             onChange={handleChange}
-                            className="w-full border rounded p-2"
+                            className="input"
                             rows={1}
                         ></textarea>
                     </div>
@@ -165,7 +165,7 @@ const FundAllocation: React.FC = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="bg-blue-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700 disabled:opacity-50"
+                            className="btn-primary"
                         >
                             {loading ? 'Saving...' : 'Save Allocation'}
                         </button>
@@ -173,13 +173,13 @@ const FundAllocation: React.FC = () => {
                 </form>
             </div>
 
-            <div className="bg-white rounded shadow">
+            <div className="card">
                 <div className="p-4 border-b">
                     <h3 className="text-lg font-medium text-gray-800">Recent Allocations</h3>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-100">
+                        <thead className="">
                             <tr>
                                 <th className="p-3 border">Date</th>
                                 <th className="p-3 border">Branch</th>
