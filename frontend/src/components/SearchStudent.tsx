@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
+import { Search, SlidersHorizontal, ArrowLeft, Eye, Pencil, Lock } from 'lucide-react';
 import { UserIcon } from './icons';
-import { LoadingState, EmptyState, Badge } from './ui';
+import { LoadingState, EmptyState, Badge, DataList, notify } from './ui';
+import type { Column } from './ui';
+import { StudentAvatar, PhoneLink, classLabel } from './students/common';
 
 interface ClassItem {
     id: number;
@@ -36,6 +39,8 @@ interface StudentRecord {
     SecondaryEmail?: string;
     address?: string;
     Category?: string;
+    phone?: string;
+    is_locked?: boolean;
 }
 
 interface FeeInstallmentRow {
@@ -86,10 +91,11 @@ const MONTH_LOOKUP = MONTHS.reduce<Record<string, number>>((acc, month, index) =
 }, {});
 
 const SEARCH_FIELD_OPTIONS = [
-    { value: 'name', label: 'Student Name' },
-    { value: 'admission', label: 'Admission No' },
-    { value: 'enrollment', label: 'Enrollment No' },
-    { value: 'father', label: 'Father Name' },
+    { value: 'any', label: 'Name, admission number or phone' },
+    { value: 'name', label: 'Student name only' },
+    { value: 'admission', label: 'Admission number only' },
+    { value: 'enrollment', label: 'Enrollment number only' },
+    { value: 'father', label: 'Father name only' },
 ];
 
 const formatDate = (value?: string) => {
@@ -141,7 +147,14 @@ const extractMonthInfo = (installment: FeeInstallmentRow) => {
     };
 };
 
-const SearchStudent: React.FC = () => {
+interface SearchStudentProps {
+    /** Open the full student record (read only). Hidden when not given. */
+    onView?: (student: any) => void;
+    /** Open the student record for editing. Hidden when not given (e.g. no permission). */
+    onEdit?: (student: any) => void;
+}
+
+const SearchStudent: React.FC<SearchStudentProps> = ({ onView, onEdit }) => {
     const [classes, setClasses] = useState<ClassItem[]>([]);
     const [sections, setSections] = useState<string[]>([]);
     const [students, setStudents] = useState<StudentRecord[]>([]);
@@ -155,7 +168,10 @@ const SearchStudent: React.FC = () => {
     const [selectedClass, setSelectedClass] = useState('');
     const [selectedSection, setSelectedSection] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('Active');
-    const [searchField, setSearchField] = useState('name');
+    // 'any' = no extra filtering on top of the server search (which already
+    // matches name, admission / enrollment number, father name and phone).
+    const [searchField, setSearchField] = useState('any');
+    const [showOptions, setShowOptions] = useState(false);
     const [searchValue, setSearchValue] = useState('');
 
     useEffect(() => {
@@ -245,7 +261,7 @@ const SearchStudent: React.FC = () => {
                 result = result.filter((student) => (student.status || '').toLowerCase() === selectedStatus.toLowerCase());
             }
 
-            if (searchValue.trim()) {
+            if (searchValue.trim() && searchField !== 'any') {
                 const needle = searchValue.trim().toLowerCase();
                 result = result.filter((student) => {
                     if (searchField === 'admission') {
@@ -263,7 +279,8 @@ const SearchStudent: React.FC = () => {
 
             setStudents(result);
 
-            if (result.length > 0) {
+            // Only one match: open it straight away
+            if (result.length === 1) {
                 await loadStudentDetails(result[0]);
             }
         } catch (error) {
@@ -366,296 +383,308 @@ const SearchStudent: React.FC = () => {
         );
     }, [monthlySummary]);
 
-    return (
-        <div className="p-4 sm:p-6 space-y-6">
-            <div className="card">
-                <div className="border-b border-slate-100 px-6 py-4">
-                    <h3 className="text-base font-semibold text-slate-900">Search Student</h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                        View complete student details with month-wise fee and attendance summary.
-                    </p>
+    const rupees = (value: number) => `₹${formatCurrency(value)}`;
+
+    const filterNote = [
+        selectedClass ? `Class ${selectedClass}` : 'All classes',
+        selectedSection ? `Section ${selectedSection}` : '',
+        selectedStatus === 'All' ? 'all students' : selectedStatus === 'TC' ? 'TC students only' : `${selectedStatus.toLowerCase()} students only`,
+    ].filter(Boolean).join(' · ');
+
+    const resultColumns: Column<StudentRecord>[] = [
+        {
+            key: 'name',
+            header: 'Student',
+            primary: true,
+            render: (s) => (
+                <span className="flex items-center gap-3">
+                    <StudentAvatar src={s.photo} name={s.name} size="sm" />
+                    <span className="min-w-0 break-words">{s.name}</span>
+                </span>
+            ),
+        },
+        { key: 'class', header: 'Class', secondary: true, render: (s) => classLabel(s.class, s.section) },
+        { key: 'admNo', header: 'Admission number', render: (s) => s.admNo || s.admission_no || '—' },
+        { key: 'father', header: 'Father', render: (s) => s.father || s.Fatherfirstname || '—' },
+        { key: 'phone', header: 'Phone', render: (s) => <PhoneLink phone={s.fatherMobile || s.FatherPhone || s.phone} /> },
+        { key: 'status', header: 'Status', render: (s) => <Badge status={s.status || 'Unknown'} /> },
+    ];
+
+    const monthColumns: Column<MonthlySummaryRow>[] = [
+        { key: 'label', header: 'Month', primary: true },
+        { key: 'feePayable', header: 'Fee', render: (r) => rupees(r.feePayable) },
+        { key: 'feePaid', header: 'Paid', render: (r) => <span className="text-emerald-700">{rupees(r.feePaid)}</span> },
+        { key: 'feeDue', header: 'Still due', render: (r) => <span className="text-rose-700">{rupees(r.feeDue)}</span> },
+        { key: 'feeConcession', header: 'Concession', render: (r) => rupees(r.feeConcession) },
+        { key: 'installmentCount', header: 'Instalments', hideOnMobile: true },
+        { key: 'attendanceTotal', header: 'Days marked' },
+        { key: 'attendancePresent', header: 'Present' },
+        { key: 'attendanceAbsent', header: 'Absent' },
+        { key: 'attendanceOther', header: 'Other' },
+    ];
+
+    const handleEdit = (student: StudentRecord) => {
+        if (!onEdit) return;
+        if (student.is_locked) {
+            notify('This student record is locked for this academic year and cannot be edited.');
+            return;
+        }
+        onEdit(student);
+    };
+
+    const renderSummary = (student: StudentRecord) => (
+        <div className="space-y-4">
+            {students.length > 1 && (
+                <button className="btn-ghost -ml-2" onClick={() => setSelectedStudent(null)}>
+                    <ArrowLeft className="h-5 w-5" /> Back to results ({students.length})
+                </button>
+            )}
+
+            <div className="card p-4 sm:p-6">
+                <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
+                    <StudentAvatar src={student.photo} name={student.name} size="lg" />
+                    <div className="min-w-0 flex-1">
+                        <h3 className="text-xl font-semibold text-slate-900 break-words">{student.name}</h3>
+                        <p className="mt-1 text-base text-slate-600">Class {classLabel(student.class, student.section)}</p>
+                        <div className="mt-2 flex flex-wrap justify-center gap-2 sm:justify-start">
+                            <Badge status={student.status || 'Unknown'} />
+                            {student.is_locked && <Badge tone="neutral">Locked for this year</Badge>}
+                        </div>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 px-6 py-5 md:grid-cols-6">
-                    <select
-                        value={selectedClass}
-                        onChange={(e) => setSelectedClass(e.target.value)}
-                        className="input w-auto"
-                    >
-                        <option value="">All Classes</option>
-                        {classes.map((item) => (
-                            <option key={item.id} value={item.class_name}>
-                                {item.class_name}
-                            </option>
-                        ))}
-                    </select>
+                <dl className="mt-5 grid grid-cols-1 gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2">
+                    <Fact label="Admission number" value={student.admNo || student.admission_no} />
+                    <Fact label="Roll number" value={student.rollNo} />
+                    <Fact label="Father" value={student.Fatherfirstname || student.father} />
+                    <Fact label="Father's phone" value={<PhoneLink phone={student.FatherPhone || student.fatherMobile} />} />
+                    <Fact label="Mother" value={student.Motherfirstname} />
+                    <Fact label="Mother's phone" value={<PhoneLink phone={student.SecondaryPhone} />} />
+                </dl>
 
-                    <select
-                        value={selectedSection}
-                        onChange={(e) => setSelectedSection(e.target.value)}
-                        className="input w-auto"
-                    >
-                        <option value="">All Sections</option>
-                        {sections.map((section) => (
-                            <option key={section} value={section}>
-                                {section}
-                            </option>
-                        ))}
-                    </select>
-
-                    <select
-                        value={selectedStatus}
-                        onChange={(e) => setSelectedStatus(e.target.value)}
-                        className="input w-auto"
-                    >
-                        <option value="Active">Active</option>
-                        <option value="Inactive">Inactive</option>
-                        <option value="TC">TC</option>
-                        <option value="All">All</option>
-                    </select>
-
-                    <select
-                        value={searchField}
-                        onChange={(e) => setSearchField(e.target.value)}
-                        className="input w-auto"
-                    >
-                        {SEARCH_FIELD_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
-
-                    <input
-                        value={searchValue}
-                        onChange={(e) => setSearchValue(e.target.value)}
-                        placeholder="Search student"
-                        className="input w-auto md:col-span-2"
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                    <MiniStat label="Fee still due" value={loadingDetails ? '…' : rupees(feeTotals.due)} tone="rose" />
+                    <MiniStat
+                        label="Days present"
+                        value={loadingDetails ? '…' : `${attendanceTotals.present} of ${attendanceTotals.total || 0}`}
+                        tone="emerald"
                     />
                 </div>
 
-                <div className="px-6 pb-6">
-                    <button
-                        onClick={handleSearch}
-                        className="btn-primary"
-                    >
-                        Search
-                    </button>
-                </div>
+                {(onView || onEdit) && (
+                    <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                        {onView && (
+                            <button className="btn-primary btn-lg" onClick={() => onView(student)}>
+                                <Eye className="h-5 w-5" /> View full details
+                            </button>
+                        )}
+                        {onEdit && (
+                            <button
+                                className={`btn-secondary btn-lg ${student.is_locked ? 'opacity-60' : ''}`}
+                                onClick={() => handleEdit(student)}
+                            >
+                                {student.is_locked ? <Lock className="h-5 w-5" /> : <Pencil className="h-5 w-5" />}
+                                {student.is_locked ? 'Locked — cannot edit' : 'Edit details'}
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-                <div className="card">
-                    <div className="border-b border-slate-100 px-5 py-4">
-                        <h4 className="text-base font-semibold text-slate-900">Students</h4>
-                        <p className="mt-1 text-sm text-slate-500">
-                            {loadingStudents ? 'Searching students...' : `${students.length} result(s) found`}
-                        </p>
-                    </div>
+            <details className="card group">
+                <summary className="flex min-h-[44px] cursor-pointer items-center px-4 py-3 font-medium text-slate-800 sm:px-6">
+                    More details
+                </summary>
+                <dl className="grid grid-cols-1 gap-4 border-t border-slate-100 px-4 py-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-3">
+                    <Fact label="Gender" value={student.gender} />
+                    <Fact label="Date of birth" value={formatDate(student.dob)} />
+                    <Fact label="Admission date" value={formatDate(student.admission_date)} />
+                    <Fact label="Enrollment number" value={student.enrollment_no} />
+                    <Fact label="Category" value={student.Category} />
+                    <Fact label="Blood group" value={student.BloodGroup} />
+                    <Fact label="Father's email" value={student.FatherEmail} />
+                    <Fact label="Mother's email" value={student.SecondaryEmail} />
+                    <Fact label="Branch" value={student.branch} />
+                    <Fact label="Address" value={student.address} />
+                </dl>
+            </details>
 
-                    <div className="max-h-[780px] overflow-y-auto">
-                        {loadingStudents && (
-                            <LoadingState label="Loading students..." />
-                        )}
-
-                        {!loadingStudents && students.map((student) => (
-                            <button
-                                key={student.student_id}
-                                onClick={() => loadStudentDetails(student)}
-                                className={`flex w-full items-start gap-3 px-5 py-4 border-b border-slate-100 text-left transition-colors ${selectedStudent?.student_id === student.student_id ? 'bg-brand-50' : 'hover:bg-slate-50'}`}
-                            >
-                                {student.photo ? (
-                                    <img
-                                        src={student.photo}
-                                        alt={student.name}
-                                        className="h-14 w-14 rounded-full border border-slate-200 object-cover"
-                                        onError={(e) => { (e.target as HTMLImageElement).style.display='none'; (e.target as HTMLImageElement).parentElement?.classList.add('flex', 'items-center', 'justify-center', 'bg-gray-50'); }}
-                                    />
-                                ) : (
-                                    <div className="h-14 w-14 rounded-full border border-slate-200 bg-slate-50 flex items-center justify-center">
-                                        <UserIcon className="h-8 w-8 text-slate-400" />
-                                    </div>
-                                )}
-                                <div className="min-w-0 flex-1">
-                                    <div className="truncate font-semibold text-slate-900">{student.name}</div>
-                                    <div className="mt-1 text-xs text-slate-500">
-                                        {student.class || '-'} {student.section || ''}
-                                    </div>
-                                    <div className="mt-1 text-xs text-slate-500">
-                                        Adm No: {student.admNo || student.admission_no || '-'}
-                                    </div>
-                                    <Badge status={student.status || 'Unknown'} className="mt-2" />
-                                </div>
-                            </button>
-                        ))}
-
-                        {!loadingStudents && hasSearched && students.length === 0 && (
-                            <EmptyState compact title="No students found" description="No students found for the selected filters." />
-                        )}
-
-                        {!loadingStudents && !hasSearched && (
-                            <EmptyState compact title="No search yet" description="Run a search to load students." />
-                        )}
-                    </div>
+            <div className="card">
+                <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
+                    <h4 className="text-base font-semibold text-slate-900">Fees and attendance by month</h4>
                 </div>
-
-                <div className="space-y-6">
-                    {!selectedStudent && (
-                        <div className="card flex min-h-[420px] items-center justify-center border-dashed">
-                            <EmptyState
-                                icon={<UserIcon className="w-6 h-6" />}
-                                title="Student details will appear here"
-                                description="Search and choose a student to view the monthly fee and attendance summary."
-                            />
-                        </div>
-                    )}
-
-                    {selectedStudent && (
+                <div className="p-3 sm:p-4">
+                    {loadingDetails ? (
+                        <LoadingState label="Loading fees and attendance…" />
+                    ) : (
                         <>
-                            <div className="card">
-                                <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-[220px_repeat(4,minmax(0,1fr))]">
-                                    <div className="border-b border-gray-100 pb-5 text-center lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
-                                        {selectedStudent.photo ? (
-                                            <img
-                                                src={selectedStudent.photo}
-                                                alt={selectedStudent.name}
-                                                className="mx-auto h-28 w-28 rounded-full border-4 border-amber-300 object-cover"
-                                                onError={(e) => { (e.target as HTMLImageElement).style.display='none'; (e.target as HTMLImageElement).parentElement?.classList.add('flex', 'items-center', 'justify-center', 'bg-gray-50'); }}
-                                            />
-                                        ) : (
-                                            <div className="mx-auto h-28 w-28 rounded-full border-4 border-amber-300 bg-gray-50 flex items-center justify-center">
-                                                <UserIcon className="h-16 w-16 text-gray-300" />
-                                            </div>
-                                        )}
-                                        <h3 className="mt-4 text-lg font-semibold text-slate-900">{selectedStudent.name}</h3>
-                                        <p className="mt-1 text-sm text-gray-500">
-                                            {selectedStudent.class || '-'} / {selectedStudent.section || '-'}
-                                        </p>
-                                        <p className="mt-2 text-sm text-gray-500">{selectedStudent.branch || '-'}</p>
-                                        <Badge status={selectedStudent.status || 'Unknown'} className="mt-4" />
-                                    </div>
-
-                                    <div className="space-y-4 border-b border-gray-100 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
-                                        <DetailRow label="Admission No" value={selectedStudent.admNo || selectedStudent.admission_no} />
-                                        <DetailRow label="Roll No" value={selectedStudent.rollNo} />
-                                        <DetailRow label="Gender" value={selectedStudent.gender} />
-                                        <DetailRow label="Date of Birth" value={formatDate(selectedStudent.dob)} />
-                                        <DetailRow label="Admission Date" value={formatDate(selectedStudent.admission_date)} />
-                                        <DetailRow label="Category" value={selectedStudent.Category} />
-                                    </div>
-
-                                    <div className="space-y-4 border-b border-gray-100 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
-                                        <DetailRow label="Father Name" value={selectedStudent.Fatherfirstname || selectedStudent.father} />
-                                        <DetailRow label="Father Mobile" value={selectedStudent.FatherPhone || selectedStudent.fatherMobile} />
-                                        <DetailRow label="Father Email" value={selectedStudent.FatherEmail} />
-                                        <DetailRow label="Blood Group" value={selectedStudent.BloodGroup} />
-                                    </div>
-
-                                    <div className="space-y-4 border-b border-gray-100 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
-                                        <DetailRow label="Mother Name" value={selectedStudent.Motherfirstname} />
-                                        <DetailRow label="Mother Mobile" value={selectedStudent.SecondaryPhone} />
-                                        <DetailRow label="Mother Email" value={selectedStudent.SecondaryEmail} />
-                                        <DetailRow label="Address" value={selectedStudent.address} />
-                                    </div>
-
-                                    <div className="grid content-start gap-4">
-                                        <MiniStat label="Fee Payable" value={`Rs ${formatCurrency(feeTotals.payable)}`} tone="violet" />
-                                        <MiniStat label="Fee Due" value={`Rs ${formatCurrency(feeTotals.due)}`} tone="rose" />
-                                        <MiniStat label="Attendance Present" value={`${attendanceTotals.present}/${attendanceTotals.total || 0}`} tone="emerald" />
-                                        <MiniStat label="Attendance Absent" value={`${attendanceTotals.absent}`} tone="amber" />
-                                    </div>
+                            <DataList
+                                columns={monthColumns}
+                                rows={monthlySummary}
+                                rowKey={(r) => r.key}
+                                emptyTitle="No records yet"
+                                emptyHint="There are no fee or attendance records for this student."
+                            />
+                            {monthlySummary.length > 0 && (
+                                <div className="mt-3 rounded-xl bg-slate-50 px-4 py-3">
+                                    <div className="mb-2 text-sm font-semibold text-slate-800">Total</div>
+                                    <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4 lg:grid-cols-8">
+                                        <Fact label="Fee" value={rupees(feeTotals.payable)} />
+                                        <Fact label="Paid" value={rupees(feeTotals.paid)} />
+                                        <Fact label="Still due" value={rupees(feeTotals.due)} />
+                                        <Fact label="Concession" value={rupees(feeTotals.concession)} />
+                                        <Fact label="Instalments" value={feeInstallments.length} />
+                                        <Fact label="Days marked" value={attendanceTotals.total} />
+                                        <Fact label="Present" value={attendanceTotals.present} />
+                                        <Fact label="Absent / other" value={`${attendanceTotals.absent} / ${attendanceTotals.other}`} />
+                                    </dl>
                                 </div>
-                            </div>
-
-                            <div className="card">
-                                <div className="border-b border-gray-100 px-6 py-4">
-                                    <h4 className="text-base font-semibold text-slate-900">Monthly Fee and Attendance Summary</h4>
-                                    <p className="mt-1 text-sm text-gray-500">
-                                        Month-wise snapshot for the selected student.
-                                    </p>
-                                </div>
-
-                                {loadingDetails ? (
-                                    <LoadingState label="Loading student summary..." />
-                                ) : monthlySummary.length === 0 ? (
-                                    <EmptyState compact title="No records" description="No fee or attendance records available for this student." />
-                                ) : (
-                                    <div className="overflow-x-auto rounded-lg border border-slate-200">
-                                        <table className="min-w-full divide-y divide-slate-200 text-sm">
-                                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                <tr className="text-left">
-                                                    <th className="px-4 py-3">Month</th>
-                                                    <th className="px-4 py-3">Fee Payable</th>
-                                                    <th className="px-4 py-3">Fee Paid</th>
-                                                    <th className="px-4 py-3">Fee Due</th>
-                                                    <th className="px-4 py-3">Concession</th>
-                                                    <th className="px-4 py-3">Installments</th>
-                                                    <th className="px-4 py-3">Attendance Days</th>
-                                                    <th className="px-4 py-3">Present</th>
-                                                    <th className="px-4 py-3">Absent</th>
-                                                    <th className="px-4 py-3">Other</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100 bg-white">
-                                                {monthlySummary.map((row) => (
-                                                    <tr key={row.key} className="hover:bg-slate-50">
-                                                        <td className="px-4 py-3 font-semibold text-slate-900">{row.label}</td>
-                                                        <td className="px-4 py-3">Rs {formatCurrency(row.feePayable)}</td>
-                                                        <td className="px-4 py-3 text-emerald-700">Rs {formatCurrency(row.feePaid)}</td>
-                                                        <td className="px-4 py-3 text-rose-700">Rs {formatCurrency(row.feeDue)}</td>
-                                                        <td className="px-4 py-3">Rs {formatCurrency(row.feeConcession)}</td>
-                                                        <td className="px-4 py-3">{row.installmentCount}</td>
-                                                        <td className="px-4 py-3">{row.attendanceTotal}</td>
-                                                        <td className="px-4 py-3">{row.attendancePresent}</td>
-                                                        <td className="px-4 py-3">{row.attendanceAbsent}</td>
-                                                        <td className="px-4 py-3">{row.attendanceOther}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                            <tfoot className="bg-slate-50 text-sm font-semibold text-slate-800">
-                                                <tr>
-                                                    <td className="px-4 py-3">Total</td>
-                                                    <td className="px-4 py-3">Rs {formatCurrency(feeTotals.payable)}</td>
-                                                    <td className="px-4 py-3">Rs {formatCurrency(feeTotals.paid)}</td>
-                                                    <td className="px-4 py-3">Rs {formatCurrency(feeTotals.due)}</td>
-                                                    <td className="px-4 py-3">Rs {formatCurrency(feeTotals.concession)}</td>
-                                                    <td className="px-4 py-3">{feeInstallments.length}</td>
-                                                    <td className="px-4 py-3">{attendanceTotals.total}</td>
-                                                    <td className="px-4 py-3">{attendanceTotals.present}</td>
-                                                    <td className="px-4 py-3">{attendanceTotals.absent}</td>
-                                                    <td className="px-4 py-3">{attendanceTotals.other}</td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
+                            )}
                         </>
                     )}
                 </div>
             </div>
         </div>
     );
+
+    return (
+        <div className="p-4 sm:p-6 space-y-4">
+            <div className="card p-4 sm:p-6">
+                <label htmlFor="find-student" className="mb-2 block text-base font-semibold text-slate-900">
+                    Find a student
+                </label>
+                <form
+                    className="flex flex-col gap-2 sm:flex-row"
+                    onSubmit={(e) => { e.preventDefault(); handleSearch(); }}
+                >
+                    <div className="relative flex-1">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                        <input
+                            id="find-student"
+                            type="search"
+                            enterKeyHint="search"
+                            autoComplete="off"
+                            value={searchValue}
+                            onChange={(e) => setSearchValue(e.target.value)}
+                            placeholder="Search by name, admission number or phone"
+                            className="input h-12 pl-10 text-base"
+                        />
+                    </div>
+                    <button type="submit" className="btn-primary btn-lg" disabled={loadingStudents}>
+                        {loadingStudents ? 'Searching…' : 'Search'}
+                    </button>
+                </form>
+
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm text-slate-500">Looking in: {filterNote}</span>
+                    <button
+                        type="button"
+                        className="btn-ghost btn-sm"
+                        aria-expanded={showOptions}
+                        onClick={() => setShowOptions((v) => !v)}
+                    >
+                        <SlidersHorizontal className="h-4 w-4" />
+                        {showOptions ? 'Hide options' : 'More options'}
+                    </button>
+                </div>
+
+                {showOptions && (
+                    <div className="mt-3 grid grid-cols-1 gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <div>
+                            <label className="label">Class</label>
+                            <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="input">
+                                <option value="">All classes</option>
+                                {classes.map((item) => (
+                                    <option key={item.id} value={item.class_name}>{item.class_name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="label">Section</label>
+                            <select
+                                value={selectedSection}
+                                onChange={(e) => setSelectedSection(e.target.value)}
+                                className="input"
+                                disabled={!selectedClass}
+                            >
+                                <option value="">{selectedClass ? 'All sections' : 'Choose a class first'}</option>
+                                {sections.map((section) => (
+                                    <option key={section} value={section}>{section}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="label">Which students</label>
+                            <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} className="input">
+                                <option value="Active">Active only</option>
+                                <option value="Inactive">Inactive only</option>
+                                <option value="TC">TC only</option>
+                                <option value="All">All students</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="label">Search in</label>
+                            <select value={searchField} onChange={(e) => setSearchField(e.target.value)} className="input">
+                                {SEARCH_FIELD_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {selectedStudent ? (
+                renderSummary(selectedStudent)
+            ) : loadingStudents ? (
+                <div className="card"><LoadingState label="Searching…" /></div>
+            ) : !hasSearched ? (
+                <div className="card">
+                    <EmptyState
+                        icon={<UserIcon className="h-6 w-6" />}
+                        title="Search for a student"
+                        description="Type a name, admission number or phone number, then tap Search. Leave it empty to see everyone in the chosen class."
+                    />
+                </div>
+            ) : (
+                <div className="space-y-2">
+                    {students.length > 0 && (
+                        <p className="px-1 text-sm text-slate-600">
+                            {students.length === 1 ? '1 student found' : `${students.length} students found`} · tap a student to open
+                        </p>
+                    )}
+                    <DataList
+                        columns={resultColumns}
+                        rows={students}
+                        rowKey={(s) => s.student_id}
+                        onRowClick={loadStudentDetails}
+                        emptyTitle="No students found"
+                        emptyHint="Check the spelling, or open More options and choose “All students”."
+                    />
+                </div>
+            )}
+        </div>
+    );
 };
 
-const DetailRow: React.FC<{ label: string; value?: string | number | null }> = ({ label, value }) => (
-    <div>
-        <div className="text-xs font-medium uppercase tracking-wide text-gray-400">{label}</div>
-        <div className="mt-1 text-sm font-medium text-gray-800">{value || '-'}</div>
+const Fact: React.FC<{ label: string; value?: React.ReactNode }> = ({ label, value }) => (
+    <div className="min-w-0">
+        <dt className="text-xs text-slate-500">{label}</dt>
+        <dd className="mt-0.5 text-[15px] font-medium text-slate-800 break-words">
+            {value === undefined || value === null || value === '' ? '—' : value}
+        </dd>
     </div>
 );
 
-const MiniStat: React.FC<{ label: string; value: string; tone: 'violet' | 'rose' | 'emerald' | 'amber' }> = ({ label, value, tone }) => {
+const MiniStat: React.FC<{ label: string; value: string; tone: 'rose' | 'emerald' }> = ({ label, value, tone }) => {
     const toneMap = {
-        violet: 'bg-violet-50 text-violet-700',
         rose: 'bg-rose-50 text-rose-700',
         emerald: 'bg-emerald-50 text-emerald-700',
-        amber: 'bg-amber-50 text-amber-700',
     };
 
     return (
         <div className={`rounded-xl px-4 py-3 ${toneMap[tone]}`}>
-            <div className="text-xs font-medium uppercase tracking-wide">{label}</div>
+            <div className="text-sm">{label}</div>
             <div className="mt-1 text-lg font-semibold">{value}</div>
         </div>
     );

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Page } from '../App';
+import { Eye, Pencil, Lock, Printer, Ban, CheckCircle2 } from 'lucide-react';
 import { ChevronDownIcon, SearchIcon, UserIcon } from './icons';
 import ComingSoon from './ComingSoon';
 import ImportStudentData from './ImportStudentData';
@@ -17,7 +18,9 @@ import ChangeSection from './ChangeSection';
 import { Student } from '../types';
 import api from '../api';
 import { notify, confirmDialog } from './ui/feedback';
-import { PageHeader, LoadingState, EmptyState } from './ui';
+import { DataList, Badge } from './ui';
+import type { Column } from './ui';
+import { StudentAvatar, PhoneLink, classLabel } from './students/common';
 import { consumeIntent } from '../utils/intent';
 
 // ---------------------------------------------------------------------------
@@ -29,42 +32,9 @@ interface StudentAdministrationProps {
 
 // Page view types
 type StudentAdminView =
-    'students' | 'search' | 'summary' | 'upgrade' | {/*'reports' | 'certificates'*/ }
+    'students' | 'search' | 'summary' | 'upgrade' /* | 'reports' | 'certificates' */
     | 'import' | 'addStudent' | 'viewStudent' | 'editStudent'
     | 'inactive' | 'inactiveReport' | 'demote' | 'updateDetails' | 'changeSection';
-
-// ---------------------------------------------------------------------------
-// Dropdown Component
-// ---------------------------------------------------------------------------
-const Dropdown: React.FC<{ title: string; isOpen: boolean; onToggle: () => void; children: any }> =
-    ({ title, isOpen, onToggle, children }) => (
-        <div className="relative inline-block text-left">
-            <button
-                className="btn-secondary w-full"
-                onClick={onToggle}
-            >
-                {title}
-                <ChevronDownIcon className="ml-2 h-5 w-5" />
-            </button>
-
-            {isOpen && (
-                <div className="card shadow-pop absolute right-0 mt-2 w-56 z-20">
-                    <div className="py-1">{children}</div>
-                </div>
-            )}
-        </div>
-    );
-
-const DropdownItem: React.FC<{ children: any; onClick?: () => void }> =
-    ({ children, onClick }) => (
-        <a
-            href="#"
-            onClick={(e) => { e.preventDefault(); onClick?.(); }}
-            className="menu-item"
-        >
-            {children}
-        </a>
-    );
 
 // ---------------------------------------------------------------------------
 // Pagination Component
@@ -168,81 +138,114 @@ const Pagination: React.FC<PaginationProps> = ({
 };
 
 // ---------------------------------------------------------------------------
-// Header Component
+// Header Component: the list of student jobs (each permission-gated)
 // ---------------------------------------------------------------------------
-const StudentAdminHeader: React.FC<{ activeView: StudentAdminView; setActiveView: any }> =
+type StudentJob = { view: StudentAdminView; label: string; allowed: boolean };
+
+const StudentAdminHeader: React.FC<{ activeView: StudentAdminView; setActiveView: (view: StudentAdminView) => void }> =
     ({ activeView, setActiveView }) => {
         const { hasPermission } = useAuth();
-        const [open, setOpen] = useState<string | null>(null);
+        const [moreOpen, setMoreOpen] = useState(false);
+        const [phoneJobsOpen, setPhoneJobsOpen] = useState(false);
 
-        const toggle = (name: string) => setOpen(open === name ? null : name);
+        const canInactive = hasPermission('administration.student.make-student-inactive', 'write');
 
-        const btn = (view: StudentAdminView) =>
-            `btn btn-sm ${activeView === view
-                ? 'bg-brand-600 text-brand-contrast shadow-sm hover:bg-brand-700'
-                : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+        const mainJobs: StudentJob[] = [
+            { view: 'students', label: 'All students', allowed: hasPermission('administration.student.student-administration', 'read') },
+            { view: 'search', label: 'Find a student', allowed: hasPermission('administration.student.search-student', 'read') },
+            { view: 'addStudent', label: 'Add a new student', allowed: hasPermission('administration.student.create-student', 'write') },
+            { view: 'updateDetails', label: 'Update details', allowed: hasPermission('administration.student.update-student-details', 'write') },
+            { view: 'changeSection', label: 'Change section', allowed: hasPermission('administration.student.change-section', 'write') },
+            { view: 'upgrade', label: 'Promote', allowed: hasPermission('administration.student.promote-students', 'write') },
+        ].filter(j => j.allowed) as StudentJob[];
+
+        const moreJobs: StudentJob[] = [
+            { view: 'summary', label: 'Class summary', allowed: hasPermission('setup.school-setup.class-summary', 'read') || hasPermission('administration.student.student-administration', 'read') },
+            { view: 'inactive', label: 'Make a student inactive', allowed: canInactive },
+            { view: 'inactiveReport', label: 'Inactive students report', allowed: canInactive },
+            { view: 'demote', label: 'Move back a class (de-promote)', allowed: hasPermission('administration.student.demote-students', 'write') },
+        ].filter(j => j.allowed) as StudentJob[];
+
+        // Viewing / editing one student belongs to "All students"
+        const highlighted: StudentAdminView =
+            activeView === 'viewStudent' || activeView === 'editStudent' ? 'students' : activeView;
+        const current = [...mainJobs, ...moreJobs].find(j => j.view === highlighted);
+        const activeIsMore = moreJobs.some(j => j.view === highlighted);
+
+        const choose = (view: StudentAdminView) => {
+            setActiveView(view);
+            setMoreOpen(false);
+            setPhoneJobsOpen(false);
+        };
+
+        const pill = (active: boolean) =>
+            `inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border px-4 text-sm font-medium transition-colors ${active
+                ? 'border-brand-600 bg-brand-600 text-brand-contrast shadow-sm'
+                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
             }`;
+
+        // On phones the job list folds away once you are inside a job, so the work gets the screen
+        const jobsVisibleOnPhone = phoneJobsOpen || highlighted === 'students';
 
         return (
             <div className="bg-white px-4 sm:px-6 py-4 border-b border-slate-200">
-                <PageHeader
-                    eyebrow="Administration"
-                    title="Students"
-                    icon={<UserIcon className="w-6 h-6" />}
-                    className="!mb-0 !items-center"
-                    actions={<>
-                        {hasPermission('administration.student.student-administration', 'read') && (
-                            <button className={btn('students')} onClick={() => setActiveView('students')}>Students</button>
-                        )}
-                        {hasPermission('administration.student.create-student', 'write') && (
-                            <button className={btn('addStudent')} onClick={() => setActiveView('addStudent')}>Create Student</button>
-                        )}
-                        {hasPermission('administration.student.search-student', 'read') && (
-                            <button className={btn('search')} onClick={() => setActiveView('search')}>Search</button>
-                        )}
-                        {hasPermission('administration.student.update-student-details', 'write') && (
-                            <button className={btn('updateDetails')} onClick={() => setActiveView('updateDetails')}>Update Student Details</button>
-                        )}
-                        {(hasPermission('setup.school-setup.class-summary', 'read') || hasPermission('administration.student.student-administration', 'read')) && (
-                            <button className={btn('summary')} onClick={() => setActiveView('summary')}>Class Summary</button>
-                        )}
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center flex-shrink-0">
+                            <UserIcon className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                            <h1 className="text-lg font-semibold text-slate-900">Students</h1>
+                            {current && <p className="text-sm text-slate-500 truncate sm:hidden">{current.label}</p>}
+                        </div>
+                    </div>
+                    {!jobsVisibleOnPhone && (
+                        <button className="btn-secondary sm:hidden" onClick={() => setPhoneJobsOpen(true)} aria-expanded={false}>
+                            Other jobs <ChevronDownIcon className="h-4 w-4" />
+                        </button>
+                    )}
+                </div>
 
-                        {/*<Dropdown title="Report" isOpen={open === 'report'} onToggle={() => toggle('report')}>
-                            <DropdownItem>Custom Download</DropdownItem>
-                            <DropdownItem>Pre-defined Download</DropdownItem>
-                        </Dropdown>
+                <nav
+                    aria-label="Student jobs"
+                    className={`${jobsVisibleOnPhone ? 'grid' : 'hidden'} mt-3 grid-cols-2 gap-2 sm:flex sm:flex-wrap`}
+                >
+                    {mainJobs.map(job => (
+                        <button
+                            key={job.view}
+                            className={pill(highlighted === job.view)}
+                            aria-current={highlighted === job.view ? 'page' : undefined}
+                            onClick={() => choose(job.view)}
+                        >
+                            {job.label}
+                        </button>
+                    ))}
+                    {moreJobs.length > 0 && (
+                        <button
+                            className={pill(activeIsMore && !moreOpen)}
+                            aria-expanded={moreOpen}
+                            onClick={() => setMoreOpen(o => !o)}
+                        >
+                            More
+                            <ChevronDownIcon className={`h-4 w-4 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                    )}
+                </nav>
 
-                        <Dropdown title="Certificates" isOpen={open === 'certs'} onToggle={() => toggle('certs')}>
-                            <DropdownItem>Student Certificate</DropdownItem>
-                            <DropdownItem>Teacher Certificate</DropdownItem>
-                        </Dropdown>*/}
-
-                        {hasPermission('administration.student.make-student-inactive', 'write') && (
-                            <Dropdown
-                                title="Inactive"
-                                isOpen={open === 'inactive'}
-                                onToggle={() => toggle('inactive')}
+                {moreOpen && (
+                    <div className={`${jobsVisibleOnPhone ? 'grid' : 'hidden sm:grid'} mt-2 grid-cols-1 gap-2 rounded-xl bg-slate-50 p-2 sm:grid-cols-2 lg:grid-cols-4`}>
+                        {moreJobs.map(job => (
+                            <button
+                                key={job.view}
+                                className={`${pill(highlighted === job.view)} justify-start text-left`}
+                                aria-current={highlighted === job.view ? 'page' : undefined}
+                                onClick={() => choose(job.view)}
                             >
-                                <DropdownItem onClick={() => { setActiveView('inactive'); setOpen(null); }}>
-                                    Make Student Inactive
-                                </DropdownItem>
-                                <DropdownItem onClick={() => { setActiveView('inactiveReport'); setOpen(null); }}>
-                                    Inactive Student Report
-                                </DropdownItem>
-                            </Dropdown>
-                        )}
-
-                        {hasPermission('administration.student.change-section', 'write') && (
-                            <button className={btn('changeSection')} onClick={() => setActiveView('changeSection')}>Change Section</button>
-                        )}
-                        {hasPermission('administration.student.promote-students', 'write') && (
-                            <button className={btn('upgrade')} onClick={() => setActiveView('upgrade')}>Upgrade</button>
-                        )}
-                        {hasPermission('administration.student.demote-students', 'write') && (
-                            <button className={btn('demote')} onClick={() => setActiveView('demote')}>De-promote</button>
-                        )}
-                    </>}
-                />
+                                {job.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
         );
     };
@@ -271,14 +274,6 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
         const [sectionOptions, setSectionOptions] = useState<string[]>([]);
 
         const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
-
-        const handleSort = (key: string) => {
-            let direction: 'asc' | 'desc' = 'asc';
-            if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-                direction = 'desc';
-            }
-            setSortConfig({ key, direction });
-        };
 
         // Pagination State
         const [currentPage, setCurrentPage] = useState(1);
@@ -536,214 +531,243 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
             }
         };
 
-        // Render table
-        const table = () => {
-            if (loading) return <div className="card"><LoadingState label="Loading students…" /></div>;
-            if (!students.length) return <div className="card"><EmptyState title="No students found" description="Try changing the class, section or search filters." /></div>;
+        const canEdit = hasPermission('administration.student.update-student-details', 'write');
+        const canInactive = hasPermission('administration.student.make-student-inactive', 'write');
 
-            return (
-                <div className="card overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm divide-y divide-slate-200">
-                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                <tr>
-                                    <th className="px-4 py-3 text-left cursor-pointer hover:bg-slate-100 select-none" onClick={() => handleSort('name')}>
-                                        Student Name <span className="ml-1 opacity-75">{sortConfig?.key === 'name' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}</span>
-                                    </th>
-                                    <th className="px-4 py-3 text-left">Adm No.</th>
-                                    <th className="px-4 py-3 text-left">Roll No.</th>
-                                    <th className="px-4 py-3 text-left cursor-pointer hover:bg-slate-100 select-none" onClick={() => handleSort('class')}>
-                                        Class <span className="ml-1 opacity-75">{sortConfig?.key === 'class' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}</span>
-                                    </th>
-                                    <th className="px-4 py-3 text-left">Branch</th>
-                                    <th className="px-4 py-3 text-left">Father/ Guardian Name</th>
-                                    <th className="px-4 py-3 text-left">Father Mobile</th>
-                                    <th className="px-4 py-3 text-left">Tools</th>
-                                </tr>
-                            </thead>
-
-                            <tbody className="divide-y divide-slate-100 bg-white">
-                                {paginationData.currentStudents.map(s => (
-                                    <tr key={s.admNo} className="hover:bg-slate-50">
-                                        <td className="px-4 py-2 flex items-center gap-2">
-                                            {s.photo ? (
-                                                <img src={s.photo} className="w-8 h-8 rounded-full object-cover border border-slate-200" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                            ) : (
-                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
-                                                    <UserIcon className="w-5 h-5 text-slate-400" />
-                                                </div>
-                                            )}
-                                            <span className="font-medium text-brand-600">{s.name}</span>
-                                        </td>
-                                        <td className="px-4 py-2">{s.admNo}</td>
-                                        <td className="px-4 py-2">{s.rollNo}</td>
-                                        <td className="px-4 py-2">{s.class} {s.section}</td>
-                                        <td className="px-4 py-2">{s.branch}</td>
-                                        <td className="px-4 py-2">{s.father}</td>
-                                        <td className="px-4 py-2">{s.fatherMobile}</td>
-
-                                        <td className="px-4 py-2">
-                                            <div className="flex items-center gap-1">
-                                                <button onClick={() => onView(s)} className="btn-soft btn-sm" title="Details">
-                                                    <span>ℹ️</span> Details
-                                                </button>
-                                                {hasPermission('administration.student.update-student-details', 'write') && (
-                                                    <button
-                                                        onClick={() => {
-                                                            if (s.is_locked) {
-                                                                notify("This student record is locked for this academic year and cannot be edited.");
-                                                            } else {
-                                                                onEdit(s);
-                                                            }
-                                                        }}
-                                                        className={`btn btn-sm ${s.is_locked ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-brand-100 text-brand-700 hover:bg-brand-200'}`}
-                                                        title={s.is_locked ? "Record locked (Promoted)" : "Edit"}
-                                                    >
-                                                        <span>{s.is_locked ? '🔒' : '✏️'}</span> Edit
-                                                    </button>
-                                                )}
-                                                <button onClick={() => handlePrint(s)} className="btn btn-sm bg-orange-100 text-orange-700 hover:bg-orange-200" title="Print">
-                                                    <span>🖨️</span> Print
-                                                </button>
-                                                {hasPermission('administration.student.make-student-inactive', 'write') && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => {
-                                                                if (s.is_locked) {
-                                                                    notify("This student record is locked for this academic year and cannot be deactivated.");
-                                                                } else {
-                                                                    handleDeleteClick(s);
-                                                                }
-                                                            }}
-                                                            className={`btn btn-sm ${s.is_locked ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
-                                                            title={s.is_locked ? "Record locked (Promoted)" : "Deactivate"}
-                                                        >
-                                                            <span>{s.is_locked ? '🔒' : '🚫'}</span> Inactivate
-                                                        </button>
-                                                        {s.status === 'Inactive' && (
-                                                            <button onClick={() => handleActivate(s)} className="btn btn-sm bg-emerald-100 text-emerald-700 hover:bg-emerald-200" title="Activate">
-                                                                <span>✅</span> Activate
-                                                            </button>
-                                                        )}
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Pagination Component */}
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={paginationData.totalPages}
-                        onPageChange={handlePageChange}
-                        totalItems={paginationData.totalItems}
-                        itemsPerPage={itemsPerPage}
-                    />
-                </div>
-            );
+        const editRow = (s: any) => {
+            if (s.is_locked) {
+                notify("This student record is locked for this academic year and cannot be edited.");
+            } else {
+                onEdit(s);
+            }
         };
 
+        const inactivateRow = (s: any) => {
+            if (s.is_locked) {
+                notify("This student record is locked for this academic year and cannot be deactivated.");
+            } else {
+                handleDeleteClick(s);
+            }
+        };
+
+        // Row tools: same actions on the desktop table and on phone cards
+        const rowActions = (s: any) => (
+            <>
+                <button onClick={(e) => { e.stopPropagation(); onView(s); }} className="btn-soft btn-sm" title="See all details">
+                    <Eye className="h-4 w-4" /> Details
+                </button>
+                {canEdit && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); editRow(s); }}
+                        className={`btn btn-sm ${s.is_locked ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-brand-100 text-brand-700 hover:bg-brand-200'}`}
+                        title={s.is_locked ? "Record locked (Promoted)" : "Edit"}
+                    >
+                        {s.is_locked ? <Lock className="h-4 w-4" /> : <Pencil className="h-4 w-4" />} Edit
+                    </button>
+                )}
+                <button onClick={(e) => { e.stopPropagation(); handlePrint(s); }} className="btn btn-sm bg-orange-100 text-orange-700 hover:bg-orange-200" title="Print">
+                    <Printer className="h-4 w-4" /> Print
+                </button>
+                {canInactive && (
+                    <>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); inactivateRow(s); }}
+                            className={`btn btn-sm ${s.is_locked ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                            title={s.is_locked ? "Record locked (Promoted)" : "Make inactive"}
+                        >
+                            {s.is_locked ? <Lock className="h-4 w-4" /> : <Ban className="h-4 w-4" />} Make inactive
+                        </button>
+                        {s.status === 'Inactive' && (
+                            <button onClick={(e) => { e.stopPropagation(); handleActivate(s); }} className="btn btn-sm bg-emerald-100 text-emerald-700 hover:bg-emerald-200" title="Make active again">
+                                <CheckCircle2 className="h-4 w-4" /> Make active
+                            </button>
+                        )}
+                    </>
+                )}
+            </>
+        );
+
+        const columns: Column<Student>[] = [
+            {
+                key: 'name',
+                header: 'Student',
+                primary: true,
+                render: (s) => (
+                    <span className="flex items-center gap-2.5">
+                        <StudentAvatar src={s.photo} name={s.name} size="sm" />
+                        <span className="min-w-0 break-words font-medium text-brand-700">{s.name}</span>
+                    </span>
+                ),
+            },
+            { key: 'class', header: 'Class', secondary: true, render: (s) => classLabel(s.class, s.section) },
+            { key: 'admNo', header: 'Admission number', render: (s) => s.admNo || '—' },
+            { key: 'rollNo', header: 'Roll number', render: (s) => s.rollNo ?? '—' },
+            { key: 'branch', header: 'Branch', hideOnMobile: true, render: (s) => s.branch || '—' },
+            { key: 'father', header: 'Father / guardian', render: (s) => s.father || '—' },
+            { key: 'fatherMobile', header: "Father's phone", render: (s) => <PhoneLink phone={s.fatherMobile} /> },
+            ...(showInactive ? [{ key: 'status', header: 'Status', render: (s: Student) => <Badge status={s.status || 'Unknown'} /> }] : []),
+            {
+                key: 'tools',
+                header: 'Tools',
+                hideOnMobile: true,
+                render: (s) => <div className="flex items-center gap-1">{rowActions(s)}</div>,
+            },
+        ];
+
+        const sortValue = sortConfig ? `${sortConfig.key}-${sortConfig.direction}` : '';
+
         return (
-            <div className="p-4 sm:p-6">
+            <div className="p-4 sm:p-6 space-y-4">
 
                 {/* Filters */}
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
-                    {/* Class dropdown */}
-                    <select
-                        value={selectedClass}
-                        onChange={(e) => setSelectedClass(e.target.value)}
-                        className="input w-auto"
-                    >
-                        <option value="">-- All Classes --</option>
-                        {Array.isArray(classOptions) && classOptions.map(c => (
-                            <option key={c.id} value={c.class_name}>
-                                {c.class_name}
-                            </option>
-                        ))}
-                    </select>
-
-                    {/* Section dropdown */}
-                    <select
-                        value={selectedSection}
-                        onChange={(e) => setSelectedSection(e.target.value)}
-                        className="input w-auto"
-                    >
-                        <option value="">-- All Sections --</option>
-                        {sectionOptions.map(section => (
-                            <option key={section} value={section}>{section}</option>
-                        ))}
-                    </select>
-
-                    <div className="md:col-span-2 relative">
-                        <input
-                            className="input pl-10"
-                            placeholder="Search by Name, Adm No..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                        <SearchIcon className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <div className="card p-4 space-y-3">
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <div className="relative flex-1">
+                            <SearchIcon className="pointer-events-none h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="search"
+                                enterKeyHint="search"
+                                className="input h-12 pl-10 text-base"
+                                placeholder="Search by name, admission number or phone"
+                                aria-label="Search students"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') loadStudents(); }}
+                            />
+                        </div>
+                        <button onClick={loadStudents} className="btn-primary btn-lg">
+                            Search
+                        </button>
                     </div>
 
-                    <button
-                        onClick={loadStudents}
-                        className="btn-primary"
-                    >
-                        Search
-                    </button>
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        <div>
+                            <label className="label">Class</label>
+                            <select
+                                value={selectedClass}
+                                onChange={(e) => setSelectedClass(e.target.value)}
+                                className="input"
+                            >
+                                <option value="">All classes</option>
+                                {Array.isArray(classOptions) && classOptions.map(c => (
+                                    <option key={c.id} value={c.class_name}>
+                                        {c.class_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
-                    <div className="flex items-center">
-                        <label className="flex items-center space-x-2 cursor-pointer">
+                        <div>
+                            <label className="label">Section</label>
+                            <select
+                                value={selectedSection}
+                                onChange={(e) => setSelectedSection(e.target.value)}
+                                className="input"
+                                disabled={!selectedClass}
+                            >
+                                <option value="">{selectedClass ? 'All sections' : 'Choose a class first'}</option>
+                                {sectionOptions.map(section => (
+                                    <option key={section} value={section}>{section}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="label">Sort by</label>
+                            <select
+                                value={sortValue}
+                                onChange={(e) => {
+                                    const [key, direction] = e.target.value.split('-');
+                                    setSortConfig(key ? { key, direction: direction as 'asc' | 'desc' } : null);
+                                }}
+                                className="input"
+                            >
+                                <option value="">As saved</option>
+                                <option value="name-asc">Name (A to Z)</option>
+                                <option value="name-desc">Name (Z to A)</option>
+                                <option value="class-asc">Class (A to Z)</option>
+                                <option value="class-desc">Class (Z to A)</option>
+                            </select>
+                        </div>
+
+                        <label className="col-span-2 lg:col-span-1 flex min-h-[44px] cursor-pointer items-center gap-3 self-end rounded-lg px-1">
                             <input
                                 type="checkbox"
                                 checked={showInactive}
                                 onChange={e => setShowInactive(e.target.checked)}
-                                className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
+                                className="h-5 w-5 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
                             />
-                            <span className="text-sm text-slate-700">Show Inactive</span>
+                            <span className="text-sm text-slate-700">Also show inactive students</span>
                         </label>
                     </div>
-
                 </div>
 
-                {/* Items per page selector */}
-                {students.length > 0 && (
-                    <div className="flex items-center justify-end mb-3 gap-2">
-                        <label className="label !mb-0">Show:</label>
-                        <select
-                            value={itemsPerPage}
-                            onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                            className="input w-auto"
-                        >
-                            <option value={10}>10</option>
-                            <option value={15}>15</option>
-                            <option value={25}>25</option>
-                            <option value={50}>50</option>
-                            <option value={100}>100</option>
-                        </select>
-                        <span className="text-sm text-slate-500">per page</span>
+                {/* Count + items per page */}
+                {!loading && students.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                        <span className="text-sm text-slate-600">
+                            {students.length === 1 ? '1 student' : `${students.length} students`} · tap a student to see details
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <label htmlFor="students-per-page" className="text-sm text-slate-500">Show</label>
+                            <select
+                                id="students-per-page"
+                                value={itemsPerPage}
+                                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                                className="input w-auto"
+                            >
+                                <option value={10}>10</option>
+                                <option value={15}>15</option>
+                                <option value={25}>25</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                            </select>
+                            <span className="text-sm text-slate-500">per page</span>
+                        </div>
                     </div>
                 )}
 
-                {table()}
+                <DataList
+                    columns={columns}
+                    rows={paginationData.currentStudents}
+                    rowKey={(s, i) => s.student_id ?? s.admNo ?? i}
+                    onRowClick={(s) => onView(s)}
+                    loading={loading}
+                    emptyTitle="No students found"
+                    emptyHint="Try another class or section, or change the search words."
+                    mobileActions={rowActions}
+                />
+
+                {!loading && students.length > 0 && (
+                    <div className="card overflow-hidden">
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={paginationData.totalPages}
+                            onPageChange={handlePageChange}
+                            totalItems={paginationData.totalItems}
+                            itemsPerPage={itemsPerPage}
+                        />
+                    </div>
+                )}
 
                 {/* Password Modal */}
                 {passwordModalOpen && (
-                    <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
+                    <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50 p-4">
                         <div className="card shadow-pop p-6 w-96 max-w-[calc(100vw-2rem)]">
-                            <h3 className="text-base font-semibold text-slate-900 mb-4">Confirm Deactivation</h3>
-                            <p className="mb-4 text-sm text-slate-500">Enter your password to mark <b>{studentToDelete?.name}</b> as Inactive.</p>
+                            <h3 className="text-base font-semibold text-slate-900 mb-2">Make this student inactive?</h3>
+                            <p className="mb-4 text-sm text-slate-600">Type your password to mark <b>{studentToDelete?.name}</b> as inactive.</p>
+                            <label htmlFor="inactive-password" className="label">Your password</label>
                             <input
+                                id="inactive-password"
                                 type="password"
                                 className="input mb-4"
                                 placeholder="Password"
+                                autoFocus
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') confirmDelete(); }}
                             />
-                            <div className="flex justify-end gap-2">
+                            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                                 <button
                                     onClick={() => setPasswordModalOpen(false)}
                                     className="btn-secondary"
@@ -754,7 +778,7 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                                     onClick={confirmDelete}
                                     className="btn-danger"
                                 >
-                                    Deactivate
+                                    Make inactive
                                 </button>
                             </div>
                         </div>
@@ -793,24 +817,33 @@ const StudentAdministration: React.FC<StudentAdministrationProps> = () => {
     }, [defaultView, intentView]);
 
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    // Where "Back" from a student's details goes: the list or "Find a student"
+    const [returnTo, setReturnTo] = useState<StudentAdminView>('students');
+
+    const openStudent = (s: Student, view: 'viewStudent' | 'editStudent', from: StudentAdminView) => {
+        setSelectedStudent(s);
+        setReturnTo(from);
+        setActiveView(view);
+    };
+    const goBack = () => setActiveView(returnTo);
 
     const render = () => {
         switch (activeView) {
 
             case 'students':
                 return <StudentList
-                    onView={(s: Student) => { setSelectedStudent(s); setActiveView('viewStudent'); }}
-                    onEdit={(s: Student) => { setSelectedStudent(s); setActiveView('editStudent'); }}
+                    onView={(s: Student) => openStudent(s, 'viewStudent', 'students')}
+                    onEdit={(s: Student) => openStudent(s, 'editStudent', 'students')}
                 />;
 
             case 'addStudent':
                 return <CreateStudent mode="create" onSave={() => setActiveView('students')} onCancel={() => setActiveView('students')} />;
 
             case 'viewStudent':
-                return <CreateStudent mode="view" studentData={selectedStudent!} onCancel={() => setActiveView('students')} onEdit={() => setActiveView('editStudent')} />;
+                return <CreateStudent mode="view" studentData={selectedStudent!} onCancel={goBack} onEdit={() => setActiveView('editStudent')} />;
 
             case 'editStudent':
-                return <CreateStudent mode="edit" studentData={selectedStudent!} onSave={() => setActiveView('students')} onCancel={() => setActiveView('students')} />;
+                return <CreateStudent mode="edit" studentData={selectedStudent!} onSave={goBack} onCancel={goBack} />;
 
             case 'import':
                 return <ImportStudentData onImportSuccess={() => setActiveView('students')} />;
@@ -825,7 +858,12 @@ const StudentAdministration: React.FC<StudentAdministrationProps> = () => {
                 return <ClassSummary onBack={() => setActiveView('students')} />;
 
             case 'search':
-                return <SearchStudent />;
+                return <SearchStudent
+                    onView={(s: Student) => openStudent(s, 'viewStudent', 'search')}
+                    onEdit={hasPermission('administration.student.update-student-details', 'write')
+                        ? (s: Student) => openStudent(s, 'editStudent', 'search')
+                        : undefined}
+                />;
 
             case 'inactive':
                 return <MakeStudentInactive />;
@@ -846,7 +884,10 @@ const StudentAdministration: React.FC<StudentAdministrationProps> = () => {
 
     return (
         <div className="h-full bg-surface-muted overflow-y-auto">
-            <StudentAdminHeader activeView={activeView} setActiveView={setActiveView} />
+            <StudentAdminHeader
+                activeView={activeView === 'viewStudent' || activeView === 'editStudent' ? returnTo : activeView}
+                setActiveView={setActiveView}
+            />
             {render()}
         </div>
     );
