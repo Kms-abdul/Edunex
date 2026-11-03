@@ -5,7 +5,7 @@ import { applyBrandTheme, DEFAULT_BRAND_COLOR } from '../theme';
 import { canWrite } from '../utils/permissions';
 import { Page } from '../App';
 import api from '../api';
-import Learnspacelogo1 from '../images/Learnspacelogo1.png';
+import Learnspacelogo1 from '../images/Learnspacelogo1.webp';
 import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
@@ -37,7 +37,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
   const [allBranchesData, setAllBranchesData] = useState<any[]>([]);
 
   // Dynamic Locations State
-  const [locationData, setLocationData] = useState<any[]>([]);
+  const [, setLocationData] = useState<any[]>([]);
 
   // 1. Set your default academic year here.
   // Next year, simply change this to '2027-2028' and it will automatically update for everyone.

@@ -1,66 +1,69 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
+import { LoadingState } from './ui/States';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import MainContent from './MainContent';
-import Profile from './Profile';
-import Fee from './Fee';
-import FeeType from './FeeType';
-import ClassFeeStructure from './ClassFeeStructure';
-import AssignSpecialFee from './AssignSpecialFee';
-import FeeInstallments from './FeeInstallments';
-import TakeFee from './TakeFee';
-import Administration from './Administration';
-import SetupSchool from './SetupSchool';
-import ClassesManagement from './ClassesManagement';
-import AcademicManagement from './AcademicManagement';
-import Academics from './Academics';
-import Timetable from './Timetable';
-import OnlineClass from './OnlineClass';
-import StudentAttendance from './StudentAttendance';
-import StudentAdministration from './StudentAdministration';
-import ConcessionMaster from './ConcessionMaster';
-import StudentConcession from './StudentConcession';
-import UpdateStudentFeeStructure from './UpdateStudentFeeStructure';
-import UpdateRebateDate from './UpdateRebateDate';
-import DeleteFeeReceipt from './DeleteFeeReceipt';
-import FeeReports from './FeeReports';
-import DeletedReceiptsReport from './DeletedReceiptsReport';
-import FeeConcessionReport from './FeeConcessionReport';
-import AdjustFeeReport from './AdjustFeeReport';
-import Configuration from './Configuration';
-import DocumentManagement from './DocumentManagement';
-import UserManagement from './UserManagement';
-import FranchiseManagement from './FranchiseManagement';
-import RolePermissions from './RolePermissions';
-import ControlPanel from './ControlPanel';
-import SchoolManagement from './SchoolManagement';
-import HRAttendanceSummary from './HRAttendanceSummary';
-import { useNavigationHistory } from '../hooks/useNavigationHistory';
-import StaffSupport from './StaffSupport';
-import PettyCash from './PettyCash';
-import PettyCashReport from './PettyCashReport';
-import FundAllocation from './FundAllocation';
-import MonthWiseLedger from './MonthWiseLedger';
-import PettyCashApproval from './PettyCashApproval';
 import FinancialLayout from './FinancialLayout';
-import SmsCenter from './SmsCenter';
-import HRManagement from './HRManagement';
 import HRLayout from './HRLayout';
-import ReconciliationDashboard from './ReconciliationDashboard';
-import RemittanceApprovals from './RemittanceApprovals';
-import RemittanceDeposit from './RemittanceDeposit';
-import DepartmentMaster from './DepartmentMaster';
-import DesignationMaster from './DesignationMaster';
-import ShiftMaster from './ShiftMaster';
-import StaffMaster from './StaffMaster';
-import StaffDirectory from './StaffDirectory';
-import { StaffCategoryMaster } from './StaffCategoryMaster';
-import { StaffStatusMaster } from './StaffStatusMaster';
-import { StaffDocumentTypeMaster } from './hr/StaffDocumentTypeMaster';
-import StaffProfile from './StaffProfile';
-import { BiometricDevices } from './BiometricDevices';
-import HRPunchLog from './HRPunchLog';
+import { useNavigationHistory } from '../hooks/useNavigationHistory';
 import { Page } from '../App';
+
+// Pages are code-split: each module downloads only when it is first opened.
+const Profile = lazy(() => import('./Profile'));
+const Fee = lazy(() => import('./Fee'));
+const FeeType = lazy(() => import('./FeeType'));
+const ClassFeeStructure = lazy(() => import('./ClassFeeStructure'));
+const AssignSpecialFee = lazy(() => import('./AssignSpecialFee'));
+const FeeInstallments = lazy(() => import('./FeeInstallments'));
+const TakeFee = lazy(() => import('./TakeFee'));
+const Administration = lazy(() => import('./Administration'));
+const SetupSchool = lazy(() => import('./SetupSchool'));
+const ClassesManagement = lazy(() => import('./ClassesManagement'));
+const AcademicManagement = lazy(() => import('./AcademicManagement'));
+const Academics = lazy(() => import('./Academics'));
+const Timetable = lazy(() => import('./Timetable'));
+const OnlineClass = lazy(() => import('./OnlineClass'));
+const StudentAttendance = lazy(() => import('./StudentAttendance'));
+const StudentAdministration = lazy(() => import('./StudentAdministration'));
+const ConcessionMaster = lazy(() => import('./ConcessionMaster'));
+const StudentConcession = lazy(() => import('./StudentConcession'));
+const UpdateStudentFeeStructure = lazy(() => import('./UpdateStudentFeeStructure'));
+const UpdateRebateDate = lazy(() => import('./UpdateRebateDate'));
+const DeleteFeeReceipt = lazy(() => import('./DeleteFeeReceipt'));
+const FeeReports = lazy(() => import('./FeeReports'));
+const DeletedReceiptsReport = lazy(() => import('./DeletedReceiptsReport'));
+const FeeConcessionReport = lazy(() => import('./FeeConcessionReport'));
+const AdjustFeeReport = lazy(() => import('./AdjustFeeReport'));
+const Configuration = lazy(() => import('./Configuration'));
+const DocumentManagement = lazy(() => import('./DocumentManagement'));
+const UserManagement = lazy(() => import('./UserManagement'));
+const FranchiseManagement = lazy(() => import('./FranchiseManagement'));
+const RolePermissions = lazy(() => import('./RolePermissions'));
+const ControlPanel = lazy(() => import('./ControlPanel'));
+const SchoolManagement = lazy(() => import('./SchoolManagement'));
+const HRAttendanceSummary = lazy(() => import('./HRAttendanceSummary'));
+const StaffSupport = lazy(() => import('./StaffSupport'));
+const PettyCash = lazy(() => import('./PettyCash'));
+const PettyCashReport = lazy(() => import('./PettyCashReport'));
+const FundAllocation = lazy(() => import('./FundAllocation'));
+const MonthWiseLedger = lazy(() => import('./MonthWiseLedger'));
+const PettyCashApproval = lazy(() => import('./PettyCashApproval'));
+const SmsCenter = lazy(() => import('./SmsCenter'));
+const HRManagement = lazy(() => import('./HRManagement'));
+const ReconciliationDashboard = lazy(() => import('./ReconciliationDashboard'));
+const RemittanceApprovals = lazy(() => import('./RemittanceApprovals'));
+const RemittanceDeposit = lazy(() => import('./RemittanceDeposit'));
+const DepartmentMaster = lazy(() => import('./DepartmentMaster'));
+const DesignationMaster = lazy(() => import('./DesignationMaster'));
+const ShiftMaster = lazy(() => import('./ShiftMaster'));
+const StaffMaster = lazy(() => import('./StaffMaster'));
+const StaffDirectory = lazy(() => import('./StaffDirectory'));
+const StaffCategoryMaster = lazy(() => import('./StaffCategoryMaster').then(m => ({ default: m.StaffCategoryMaster })));
+const StaffStatusMaster = lazy(() => import('./StaffStatusMaster').then(m => ({ default: m.StaffStatusMaster })));
+const StaffDocumentTypeMaster = lazy(() => import('./hr/StaffDocumentTypeMaster').then(m => ({ default: m.StaffDocumentTypeMaster })));
+const StaffProfile = lazy(() => import('./StaffProfile'));
+const BiometricDevices = lazy(() => import('./BiometricDevices').then(m => ({ default: m.BiometricDevices })));
+const HRPunchLog = lazy(() => import('./HRPunchLog'));
 
 const hrPages = [
   'hr-management', 'hr-departments', 'hr-designations', 'hr-shifts', 'hr-staff-master', 'hr-staff-directory',
@@ -113,10 +116,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
           canGoForward={canGoForward}
         />
         <main className="flex-1 min-h-0">
+          <Suspense fallback={<LoadingState label="Loading page…" className="py-24" />}>
           {currentPage === 'dashboard' && <MainContent navigateTo={navigateTo} />}
           {currentPage === 'profile' && <Profile />}
           {financialPages.includes(currentPage) ? (
             <FinancialLayout currentPage={currentPage} navigateTo={navigateTo}>
+              <Suspense fallback={<LoadingState label="Loading page…" className="py-24" />}>
               {currentPage === 'fee' && <Fee navigateTo={navigateTo} />}
               {currentPage === 'fee-type' && <FeeType />}
               {currentPage === 'class-fee-structure' && <ClassFeeStructure />}
@@ -140,9 +145,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
               {currentPage === 'reconciliation-dashboard' && <ReconciliationDashboard />}
               {currentPage === 'remittance-approvals' && <RemittanceApprovals />}
               {currentPage === 'remittance-deposit' && <RemittanceDeposit />}
+              </Suspense>
             </FinancialLayout>
           ) : hrPages.includes(currentPage) ? (
             <HRLayout currentPage={currentPage} navigateTo={navigateTo}>
+              <Suspense fallback={<LoadingState label="Loading page…" className="py-24" />}>
               {currentPage === 'hr-management' && <HRManagement navigateTo={navigateTo} />}
               {currentPage === 'hr-departments' && <DepartmentMaster />}
               {currentPage === 'hr-designations' && <DesignationMaster />}
@@ -159,6 +166,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
               {currentPage === 'hr-attendance-summary' && <HRAttendanceSummary />}
               {currentPage === 'hr-punch-log' && <HRPunchLog />}
               {currentPage === 'staff-profile' && <StaffProfile navigateTo={navigateTo} />}
+              </Suspense>
             </HRLayout>
           ) : (
             <>
@@ -183,7 +191,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
             </>
           )}
 
-
+          </Suspense>
         </main>
       </div>
     </div>

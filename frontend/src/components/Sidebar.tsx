@@ -5,7 +5,7 @@ import {
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Page } from "../App";
 import { useAuth } from '../contexts/AuthContext';
-import Learnspacelogo from '../images/Learnspacelogo.png';
+import Learnspacelogo from '../images/Learnspacelogo.webp';
 
 
 interface SidebarProps {

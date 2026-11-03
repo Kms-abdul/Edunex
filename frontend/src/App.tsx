@@ -1,6 +1,9 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import Login from "./components/Login";
-import Dashboard from "./components/Dashboard";
+import { LoadingState } from "./components/ui/States";
+
+// The signed-in shell is code-split so the login screen loads fast.
+const Dashboard = lazy(() => import("./components/Dashboard"));
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 export type Page =
@@ -86,7 +89,9 @@ const AppInner: React.FC = () => {
   return (
     <>
       {isAuthenticated ? (
-        <Dashboard onLogout={handleLogout} initialPage={defaultPage} />
+        <Suspense fallback={<LoadingState label="Loading…" className="min-h-screen" />}>
+          <Dashboard onLogout={handleLogout} initialPage={defaultPage} />
+        </Suspense>
       ) : (
         <Login onLoginSuccess={handleLoginSuccess} />
       )}

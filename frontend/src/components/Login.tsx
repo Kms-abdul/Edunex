@@ -3,9 +3,9 @@ import axios from "axios";
 import { API_URL } from "../config";
 import { auth } from '../api';
 import { User, Lock, Eye, EyeOff, ArrowRight, Mail, KeyRound, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
-import Learnspacelogo from '../images/Learnspacelogo.png';
-import LoginBg from '../images/LoginBg.png';
-import DeLogo from '../images/DE LOGO.png';
+import Learnspacelogo from '../images/Learnspacelogo.webp';
+import LoginBg from '../images/LoginBg.webp';
+import DeLogo from '../images/DE LOGO.webp';
 
 interface LoginProps {
   onLoginSuccess: (user: any) => void;
