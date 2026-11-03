@@ -1,217 +1,22 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { CheckCircle2, Wallet, UserPlus, ArrowLeft, Pencil } from "lucide-react";
 import api from "../api";
-import { UserIcon } from "./icons";
+import type { Page } from "../App";
 import { notify } from './ui/feedback';
-
-// --- Constants & Styles ---
-const INPUT_STYLE = "input";
-const LABEL_STYLE = "label";
-
-// --- Helper Components ---
-
-// 1. Collapsible Section
-const CollapsibleSection = React.memo(
-  ({
-    title,
-    children,
-    defaultOpen = false,
-  }: {
-    title: string;
-    children: React.ReactNode;
-    defaultOpen?: boolean;
-  }) => {
-    const [isOpen, setIsOpen] = useState(defaultOpen);
-    return (
-      <div className="card md:col-span-4 mt-6 overflow-hidden">
-        <div
-          className="card-header bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          <h3 className="text-base font-semibold text-slate-900 flex items-center">
-            {title}
-          </h3>
-          <button
-            type="button"
-            className="text-sm text-brand-600 hover:underline font-medium focus:outline-none"
-          >
-            {isOpen ? "Collapse" : "Expand"}
-          </button>
-        </div>
-        {isOpen && (
-          <div className="card-body grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
-            {children}
-          </div>
-        )}
-      </div>
-    );
-  }
-);
-
-// 2. Form Field Helper
-interface FormFieldProps {
-  label: string;
-  name: string;
-  value?: any;
-  checked?: boolean;
-  onChange: (e: React.ChangeEvent<any>) => void;
-  type?: string;
-  required?: boolean;
-  as?: "input" | "select" | "textarea" | "checkbox";
-  children?: React.ReactNode;
-  disabled?: boolean;
-  placeholder?: string;
-  className?: string;
-}
-
-interface DocumentType {
-  id: number;
-  code: string;
-  name: string;
-}
-
-interface PendingDocument {
-  document_type_id: number;
-  document_type_name: string;
-  document_no: string;
-  file: File;
-}
-
-const FormField = React.memo(
-  ({
-    label,
-    name,
-    value,
-    checked,
-    onChange,
-    type = "text",
-    required = false,
-    as = "input",
-    children,
-    disabled = false,
-    placeholder,
-    className,
-  }: FormFieldProps) => {
-    const inputId = `field_${name}`;
-
-    if (type === "checkbox") {
-      return (
-        <div className={`flex items-center pt-6 ${className || ""}`}>
-          <input
-            type="checkbox"
-            name={name}
-            id={inputId}
-            checked={checked}
-            onChange={onChange}
-            className="h-5 w-5 text-brand-600 border-slate-300 rounded focus:ring-brand-500 cursor-pointer"
-            disabled={disabled}
-          />
-          <label
-            htmlFor={inputId}
-            className="label ml-2 cursor-pointer select-none"
-          >
-            {label}
-          </label>
-          {children}
-        </div>
-      );
-    }
-
-    return (
-      <div className={className}>
-        <label htmlFor={inputId} className={LABEL_STYLE}>
-          {label} {required && <span className="text-red-500">*</span>}
-        </label>
-        {as === "input" && (
-          <input
-            type={type}
-            name={name}
-            id={inputId}
-            value={value || ""}
-            onChange={onChange}
-            className={INPUT_STYLE}
-            disabled={disabled}
-            placeholder={placeholder}
-          />
-        )}
-        {as === "select" && (
-          <select
-            name={name}
-            id={inputId}
-            value={value || ""}
-            onChange={onChange}
-            className={INPUT_STYLE}
-            disabled={disabled}
-          >
-            {children}
-          </select>
-        )}
-        {as === "textarea" && (
-          <textarea
-            name={name}
-            id={inputId}
-            value={value || ""}
-            onChange={onChange}
-            className={INPUT_STYLE}
-            rows={2}
-            disabled={disabled}
-            placeholder={placeholder}
-          />
-        )}
-      </div>
-    );
-  }
-);
-
-// 3. Photo Upload Helper
-const PhotoUpload = React.memo(
-  ({
-    title,
-    photo,
-    onPhotoChange,
-    id,
-    isViewMode,
-  }: {
-    title: string;
-    photo: string | null;
-    onPhotoChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    id: string;
-    isViewMode: boolean;
-  }) => {
-    return (
-      <div className="flex flex-col items-center">
-        <label className={LABEL_STYLE}>{title}</label>
-        <div className="w-28 h-28 rounded-lg bg-slate-100 mb-2 flex items-center justify-center overflow-hidden border-2 border-dashed border-slate-300 hover:border-brand-500 transition-colors">
-          {photo ? (
-            <img
-              src={photo}
-              alt={title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <UserIcon className="w-12 h-12 text-slate-400" />
-          )}
-        </div>
-        {!isViewMode && (
-          <>
-            <input
-              type="file"
-              id={id}
-              className="hidden"
-              accept="image/*"
-              onChange={onPhotoChange}
-            />
-            <label
-              htmlFor={id}
-              className="btn-secondary btn-sm cursor-pointer w-full"
-            >
-              Upload
-            </label>
-          </>
-        )}
-      </div>
-    );
-  }
-);
+import { Steps, ActionBar, Button, Alert, DataList, confirmDialog } from './ui';
+import type { Column } from './ui';
+import {
+  AdmissionFormContext, TextField, SelectField, ChoiceField, CheckField, Toggle,
+  ReadOnlyField, MoreDetails, PhotoPicker, Group, fieldId,
+} from './admission/fields';
+import type { AdmissionFormCtx } from './admission/fields';
+import AdmissionSummary from './admission/AdmissionSummary';
+import AdmissionDocuments from './admission/AdmissionDocuments';
+import type { DocumentType, PendingDocument } from './admission/AdmissionDocuments';
+import {
+  ADMISSION_STEPS, REVIEW_STEP, REQUIRED_FIELDS, LABELS, findErrors, errorsInStep, firstStepWithError,
+  STUDENT_MORE, FATHER_MORE, MOTHER_MORE, GUARDIAN, PREVIOUS_SCHOOL,
+} from './admission/admissionSteps';
 
 interface CreateStudentProps {
   mode: "create" | "view" | "edit";
@@ -219,6 +24,8 @@ interface CreateStudentProps {
   onSave?: (data: any, exit: boolean) => void;
   onCancel: () => void;
   onEdit?: () => void;
+  /** Optional: lets the "Collect fee for this student" button open Take Fee after saving. */
+  navigateTo?: (page: Page) => void;
 }
 
 const CreateStudent: React.FC<CreateStudentProps> = ({
@@ -227,6 +34,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
   onSave,
   onCancel,
   onEdit,
+  navigateTo,
 }) => {
   const formRef = useRef<HTMLFormElement>(null);
   const [classList, setClassList] = useState<string[]>([]);
@@ -377,6 +185,21 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
   const [documentUploadError, setDocumentUploadError] = useState<string>("");
   const [documentUploadSuccess, setDocumentUploadSuccess] = useState<string>("");
 
+  // --- Step-by-step UI state (no effect on what is saved) ---
+  const [step, setStep] = useState(0);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [attemptedSteps, setAttemptedSteps] = useState<Record<number, boolean>>({});
+  const [saving, setSaving] = useState(false);
+  /** After a successful create: what to show on the "Student saved" screen. */
+  const [savedStudent, setSavedStudent] = useState<{ data: any; name: string; classLabel: string; uploadProblem?: string } | null>(null);
+  /** Last create response, so leaving later still refreshes the list (onSave) like before. */
+  const lastSavedRef = useRef<any>(null);
+  /** "Same as father's phone" ticks for the main phone and SMS number. */
+  const [sameAsFather, setSameAsFather] = useState<{ phone: boolean; SmsNo: boolean }>({ phone: false, SmsNo: false });
+  /** In edit mode the admission class stays locked when the student already had one. */
+  const [admissionClassLocked, setAdmissionClassLocked] = useState(false);
+  const topRef = useRef<HTMLDivElement>(null);
+
   // Load student data for edit/view
   useEffect(() => {
     if (studentData) {
@@ -426,6 +249,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
 
       console.log("Mapped formData:", mapped);
       setFormData(mapped);
+      setAdmissionClassLocked(mode === "edit" && !!mapped.AdmissionClass);
       setCheckedDocuments(studentData.documents || []);
       setMotherPhoto(studentData.photos?.mother || null);
       setGuardianPhoto(studentData.photos?.guardian || null);
@@ -733,11 +557,11 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
     setDocumentUploadSuccess("");
 
     if (!selectedDocTypeId) {
-      setDocumentUploadError("Please select a document type.");
+      setDocumentUploadError("Choose which document this is.");
       return;
     }
     if (!selectedDocFile) {
-      setDocumentUploadError("Please choose a file to upload.");
+      setDocumentUploadError("Choose a file first.");
       return;
     }
 
@@ -746,7 +570,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
     );
 
     if (!docType) {
-      setDocumentUploadError("Selected document type is not available.");
+      setDocumentUploadError("This document type is not available. Choose another.");
       return;
     }
 
@@ -763,7 +587,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
     setSelectedDocTypeId("");
     setSelectedDocNo("");
     setSelectedDocFile(null);
-    setDocumentUploadSuccess("Document added to upload queue.");
+    setDocumentUploadSuccess("Document added. It will upload when you save.");
   };
 
   const removePendingDocument = (index: number) => {
@@ -821,10 +645,87 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
     setDocumentUploadSuccess("");
   };
 
-  const handleResetClick = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleResetClick = async () => {
+    const ok = await confirmDialog(
+      mode === "edit" ? "Clear every field on this form? Nothing is saved until you press Save." : "Clear everything and start again?",
+      { confirmText: "Clear form", tone: "danger" }
+    );
+    if (!ok) return;
     resetForm();
+    setSameAsFather({ phone: false, SmsNo: false });
+    setTouched({});
+    setAttemptedSteps({});
+    goToStep(0);
   };
+
+  // --- Step navigation & per-step checks (same required fields as the save check) ---
+  const requiredCheck = mode === "create";
+  const errors = useMemo(() => (requiredCheck ? findErrors(formData) : {}), [requiredCheck, formData]);
+  const stepErrors = errorsInStep(errors, step);
+
+  const goToStep = (i: number) => {
+    setStep(i);
+    requestAnimationFrame(() => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
+  const focusField = (name: string) => {
+    const el = document.getElementById(fieldId(name));
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      (el as HTMLElement).focus({ preventScroll: true });
+    }
+  };
+
+  /** Show the messages on this step and jump to the first problem. */
+  const showStepProblems = (i: number) => {
+    setAttemptedSteps(prev => ({ ...prev, [i]: true }));
+    const first = errorsInStep(errors, i)[0];
+    if (first) requestAnimationFrame(() => focusField(first));
+  };
+
+  const handleNext = () => {
+    if (stepErrors.length) {
+      showStepProblems(step);
+      return;
+    }
+    goToStep(Math.min(step + 1, REVIEW_STEP));
+  };
+
+  const handleBack = () => {
+    if (step > 0) {
+      goToStep(step - 1);
+      return;
+    }
+    leave();
+  };
+
+  /** Leave the form. If a student was saved in this visit, tell the parent so its list refreshes. */
+  const leave = () => {
+    if (lastSavedRef.current && onSave) onSave(lastSavedRef.current, true);
+    else onCancel();
+  };
+
+  const addAnother = () => {
+    const keep = { branch: formData.branch, location: formData.location, academic_year: formData.academic_year };
+    resetForm();
+    setFormData({ ...initialFormData, ...keep });
+    setSameAsFather({ phone: false, SmsNo: false });
+    setTouched({});
+    setAttemptedSteps({});
+    setSavedStudent(null);
+    goToStep(0);
+  };
+
+  // Keep "Same as father's phone" numbers in step with the father's phone
+  useEffect(() => {
+    if (isViewMode || (!sameAsFather.phone && !sameAsFather.SmsNo)) return;
+    setFormData(prev => {
+      const next = { ...prev };
+      if (sameAsFather.phone) next.phone = prev.FatherPhone;
+      if (sameAsFather.SmsNo) next.SmsNo = prev.FatherPhone;
+      return next.phone === prev.phone && next.SmsNo === prev.SmsNo ? prev : next;
+    });
+  }, [sameAsFather, formData.FatherPhone, isViewMode]);
 
   const buildPayload = () => {
     return {
@@ -944,12 +845,19 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
         !formData.FatherPhone ||
         !formData.Motherfirstname)
     ) {
-      notify("Fill required fields");
+      // Same check as always; now we also take the person to the first step with a problem.
+      const firstBad = firstStepWithError(findErrors(formData));
+      if (firstBad !== null) {
+        goToStep(firstBad);
+        setAttemptedSteps(prev => ({ ...prev, [firstBad]: true }));
+      }
+      notify.warning("Some details are missing. Fix the fields marked in red.");
       return;
     }
 
     const payload = buildPayload();
 
+    setSaving(true);
     try {
       if (mode === "create") {
         const res = await api.post(`/students`, payload);
@@ -959,12 +867,14 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
           throw new Error('Student created but student ID was not returned.');
         }
 
+        let uploadProblem: string | undefined;
         if (pendingDocuments.length > 0) {
           try {
             await uploadPendingDocuments(studentId);
             notify("Student created and documents uploaded successfully!");
           } catch (uploadError: any) {
             console.error('Document upload error:', uploadError);
+            uploadProblem = uploadError.message;
             notify(
               `Student created successfully, but document upload failed: ${uploadError.message}`
             );
@@ -973,7 +883,16 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
           notify("Student created successfully!");
         }
 
-        if (onSave) onSave(res.data, exit);
+        // Show the "Student saved" screen; onSave(res.data, exit) is called when the person leaves it.
+        void exit;
+        lastSavedRef.current = res.data;
+        setSavedStudent({
+          data: res.data,
+          name: [formData.first_name, formData.last_name].filter(Boolean).join(" "),
+          classLabel: [formData.class, formData.section].filter(Boolean).join(" - "),
+          uploadProblem,
+        });
+        requestAnimationFrame(() => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
 
       } else if (mode === "edit") {
         const id = studentData?.student_id || studentData?.id;
@@ -1006,815 +925,362 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
       console.error("Error saving student:", error);
       const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message || "Failed to save student";
       notify(`Failed to save student: ${errorMsg}`);
+    } finally {
+      setSaving(false);
     }
 
   };
 
-  return (
-    <div className="p-4 md:p-6 bg-surface-muted min-h-full">
-      <form ref={formRef} id="create-student-form">
-        <div className="card p-6 space-y-4">
-          {/* HEADER */}
-          <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 mb-4 bg-slate-50 p-4 -m-6 rounded-t-xl">
-            <h2 className="text-lg font-semibold text-slate-900">
-              {mode === "create"
-                ? "Create New Student"
-                : mode === "edit"
-                  ? "Edit Student"
-                  : "Student Details"}
-            </h2>
-            {mode === "view" && (
-              <button
-                type="button"
-                onClick={onEdit}
-                className="btn-primary"
-              >
-                Edit Student
-              </button>
+
+  // ------------------------------------------------------------------ UI
+  const formCtx: AdmissionFormCtx = {
+    data: formData,
+    onChange: handleInputChange,
+    errorFor: (name) => {
+      const rule = REQUIRED_FIELDS[name];
+      if (!rule || !errors[name]) return undefined;
+      return attemptedSteps[rule.step] || touched[name] ? errors[name] : undefined;
+    },
+    onBlur: (name) => setTouched(prev => (prev[name] ? prev : { ...prev, [name]: true })),
+    isRequired: (name) => !!REQUIRED_FIELDS[name],
+  };
+
+  const historyColumns: Column<any>[] = [
+    { key: "academic_year", header: "Academic year", primary: true },
+    { key: "class", header: "Class", secondary: true, render: (r) => [r.class, r.section].filter(Boolean).join(" - ") || "-" },
+    { key: "roll_no", header: "Roll number", render: (r) => r.roll_no || "-" },
+    {
+      key: "is_promoted", header: "Status",
+      render: (r) => (r.is_promoted ? <span className="badge-success">Promoted</span> : <span className="badge-neutral">Enrolled</span>),
+    },
+    {
+      key: "date", header: "Date",
+      render: (r) => (r.promoted_date ? new Date(r.promoted_date).toLocaleDateString() : r.created_at ? new Date(r.created_at).toLocaleDateString() : "-"),
+    },
+  ];
+
+  const historySection = (mode === "view" || mode === "edit") && academicHistory.length > 0 && (
+    <section className="card">
+      <div className="card-header"><h3 className="text-base font-semibold text-slate-900">Class history</h3></div>
+      <div className="card-body">
+        <DataList columns={historyColumns} rows={academicHistory} rowKey={(r, i) => r.id ?? i} />
+      </div>
+    </section>
+  );
+
+  // ---------- View mode: a readable summary ----------
+  if (isViewMode) {
+    return (
+      <div ref={topRef} className="p-4 md:p-6 bg-surface-muted min-h-full">
+        <div className="max-w-3xl mx-auto space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900">Student details</h2>
+          <AdmissionSummary data={formData} photo={studentPhoto} />
+          {historySection}
+          <ActionBar>
+            <Button variant="secondary" onClick={onCancel} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
+            {onEdit && <Button onClick={onEdit} icon={<Pencil className="w-4 h-4" />}>Edit student</Button>}
+          </ActionBar>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- After a new student is saved ----------
+  if (savedStudent) {
+    const admissionNo = savedStudent.data?.admission_no || savedStudent.data?.student?.admission_no;
+    return (
+      <div ref={topRef} className="p-4 md:p-6 bg-surface-muted min-h-full">
+        <div className="max-w-xl mx-auto card card-body text-center py-10 space-y-4">
+          <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-500" aria-hidden="true" />
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900">Student saved</h2>
+            <p className="mt-1 text-slate-600">
+              {savedStudent.name || "The student"} has been added{savedStudent.classLabel ? ` to Class ${savedStudent.classLabel}` : ""}.
+            </p>
+            {admissionNo && <p className="mt-1 text-sm text-slate-500">Admission number: <span className="font-semibold text-slate-800">{admissionNo}</span></p>}
+          </div>
+          {savedStudent.uploadProblem && (
+            <Alert tone="warning" title="Some documents did not upload" className="text-left">
+              {savedStudent.uploadProblem}. You can add them later from the student's documents.
+            </Alert>
+          )}
+          <div className="flex flex-col gap-2 pt-2">
+            <Button size="lg" onClick={addAnother} icon={<UserPlus className="w-5 h-5" />}>Add another student</Button>
+            {navigateTo && (
+              <Button size="lg" variant="secondary" onClick={() => navigateTo("take-fee")} icon={<Wallet className="w-5 h-5" />}>
+                Collect fee for this student
+              </Button>
             )}
+            <Button variant="ghost" onClick={leave} icon={<ArrowLeft className="w-4 h-4" />}>Back to students</Button>
           </div>
+        </div>
+      </div>
+    );
+  }
 
-          <div className="card md:col-span-4 p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <FormField
-              label="Class"
-              name="class"
-              as="select"
-              required
-              value={formData.class}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            >
-              <option value="">-- Select --</option>
-              {classList.map((cls) => (
-                <option key={cls} value={cls}>
-                  {cls}
-                </option>
-              ))}
-            </FormField>
+  // ---------- Create / edit: guided steps ----------
+  const isReview = step === REVIEW_STEP;
+  const fullName = [formData.first_name, formData.last_name].filter(Boolean).join(" ");
+  const classLabel = [formData.class, formData.section].filter(Boolean).join("-");
+  const phoneProps = { type: "tel", inputMode: "tel" as const, placeholder: "+91 98765 43210", autoComplete: "tel" };
 
-            <FormField
-              label="Section"
-              name="section"
-              as="select"
-              required
-              value={formData.section}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            >
-              <option value="">-- Select --</option>
-              {sectionList.map((section) => (
-                <option key={section} value={section}>
-                  {section}
-                </option>
-              ))}
-            </FormField>
+  const note = !isReview ? (
+    stepErrors.length > 0 ? (
+      <span>
+        Still needed: {stepErrors.map(n => (LABELS[n] || n).toLowerCase()).join(", ")}.{" "}
+        <button type="button" className="font-semibold text-brand-700 underline underline-offset-2" onClick={() => showStepProblems(step)}>
+          Show me
+        </button>
+      </span>
+    ) : mode === "edit" ? "You can save now, or go on to check the other steps." : null
+  ) : mode === "create" ? (
+    <span>
+      You are adding <b>{fullName || "this student"}</b>{classLabel ? <> to Class <b>{classLabel}</b></> : null}
+      {pendingDocuments.length > 0 ? ` with ${pendingDocuments.length} document${pendingDocuments.length > 1 ? "s" : ""}` : ""}.
+    </span>
+  ) : (
+    "Changes are saved only when you press Save changes."
+  );
 
-            <FormField
-              label="Admission No"
-              name="admissionNo"
-              value={formData.admissionNo}
-              onChange={handleInputChange}
-              disabled={true}
-            />
-            <FormField
-              label="Enrollment No"
-              name="enrollment_no"
-              value={formData.enrollment_no}
-              onChange={handleInputChange}
-            />
-            <FormField
-              label="Admission Date"
-              name="admission_date"
-              type="date"
-              required
-              value={formData.admission_date}
-              onChange={handleInputChange}
-            />
-            {/*This RollNumber screen no need to shown in at the time of Creating Student*/}
-            {/*<FormField          
-              label="Roll Number"
-              name="Roll_Number"
-              type="number"
-              value={formData.Roll_Number}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />*/}
-            <FormField
-              label="Admission Category"
-              name="AdmissionCategory"
-              as="select"
-              required
-              value={formData.AdmissionCategory}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            >
-              <option value="">-- Select --</option>
-              <option value="Regular">Regular</option>
-              <option value="Day-Scholar">Day-Scholar</option>
-            </FormField>
-            <FormField
-              label="Admission Class"
-              name="AdmissionClass"
-              value={formData.AdmissionClass}
-              required
-              onChange={handleInputChange}
-              disabled={isViewMode || mode === "edit" && formData.AdmissionClass}
-            />
-            <FormField
-              label="Location"
-              name="location"
-              as="select"
-              value={formData.location}
-              onChange={handleInputChange}
-              disabled={isViewMode || !canSelectLocation}
-              className={(isViewMode || !canSelectLocation) ? "bg-gray-100 cursor-not-allowed" : ""}
-            >
-              <option value="">-- Select --</option>
-              {locationOptions.map((loc) => (
-                <option key={loc.code} value={loc.name}>
-                  {loc.name}
-                </option>
-              ))}
-            </FormField>
-            <FormField
-              label="Branch"
-              name="branch"
-              as="select"
-              required
-              value={formData.branch}
-              onChange={handleInputChange}
-              disabled={isViewMode || !canSelectBranch}
-              className={(isViewMode || !canSelectBranch) ? "bg-gray-100 cursor-not-allowed" : ""}
-            >
-              <option value="">-- Select --</option>
-              {branchOptions.map((b) => (
-                <option key={b.branch_name} value={b.branch_name}>
-                  {b.branch_name}
-                </option>
-              ))}
-            </FormField>
-            {/*<FormField
-              label="Student Status"
-              name="StudentStatus"
-              as="select"
-              value={formData.StudentStatus}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            >
-              <option value="">-- Select --</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </FormField>*/}
-            <FormField
-              label="Academic Year"
-              name="academic_year"
-              as="select"
-              value={formData.academic_year}
-              onChange={handleInputChange}
-              disabled={true}
-              className="bg-gray-100 cursor-not-allowed"
-            >
-              {academicYearOptions.length > 0 ? (
-                academicYearOptions.map(y => (
-                  <option key={y.code} value={y.name}>{y.name}</option>
-                ))
-              ) : (
-                <option value={formData.academic_year}>{formData.academic_year}</option>
-              )}
-            </FormField>
+  return (
+    <div ref={topRef} className="p-4 md:p-6 bg-surface-muted min-h-full">
+      <form ref={formRef} id="create-student-form" onSubmit={(e) => e.preventDefault()} className="max-w-3xl mx-auto" noValidate>
+        <AdmissionFormContext.Provider value={formCtx}>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <h2 className="text-base font-semibold text-brand-700">{mode === "create" ? "Add a new student" : "Edit student"}</h2>
+            <button type="button" onClick={handleResetClick} className="btn-ghost btn-sm min-h-[44px] text-slate-600">
+              Clear form
+            </button>
           </div>
+          <Steps steps={[...ADMISSION_STEPS]} current={step} onJump={goToStep} className="mb-5" />
 
-          {/* --- 2. PERSONAL DETAILS --- */}
-          <CollapsibleSection
-            title="Personal Details"
-            defaultOpen={true}
-          >
-            <FormField
-              label="First Name"
-              name="first_name"
-              required
-              value={formData.first_name}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Last Name"
-              name="last_name"
-              required
-              value={formData.last_name}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Gender"
-              name="gender"
-              as="select"
-              required
-              value={formData.gender}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            >
-              <option value="">-- Select --</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-            </FormField>
+          <div className="space-y-4">
+            {/* ---------------- Step 1: Student ---------------- */}
+            {step === 0 && (
+              <>
+                <Group title="About the student">
+                  <div className="sm:col-span-2">
+                    <PhotoPicker id="student-photo" label="Student photo (optional)" photo={studentPhoto} onChange={(e) => handlePhotoChange(e, setStudentPhoto)} />
+                  </div>
+                  <TextField name="first_name" label={LABELS.first_name} autoComplete="off" />
+                  <TextField name="last_name" label={LABELS.last_name} autoComplete="off" />
+                  <ChoiceField name="gender" label={LABELS.gender} options={["Male", "Female"]} className="sm:col-span-2" />
+                  <TextField name="dob" label={LABELS.dob} type="date" />
+                  <TextField name="admission_date" label={LABELS.admission_date} type="date" hint="Today's date is filled in. Change it if needed." />
+                  <TextField name="Adharcardno" label={LABELS.Adharcardno} inputMode="numeric" placeholder="1234-5678-9012" hint="12 digits" className="sm:col-span-2" />
+                </Group>
+                <MoreDetails title="More details (optional)" names={STUDENT_MORE}>
+                  <TextField name="email" label={LABELS.email} type="email" inputMode="email" />
+                  <TextField name="BloodGroup" label={LABELS.BloodGroup} placeholder="e.g. B+" />
+                  <TextField name="Religion" label={LABELS.Religion} />
+                  <TextField name="MotherTongue" label={LABELS.MotherTongue} />
+                  <TextField name="Caste" label={LABELS.Caste} />
+                  <TextField name="Category" label={LABELS.Category} />
+                  <TextField name="House" label={LABELS.House} />
+                  <TextField name="StudentHeight" label={LABELS.StudentHeight} type="number" inputMode="decimal" />
+                  <TextField name="StudentWeight" label={LABELS.StudentWeight} type="number" inputMode="decimal" />
+                  <TextField name="SamagraId" label={LABELS.SamagraId} />
+                  <TextField name="ChildId" label={LABELS.ChildId} />
+                  <TextField name="PEN" label={LABELS.PEN} />
+                </MoreDetails>
+              </>
+            )}
 
-            <FormField
-              label="Date of Birth"
-              name="dob"
-              type="date"
-              required
-              value={formData.dob}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Blood Group"
-              name="BloodGroup"
-              value={formData.BloodGroup}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Aadhar Card No"
-              name="Adharcardno"
-              required
-              value={formData.Adharcardno}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Religion"
-              name="Religion"
-              value={formData.Religion}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Mother Tongue"
-              name="MotherTongue"
-              value={formData.MotherTongue}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Caste"
-              name="Caste"
-              value={formData.Caste}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Category"
-              name="Category"
-              value={formData.Category}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Student Type"
-              name="StudentType"
-              value={formData.StudentType}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="House"
-              name="House"
-              value={formData.House}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Height (cm)"
-              name="StudentHeight"
-              type="number"
-              value={formData.StudentHeight}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Weight (kg)"
-              name="StudentWeight"
-              type="number"
-              value={formData.StudentWeight}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Samagra ID"
-              name="SamagraId"
-              value={formData.SamagraId}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Child ID"
-              name="ChildId"
-              value={formData.ChildId}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="PEN"
-              name="PEN"
-              value={formData.PEN}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-          </CollapsibleSection>
-
-          {/* --- 3. CONTACT DETAILS --- */}
-          <CollapsibleSection title="Contact Details">
-            <FormField
-              label="Phone"
-              name="phone"
-              required
-              value={formData.phone}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <div className="md:col-span-2">
-              <FormField
-                label="Present Address"
-                name="presentAddress"
-                as="textarea"
-                value={formData.presentAddress}
-                onChange={handleInputChange}
-                disabled={isViewMode}
-              />
-            </div>
-            <FormField
-              label="Present City"
-              name="presentCity"
-              value={formData.presentCity}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Present Pin"
-              name="presentPin"
-              value={formData.presentPin}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-
-
-            <div className="md:col-span-4">
-              <FormField
-                label="Same as Present Address"
-                name="isSameAddress"
-                type="checkbox"
-                checked={formData.isSameAddress}
-                onChange={handleInputChange}
-                disabled={isViewMode}
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <FormField
-                label="Permanent Address"
-                name="permanentAddress"
-                as="textarea"
-                value={formData.permanentAddress}
-                onChange={handleInputChange}
-                disabled={isViewMode || formData.isSameAddress}
-              />
-            </div>
-            <FormField
-              label="Permanent City"
-              name="permanentCity_ui"
-              value={formData.permanentCity_ui}
-              onChange={handleInputChange}
-              disabled={isViewMode || formData.isSameAddress}
-            />
-          </CollapsibleSection>
-
-          {/* --- 4. PARENT DETAILS --- */}
-          <CollapsibleSection title="Parent Details">
-            <h4 className="md:col-span-4 text-sm font-semibold text-slate-900 mt-2 mb-2 border-b border-slate-200 pb-1">
-              Father's Details
-            </h4>
-            <FormField
-              label="Father Name"
-              name="Fatherfirstname"
-              required
-              value={formData.Fatherfirstname}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="FatherPhone"
-              name="FatherPhone"
-              required
-              value={formData.FatherPhone}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="SMS No"
-              name="SmsNo"
-              value={formData.SmsNo}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Email"
-              name="FatherEmail"
-              type="email"
-              value={formData.FatherEmail}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Qualification"
-              name="PrimaryQualification"
-              value={formData.PrimaryQualification}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Occupation"
-              name="FatherOccuption"
-              value={formData.FatherOccuption}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Company"
-              name="FatherCompany"
-              value={formData.FatherCompany}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Designation"
-              name="FatherDesignation"
-              value={formData.FatherDesignation}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Aadhar No"
-              name="FatherAadhar"
-              value={formData.FatherAadhar}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-
-            <h4 className="md:col-span-4 text-sm font-semibold text-slate-900 mt-4 mb-2 border-b border-slate-200 pb-1">
-              Mother's Details
-            </h4>
-            <FormField
-              label="Mother Name"
-              name="Motherfirstname"
-              required
-              value={formData.Motherfirstname}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Phone"
-              name="SecondaryPhone"
-              value={formData.SecondaryPhone}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Email"
-              name="SecondaryEmail"
-              type="email"
-              value={formData.SecondaryEmail}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Qualification"
-              name="SecondaryQualification"
-              value={formData.SecondaryQualification}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Occupation"
-              name="SecondaryOccupation"
-              value={formData.SecondaryOccupation}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Company"
-              name="SecondaryCompany"
-              value={formData.SecondaryCompany}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Designation"
-              name="SecondaryDesignation"
-              value={formData.SecondaryDesignation}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Aadhar No"
-              name="MotherAadhar"
-              value={formData.MotherAadhar}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-
-            <h4 className="md:col-span-4 text-sm font-semibold text-slate-900 mt-4 mb-2 border-b border-slate-200 pb-1">
-              Guardian's Details
-            </h4>
-            <FormField
-              label="Name"
-              name="GuardianName"
-              value={formData.GuardianName}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Relation"
-              name="GuardianRelation"
-              value={formData.GuardianRelation}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Phone"
-              name="GuardianContactNo"
-              value={formData.GuardianContactNo}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Qualification"
-              name="GuardianQualification"
-              value={formData.GuardianQualification}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Occupation"
-              name="GuardianOccupation"
-              value={formData.GuardianOccupation}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Office Address"
-              name="GuardianOfficeAddress"
-              value={formData.GuardianOfficeAddress}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-          </CollapsibleSection>
-
-          {/* --- 5. Previous School Details --- */}
-          <CollapsibleSection title="Previous School Details">
-            <FormField
-              label="School Name"
-              name="SchoolName"
-              value={formData.SchoolName}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="School Class"
-              name="PreviousSchoolClass"
-              value={formData.PreviousSchoolClass}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="TC Number"
-              name="TCNumber"
-              value={formData.TCNumber}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-            <FormField
-              label="Previous Admission Number"
-              name="PreviousAdmissionNumber"
-              value={formData.PreviousAdmissionNumber}
-              onChange={handleInputChange}
-              disabled={isViewMode}
-            />
-          </CollapsibleSection>
-
-          {/* --- 6. PHOTOS & DOCUMENTS --- */}
-          <CollapsibleSection title="Upload Photo">
-            <div className="md:col-span-4 grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <PhotoUpload
-                title="Student Photo"
-                photo={studentPhoto}
-                onPhotoChange={(e) => handlePhotoChange(e, setStudentPhoto)}
-                id="student-photo"
-                isViewMode={isViewMode}
-              />
-              {/* <PhotoUpload
-                title="Father Photo"
-                photo={fatherPhoto}
-                onPhotoChange={(e) => handlePhotoChange(e, setFatherPhoto)}
-                id="father-photo"
-                isViewMode={isViewMode}
-              />
-              <PhotoUpload
-                title="Mother Photo"
-                photo={motherPhoto}
-                onPhotoChange={(e) => handlePhotoChange(e, setMotherPhoto)}
-                id="mother-photo"
-                isViewMode={isViewMode}
-              />
-              <PhotoUpload
-                title="Guardian Photo"
-                photo={guardianPhoto}
-                onPhotoChange={(e) => handlePhotoChange(e, setGuardianPhoto)}
-                id="guardian-photo"
-                isViewMode={isViewMode}
-              /> */}
-            </div>
-
-            <div className="md:col-span-4">
-              <h4 className="text-base font-semibold text-slate-900 mb-2">
-                Admission Documents
-              </h4>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <label className={LABEL_STYLE} htmlFor="document-type">
-                    Document Type
-                  </label>
-                  <select
-                    id="document-type"
-                    className={INPUT_STYLE}
-                    value={selectedDocTypeId}
-                    onChange={(e) => setSelectedDocTypeId(e.target.value)}
-                    disabled={isViewMode}
-                  >
-                    <option value="">Select document type</option>
-                    {documentTypes.map((doc) => (
-                      <option key={doc.id} value={String(doc.id)}>
-                        {doc.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className={LABEL_STYLE} htmlFor="document-no">
-                    Document Number
-                  </label>
-                  <input
-                    id="document-no"
-                    type="text"
-                    className={INPUT_STYLE}
-                    value={selectedDocNo}
-                    onChange={(e) => setSelectedDocNo(e.target.value)}
-                    disabled={isViewMode}
-                    placeholder="Optional"
+            {/* ---------------- Step 2: Parents ---------------- */}
+            {step === 1 && (
+              <>
+                <Group title="Father">
+                  <TextField name="Fatherfirstname" label={LABELS.Fatherfirstname} autoComplete="off" />
+                  <TextField name="FatherPhone" label={LABELS.FatherPhone} {...phoneProps} />
+                </Group>
+                <Group title="Mother">
+                  <TextField name="Motherfirstname" label={LABELS.Motherfirstname} autoComplete="off" />
+                  <TextField name="SecondaryPhone" label={`${LABELS.SecondaryPhone} (optional)`} {...phoneProps} />
+                </Group>
+                <Group title="Numbers the school will use">
+                  <TextField
+                    name="phone"
+                    label={LABELS.phone}
+                    hint="The school calls this number about the student."
+                    disabled={sameAsFather.phone}
+                    {...phoneProps}
+                    extra={
+                      <Toggle id="phone-same-as-father" label="Same as father's phone" checked={sameAsFather.phone}
+                        onChange={(v) => setSameAsFather((p) => ({ ...p, phone: v }))} />
+                    }
                   />
-                </div>
-
-                <div>
-                  <label className={LABEL_STYLE} htmlFor="document-file">
-                    File
-                  </label>
-                  <input
-                    id="document-file"
-                    type="file"
-                    className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"
-                    onChange={handleDocumentFileChange}
-                    disabled={isViewMode}
+                  <TextField
+                    name="SmsNo"
+                    label={`${LABELS.SmsNo} (optional)`}
+                    hint="School messages are sent to this number."
+                    disabled={sameAsFather.SmsNo}
+                    {...phoneProps}
+                    extra={
+                      <Toggle id="sms-same-as-father" label="Same as father's phone" checked={sameAsFather.SmsNo}
+                        onChange={(v) => setSameAsFather((p) => ({ ...p, SmsNo: v }))} />
+                    }
                   />
-                </div>
-              </div>
+                </Group>
+                <MoreDetails title="More about the father (optional)" names={FATHER_MORE}>
+                  <TextField name="FatherEmail" label={LABELS.FatherEmail} type="email" inputMode="email" />
+                  <TextField name="PrimaryQualification" label={LABELS.PrimaryQualification} />
+                  <TextField name="FatherOccuption" label={LABELS.FatherOccuption} />
+                  <TextField name="FatherCompany" label={LABELS.FatherCompany} />
+                  <TextField name="FatherDesignation" label={LABELS.FatherDesignation} />
+                  <TextField name="FatherAadhar" label={LABELS.FatherAadhar} inputMode="numeric" placeholder="1234-5678-9012" />
+                </MoreDetails>
+                <MoreDetails title="More about the mother (optional)" names={MOTHER_MORE}>
+                  <TextField name="SecondaryEmail" label={LABELS.SecondaryEmail} type="email" inputMode="email" />
+                  <TextField name="SecondaryQualification" label={LABELS.SecondaryQualification} />
+                  <TextField name="SecondaryOccupation" label={LABELS.SecondaryOccupation} />
+                  <TextField name="SecondaryCompany" label={LABELS.SecondaryCompany} />
+                  <TextField name="SecondaryDesignation" label={LABELS.SecondaryDesignation} />
+                  <TextField name="MotherAadhar" label={LABELS.MotherAadhar} inputMode="numeric" placeholder="1234-5678-9012" />
+                </MoreDetails>
+                <MoreDetails title="Guardian (optional)" names={GUARDIAN}>
+                  <p className="sm:col-span-2 text-sm text-slate-500">Fill this only if someone other than the parents looks after the student.</p>
+                  <TextField name="GuardianName" label={LABELS.GuardianName} />
+                  <TextField name="GuardianRelation" label={LABELS.GuardianRelation} placeholder="e.g. Uncle" />
+                  <TextField name="GuardianContactNo" label={LABELS.GuardianContactNo} {...phoneProps} />
+                  <TextField name="GuardianQualification" label={LABELS.GuardianQualification} />
+                  <TextField name="GuardianOccupation" label={LABELS.GuardianOccupation} />
+                  <TextField name="GuardianOfficeAddress" label={LABELS.GuardianOfficeAddress} />
+                </MoreDetails>
+              </>
+            )}
 
-              {!isViewMode && (
-                <div className="flex flex-wrap gap-2 items-center mt-3">
-                  <button
-                    type="button"
-                    onClick={handleAddPendingDocument}
-                    className="btn-primary"
-                  >
-                    Add Document
-                  </button>
-                  {documentUploadSuccess && (
-                    <span className="text-sm text-emerald-600">{documentUploadSuccess}</span>
+            {/* ---------------- Step 3: Address ---------------- */}
+            {step === 2 && (
+              <>
+                <Group title="Where does the student live?">
+                  <TextField name="presentAddress" label={`${LABELS.presentAddress} (optional)`} multiline className="sm:col-span-2" />
+                  <TextField name="presentCity" label={LABELS.presentCity} />
+                  <TextField name="presentPin" label={LABELS.presentPin} inputMode="numeric" placeholder="6 digits" />
+                </Group>
+                <Group title="Permanent address">
+                  <CheckField name="isSameAddress" label="Permanent address is the same as home address" className="sm:col-span-2" />
+                  {!formData.isSameAddress && (
+                    <>
+                      <TextField name="permanentAddress" label={LABELS.permanentAddress} multiline className="sm:col-span-2" />
+                      <TextField name="permanentCity_ui" label={LABELS.permanentCity_ui} />
+                    </>
                   )}
-                  {documentUploadError && (
-                    <span className="text-sm text-red-600">{documentUploadError}</span>
-                  )}
-                </div>
-              )}
+                </Group>
+              </>
+            )}
 
-              {pendingDocuments.length > 0 && (
-                <div className="mt-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                  <h5 className="text-sm font-semibold text-slate-900 mb-2">Documents queued for upload</h5>
-                  <ul className="space-y-2 text-sm text-slate-700">
-                    {pendingDocuments.map((doc, index) => (
-                      <li key={`${doc.document_type_id}-${index}`} className="flex items-center justify-between gap-3 bg-white p-3 rounded-lg border border-slate-200">
-                        <div>
-                          <div className="font-semibold">{doc.document_type_name}</div>
-                          {doc.document_no && <div className="text-xs text-slate-500">No: {doc.document_no}</div>}
-                          <div className="text-xs text-slate-500">{doc.file.name}</div>
-                        </div>
+            {/* ---------------- Step 4: Class & admission ---------------- */}
+            {step === 3 && (
+              <>
+                <Group title="Branch and year">
+                  {canSelectBranch ? (
+                    <SelectField name="branch" label={LABELS.branch} options={branchOptions.map((b) => b.branch_name)} />
+                  ) : (
+                    <ReadOnlyField name="branch" label={LABELS.branch} value={formData.branch} />
+                  )}
+                  {canSelectLocation ? (
+                    <SelectField name="location" label={LABELS.location} options={locationOptions.map((l) => ({ value: l.name, label: l.name }))} />
+                  ) : (
+                    <ReadOnlyField name="location" label={LABELS.location} value={formData.location} />
+                  )}
+                  <ReadOnlyField
+                    name="academic_year"
+                    label={LABELS.academic_year}
+                    value={academicYearOptions.find((y) => y.name === formData.academic_year)?.name || formData.academic_year}
+                  />
+                </Group>
+                <Group title="Class">
+                  <SelectField name="class" label={LABELS.class} options={classList} />
+                  <SelectField
+                    name="section"
+                    label={LABELS.section}
+                    options={sectionList}
+                    disabled={!formData.class}
+                    hint={!formData.class ? "Choose a class first" : sectionList.length === 0 ? "No sections found for this class." : undefined}
+                  />
+                  <ChoiceField
+                    name="AdmissionCategory"
+                    label={LABELS.AdmissionCategory}
+                    options={[{ value: "Regular", label: "Regular" }, { value: "Day-Scholar", label: "Day scholar" }]}
+                    className="sm:col-span-2"
+                  />
+                  <TextField
+                    name="AdmissionClass"
+                    label={LABELS.AdmissionClass}
+                    disabled={admissionClassLocked}
+                    hint={admissionClassLocked ? "This cannot be changed." : "The class the student first joined in."}
+                    extra={
+                      !admissionClassLocked && formData.class && formData.AdmissionClass !== formData.class ? (
                         <button
                           type="button"
-                          className="btn-ghost btn-sm text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => removePendingDocument(index)}
+                          className="btn-ghost btn-sm mt-1 min-h-[44px] text-brand-700"
+                          onClick={() => setFormData((prev) => ({ ...prev, AdmissionClass: prev.class }))}
                         >
-                          Remove
+                          Same as class {formData.class}
                         </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </CollapsibleSection>
+                      ) : null
+                    }
+                  />
+                  <TextField name="StudentType" label={`${LABELS.StudentType} (optional)`} />
+                  <TextField name="enrollment_no" label={`${LABELS.enrollment_no} (optional)`} />
+                  <ReadOnlyField label={LABELS.admissionNo} value={formData.admissionNo} placeholder="Given automatically when you save" />
+                </Group>
+                <MoreDetails title="Previous school (optional)" names={PREVIOUS_SCHOOL}>
+                  <TextField name="SchoolName" label={LABELS.SchoolName} />
+                  <TextField name="PreviousSchoolClass" label={LABELS.PreviousSchoolClass} />
+                  <TextField name="TCNumber" label={LABELS.TCNumber} />
+                  <TextField name="PreviousAdmissionNumber" label={LABELS.PreviousAdmissionNumber} />
+                </MoreDetails>
+                {historySection}
+              </>
+            )}
 
-
-
-          {/* Promotion History Section */}
-          {(mode === 'view' || mode === 'edit') && academicHistory.length > 0 && (
-            <CollapsibleSection title="Promotion History" defaultOpen={true}>
-              <div className="md:col-span-4 overflow-x-auto">
-                <table className="min-w-full text-sm divide-y divide-slate-200 border border-slate-200 rounded-lg">
-                  <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    <tr>
-                      <th className="px-4 py-2 text-left">Academic Year</th>
-                      <th className="px-4 py-2 text-left">Class</th>
-                      <th className="px-4 py-2 text-left">Section</th>
-                      <th className="px-4 py-2 text-left">Roll No</th>
-                      <th className="px-4 py-2 text-left">Status</th>
-                      <th className="px-4 py-2 text-left">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-slate-100">
-                    {academicHistory.map((rec) => (
-                      <tr key={rec.id}>
-                        <td className="px-4 py-2">{rec.academic_year}</td>
-                        <td className="px-4 py-2">{rec.class}</td>
-                        <td className="px-4 py-2">{rec.section}</td>
-                        <td className="px-4 py-2">{rec.roll_no || '-'}</td>
-                        <td className="px-4 py-2">
-                          {rec.is_promoted ?
-                            <span className="badge-success">Promoted</span> :
-                            <span className="badge-neutral">Enrolled</span>
-                          }
-                        </td>
-                        <td className="px-4 py-2 text-slate-500 text-xs">
-                          {rec.promoted_date ? new Date(rec.promoted_date).toLocaleDateString() :
-                            rec.created_at ? new Date(rec.created_at).toLocaleDateString() : '-'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CollapsibleSection>
-          )}
-
-          {/* FOOTER BUTTONS */}
-          <div className="flex flex-wrap justify-end gap-3 pt-4 border-t border-slate-200 mt-6">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="btn-secondary"
-            >
-              {mode === "view" ? "Back" : "Cancel"}
-            </button>
-            {mode !== "view" && (
+            {/* ---------------- Step 5: Check, documents & save ---------------- */}
+            {isReview && (
               <>
-                <button
-                  type="button"
-                  onClick={handleResetClick}
-                  className="btn-secondary"
-                >
-                  Reset
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSaveClick(true)}
-                  className="btn-success"
-                >
-                  Save & Exit
-                </button>
+                <Alert tone="info">Check the details below. Tap <b>Edit</b> to change anything.</Alert>
+                <AdmissionSummary data={formData} photo={studentPhoto} onEdit={goToStep} errors={errors} />
+                <AdmissionDocuments
+                  documentTypes={documentTypes}
+                  docTypeId={selectedDocTypeId}
+                  onDocTypeId={setSelectedDocTypeId}
+                  docNo={selectedDocNo}
+                  onDocNo={setSelectedDocNo}
+                  docFile={selectedDocFile}
+                  onDocFile={handleDocumentFileChange}
+                  onAdd={handleAddPendingDocument}
+                  pending={pendingDocuments}
+                  onRemove={removePendingDocument}
+                  error={documentUploadError}
+                  success={documentUploadSuccess}
+                  fileInputKey={pendingDocuments.length}
+                />
               </>
             )}
           </div>
-        </div>
-      </form >
-    </div >
+
+          <ActionBar note={note}>
+            <Button variant="secondary" onClick={handleBack} disabled={saving}>
+              {step === 0 ? "Cancel" : "Back"}
+            </Button>
+            {mode === "edit" && !isReview && (
+              <Button variant="soft" onClick={() => handleSaveClick(true)} loading={saving}>
+                Save changes
+              </Button>
+            )}
+            {!isReview ? (
+              <Button onClick={handleNext} disabled={stepErrors.length > 0}>
+                Next
+              </Button>
+            ) : (
+              <Button variant="success" onClick={() => handleSaveClick(true)} loading={saving} icon={<CheckCircle2 className="w-4 h-4" />}>
+                {mode === "create" ? "Save student" : "Save changes"}
+              </Button>
+            )}
+          </ActionBar>
+        </AdmissionFormContext.Provider>
+      </form>
+    </div>
   );
 };
 
