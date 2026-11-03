@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../api';
 import { useAuth } from '../../contexts/AuthContext';
+import { Alert, LoadingState, EmptyState } from '../ui';
 
 
 interface DocumentType {
@@ -90,28 +91,28 @@ export const StaffDocumentTypeMaster: React.FC = () => {
     return (
         <div className="card overflow-hidden">
             <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="page-title">Staff Document Types</h2>
+                <div className="flex flex-wrap gap-3 justify-between items-center mb-6">
+                    <h2 className="text-base font-semibold text-slate-900">Staff Document Types</h2>
                     {canWrite && !showForm && (
                         <button
                             onClick={() => { setForm(blank); setEditingId(null); setShowForm(true); setMsg(null); }}
-                            className="btn btn-primary"
+                            className="btn-primary"
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                             Add Document Type
                         </button>
                     )}
                 </div>
 
                 {msg && (
-                    <div className={`p-4 mb-4 rounded-lg text-sm ${msg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                    <Alert tone={msg.type} className="mb-4" onClose={() => setMsg(null)}>
                         {msg.text}
-                    </div>
+                    </Alert>
                 )}
 
                 {showForm ? (
                     <div className="bg-slate-50 p-6 rounded-lg border border-slate-100">
-                        <h3 className="text-lg font-bold text-slate-800 mb-4">{editingId ? 'Edit' : 'Add'} Document Type</h3>
+                        <h3 className="text-base font-semibold text-slate-900 mb-4">{editingId ? 'Edit' : 'Add'} Document Type</h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -166,7 +167,7 @@ export const StaffDocumentTypeMaster: React.FC = () => {
                                         className="input"
                                     />
                                 </div>
-                                <div className="flex items-center space-x-4 pt-6">
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:pt-6">
                                     <label className="flex items-center text-sm text-slate-700">
                                         <input 
                                             type="checkbox" 
@@ -206,8 +207,8 @@ export const StaffDocumentTypeMaster: React.FC = () => {
                                 </div>
                             </div>
                             <div className="flex justify-end gap-3 mt-4">
-                                <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
-                                <button type="submit" disabled={saving} className="btn btn-primary">
+                                <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
+                                <button type="submit" disabled={saving} className="btn-primary">
                                     {saving ? 'Saving...' : 'Save'}
                                 </button>
                             </div>
@@ -216,9 +217,9 @@ export const StaffDocumentTypeMaster: React.FC = () => {
                 ) : (
                     <div className="overflow-x-auto">
                         {loading ? (
-                            <div className="p-8 text-center text-slate-500">Loading...</div>
+                            <LoadingState label="Loading document types…" />
                         ) : list.length === 0 ? (
-                            <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-300">No Document Types Found</div>
+                            <EmptyState title="No document types found" description={canWrite ? 'Add a document type to start collecting staff documents.' : undefined} />
                         ) : (
                             <table className="min-w-full divide-y divide-slate-200">
                                 <thead className="bg-slate-50">
@@ -241,16 +242,16 @@ export const StaffDocumentTypeMaster: React.FC = () => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{t.allowed_extensions}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                                                {t.is_required ? <span className="text-red-600 font-medium">Yes</span> : <span className="text-slate-400">No</span>}
+                                                {t.is_required ? <span className="badge-danger">Yes</span> : <span className="text-slate-400">No</span>}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                <span className={`badge ${t.is_active ? 'badge-success' : 'badge-danger'}`}>
+                                                <span className={t.is_active ? 'badge-success' : 'badge-danger'}>
                                                     {t.is_active ? 'Active' : 'Inactive'}
                                                 </span>
                                             </td>
                                             {canWrite && (
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <button onClick={() => handleEdit(t)} className="text-brand-600 hover:text-brand-700 p-1.5 rounded-lg hover:bg-brand-50 transition-colors" title="Edit">
+                                                    <button onClick={() => handleEdit(t)} className="btn-icon text-brand-600 hover:text-brand-700 hover:bg-brand-50" title="Edit" aria-label="Edit">
                                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                                     </button>
                                                 </td>

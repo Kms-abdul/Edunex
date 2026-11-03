@@ -5,6 +5,7 @@ import StaffProfile from './StaffProfile';
 import { EyeIcon, PencilIcon } from './icons';
 import CreateStaffWizard from './hr/CreateStaffWizard';
 import { UpdateStaffDetails } from './hr/UpdateStaffDetails';
+import { LoadingState, EmptyState } from './ui';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -67,15 +68,14 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
     // ── State ─────────────────────────────────────────────────────────────────
     const [staffList, setStaffList] = useState<Staff[]>([]);
     const [departments, setDepartments] = useState<SelectOption[]>([]);
-    const [designations, setDesignations] = useState<SelectOption[]>([]);
-    const [shifts, setShifts] = useState<SelectOption[]>([]);
-    const [roles, setRoles] = useState<SelectOption[]>([]);
-    const [categories, setCategories] = useState<SelectOption[]>([]);
-    const [statuses, setStatuses] = useState<SelectOption[]>([]);
-    const [managers, setManagers] = useState<SelectOption[]>([]);  // reporting manager dropdown
-    const [managerSearch, setManagerSearch] = useState('');
+    // Options below feed the (unfinished) inline staff form; only the setters are used for now.
+    const [, setDesignations] = useState<SelectOption[]>([]);
+    const [, setShifts] = useState<SelectOption[]>([]);
+    const [, setRoles] = useState<SelectOption[]>([]);
+    const [, setCategories] = useState<SelectOption[]>([]);
+    const [, setStatuses] = useState<SelectOption[]>([]);
+    const [, setManagers] = useState<SelectOption[]>([]);  // reporting manager dropdown
     const [loading, setLoading] = useState(false);
-    const [saving, setSaving] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [viewingStaffId, setViewingStaffId] = useState<number | null>(null);
     const [editingStaffId, setEditingStaffId] = useState<number | null>(null);
@@ -136,11 +136,6 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
     };
 
     const [form, setForm] = useState(blankForm);
-
-    // ── Filtered designations by selected dept ────────────────────────────────
-    const filteredDesignations = form.department_id
-        ? designations.filter((d) => d.department_id === Number(form.department_id))
-        : designations;
 
     // ── Data fetching ─────────────────────────────────────────────────────────
     const fetchMasterData = useCallback(async (branchId?: string) => {
@@ -226,10 +221,6 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
         fetchMasterData(form.branch_id);
     }, [form.branch_id, fetchMasterData]);
 
-    // ── Form helpers ──────────────────────────────────────────────────────────
-    const set = (field: string, value: string) =>
-        setForm((prev: any) => ({ ...prev, [field]: value }));
-
     // ── JSX ───────────────────────────────────────────────────────────────────
     if (viewingStaffId) {
         return <StaffProfile staffId={viewingStaffId} onBack={() => setViewingStaffId(null)} />;
@@ -255,9 +246,9 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
         <div className="space-y-6">
 
             {/* ── Page header ──────────────────────────────────────────────── */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-800">
+                    <h2 className="text-base font-semibold text-slate-900">
                         {mode === 'profile' ? 'Staff Profile' : mode === 'update' ? 'Staff Update' : 'Staff Master'}
                     </h2>
                     <p className="text-sm text-slate-500 mt-0.5">
@@ -297,7 +288,7 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
                                         </span>
                                     )}
                                     {result.employee_id && (
-                                        <span className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-800 text-xs font-mono font-bold px-3 py-1.5 rounded-lg">
+                                        <span className="inline-flex items-center gap-1.5 bg-brand-100 text-brand-800 text-xs font-mono font-bold px-3 py-1.5 rounded-lg">
                                             🔑 Employee ID: {result.employee_id}
                                         </span>
                                     )}
@@ -329,10 +320,10 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
             {/* ── Filters and List (Hidden when editing/adding) ──────────────── */}
             {!showForm && (
                 <>
-                    <div className="card p-4 flex flex-wrap items-end gap-3 mb-4">
+                    <div className="card p-4 flex flex-wrap items-end gap-3">
                         {/* Branch Dropdown */}
                         {!isSingleBranch && (
-                            <div className="w-48">
+                            <div className="w-full sm:w-48">
                                 <label className="label">Branch</label>
                                 <select
                                     className="input"
@@ -350,7 +341,7 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
                         )}
 
                         {/* Department Dropdown */}
-                        <div className="w-48">
+                        <div className="w-full sm:w-48">
                             <label className="label">Department</label>
                             <select
                                 className="input"
@@ -365,7 +356,7 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
                         </div>
 
                         {/* Status Dropdown */}
-                        <div className="w-40">
+                        <div className="w-full sm:w-40">
                             <label className="label">Status</label>
                             <select
                                 className="input"
@@ -379,7 +370,7 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
                         </div>
 
                         {/* Search By Dropdown */}
-                        <div className="w-40">
+                        <div className="w-full sm:w-40">
                             <label className="label">Search By</label>
                             <select
                                 className="input"
@@ -396,7 +387,7 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
                         </div>
 
                         {/* Search Input */}
-                        <div className="flex-1 min-w-[200px]">
+                        <div className="flex-1 min-w-[200px] w-full sm:w-auto">
                             <label className="label">Search Query</label>
                             <input
                                 type="text"
@@ -418,17 +409,17 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
                             </button>
                         </div>
                     </div>
-                    <div className="mb-4">
-                        <span className="text-xs text-slate-500">
+                    <div>
+                        <span className="text-sm text-slate-500">
                             {loading ? 'Loading…' : `${filteredStaff.length} result${filteredStaff.length !== 1 ? 's' : ''}`}
                         </span>
                     </div>
 
                     {/* ── Staff Table ───────────────────────────────────────────────── */}
                     <div className="card overflow-hidden">
-                        <div className="overflow-x-auto rounded-lg border border-slate-200">
+                        <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
-                                <thead className="border-b border-slate-200">
+                                <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
                                     <tr>
                                         <th className="px-4 py-3">Employee</th>
                                         <th className="px-4 py-3">Category</th>
@@ -456,7 +447,7 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
                                                                 {st.staff_code}
                                                             </span>
                                                             {st.employee_id && (
-                                                                <span className="font-mono text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                                                                <span className="font-mono text-xs text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
                                                                     ID: {st.employee_id}
                                                                 </span>
                                                             )}
@@ -465,7 +456,7 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3">
-                                                <span className="text-xs font-medium text-slate-700 bg-indigo-50 text-indigo-700 px-2 py-1 rounded-full">
+                                                <span className="badge-brand">
                                                     {st.staff_category_name ?? '—'}
                                                 </span>
                                             </td>
@@ -477,7 +468,7 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
                                                 {st.employment_type?.toLowerCase().replace('_', ' ') ?? '—'}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor[st.staff_status_name?.toUpperCase() ?? st.employment_status] ?? 'bg-slate-100 text-slate-600'}`}>
+                                                <span className={`badge ${statusColor[st.staff_status_name?.toUpperCase() ?? st.employment_status] ?? 'bg-slate-100 text-slate-600'}`}>
                                                     {st.staff_status_name ?? st.employment_status}
                                                 </span>
                                             </td>
@@ -490,7 +481,7 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
                                                     {mode !== 'update' && (
                                                         <button
                                                             onClick={() => setViewingStaffId(st.id)}
-                                                            className="text-blue-600 hover:text-blue-800 p-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+                                                            className="btn-icon text-brand-600 hover:text-brand-700 hover:bg-brand-50"
                                                             title="View Profile"
                                                         >
                                                             <EyeIcon className="w-5 h-5" />
@@ -499,7 +490,7 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
                                                     {mode !== 'profile' && canWrite && (
                                                         <button
                                                             onClick={() => setEditingStaffId(st.id)}
-                                                            className="text-emerald-600 hover:text-emerald-800 p-1.5 rounded-lg hover:bg-emerald-50 transition-colors"
+                                                            className="btn-icon text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                                                             title="Edit Profile"
                                                         >
                                                             <PencilIcon className="w-5 h-5" />
@@ -511,15 +502,10 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
                                     ))}
                                     {filteredStaff.length === 0 && (
                                         <tr>
-                                            <td colSpan={canWrite ? 7 : 6} className="px-4 py-12 text-center text-slate-400">
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <svg className="w-8 h-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" />
-                                                    </svg>
-                                                    <span className="text-sm">
-                                                        {loading ? 'Loading staff…' : 'No staff found. Add your first staff member above.'}
-                                                    </span>
-                                                </div>
+                                            <td colSpan={7}>
+                                                {loading
+                                                    ? <LoadingState label="Loading staff…" />
+                                                    : <EmptyState compact title="No staff found" description={canWrite && mode === 'master' ? 'Add your first staff member above.' : undefined} />}
                                             </td>
                                         </tr>
                                     )}
@@ -532,19 +518,5 @@ export const StaffMaster: React.FC<{ mode?: 'master' | 'profile' | 'update' }> =
         </div>
     );
 };
-
-// ─── Section header sub-component ────────────────────────────────────────────
-
-const SectionHeader: React.FC<{ icon: string; title: string; subtitle?: string }> = ({
-    icon, title, subtitle
-}) => (
-    <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-        <span className="text-lg">{icon}</span>
-        <div>
-            <h4 className="text-sm font-bold text-slate-700">{title}</h4>
-            {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
-        </div>
-    </div>
-);
 
 export default StaffMaster;

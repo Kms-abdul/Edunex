@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../../api';
 import { notify } from '../ui/feedback';
+import { Alert, LoadingState, EmptyState } from '../ui';
 
 interface DocumentType {
     id: number;
@@ -39,7 +40,6 @@ export const StaffDocuments: React.FC<Props> = ({ staffId, mode }) => {
     // Upload state
     const [uploadingTypeId, setUploadingTypeId] = useState<number | null>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Meta state for the upload
     const [metaForm, setMetaForm] = useState({
@@ -130,19 +130,19 @@ export const StaffDocuments: React.FC<Props> = ({ staffId, mode }) => {
     };
 
     if (loading && types.length === 0) {
-        return <div className="p-4 text-center text-slate-500">Loading documents...</div>;
+        return <LoadingState label="Loading documents…" />;
     }
 
     return (
         <div className="space-y-6">
             {uploadingTypeId !== null && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
                     <div className="card shadow-xl w-full max-w-md p-6">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-slate-800">Upload Document</h3>
-                            <button onClick={() => setUploadingTypeId(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+                            <h3 className="text-base font-semibold text-slate-900">Upload Document</h3>
+                            <button type="button" aria-label="Close" onClick={() => setUploadingTypeId(null)} className="btn-icon">✕</button>
                         </div>
-                        {uploadError && <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">{uploadError}</div>}
+                        {uploadError && <Alert tone="error" className="mb-4">{uploadError}</Alert>}
                         
                         <div className="space-y-4">
                             <div>
@@ -182,8 +182,8 @@ export const StaffDocuments: React.FC<Props> = ({ staffId, mode }) => {
                         </div>
 
                         <div className="mt-6 flex justify-end gap-3">
-                            <button onClick={() => setUploadingTypeId(null)} className="btn btn-secondary">Cancel</button>
-                            <button onClick={handleUploadSubmit} disabled={loading} className="btn btn-primary">
+                            <button onClick={() => setUploadingTypeId(null)} className="btn-secondary">Cancel</button>
+                            <button onClick={handleUploadSubmit} disabled={loading} className="btn-primary">
                                 {loading ? 'Uploading...' : 'Upload'}
                             </button>
                         </div>
@@ -192,6 +192,7 @@ export const StaffDocuments: React.FC<Props> = ({ staffId, mode }) => {
             )}
 
             <div className="card overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200">
                     <thead className="bg-slate-50">
                         <tr>
@@ -208,7 +209,7 @@ export const StaffDocuments: React.FC<Props> = ({ staffId, mode }) => {
                                 <tr key={type.id} className="hover:bg-slate-50 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm font-medium text-slate-900">{type.name}</div>
-                                        {type.is_required && <span className="text-xs text-red-500 font-semibold">Required</span>}
+                                        {type.is_required && <span className="badge-danger mt-1">Required</span>}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                                         {existingDoc ? (
@@ -222,11 +223,11 @@ export const StaffDocuments: React.FC<Props> = ({ staffId, mode }) => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         {existingDoc ? (
-                                            <span className="badge badge-success">
+                                            <span className="badge-success">
                                                 Uploaded
                                             </span>
                                         ) : (
-                                            <span className="badge badge-neutral">
+                                            <span className="badge-neutral">
                                                 Missing
                                             </span>
                                         )}
@@ -246,7 +247,7 @@ export const StaffDocuments: React.FC<Props> = ({ staffId, mode }) => {
                                                         notify("Failed to download document. Please try again.");
                                                     }
                                                 }}
-                                                className="text-brand-600 hover:text-brand-700 mr-4"
+                                                className="btn-ghost btn-sm text-brand-600"
                                             >
                                                 View
                                             </button>
@@ -254,7 +255,7 @@ export const StaffDocuments: React.FC<Props> = ({ staffId, mode }) => {
                                         {mode === 'edit' && (
                                             <button 
                                                 onClick={() => handleUploadClick(type.id)}
-                                                className="text-brand-600 hover:text-brand-700"
+                                                className="btn-soft btn-sm ml-2"
                                             >
                                                 {existingDoc ? 'Update' : 'Upload'}
                                             </button>
@@ -265,13 +266,14 @@ export const StaffDocuments: React.FC<Props> = ({ staffId, mode }) => {
                         })}
                         {types.length === 0 && (
                             <tr>
-                                <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
-                                    No document types configured for this school.
+                                <td colSpan={4}>
+                                    <EmptyState compact title="No document types configured" description="No document types are configured for this school yet." />
                                 </td>
                             </tr>
                         )}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     );

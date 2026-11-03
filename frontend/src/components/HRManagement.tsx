@@ -3,6 +3,7 @@ import { Page } from '../App';
 import { useAuth } from '../contexts/AuthContext';
 import { UserIcon, HomeIcon, TimeIcon, DocumentIcon, ChartBarIcon } from './icons';
 import ModuleTile from './ui/ModuleTile';
+import { EmptyState } from './ui';
 import { ArrowLeft } from 'lucide-react';
 
 interface HRManagementProps {
@@ -12,7 +13,7 @@ interface HRManagementProps {
 type MainCategory = 'hr_master' | 'employee_details' | 'attendance' | null;
 
 const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
-    const { user, hasPermission } = useAuth();
+    const { hasPermission } = useAuth();
     const [activeCategory, setActiveCategory] = useState<MainCategory>(null);
 
     const canAccess = (permission?: string) => {
@@ -68,7 +69,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         {
             id: 'staff-document-types',
             name: 'Document Types',
-            icon: <DocumentIcon className="w-8 h-8" />,
+            icon: <DocumentIcon className="w-6 h-6" />,
             iconBg: 'bg-indigo-50',
             iconColor: 'text-indigo-600',
             page: 'hr-staff-document-types' as Page,
@@ -182,7 +183,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
             ) : (
                 <div className="mb-5">
                     <h3 className="text-base font-semibold text-slate-900">Categories</h3>
-                    <p className="text-xs text-slate-500">Choose a category to see its modules.</p>
+                    <p className="text-sm text-slate-500">Choose a category to see its modules.</p>
                 </div>
             )}
 
@@ -197,6 +198,10 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
                             onClick={() => setActiveCategory(category.id)}
                         />
                     ))
+                ) : visibleModules.length === 0 ? (
+                    <div className="col-span-full card">
+                        <EmptyState title="No modules available" description="You don't have access to any modules in this category." />
+                    </div>
                 ) : (
                     visibleModules.map((module) => (
                         <ModuleTile

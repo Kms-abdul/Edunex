@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
+import { Alert, LoadingState, EmptyState, Badge } from './ui';
 
 interface StaffStatus {
     id: number;
@@ -107,9 +108,9 @@ export const StaffStatusMaster: React.FC = () => {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-800">Staff Status Master</h2>
+                    <h2 className="text-base font-semibold text-slate-900">Staff Status Master</h2>
                     <p className="text-sm text-slate-500 mt-0.5">
                         Employment statuses — Active, Probation, Notice Period, etc.
                     </p>
@@ -130,16 +131,16 @@ export const StaffStatusMaster: React.FC = () => {
 
             {/* Message */}
             {msg && (
-                <div className={`rounded-lg border p-3 text-sm font-medium ${msg.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                <Alert tone={msg.type} onClose={() => setMsg(null)}>
                     {msg.text}
-                </div>
+                </Alert>
             )}
 
             {/* Form */}
             {showForm && canWrite && (
                 <div className="card p-6">
-                    <h3 className="text-sm font-bold text-slate-700 mb-5">New Employment Status</h3>
-                    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <h3 className="text-base font-semibold text-slate-900 mb-5">New Employment Status</h3>
+                    <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label className="label">
                                 Status Code <span className="text-red-500">*</span>
@@ -187,7 +188,7 @@ export const StaffStatusMaster: React.FC = () => {
                                 min={0}
                             />
                         </div>
-                        <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-4">
+                        <div className="sm:col-span-2 lg:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-4">
                             <div>
                                 <label className="label">Status Type</label>
                                 <select
@@ -199,7 +200,7 @@ export const StaffStatusMaster: React.FC = () => {
                                     <option value="INACTIVE">Inactive (Credentials Disabled)</option>
                                 </select>
                             </div>
-                            <div className="flex justify-end gap-3 items-end">
+                            <div className="flex flex-wrap justify-end gap-3 items-end">
                                 <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">
                                     Cancel
                                 </button>
@@ -222,8 +223,9 @@ export const StaffStatusMaster: React.FC = () => {
 
             {/* Table */}
             <div className="card overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                    <thead className="border-b border-slate-200">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <tr>
                             <th className="px-4 py-3">#</th>
                             <th className="px-4 py-3">Code</th>
@@ -248,31 +250,32 @@ export const StaffStatusMaster: React.FC = () => {
                                 <td className="px-4 py-3 text-slate-500 text-xs">{s.description ?? '—'}</td>
                                 <td className="px-4 py-3 text-slate-500">{s.display_order}</td>
                                 <td className="px-4 py-3">
-                                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${s.status_type === 'ACTIVE' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                                    <Badge tone={s.status_type === 'ACTIVE' ? 'brand' : 'warning'}>
                                         {s.status_type}
-                                    </span>
+                                    </Badge>
                                 </td>
                                 <td className="px-4 py-3">
-                                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${s.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                                    <Badge tone={s.is_active ? 'success' : 'neutral'}>
                                         {s.is_active ? 'Active' : 'Inactive'}
-                                    </span>
+                                    </Badge>
                                 </td>
                                 {canWrite && (
                                     <td className="px-4 py-3">
-                                        <button onClick={() => handleEdit(s)} className="text-violet-600 hover:text-violet-800 text-sm font-medium">Edit</button>
+                                        <button onClick={() => handleEdit(s)} className="btn-ghost btn-sm text-brand-600">Edit</button>
                                     </td>
                                 )}
                             </tr>
                         ))}
                         {list.length === 0 && (
                             <tr>
-                                <td colSpan={canWrite ? 7 : 6} className="px-4 py-10 text-center text-slate-400 text-sm">
-                                    {loading ? 'Loading…' : 'No statuses found.'}
+                                <td colSpan={canWrite ? 8 : 7}>
+                                    {loading ? <LoadingState label="Loading statuses…" /> : <EmptyState compact title="No statuses found" />}
                                 </td>
                             </tr>
                         )}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     );

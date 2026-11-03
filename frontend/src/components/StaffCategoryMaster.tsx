@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
+import { Alert, LoadingState, EmptyState, Badge } from './ui';
 
 interface Category {
     id: number;
@@ -96,9 +97,9 @@ export const StaffCategoryMaster: React.FC = () => {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-800">Staff Categories</h2>
+                    <h2 className="text-base font-semibold text-slate-900">Staff Categories</h2>
                     <p className="text-sm text-slate-500 mt-0.5">
                         HR classification types — Teaching, Non-Teaching, Menial, etc.
                     </p>
@@ -119,16 +120,16 @@ export const StaffCategoryMaster: React.FC = () => {
 
             {/* Message */}
             {msg && (
-                <div className={`rounded-lg border p-3 text-sm font-medium ${msg.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                <Alert tone={msg.type} onClose={() => setMsg(null)}>
                     {msg.text}
-                </div>
+                </Alert>
             )}
 
             {/* Form */}
             {showForm && canWrite && (
                 <div className="card p-6">
-                    <h3 className="text-sm font-bold text-slate-700 mb-5">New Staff Category</h3>
-                    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <h3 className="text-base font-semibold text-slate-900 mb-5">New Staff Category</h3>
+                    <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label className="label">
                                 Category Code <span className="text-red-500">*</span>
@@ -177,7 +178,7 @@ export const StaffCategoryMaster: React.FC = () => {
                                 min={0}
                             />
                         </div>
-                        <div className="md:col-span-4 flex justify-end gap-3 pt-2 border-t border-slate-100">
+                        <div className="sm:col-span-2 lg:col-span-4 flex justify-end gap-3 pt-2 border-t border-slate-100">
                             <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">
                                 Cancel
                             </button>
@@ -199,8 +200,9 @@ export const StaffCategoryMaster: React.FC = () => {
 
             {/* Table */}
             <div className="card overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                    <thead className="border-b border-slate-200">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         <tr>
                             <th className="px-4 py-3">#</th>
                             <th className="px-4 py-3">Code</th>
@@ -216,7 +218,7 @@ export const StaffCategoryMaster: React.FC = () => {
                             <tr key={c.id} className="hover:bg-slate-50 transition-colors">
                                 <td className="px-4 py-3 text-slate-400 text-xs">{c.id}</td>
                                 <td className="px-4 py-3">
-                                    <span className="font-mono text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded font-semibold">
+                                    <span className="font-mono text-xs bg-brand-50 text-brand-700 px-2 py-1 rounded font-semibold">
                                         {c.category_code}
                                     </span>
                                 </td>
@@ -224,26 +226,27 @@ export const StaffCategoryMaster: React.FC = () => {
                                 <td className="px-4 py-3 text-slate-500 text-xs">{c.description ?? '—'}</td>
                                 <td className="px-4 py-3 text-slate-500">{c.display_order}</td>
                                 <td className="px-4 py-3">
-                                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${c.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                                    <Badge tone={c.is_active ? 'success' : 'neutral'}>
                                         {c.is_active ? 'Active' : 'Inactive'}
-                                    </span>
+                                    </Badge>
                                 </td>
                                 {canWrite && (
                                     <td className="px-4 py-3">
-                                        <button onClick={() => handleEdit(c)} className="text-indigo-600 hover:text-indigo-800 text-sm font-medium">Edit</button>
+                                        <button onClick={() => handleEdit(c)} className="btn-ghost btn-sm text-brand-600">Edit</button>
                                     </td>
                                 )}
                             </tr>
                         ))}
                         {list.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="px-4 py-10 text-center text-slate-400 text-sm">
-                                    {loading ? 'Loading…' : 'No categories found.'}
+                                <td colSpan={canWrite ? 7 : 6}>
+                                    {loading ? <LoadingState label="Loading categories…" /> : <EmptyState compact title="No categories found" />}
                                 </td>
                             </tr>
                         )}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     );

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StaffProfileData } from '../../StaffProfile';
+import { LoadingState, EmptyState } from '../../ui';
 import api from '../../../api';
 
 interface Props {
@@ -26,14 +27,14 @@ export const StaffBankStatutoryTab: React.FC<Props> = ({ profile }) => {
         fetchAccount();
     }, [profile.id]);
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <LoadingState label="Loading bank details…" />;
 
     return (
         <div className="space-y-8">
             <div>
                 <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
-                    <h3 className="text-lg font-semibold text-slate-800">Bank Account</h3>
-                    <button className="text-brand-600 hover:text-brand-700 text-sm font-medium">Edit Bank Details</button>
+                    <h3 className="text-base font-semibold text-slate-900">Bank Account</h3>
+                    <button type="button" className="btn-ghost btn-sm text-brand-600">Edit Bank Details</button>
                 </div>
                 {account ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -69,14 +70,14 @@ export const StaffBankStatutoryTab: React.FC<Props> = ({ profile }) => {
                         </div>
                     </div>
                 ) : (
-                    <div className="text-slate-500 text-sm py-4">No bank account details configured.</div>
+                    <EmptyState compact title="No bank account details configured" />
                 )}
             </div>
 
             <div>
                 <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
-                    <h3 className="text-lg font-semibold text-slate-800">Statutory Information</h3>
-                    <button className="text-brand-600 hover:text-brand-700 text-sm font-medium">Edit Statutory Info</button>
+                    <h3 className="text-base font-semibold text-slate-900">Statutory Information</h3>
+                    <button type="button" className="btn-ghost btn-sm text-brand-600">Edit Statutory Info</button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>

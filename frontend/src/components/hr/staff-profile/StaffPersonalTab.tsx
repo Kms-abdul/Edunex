@@ -8,8 +8,8 @@ interface Props {
 export const StaffPersonalTab: React.FC<Props> = ({ profile }) => {
     return (
         <div className="space-y-6">
-            <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-200 pb-2">Personal Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <h3 className="text-base font-semibold text-slate-900 border-b border-slate-200 pb-2">Personal Information</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                 <div>
                     <label className="label">First Name</label>
                     <p className="font-semibold text-slate-800 uppercase">{profile.first_name}</p>
@@ -38,7 +38,7 @@ export const StaffPersonalTab: React.FC<Props> = ({ profile }) => {
                 </div>
             </div>
 
-            <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-200 pb-2 mt-8">Contact Information</h3>
+            <h3 className="text-base font-semibold text-slate-900 border-b border-slate-200 pb-2 mt-8">Contact Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label className="label">Mobile</label>

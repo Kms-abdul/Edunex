@@ -11,6 +11,7 @@ import { StaffDocumentsTab } from './hr/staff-profile/StaffDocumentsTab';
 import { StaffLoginAccessTab } from './hr/staff-profile/StaffLoginAccessTab';
 import { UpdateStaffDetails } from './hr/UpdateStaffDetails';
 import { Page } from '../App';
+import { LoadingState, EmptyState, ErrorState } from './ui';
 
 export interface StaffProfileData {
     id: number;
@@ -54,8 +55,8 @@ interface StaffProfileProps {
     navigateTo?: (page: Page) => void;
 }
 
-const StaffProfile: React.FC<StaffProfileProps> = ({ staffId, onBack, navigateTo }) => {
-    const { user, hasPermission } = useAuth();
+const StaffProfile: React.FC<StaffProfileProps> = ({ staffId, onBack, navigateTo: _navigateTo }) => {
+    const { hasPermission } = useAuth();
     const [profile, setProfile] = useState<StaffProfileData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -82,18 +83,29 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ staffId, onBack, navigateTo
 
     if (loading) {
         return (
-            <div className="flex justify-center p-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+            <div className="card">
+                <LoadingState label="Loading staff profile…" />
             </div>
         );
     }
 
     if (error || !profile) {
         return (
-            <div className="p-6">
-                <div className="bg-red-50 text-red-600 p-4 rounded-lg">
-                    {error || "Profile not found."}
-                </div>
+            <div className="card">
+                {staffId ? (
+                    <ErrorState
+                        title={error ? "Couldn't load staff profile" : 'Profile not found'}
+                        message={error ? 'The staff profile could not be loaded. Please try again.' : 'This staff record does not exist or has been removed.'}
+                        onRetry={() => { setError(null); fetchProfile(); }}
+                    />
+                ) : (
+                    <EmptyState
+                        icon={<UserIcon className="w-6 h-6" />}
+                        title="No staff profile linked to this account"
+                        description="Your login isn't connected to a staff record yet. Ask your HR administrator to link your account to your staff profile."
+                        action={onBack && <button type="button" className="btn-secondary btn-sm" onClick={onBack}>← Back</button>}
+                    />
+                )}
             </div>
         );
     }

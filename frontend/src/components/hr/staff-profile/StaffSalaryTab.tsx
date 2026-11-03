@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StaffProfileData } from '../../StaffProfile';
+import { LoadingState, EmptyState } from '../../ui';
 import api from '../../../api';
 
 interface Props {
@@ -24,14 +25,14 @@ export const StaffSalaryTab: React.FC<Props> = ({ profile }) => {
         fetchSalary();
     }, [profile.id]);
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <LoadingState label="Loading salary details…" />;
 
     return (
         <div className="space-y-8">
             <div>
                 <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
-                    <h3 className="text-lg font-semibold text-slate-800">Current Salary</h3>
-                    <button className="text-brand-600 hover:text-brand-700 text-sm font-medium">Edit Salary Details</button>
+                    <h3 className="text-base font-semibold text-slate-900">Current Salary</h3>
+                    <button type="button" className="btn-ghost btn-sm text-brand-600">Edit Salary Details</button>
                 </div>
                 {salary ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -63,13 +64,13 @@ export const StaffSalaryTab: React.FC<Props> = ({ profile }) => {
                         </div>
                     </div>
                 ) : (
-                    <div className="text-slate-500 text-sm py-4">No salary details configured.</div>
+                    <EmptyState compact title="No salary details configured" />
                 )}
             </div>
 
             <div>
                 <div className="flex justify-between items-center border-b border-slate-200 pb-2 mb-4">
-                    <h3 className="text-lg font-semibold text-slate-800">Payroll Configuration</h3>
+                    <h3 className="text-base font-semibold text-slate-900">Payroll Configuration</h3>
                 </div>
                 {salary ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -95,7 +96,7 @@ export const StaffSalaryTab: React.FC<Props> = ({ profile }) => {
                         </div>
                     </div>
                 ) : (
-                    <div className="text-slate-500 text-sm py-4">-</div>
+                    <p className="text-sm text-slate-500 py-4">-</p>
                 )}
             </div>
         </div>

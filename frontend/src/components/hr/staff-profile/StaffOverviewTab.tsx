@@ -13,7 +13,7 @@ export const StaffOverviewTab: React.FC<Props> = ({ profile }) => {
                 
                 {/* Personal Information */}
                 <div className="bg-slate-50 rounded-lg p-5 border border-slate-100">
-                    <h3 className="font-semibold text-slate-800 border-b border-slate-200 pb-2 mb-4">Personal Information</h3>
+                    <h3 className="text-base font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Personal Information</h3>
                     <div className="space-y-3 text-sm">
                         <div className="grid grid-cols-3">
                             <span className="text-slate-500">Full Name</span>
@@ -42,7 +42,7 @@ export const StaffOverviewTab: React.FC<Props> = ({ profile }) => {
 
                 {/* Employment */}
                 <div className="bg-slate-50 rounded-lg p-5 border border-slate-100">
-                    <h3 className="font-semibold text-slate-800 border-b border-slate-200 pb-2 mb-4">Employment</h3>
+                    <h3 className="text-base font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Employment</h3>
                     <div className="space-y-3 text-sm">
                         <div className="grid grid-cols-3">
                             <span className="text-slate-500">Staff Code</span>
@@ -69,7 +69,7 @@ export const StaffOverviewTab: React.FC<Props> = ({ profile }) => {
 
                 {/* Bank & Statutory Preview */}
                 <div className="bg-slate-50 rounded-lg p-5 border border-slate-100">
-                    <h3 className="font-semibold text-slate-800 border-b border-slate-200 pb-2 mb-4">Bank & Statutory (Preview)</h3>
+                    <h3 className="text-base font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Bank & Statutory (Preview)</h3>
                     <div className="space-y-3 text-sm">
                         <div className="grid grid-cols-3">
                             <span className="text-slate-500">Bank</span>
@@ -88,7 +88,7 @@ export const StaffOverviewTab: React.FC<Props> = ({ profile }) => {
 
                 {/* Documents Preview */}
                 <div className="bg-slate-50 rounded-lg p-5 border border-slate-100">
-                    <h3 className="font-semibold text-slate-800 border-b border-slate-200 pb-2 mb-4">Documents (Preview)</h3>
+                    <h3 className="text-base font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Documents (Preview)</h3>
                     <div className="space-y-3 text-sm">
                         <div className="flex items-center justify-between">
                             <span className="text-slate-500">Identity Documents</span>

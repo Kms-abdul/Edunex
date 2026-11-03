@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
+import { Alert, LoadingState, EmptyState, Badge } from './ui';
 
 interface Shift {
     id: number;
@@ -92,12 +93,12 @@ export const ShiftMaster: React.FC = () => {
             <h2 className="text-base font-semibold text-slate-900 mb-4">Shift Master</h2>
             
             {msg && (
-                <div className={`mb-4 p-3 rounded text-sm ${msg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                <Alert tone={msg.type} className="mb-4" onClose={() => setMsg(null)}>
                     {msg.text}
-                </div>
+                </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <div>
                     <label className="label">Code *</label>
                     <input type="text" required value={form.shift_code} onChange={e => setForm({...form, shift_code: e.target.value})} disabled={!!editingId} className="input" />
@@ -122,7 +123,7 @@ export const ShiftMaster: React.FC = () => {
                     <label className="label">Grace Out (mins)</label>
                     <input type="number" value={form.grace_out_minutes} onChange={e => setForm({...form, grace_out_minutes: Number(e.target.value)})} className="input" />
                 </div>
-                <div className="md:col-span-4 flex gap-2">
+                <div className="sm:col-span-2 lg:col-span-4 flex gap-2">
                     <button type="submit" className="btn-primary">{editingId ? 'Update' : 'Save'} Shift</button>
                     {editingId && (
                         <button type="button" onClick={() => { setEditingId(null); setForm({ shift_code: '', shift_name: '', start_time: '', end_time: '', grace_in_minutes: 0, grace_out_minutes: 0, status: 'ACTIVE' }); }} className="btn-secondary">Cancel</button>
@@ -132,29 +133,28 @@ export const ShiftMaster: React.FC = () => {
 
             <div className="overflow-x-auto rounded-lg border border-slate-200">
                 <table className="w-full text-left text-sm">
-                    <thead>
-                        <tr className="">
-                            <th className="p-2 border-b">Code</th>
-                            <th className="p-2 border-b">Name</th>
-                            <th className="p-2 border-b">Timings</th>
-                            <th className="p-2 border-b">Status</th>
-                            <th className="p-2 border-b">Actions</th>
+                    <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <tr>
+                            <th className="px-3 py-2.5 border-b border-slate-200">Code</th>
+                            <th className="px-3 py-2.5 border-b border-slate-200">Name</th>
+                            <th className="px-3 py-2.5 border-b border-slate-200">Timings</th>
+                            <th className="px-3 py-2.5 border-b border-slate-200">Status</th>
+                            <th className="px-3 py-2.5 border-b border-slate-200">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {loading ? <tr><td colSpan={5} className="p-4 text-center">Loading...</td></tr> : 
+                        {loading ? <tr><td colSpan={5}><LoadingState label="Loading shifts…" /></td></tr> :
+                            shifts.length === 0 ? <tr><td colSpan={5}><EmptyState compact title="No shifts yet" description="Add a shift using the form above." /></td></tr> :
                             shifts.map(s => (
-                                <tr key={s.id} className="border-b">
-                                    <td className="p-2">{s.shift_code}</td>
-                                    <td className="p-2">{s.shift_name}</td>
-                                    <td className="p-2">{s.start_time} - {s.end_time}</td>
-                                    <td className="p-2">
-                                        <span className={`px-2 py-1 text-xs rounded-full ${s.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                            {s.status}
-                                        </span>
+                                <tr key={s.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                                    <td className="px-3 py-2.5">{s.shift_code}</td>
+                                    <td className="px-3 py-2.5">{s.shift_name}</td>
+                                    <td className="px-3 py-2.5">{s.start_time} - {s.end_time}</td>
+                                    <td className="px-3 py-2.5">
+                                        <Badge tone={s.status === 'ACTIVE' ? 'success' : 'danger'}>{s.status}</Badge>
                                     </td>
-                                    <td className="p-2">
-                                        <button onClick={() => handleEdit(s)} className="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
+                                    <td className="px-3 py-2.5">
+                                        <button onClick={() => handleEdit(s)} className="btn-ghost btn-sm text-brand-600">Edit</button>
                                     </td>
                                 </tr>
                             ))

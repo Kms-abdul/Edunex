@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../api';
 import { useAuth } from '../../contexts/AuthContext';
 import { StaffDocuments } from './StaffDocuments';
+import { Alert, LoadingState } from '../ui';
 
 interface SelectOption {
     id: number;
@@ -214,8 +215,8 @@ export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSucces
 
     if (loading) {
         return (
-            <div className="flex justify-center p-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+            <div className="card max-w-6xl mx-auto">
+                <LoadingState label="Loading staff details…" />
             </div>
         );
     }
@@ -231,9 +232,9 @@ export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSucces
 
     return (
         <div className="card overflow-hidden mb-6 max-w-6xl mx-auto">
-            <div className="card-header flex justify-between items-center">
-                <h2 className="page-title">Update Staff Details</h2>
-                <button onClick={onClose} className="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+            <div className="card-header">
+                <h2 className="text-base font-semibold text-slate-900">Update Staff Details</h2>
+                <button type="button" aria-label="Close" onClick={onClose} className="btn-icon">✕</button>
             </div>
 
             <div className="flex border-b border-slate-200 overflow-x-auto hide-scrollbar">
@@ -249,14 +250,14 @@ export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSucces
             </div>
 
             <div className="p-6 md:p-8">
-                {error && <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>}
+                {error && <Alert tone="error" className="mb-6" onClose={() => setError(null)}>{error}</Alert>}
 
                 {/* Tab: Personal */}
                 {activeTab === 'personal' && (
                     <div className="space-y-8">
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Personal Information</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Personal Information</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div>
                                     <label className="label">First Name *</label>
                                     <input type="text" className="input uppercase"
@@ -288,7 +289,7 @@ export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSucces
                             </div>
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Contact & Address</h3>
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Contact & Address</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="label">Mobile Number</label>
@@ -324,8 +325,8 @@ export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSucces
                 {activeTab === 'employment' && (
                     <div className="space-y-8">
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Employment Information</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Employment Information</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div>
                                     <label className="label">Branch *</label>
                                     <select className="input bg-slate-100"
@@ -406,8 +407,8 @@ export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSucces
                 {activeTab === 'bank' && showBankTab && (
                     <div className="space-y-8">
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Bank Details</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Bank Details</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div>
                                     <label className="label">Account Number</label>
                                     <input type="text" className="input"
@@ -426,8 +427,8 @@ export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSucces
                             </div>
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Statutory Details</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Statutory Details</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div>
                                     <label className="label">PAN Number</label>
                                     <input type="text" className="input uppercase"
@@ -452,8 +453,8 @@ export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSucces
                 {activeTab === 'salary' && showSalaryTab && (
                     <div className="space-y-8">
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Salary Details</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Salary Details</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div>
                                     <label className="label">Basic Salary</label>
                                     <input type="number" className="input"
@@ -494,16 +495,16 @@ export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSucces
                 )}
 
                 {/* Footer Controls */}
-                <div className="flex justify-between pt-8 mt-8 border-t border-slate-200">
-                    <button type="button" onClick={onClose} disabled={saving} className="btn btn-ghost">
+                <div className="flex flex-wrap gap-3 justify-between pt-8 mt-8 border-t border-slate-200">
+                    <button type="button" onClick={onClose} disabled={saving} className="btn-ghost">
                         Cancel
                     </button>
-                    <div className="flex gap-4">
+                    <div className="flex flex-wrap gap-3">
                         {tabs.findIndex(t => t.id === activeTab) < tabs.length - 1 && (
                             <button
                                 type="button"
                                 onClick={() => setActiveTab(tabs[tabs.findIndex(t => t.id === activeTab) + 1].id)}
-                                className="btn btn-secondary"
+                                className="btn-secondary"
                             >
                                 Next Step →
                             </button>
@@ -512,7 +513,7 @@ export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSucces
                             type="button"
                             onClick={handleSubmit}
                             disabled={saving}
-                            className="btn btn-primary"
+                            className="btn-primary"
                         >
                             {saving ? 'Updating...' : 'Save & Update Staff'}
                         </button>

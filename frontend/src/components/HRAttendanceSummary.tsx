@@ -3,6 +3,7 @@ import { hr } from '../api';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { useAuth } from '../contexts/AuthContext';
+import { LoadingState, EmptyState, ErrorState } from './ui';
 
 const generateMonthOptions = () => {
   const options = [];
@@ -259,21 +260,21 @@ const HRAttendanceSummary: React.FC = () => {
 
   const getCellColorClass = (status: string) => {
     status = (status || '').toUpperCase();
-    if (status === 'ABSENT' || status.includes('LEAVE')) return 'bg-[#d8a87b] text-white'; // Tan color like screenshot
+    if (status === 'ABSENT' || status.includes('LEAVE')) return 'bg-amber-400 text-white'; // Tan/amber marks absent or leave
     return '';
   };
 
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col bg-gray-50">
-      <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+    <div className="h-full flex flex-col">
+      <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Attendance Summary</h1>
+          <h2 className="text-base font-semibold text-slate-900">Attendance Summary</h2>
         </div>
-        <div className="flex gap-2 mt-4 sm:mt-0">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={exportToExcel}
             disabled={loading || groupedData.length === 0}
-            className="btn-success border-transparent"
+            className="btn-success"
           >
             Download Excel
           </button>
@@ -290,7 +291,7 @@ const HRAttendanceSummary: React.FC = () => {
               }
             }}
             disabled={isSyncing || loading}
-            className="btn-primary border-transparent"
+            className="btn-primary"
           >
             {isSyncing ? 'Processing...' : 'Process & Refresh'}
           </button>
@@ -301,7 +302,7 @@ const HRAttendanceSummary: React.FC = () => {
       <div className="card p-4 mb-4 flex flex-wrap gap-4 items-end">
         <div>
           <label className="label">-Select- Month</label>
-          <select value={selectedMonth} onChange={handleMonthChange} className="input mt-1">
+          <select value={selectedMonth} onChange={handleMonthChange} className="input">
             <option value="">-Select-</option>
             {monthOptions.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -310,11 +311,11 @@ const HRAttendanceSummary: React.FC = () => {
         </div>
         <div>
           <label className="label">Employee Search</label>
-          <input type="text" name="employee" placeholder="Name or ID..." value={filters.employee} onChange={handleFilterChange} disabled={!isManager} className={`input mt-1 ${!isManager ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
+          <input type="text" name="employee" placeholder="Name or ID..." value={filters.employee} onChange={handleFilterChange} disabled={!isManager} className={`input ${!isManager ? 'bg-slate-100 cursor-not-allowed' : ''}`} />
         </div>
         <div>
           <label className="label">Status</label>
-          <select name="status" value={filters.status} onChange={handleFilterChange} className="input mt-1 pl-3">
+          <select name="status" value={filters.status} onChange={handleFilterChange} className="input">
             <option value="ALL">All Statuses</option>
             <option value="PRESENT">Present</option>
             <option value="ABSENT">Absent</option>
@@ -324,31 +325,31 @@ const HRAttendanceSummary: React.FC = () => {
       </div>
 
       {/* Main Grid Table */}
-      <div className="flex-1 bg-white border border-gray-200 overflow-hidden flex flex-col">
+      <div className="flex-1 card overflow-hidden flex flex-col">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading attendance data...</div>
+          <LoadingState label="Loading attendance data…" />
         ) : error ? (
-          <div className="p-8 text-center text-red-500">{error}</div>
+          <ErrorState title="Couldn't load attendance" message={error} onRetry={fetchAttendance} />
         ) : groupedData.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">No attendance records found for the selected period.</div>
+          <EmptyState title="No attendance records" description="No attendance records found for the selected period." />
         ) : (
           <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 250px)' }}>
             <table className="w-full text-xs text-center whitespace-nowrap table-fixed border-collapse" style={{ minWidth: 'max-content' }}>
-              <thead className="border-b border-gray-300 sticky top-0 z-10">
+              <thead className="bg-slate-50 text-slate-600 border-b border-slate-300 sticky top-0 z-10">
                 <tr>
-                  <th rowSpan={2} className="px-2 py-2 border border-gray-300 sticky left-0 z-20 w-10 border-r-2">Sno</th>
-                  <th rowSpan={2} className="px-3 py-2 border border-gray-300 sticky left-[40px] z-20 w-32 border-r-2">Staff Employee Id</th>
-                  <th rowSpan={2} className="px-3 py-2 border border-gray-300 sticky left-[168px] z-20 w-48 text-left border-r-2">Staff name</th>
-                  <th rowSpan={2} className="px-3 py-2 border border-gray-300 sticky left-[360px] z-20 w-40 text-left border-r-4 shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]">Designation</th>
+                  <th rowSpan={2} className="px-2 py-2 border border-slate-300 sticky left-0 z-20 w-10 bg-slate-50 border-r-2">Sno</th>
+                  <th rowSpan={2} className="px-3 py-2 border border-slate-300 sticky left-[40px] z-20 w-32 bg-slate-50 border-r-2">Staff Employee Id</th>
+                  <th rowSpan={2} className="px-3 py-2 border border-slate-300 sticky left-[168px] z-20 w-48 bg-slate-50 text-left border-r-2">Staff name</th>
+                  <th rowSpan={2} className="px-3 py-2 border border-slate-300 sticky left-[360px] z-20 w-40 bg-slate-50 text-left border-r-4 shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]">Designation</th>
                   {/* 
-                  <th rowSpan={2} className="px-2 py-2 border border-gray-300 w-16">Total days</th>
-                  <th rowSpan={2} className="px-2 py-2 border border-gray-300 w-16">WeekOff</th>
-                  <th rowSpan={2} className="px-2 py-2 border border-gray-300 w-16">Holidays</th>
-                  <th rowSpan={2} className="px-2 py-2 border border-gray-300 w-16">Present</th>
-                  <th rowSpan={2} className="px-2 py-2 border border-gray-300 w-16 border-r-4">Absent</th>*/}
+                  <th rowSpan={2} className="px-2 py-2 border border-slate-300 w-16">Total days</th>
+                  <th rowSpan={2} className="px-2 py-2 border border-slate-300 w-16">WeekOff</th>
+                  <th rowSpan={2} className="px-2 py-2 border border-slate-300 w-16">Holidays</th>
+                  <th rowSpan={2} className="px-2 py-2 border border-slate-300 w-16">Present</th>
+                  <th rowSpan={2} className="px-2 py-2 border border-slate-300 w-16 border-r-4">Absent</th>*/}
 
                   {datesInMonth.map(date => (
-                    <th key={date} colSpan={2} className="px-2 py-1 border border-gray-300 font-extrabold text-[11px] w-[240px] min-w-[240px]">
+                    <th key={date} colSpan={2} className="px-2 py-1 border border-slate-300 bg-slate-50 font-extrabold text-[11px] w-[240px] min-w-[240px]">
                       {monthDisplayFormat(date)}
                     </th>
                   ))}
@@ -356,33 +357,33 @@ const HRAttendanceSummary: React.FC = () => {
                 <tr>
                   {datesInMonth.map(date => (
                     <React.Fragment key={`${date}-sub`}>
-                      <th className="px-2 py-2 border border-gray-300 bg-white w-[120px] min-w-[120px]">In Time</th>
-                      <th className="px-2 py-2 border border-gray-300 bg-white w-[120px] min-w-[120px]">Out Time</th>
+                      <th className="px-2 py-2 border border-slate-300 bg-white w-[120px] min-w-[120px]">In Time</th>
+                      <th className="px-2 py-2 border border-slate-300 bg-white w-[120px] min-w-[120px]">Out Time</th>
                     </React.Fragment>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-slate-200">
                 {groupedData.map((staff, index) => (
-                  <tr key={staff.employee_id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-2 py-2 border border-gray-300 sticky left-0 bg-white z-10 border-r-2">{index + 1}</td>
-                    <td className="px-3 py-2 border border-gray-300 sticky left-[40px] bg-white z-10 border-r-2">{staff.employee_id}</td>
-                    <td className="px-3 py-2 border border-gray-300 sticky left-[168px] bg-white z-10 text-left font-semibold truncate max-w-[192px] border-r-2" title={staff.staff_name}>{staff.staff_name}</td>
-                    <td className="px-3 py-2 border border-gray-300 sticky left-[360px] bg-white z-10 text-left truncate max-w-[160px] border-r-4 shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]" title={staff.designation}>{staff.designation}</td>
+                  <tr key={staff.employee_id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-2 py-2 border border-slate-300 sticky left-0 bg-white z-10 border-r-2">{index + 1}</td>
+                    <td className="px-3 py-2 border border-slate-300 sticky left-[40px] bg-white z-10 border-r-2">{staff.employee_id}</td>
+                    <td className="px-3 py-2 border border-slate-300 sticky left-[168px] bg-white z-10 text-left font-semibold truncate max-w-[192px] border-r-2" title={staff.staff_name}>{staff.staff_name}</td>
+                    <td className="px-3 py-2 border border-slate-300 sticky left-[360px] bg-white z-10 text-left truncate max-w-[160px] border-r-4 shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]" title={staff.designation}>{staff.designation}</td>
 
-                    {/*<td className="px-2 py-2 border border-gray-300 font-medium">{staff.total_days}</td>
-                    <td className="px-2 py-2 border border-gray-300">{staff.weekoffs}</td>
-                    <td className="px-2 py-2 border border-gray-300">{staff.holidays}</td>
-                    <td className="px-2 py-2 border border-gray-300 font-medium">{staff.present}</td>
-                    <td className="px-2 py-2 border border-gray-300 font-medium text-red-500 border-r-4">{staff.absent}</td>*/}
+                    {/*<td className="px-2 py-2 border border-slate-300 font-medium">{staff.total_days}</td>
+                    <td className="px-2 py-2 border border-slate-300">{staff.weekoffs}</td>
+                    <td className="px-2 py-2 border border-slate-300">{staff.holidays}</td>
+                    <td className="px-2 py-2 border border-slate-300 font-medium">{staff.present}</td>
+                    <td className="px-2 py-2 border border-slate-300 font-medium text-red-500 border-r-4">{staff.absent}</td>*/}
 
                     {datesInMonth.map(date => {
                       const record = staff.daily_records[date];
                       if (!record) {
                         return (
                           <React.Fragment key={`${date}-empty`}>
-                            <td className="px-2 py-2 border border-gray-300 text-gray-400">-</td>
-                            <td className="px-2 py-2 border border-gray-300 text-gray-400">-</td>
+                            <td className="px-2 py-2 border border-slate-300 text-slate-400">-</td>
+                            <td className="px-2 py-2 border border-slate-300 text-slate-400">-</td>
                           </React.Fragment>
                         );
                       }
@@ -393,7 +394,7 @@ const HRAttendanceSummary: React.FC = () => {
                       // If absent/leave, show a spanned block or single block with '1'
                       if (['ABSENT', 'LEAVE'].some(s => status.includes(s))) {
                         return (
-                          <td key={`${date}-absent`} colSpan={2} className={`px-2 py-2 border border-gray-300 font-bold ${colorClass}`}>
+                          <td key={`${date}-absent`} colSpan={2} className={`px-2 py-2 border border-slate-300 font-bold ${colorClass}`}>
                             1
                           </td>
                         );
@@ -402,8 +403,8 @@ const HRAttendanceSummary: React.FC = () => {
                       if (status === 'HALF_DAY') {
                         return (
                           <React.Fragment key={`${date}-half`}>
-                            <td className="px-2 py-2 border border-gray-300">{formatTime12h(record.first_in)}</td>
-                            <td className={`px-2 py-2 border border-gray-300 font-bold ${getCellColorClass('ABSENT')}`}>0.5</td>
+                            <td className="px-2 py-2 border border-slate-300">{formatTime12h(record.first_in)}</td>
+                            <td className={`px-2 py-2 border border-slate-300 font-bold ${getCellColorClass('ABSENT')}`}>0.5</td>
                           </React.Fragment>
                         );
                       }
@@ -411,10 +412,10 @@ const HRAttendanceSummary: React.FC = () => {
                       // Regular punch data
                       return (
                         <React.Fragment key={`${date}-punch`}>
-                          <td className={`px-2 py-2 border border-gray-300 ${colorClass}`}>
+                          <td className={`px-2 py-2 border border-slate-300 ${colorClass}`}>
                             {formatTime12h(record.first_in)}
                           </td>
-                          <td className={`px-2 py-2 border border-gray-300 ${colorClass}`}>
+                          <td className={`px-2 py-2 border border-slate-300 ${colorClass}`}>
                             {formatTime12h(record.last_out)}
                           </td>
                         </React.Fragment>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
+import { Alert, LoadingState, EmptyState, Badge } from './ui';
 
 interface Designation {
     id: number;
@@ -72,18 +73,6 @@ export const DesignationMaster: React.FC = () => {
         }
     };
 
-    const handleEdit = (d: Designation) => {
-        setEditingId(d.id);
-        setForm({
-            department_id: String(d.department_id),
-            designation_code: d.designation_code,
-            designation_name: d.designation_name,
-            description: d.description || '',
-            display_order: d.display_order || 0,
-            status: d.status || 'ACTIVE'
-        });
-    };
-
     const currentSchoolId = localStorage.getItem('currentSchoolId');
     if (!currentSchoolId || currentSchoolId === 'all') {
         return (
@@ -99,9 +88,9 @@ export const DesignationMaster: React.FC = () => {
             <h2 className="text-base font-semibold text-slate-900 mb-4">Designation Master</h2>
 
             {msg && (
-                <div className={`mb-4 p-3 rounded text-sm ${msg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                <Alert tone={msg.type} className="mb-4" onClose={() => setMsg(null)}>
                     {msg.text}
-                </div>
+                </Alert>
             )}
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -130,25 +119,24 @@ export const DesignationMaster: React.FC = () => {
 
             <div className="overflow-x-auto rounded-lg border border-slate-200">
                 <table className="w-full text-left text-sm">
-                    <thead>
-                        <tr className="">
-                            <th className="p-2 border-b">Department</th>
-                            <th className="p-2 border-b">Code</th>
-                            <th className="p-2 border-b">Name</th>
-                            <th className="p-2 border-b">Status</th>
+                    <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <tr>
+                            <th className="px-3 py-2.5 border-b border-slate-200">Department</th>
+                            <th className="px-3 py-2.5 border-b border-slate-200">Code</th>
+                            <th className="px-3 py-2.5 border-b border-slate-200">Name</th>
+                            <th className="px-3 py-2.5 border-b border-slate-200">Status</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {loading ? <tr><td colSpan={4} className="p-4 text-center">Loading...</td></tr> :
+                        {loading ? <tr><td colSpan={4}><LoadingState label="Loading designations…" /></td></tr> :
+                            designations.length === 0 ? <tr><td colSpan={4}><EmptyState compact title="No designations yet" description="Add a designation using the form above." /></td></tr> :
                             designations.map(d => (
-                                <tr key={d.id} className="border-b">
-                                    <td className="p-2">{d.department_name}</td>
-                                    <td className="p-2">{d.designation_code}</td>
-                                    <td className="p-2">{d.designation_name}</td>
-                                    <td className="p-2">
-                                        <span className={`px-2 py-1 text-xs rounded-full ${d.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                            {d.status}
-                                        </span>
+                                <tr key={d.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                                    <td className="px-3 py-2.5">{d.department_name}</td>
+                                    <td className="px-3 py-2.5">{d.designation_code}</td>
+                                    <td className="px-3 py-2.5">{d.designation_name}</td>
+                                    <td className="px-3 py-2.5">
+                                        <Badge tone={d.status === 'ACTIVE' ? 'success' : 'danger'}>{d.status}</Badge>
                                     </td>
                                 </tr>
                             ))

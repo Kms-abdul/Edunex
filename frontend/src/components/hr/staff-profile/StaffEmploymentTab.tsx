@@ -9,7 +9,7 @@ export const StaffEmploymentTab: React.FC<Props> = ({ profile }) => {
     return (
         <div className="space-y-8">
             <div>
-                <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-200 pb-2 mb-4">Organization</h3>
+                <h3 className="text-base font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Organization</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="label">Branch</label>
@@ -31,7 +31,7 @@ export const StaffEmploymentTab: React.FC<Props> = ({ profile }) => {
             </div>
 
             <div>
-                <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-200 pb-2 mb-4">Job Details</h3>
+                <h3 className="text-base font-semibold text-slate-900 border-b border-slate-200 pb-2 mb-4">Job Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="label">Department</label>

@@ -3,6 +3,7 @@ import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import StaffProfile from './StaffProfile';
 import { EyeIcon } from './icons';
+import { LoadingState, EmptyState } from './ui';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -75,16 +76,16 @@ export default function StaffDirectory() {
     // ── State ─────────────────────────────────────────────────────────────────
     const [staffList, setStaffList] = useState<Staff[]>([]);
     const [departments, setDepartments] = useState<SelectOption[]>([]);
-    const [designations, setDesignations] = useState<SelectOption[]>([]);
-    const [shifts, setShifts] = useState<SelectOption[]>([]);
-    const [roles, setRoles] = useState<SelectOption[]>([]);
-    const [categories, setCategories] = useState<SelectOption[]>([]);
-    const [statuses, setStatuses] = useState<SelectOption[]>([]);
-    const [managers, setManagers] = useState<SelectOption[]>([]);  // reporting manager dropdown
-    const [managerSearch, setManagerSearch] = useState('');
+    // Options/flags below belong to the (unfinished) inline add/edit form; only the setters are used for now.
+    const [, setDesignations] = useState<SelectOption[]>([]);
+    const [, setShifts] = useState<SelectOption[]>([]);
+    const [, setRoles] = useState<SelectOption[]>([]);
+    const [, setCategories] = useState<SelectOption[]>([]);
+    const [, setStatuses] = useState<SelectOption[]>([]);
+    const [, setManagers] = useState<SelectOption[]>([]);  // reporting manager dropdown
     const [loading, setLoading] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const [showForm, setShowForm] = useState(false);
+    const [, setSaving] = useState(false);
+    const [, setShowForm] = useState(false);
     const [viewingStaffId, setViewingStaffId] = useState<number | null>(null);
 
     // ── Advanced Search State
@@ -141,11 +142,6 @@ export default function StaffDirectory() {
     };
 
     const [form, setForm] = useState(blankForm);
-
-    // ── Filtered designations by selected dept ────────────────────────────────
-    const filteredDesignations = form.department_id
-        ? designations.filter((d) => d.department_id === Number(form.department_id))
-        : designations;
 
     // ── Data fetching ─────────────────────────────────────────────────────────
     const fetchMasterData = useCallback(async (branchId?: string) => {
@@ -241,10 +237,8 @@ export default function StaffDirectory() {
         fetchMasterData(form.branch_id);
     }, [form.branch_id, fetchMasterData]);
 
-    // ── Form helpers ──────────────────────────────────────────────────────────
-    const set = (field: string, value: string) =>
-        setForm((prev: any) => ({ ...prev, [field]: value }));
-
+    // NOTE: handleEdit / handleSubmit belong to an unfinished inline add/edit staff form that is
+    // not rendered yet. They are intentionally kept (see `void` reference below).
     const handleEdit = async (staffId: number) => {
         setResult(null);
         try {
@@ -334,68 +328,8 @@ export default function StaffDirectory() {
     // ── Filtered list ─────────────────────────────────────────────────────────
     const filteredStaff = staffList;
 
-    // ── Render helpers ────────────────────────────────────────────────────────
-    const renderInput = ({ label, field, type = 'text', required = false, placeholder, disabled = false }: { label: string; field: string; type?: string; required?: boolean; placeholder?: string; disabled?: boolean }) => (
-        <div>
-            <label className="label">
-                {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-            </label>
-            <input
-                type={type}
-                className={`input ${disabled ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'}`}
-                value={(form as any)[field] ?? ''}
-                onChange={(e) => set(field, e.target.value)}
-                required={required}
-                placeholder={placeholder}
-                disabled={disabled}
-            />
-        </div>
-    );
-
-    const renderSelect = ({
-        label, field, options, required = false, placeholder
-    }: {
-        label: string; field: string; options: SelectOption[]; required?: boolean; placeholder?: string
-    }) => (
-        <div>
-            <label className="label">
-                {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-            </label>
-            <select
-                className="input"
-                value={(form as any)[field] ?? ''}
-                onChange={(e) => set(field, e.target.value)}
-                required={required}
-            >
-                <option value="">{placeholder ?? `Select ${label}`}</option>
-                {options.map((o) => (
-                    <option key={o.id} value={o.id}>{o.label}</option>
-                ))}
-            </select>
-        </div>
-    );
-
-    const renderStaticSelect = ({
-        label, field, options, required = false
-    }: {
-        label: string; field: string; options: { value: string; label: string }[]; required?: boolean
-    }) => (
-        <div>
-            <label className="label">
-                {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-            </label>
-            <select
-                className="input"
-                value={(form as any)[field] ?? ''}
-                onChange={(e) => set(field, e.target.value)}
-                required={required}
-            >
-                {options.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-            </select>
-        </div>
-    );
+    void handleEdit;
+    void handleSubmit;
 
     // ── JSX ───────────────────────────────────────────────────────────────────
     if (viewingStaffId) {
@@ -406,9 +340,9 @@ export default function StaffDirectory() {
         <div className="space-y-6">
 
             {/* ── Page header ──────────────────────────────────────────────── */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-800">Search for Staff</h2>
+                    <h2 className="text-base font-semibold text-slate-900">Search for Staff</h2>
                     <p className="text-sm text-slate-500 mt-0.5">
                         {staffList.length} staff member{staffList.length !== 1 ? 's' : ''} registered
                     </p>
@@ -434,7 +368,7 @@ export default function StaffDirectory() {
                                         </span>
                                     )}
                                     {result.employee_id && (
-                                        <span className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-800 text-xs font-mono font-bold px-3 py-1.5 rounded-lg">
+                                        <span className="inline-flex items-center gap-1.5 bg-brand-100 text-brand-800 text-xs font-mono font-bold px-3 py-1.5 rounded-lg">
                                             🔑 Employee ID: {result.employee_id}
                                         </span>
                                     )}
@@ -454,10 +388,10 @@ export default function StaffDirectory() {
 
             {/* ── Add Staff Form ────────────────────────────────────────────── */}
             {/* ── Filters and List (Hidden when editing/adding) ──────────────── */}
-            <div className="card p-4 flex flex-wrap items-end gap-3 mb-4">
+            <div className="card p-4 flex flex-wrap items-end gap-3">
                 {/* Branch Dropdown */}
                 {!isSingleBranch && (
-                    <div className="w-48">
+                    <div className="w-full sm:w-48">
                         <label className="label">Branch</label>
                         <select
                             className="input"
@@ -475,7 +409,7 @@ export default function StaffDirectory() {
                 )}
 
                 {/* Department Dropdown */}
-                <div className="w-48">
+                <div className="w-full sm:w-48">
                     <label className="label">Department</label>
                     <select
                         className="input"
@@ -490,7 +424,7 @@ export default function StaffDirectory() {
                 </div>
 
                 {/* Status Dropdown */}
-                <div className="w-40">
+                <div className="w-full sm:w-40">
                     <label className="label">Status</label>
                     <select
                         className="input"
@@ -504,7 +438,7 @@ export default function StaffDirectory() {
                 </div>
 
                 {/* Search By Dropdown */}
-                <div className="w-40">
+                <div className="w-full sm:w-40">
                     <label className="label">Search By</label>
                     <select
                         className="input"
@@ -521,7 +455,7 @@ export default function StaffDirectory() {
                 </div>
 
                 {/* Search Input */}
-                <div className="flex-1 min-w-[200px]">
+                <div className="flex-1 min-w-[200px] w-full sm:w-auto">
                     <label className="label">Search Query</label>
                     <input
                         type="text"
@@ -543,17 +477,17 @@ export default function StaffDirectory() {
                     </button>
                 </div>
             </div>
-            <div className="mb-4">
-                <span className="text-xs text-slate-500">
+            <div>
+                <span className="text-sm text-slate-500">
                     {loading ? 'Loading…' : `${filteredStaff.length} result${filteredStaff.length !== 1 ? 's' : ''}`}
                 </span>
             </div>
 
             {/* ── Staff Table ───────────────────────────────────────────────── */}
             <div className="card overflow-hidden">
-                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="border-b border-slate-200">
+                        <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
                             <tr>
                                 <th className="px-4 py-3">Employee</th>
                                 <th className="px-4 py-3">Category</th>
@@ -582,7 +516,7 @@ export default function StaffDirectory() {
                                                         {st.staff_code}
                                                     </span>
                                                     {st.employee_id && (
-                                                        <span className="font-mono text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                                                        <span className="font-mono text-xs text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
                                                             ID: {st.employee_id}
                                                         </span>
                                                     )}
@@ -591,7 +525,7 @@ export default function StaffDirectory() {
                                         </div>
                                     </td>
                                     <td className="px-4 py-3">
-                                        <span className="text-xs font-medium text-slate-700 bg-indigo-50 text-indigo-700 px-2 py-1 rounded-full">
+                                        <span className="badge-brand">
                                             {st.staff_category_name ?? '—'}
                                         </span>
                                     </td>
@@ -607,7 +541,7 @@ export default function StaffDirectory() {
                                         <p className="text-xs text-slate-400">{st.branch_name ?? '—'}</p>
                                     </td>
                                     <td className="px-4 py-3">
-                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor[st.staff_status_name?.toUpperCase() ?? st.employment_status] ?? 'bg-slate-100 text-slate-600'}`}>
+                                        <span className={`badge ${statusColor[st.staff_status_name?.toUpperCase() ?? st.employment_status] ?? 'bg-slate-100 text-slate-600'}`}>
                                             {st.staff_status_name ?? st.employment_status}
                                         </span>
                                     </td>
@@ -619,7 +553,7 @@ export default function StaffDirectory() {
                                         <div className="flex justify-end gap-2">
                                             <button
                                                 onClick={() => setViewingStaffId(st.id)}
-                                                className="text-blue-600 hover:text-blue-800 p-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+                                                className="btn-icon text-brand-600 hover:text-brand-700 hover:bg-brand-50"
                                                 title="View Profile"
                                             >
                                                 <EyeIcon className="w-5 h-5" />
@@ -630,15 +564,10 @@ export default function StaffDirectory() {
                             ))}
                             {filteredStaff.length === 0 && (
                                 <tr>
-                                    <td colSpan={canWrite ? 8 : 7} className="px-4 py-12 text-center text-slate-400">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <svg className="w-8 h-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" />
-                                            </svg>
-                                            <span className="text-sm">
-                                                {loading ? 'Loading staff…' : 'No staff found. Add your first staff member above.'}
-                                            </span>
-                                        </div>
+                                    <td colSpan={canWrite ? 8 : 7}>
+                                        {loading
+                                            ? <LoadingState label="Loading staff…" />
+                                            : <EmptyState compact title="No staff found" description="Try changing the filters or search query." />}
                                     </td>
                                 </tr>
                             )}
@@ -649,18 +578,3 @@ export default function StaffDirectory() {
         </div>
     );
 };
-
-// ─── Section header sub-component ────────────────────────────────────────────
-
-const SectionHeader: React.FC<{ icon: string; title: string; subtitle?: string }> = ({
-    icon, title, subtitle
-}) => (
-    <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-        <span className="text-lg">{icon}</span>
-        <div>
-            <h4 className="text-sm font-bold text-slate-700">{title}</h4>
-            {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
-        </div>
-    </div>
-);
-

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
+import { Alert, LoadingState, EmptyState, Badge } from './ui';
 
 interface BiometricDevice {
     id: number;
@@ -120,12 +121,12 @@ export const BiometricDevices: React.FC = () => {
             <h2 className="text-base font-semibold text-slate-900 mb-4">Biometric Devices</h2>
             
             {msg && (
-                <div className={`mb-4 p-3 rounded text-sm ${msg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                <Alert tone={msg.type} className="mb-4" onClose={() => setMsg(null)}>
                     {msg.text}
-                </div>
+                </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <div>
                     <label className="label">Device Code *</label>
                     <input type="text" value={form.device_code} onChange={e => setForm({...form, device_code: e.target.value})} required className="input" disabled={!!editingId} />
@@ -178,7 +179,7 @@ export const BiometricDevices: React.FC = () => {
                         <option value="MAINTENANCE">Maintenance</option>
                     </select>
                 </div>
-                <div className="md:col-span-4 flex justify-end items-end gap-2 mt-2">
+                <div className="sm:col-span-2 lg:col-span-4 flex justify-end items-end gap-2 mt-2">
                     {editingId && (
                         <button type="button" onClick={() => {
                             setEditingId(null);
@@ -198,12 +199,12 @@ export const BiometricDevices: React.FC = () => {
             </form>
 
             {loading ? (
-                <div className="text-center py-4 text-slate-500">Loading devices...</div>
+                <LoadingState label="Loading devices…" />
             ) : (
                 <div className="overflow-x-auto rounded-lg border border-slate-200">
                     <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-y border-slate-200">
+                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            <tr className="border-b border-slate-200">
                                 <th className="py-3 px-4">Code / Name</th>
                                 <th className="py-3 px-4">Network Info</th>
                                 <th className="py-3 px-4">Sync Info</th>
@@ -215,7 +216,7 @@ export const BiometricDevices: React.FC = () => {
                         <tbody>
                             {devices.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="py-4 text-center text-slate-500 text-sm">No devices found</td>
+                                    <td colSpan={6}><EmptyState compact title="No devices found" description="Register a biometric device using the form above." /></td>
                                 </tr>
                             ) : (
                                 devices.map(d => (
@@ -237,12 +238,12 @@ export const BiometricDevices: React.FC = () => {
                                             <div className="text-xs text-slate-700">Pending: {d.pending_punches || 0}</div>
                                         </td>
                                         <td className="py-3 px-4">
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${d.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                            <Badge tone={d.status === 'ACTIVE' ? 'success' : 'danger'}>
                                                 {d.status}
-                                            </span>
+                                            </Badge>
                                         </td>
                                         <td className="py-3 px-4 text-right">
-                                            <button onClick={() => handleEdit(d)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
+                                            <button onClick={() => handleEdit(d)} className="btn-ghost btn-sm text-brand-600">Edit</button>
                                         </td>
                                     </tr>
                                 ))

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api';
 import { useAuth } from '../../contexts/AuthContext';
+import { Alert, Spinner } from '../ui';
 
 interface CreateStaffWizardProps {
     onClose: () => void;
@@ -166,9 +167,12 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
 
     return (
         <div className="card overflow-hidden mb-6 max-w-6xl mx-auto">
-            <div className="card-header flex justify-between items-center">
-                <h2 className="page-title">Create New Staff</h2>
-                <button onClick={onClose} className="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+            <div className="card-header">
+                <div className="flex items-center gap-2">
+                    <h2 className="text-base font-semibold text-slate-900">Create New Staff</h2>
+                    {loading && <span className="inline-flex items-center gap-1.5 text-xs text-slate-500"><Spinner size="sm" /> Loading options…</span>}
+                </div>
+                <button type="button" aria-label="Close" onClick={onClose} className="btn-icon">✕</button>
             </div>
 
             <div className="flex border-b border-slate-200 overflow-x-auto hide-scrollbar">
@@ -184,14 +188,14 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
             </div>
 
             <div className="p-6 md:p-8">
-                {error && <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>}
+                {error && <Alert tone="error" className="mb-6" onClose={() => setError(null)}>{error}</Alert>}
 
                 {/* Tab: Personal */}
                 {activeTab === 'personal' && (
                     <div className="space-y-8">
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Personal Information</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Personal Information</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div>
                                     <label className="label">First Name *</label>
                                     <input type="text" className="input uppercase"
@@ -223,7 +227,7 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
                             </div>
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Contact & Address</h3>
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Contact & Address</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="label">Mobile Number</label>
@@ -259,8 +263,8 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
                 {activeTab === 'employment' && (
                     <div className="space-y-8">
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Employment Information</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Employment Information</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div>
                                     <label className="label">Branch *</label>
                                     <select className="input"
@@ -341,8 +345,8 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
                 {activeTab === 'bank' && showBankTab && (
                     <div className="space-y-8">
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Bank Details</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Bank Details</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div>
                                     <label className="label">Account Number</label>
                                     <input type="text" className="input"
@@ -361,8 +365,8 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
                             </div>
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Statutory Details</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Statutory Details</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div>
                                     <label className="label">PAN Number</label>
                                     <input type="text" className="input uppercase"
@@ -387,8 +391,8 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
                 {activeTab === 'salary' && showSalaryTab && (
                     <div className="space-y-8">
                         <div>
-                            <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Salary Details</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <h3 className="text-base font-semibold text-slate-900 mb-4 border-b border-slate-100 pb-2">Salary Details</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div>
                                     <label className="label">Basic Salary</label>
                                     <input type="number" className="input"
@@ -412,9 +416,9 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
                 {/* Tab: Login & Access */}
                 {activeTab === 'login' && showLoginTab && (
                     <div className="space-y-8">
-                        <div className="bg-brand-50 border border-brand-200 p-4 rounded-xl text-brand-800">
-                            <strong>Note:</strong> A login account is generated automatically using the Staff Code as both username and password. The user will be forced to change their password on first login.
-                        </div>
+                        <Alert tone="info" title="Note">
+                            A login account is generated automatically using the Staff Code as both username and password. The user will be forced to change their password on first login.
+                        </Alert>
                         <div>
                             <label className="label">Assign Initial Role</label>
                             <select className="input max-w-md"
@@ -427,16 +431,16 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
                 )}
 
                 {/* Footer Controls */}
-                <div className="flex justify-between pt-8 mt-8 border-t border-slate-200">
-                    <button type="button" onClick={onClose} disabled={saving} className="btn btn-ghost">
+                <div className="flex flex-wrap gap-3 justify-between pt-8 mt-8 border-t border-slate-200">
+                    <button type="button" onClick={onClose} disabled={saving} className="btn-ghost">
                         Cancel
                     </button>
-                    <div className="flex gap-4">
+                    <div className="flex flex-wrap gap-3">
                         {tabs.findIndex(t => t.id === activeTab) < tabs.length - 1 && (
                             <button 
                                 type="button"
                                 onClick={() => setActiveTab(tabs[tabs.findIndex(t => t.id === activeTab) + 1].id)} 
-                                className="btn btn-secondary"
+                                className="btn-secondary"
                             >
                                 Next Step →
                             </button>
@@ -445,7 +449,7 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
                             type="button"
                             onClick={handleSubmit} 
                             disabled={saving}
-                            className="btn btn-primary"
+                            className="btn-primary"
                         >
                             {saving ? 'Creating Staff...' : 'Save & Create Staff'}
                         </button>

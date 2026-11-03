@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { hr } from '../api';
+import { LoadingState, EmptyState, ErrorState } from './ui';
 
 const generateMonthOptions = () => {
   const options = [];
@@ -116,63 +117,16 @@ const HRPunchLog: React.FC = () => {
     return days[new Date(dateString).getDay()];
   };
 
-  const isLateWithin15 = (lateMinutes: number) => lateMinutes > 0 && lateMinutes <= 15 ? 'Yes' : 'No';
-  const isLateAfter15 = (lateMinutes: number) => lateMinutes > 15 ? 'Yes' : 'No';
-  const isEarlyLeaveWithin5 = (status: string) => 'No'; // We don't have early leave minutes yet
-  const isEarlyLeaveBefore5 = (status: string) => 'No'; // Mocked
-
-  const isLeave = (status: string) => status === 'LEAVE' ? 'Yes' : 'No';
   const isWeekoff = (status: string) => status === 'WEEK_OFF' ? 'Yes' : 'No';
   const isHoliday = (status: string) => status === 'HOLIDAY' ? 'Yes' : 'No';
 
-  const getAttendancePoints = (status: string) => {
-    if (status === 'PRESENT') return '1.00';
-    if (status === 'HALF_DAY') return '0.50';
-    return '0.00';
-  };
-
-  const getSessionState = (inTime: string | null, outTime: string | null, status: string, isMorning: boolean) => {
-    if (status === 'WEEK_OFF') return 'W';
-    if (status === 'HOLIDAY') return 'H';
-    if (status === 'LEAVE') return 'L';
-    if (status === 'ABSENT') return 'A';
-
-    // Simplistic mockup for Session state
-    if (status === 'PRESENT') return 'P';
-    if (status === 'HALF_DAY') {
-      if (isMorning && inTime && inTime < '13:00') return 'P';
-      if (!isMorning && outTime && outTime > '13:00') return 'P';
-      return 'A';
-    }
-    return 'A';
-  };
-
-  const renderSessionCell = (val: string) => {
-    if (val === 'P') return <span className="block w-full h-full text-center text-gray-700 bg-white pt-2 pb-2">P</span>;
-    if (val === 'A') return <span className="block w-full h-full text-center text-red-600 bg-red-200 font-medium pt-2 pb-2">A</span>;
-    if (val === 'W') return <span className="block w-full h-full text-center text-white bg-[#ef6e4d] font-medium pt-2 pb-2">W</span>;
-    if (val === 'H') return <span className="block w-full h-full text-center text-white bg-blue-500 font-medium pt-2 pb-2">H</span>;
-    if (val === 'L') return <span className="block w-full h-full text-center text-white bg-yellow-500 font-medium pt-2 pb-2">L</span>;
-    return <span>{val}</span>;
-  };
-
-  const renderYesNo = (val: string) => {
-    if (val === 'Yes') return <span className="block text-center text-red-600 bg-red-100 text-xs px-1 rounded-sm mx-auto">{val}</span>;
-    return <span className="block text-center text-gray-700 text-xs">{val}</span>;
-  };
-
-  const renderWeekoffHoliday = (val: string) => {
-    if (val === 'Yes') return <span className="block text-center text-white bg-[#d19c4c] text-xs px-2 py-0.5 rounded-sm mx-auto">{val}</span>;
-    return <span className="block text-center text-gray-700 text-xs">No</span>;
-  }
-
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col bg-gray-50">
-      <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+    <div className="h-full flex flex-col">
+      <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900 tracking-tight">Punch Log</h1>
+          <h2 className="text-base font-semibold text-slate-900">Punch Log</h2>
         </div>
-        <div className="flex gap-2 mt-4 sm:mt-0">
+        <div className="flex gap-2">
           <button
             onClick={async () => {
               try {
@@ -186,7 +140,7 @@ const HRPunchLog: React.FC = () => {
               }
             }}
             disabled={isSyncing || loading}
-            className="btn-primary border-transparent"
+            className="btn-primary"
           >
             {isSyncing ? 'Processing...' : 'Process & Refresh'}
           </button>
@@ -197,7 +151,7 @@ const HRPunchLog: React.FC = () => {
       <div className="card p-4 mb-4 flex flex-wrap gap-4 items-end">
         <div>
           <label className="label">-Select- Month</label>
-          <select value={selectedMonth} onChange={handleMonthChange} className="input mt-1">
+          <select value={selectedMonth} onChange={handleMonthChange} className="input">
             <option value="">-Select-</option>
             {monthOptions.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -206,11 +160,11 @@ const HRPunchLog: React.FC = () => {
         </div>
         <div>
           <label className="label">Employee Search</label>
-          <input type="text" name="employee" placeholder="Name or ID..." value={filters.employee} onChange={handleFilterChange} className="input mt-1" />
+          <input type="text" name="employee" placeholder="Name or ID..." value={filters.employee} onChange={handleFilterChange} className="input" />
         </div>
         <div>
           <label className="label">Status</label>
-          <select name="status" value={filters.status} onChange={handleFilterChange} className="input mt-1 pl-3">
+          <select name="status" value={filters.status} onChange={handleFilterChange} className="input">
             <option value="ALL">All Statuses</option>
             <option value="PRESENT">Present</option>
             <option value="ABSENT">Absent</option>
@@ -220,35 +174,35 @@ const HRPunchLog: React.FC = () => {
       </div>
 
       {/* Main Grid Table */}
-      <div className="flex-1 bg-white border border-gray-200 overflow-hidden flex flex-col">
+      <div className="flex-1 card overflow-hidden flex flex-col">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading attendance data...</div>
+          <LoadingState label="Loading attendance data…" />
         ) : error ? (
-          <div className="p-8 text-center text-red-500">{error}</div>
+          <ErrorState title="Couldn't load attendance" message={error} onRetry={fetchAttendance} />
         ) : records.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">No attendance records found for the selected period.</div>
+          <EmptyState title="No attendance records" description="No attendance records found for the selected period." />
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm text-left whitespace-nowrap table-fixed border-collapse" style={{ minWidth: '1800px' }}>
-              <thead className="border-b border-gray-300">
+              <thead className="bg-slate-50 text-xs font-semibold text-slate-600 border-b border-slate-300">
                 <tr>
-                  <th className="px-1 py-1 border border-gray-300 w-12 text-center">
+                  <th className="px-1 py-1 border border-slate-300 w-12 text-center">
                     <div className="rotate-0" style={{ writingMode: 'horizontal-tb' }}>S.No</div>
                   </th>
-                  <th className="px-3 py-1 border border-gray-300 w-28 align-bottom">Employee ID</th>
-                  <th className="px-3 py-1 border border-gray-300 w-40 align-bottom">Staff Name</th>
-                  <th className="px-3 py-1 border border-gray-300 w-32 align-bottom">Department</th>
-                  <th className="px-3 py-1 border border-gray-300 w-32 align-bottom">Designation</th>
-                  <th className="px-3 py-1 border border-gray-300 w-28 align-bottom">Date</th>
-                  <th className="px-3 py-1 border border-gray-300 w-24 align-bottom">Day</th>
+                  <th className="px-3 py-1 border border-slate-300 w-28 align-bottom">Employee ID</th>
+                  <th className="px-3 py-1 border border-slate-300 w-40 align-bottom">Staff Name</th>
+                  <th className="px-3 py-1 border border-slate-300 w-32 align-bottom">Department</th>
+                  <th className="px-3 py-1 border border-slate-300 w-32 align-bottom">Designation</th>
+                  <th className="px-3 py-1 border border-slate-300 w-28 align-bottom">Date</th>
+                  <th className="px-3 py-1 border border-slate-300 w-24 align-bottom">Day</th>
 
-                  <th className="px-1 py-1 border border-gray-300 w-24 text-center">
+                  <th className="px-1 py-1 border border-slate-300 w-24 text-center">
                     <div className="rotate-0" style={{ writingMode: 'horizontal-tb' }}>Punching Timings</div>
                   </th>
-                  <th className="px-1 py-1 border border-gray-300 w-20 text-center">
+                  <th className="px-1 py-1 border border-slate-300 w-20 text-center">
                     <div className="rotate-0" style={{ writingMode: 'horizontal-tb' }}>In Time</div>
                   </th>
-                  <th className="px-1 py-1 border border-gray-300 w-20 text-center">
+                  <th className="px-1 py-1 border border-slate-300 w-20 text-center">
                     <div className="rotate-0" style={{ writingMode: 'horizontal-tb' }}>Out Time</div>
                   </th>
                 </tr>
@@ -256,7 +210,6 @@ const HRPunchLog: React.FC = () => {
               <tbody className="bg-white">
                 {records.map((r, idx) => {
                   const dayOfWeek = getDayOfWeek(r.attendance_date);
-                  const attPoints = getAttendancePoints(r.attendance_status);
 
                   const formatTime12h = (t: string | null) => {
                     if (!t) return '';
@@ -269,30 +222,27 @@ const HRPunchLog: React.FC = () => {
 
                   const punches = [formatTime12h(r.first_in), formatTime12h(r.last_out)].filter(Boolean).join(' ,');
 
-                  const morningState = getSessionState(r.first_in, r.last_out, r.attendance_status, true);
-                  const afternoonState = getSessionState(r.first_in, r.last_out, r.attendance_status, false);
-
                   const dateObj = new Date(r.attendance_date);
                   const formattedDate = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
                   const isRowWoff = isWeekoff(r.attendance_status) === 'Yes';
                   const isRowHoliday = isHoliday(r.attendance_status) === 'Yes';
-                  const rowClass = isRowWoff || isRowHoliday ? 'bg-orange-50' : (idx % 2 === 0 ? 'bg-white' : 'bg-[#f4f5f7]');
+                  const rowClass = isRowWoff || isRowHoliday ? 'bg-orange-50' : (idx % 2 === 0 ? 'bg-white' : 'bg-slate-50');
 
                   return (
-                    <tr key={r.id} className={`hover:bg-indigo-50 transition-colors ${rowClass}`}>
-                      <td className="px-2 py-1 border border-gray-200 text-center">{idx + 1}</td>
-                      <td className="px-3 py-1 border border-gray-200 text-sm">{r.employee_id || '-'}</td>
-                      <td className="px-3 py-1 border border-gray-200 text-sm font-semibold truncate max-w-[150px]" title={r.staff_name || ''}>{r.staff_name || '-'}</td>
-                      <td className="px-3 py-1 border border-gray-200 text-sm truncate max-w-[120px]" title={r.department || ''}>{r.department || '-'}</td>
-                      <td className="px-3 py-1 border border-gray-200 text-sm truncate max-w-[120px]" title={r.designation || ''}>{r.designation || '-'}</td>
-                      <td className="px-3 py-1 border border-gray-200 text-blue-500 text-sm font-medium">{formattedDate}</td>
-                      <td className="px-3 py-1 border border-gray-200 text-gray-700 text-sm">{dayOfWeek}</td>
+                    <tr key={r.id} className={`hover:bg-brand-50 transition-colors ${rowClass}`}>
+                      <td className="px-2 py-1 border border-slate-200 text-center">{idx + 1}</td>
+                      <td className="px-3 py-1 border border-slate-200 text-sm">{r.employee_id || '-'}</td>
+                      <td className="px-3 py-1 border border-slate-200 text-sm font-semibold truncate max-w-[150px]" title={r.staff_name || ''}>{r.staff_name || '-'}</td>
+                      <td className="px-3 py-1 border border-slate-200 text-sm truncate max-w-[120px]" title={r.department || ''}>{r.department || '-'}</td>
+                      <td className="px-3 py-1 border border-slate-200 text-sm truncate max-w-[120px]" title={r.designation || ''}>{r.designation || '-'}</td>
+                      <td className="px-3 py-1 border border-slate-200 text-brand-600 text-sm font-medium">{formattedDate}</td>
+                      <td className="px-3 py-1 border border-slate-200 text-slate-700 text-sm">{dayOfWeek}</td>
 
 
-                      <td className="px-2 py-1 border border-gray-200 text-center text-gray-700 text-[11px]">{punches}</td>
-                      <td className="px-2 py-1 border border-gray-200 text-center text-gray-700 text-[11px]">{formatTime12h(r.first_in)}</td>
-                      <td className="px-2 py-1 border border-gray-200 text-center text-gray-700 text-[11px]">{formatTime12h(r.last_out)}</td>
+                      <td className="px-2 py-1 border border-slate-200 text-center text-slate-700 text-[11px]">{punches}</td>
+                      <td className="px-2 py-1 border border-slate-200 text-center text-slate-700 text-[11px]">{formatTime12h(r.first_in)}</td>
+                      <td className="px-2 py-1 border border-slate-200 text-center text-slate-700 text-[11px]">{formatTime12h(r.last_out)}</td>
                     </tr>
                   );
                 })}
