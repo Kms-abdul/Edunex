@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import { SearchIcon, ArrowBackIcon, UserIcon } from './icons';
 import { notify } from './ui/feedback';
+import { LoadingState, EmptyState, Spinner } from './ui';
 
 interface UpdateStudentDetailsProps {
     onBack: () => void;
@@ -322,21 +323,21 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-white">
             {/* Top Toolbar */}
-            <div className="p-4 border-b bg-gray-50 flex items-center justify-between shadow-sm">
+            <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3 shadow-sm">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={onBack}
                         className="btn-icon"
                         title="Back"
                     >
-                        <ArrowBackIcon className="w-5 h-5 text-gray-600" />
+                        <ArrowBackIcon className="w-5 h-5 text-slate-600" />
                     </button>
                     <h2 className="text-base font-semibold text-slate-900 uppercase tracking-wider">
                         Update Student Details
                     </h2>
                 </div>
 
-                <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-3 flex-wrap">
                     <select
                         value={selectedClass}
                         onChange={(e) => {
@@ -368,18 +369,18 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                             placeholder="Search students..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="input pl-9 w-64"
+                            className="input pl-9 w-full sm:w-64"
                         />
-                        <SearchIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <SearchIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     </div>
                 </div>
             </div>
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Left Panel */}
-                <div className="w-64 border-r bg-gray-50 flex-shrink-0">
+                <div className="w-64 border-r border-slate-200 bg-slate-50 flex-shrink-0">
                     <div className="p-4">
-                        <h3 className="text-xs font-semibold text-gray-400 uppercase mb-4 tracking-widest">
+                        <h3 className="text-xs font-semibold text-slate-400 uppercase mb-4 tracking-widest">
                             Categories
                         </h3>
                         <nav className="space-y-1">
@@ -387,7 +388,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                 <button
                                     key={cat.id}
                                     onClick={() => setSelectedCategory(cat.id)}
-                                    className={`btn w-full text-left ${selectedCategory === cat.id ? 'bg-violet-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900' }`}
+                                    className={`btn w-full justify-start text-left ${selectedCategory === cat.id ? 'bg-brand-600 text-brand-contrast shadow-sm' : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900' }`}
                                 >
                                     {cat.label}
                                 </button>
@@ -400,8 +401,8 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                 <div className="flex-1 flex flex-col overflow-hidden">
                     {/* Table */}
                     <div className="flex-1 overflow-auto">
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead className="sticky top-0 z-10 shadow-sm">
+                        <table className="min-w-full divide-y divide-slate-200 text-sm">
+                            <thead className="sticky top-0 z-10 shadow-sm bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                                 <tr>
                                     <th className="px-4 py-3 text-left tracking-tight whitespace-nowrap">
                                         S.No
@@ -425,28 +426,27 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="bg-white divide-y divide-slate-100">
                                 {loading ? (
                                     <tr>
                                         <td
                                             colSpan={activeCat.columns.length + 4}
-                                            className="px-4 py-10 text-center text-gray-500 italic"
                                         >
-                                            <div className="flex items-center justify-center gap-2">
-                                                <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-                                                Loading students...
-                                            </div>
+                                            <LoadingState label="Loading students..." />
                                         </td>
                                     </tr>
                                 ) : currentStudents.length === 0 ? (
                                     <tr>
                                         <td
                                             colSpan={activeCat.columns.length + 4}
-                                            className="px-4 py-10 text-center text-gray-500 italic"
                                         >
-                                            {selectedClass && selectedSection
-                                                ? 'No students found matching your filters.'
-                                                : 'Please select a Class and Section to view students.'}
+                                            <EmptyState
+                                                compact
+                                                title={selectedClass && selectedSection ? 'No students found' : 'Select a class and section'}
+                                                description={selectedClass && selectedSection
+                                                    ? 'No students found matching your filters.'
+                                                    : 'Please select a Class and Section to view students.'}
+                                            />
                                         </td>
                                     </tr>
                                 ) : (
@@ -464,9 +464,9 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                                 className={`transition-colors duration-150 ${hasError
                                                     ? 'bg-red-50'
                                                     : isSuccess
-                                                        ? 'bg-green-50'
+                                                        ? 'bg-emerald-50'
                                                         : isModified
-                                                            ? 'bg-yellow-50'
+                                                            ? 'bg-amber-50'
                                                             : 'hover:bg-violet-50'
                                                     }`}
                                             >
@@ -544,7 +544,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                                             </div>
                                                         )}
                                                         {isSuccess && (
-                                                            <span className="text-xs text-green-600 font-medium">
+                                                            <span className="text-xs text-emerald-600 font-medium">
                                                                 ✓ Saved
                                                             </span>
                                                         )}
@@ -557,8 +557,8 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                                             </button>
                                                         )}
                                                         {isSaving && (
-                                                            <div className="flex items-center gap-1 text-xs text-violet-600">
-                                                                <div className="w-3 h-3 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+                                                            <div className="flex items-center gap-1 text-xs text-brand-600">
+                                                                <Spinner size="sm" />
                                                                 Saving...
                                                             </div>
                                                         )}
@@ -574,9 +574,9 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
 
                     {/* Pagination Bar - like second image */}
                     {totalStudents > 0 && (
-                        <div className="border-t bg-white px-6 py-3 flex items-center justify-between flex-shrink-0">
+                        <div className="border-t border-slate-200 bg-white px-6 py-3 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
                             {/* Left: Record info */}
-                            <span className="text-sm text-gray-500 italic">
+                            <span className="text-sm text-slate-500">
                                 Showing {totalStudents === 0 ? 0 : indexOfFirstStudent + 1} to{' '}
                                 {indexOfLastStudent} of {totalStudents} records
                             </span>
@@ -588,7 +588,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                     <button
                                         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                                         disabled={currentPage === 1}
-                                        className={`btn btn-sm border ${currentPage === 1 ? 'text-gray-300 border-gray-200 cursor-not-allowed bg-white' : 'text-gray-600 border-gray-300 hover:bg-gray-100 bg-white cursor-pointer' }`}
+                                        className={`btn btn-sm border ${currentPage === 1 ? 'text-slate-300 border-slate-200 cursor-not-allowed bg-white' : 'text-slate-600 border-slate-300 hover:bg-slate-100 bg-white cursor-pointer' }`}
                                     >
                                         Previous
                                     </button>
@@ -597,11 +597,11 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                     {getPageNumbers().map((page, index) => (
                                         <React.Fragment key={index}>
                                             {page === '...' ? (
-                                                <span className="px-2 py-1.5 text-sm text-gray-400">...</span>
+                                                <span className="px-2 py-1.5 text-sm text-slate-400">...</span>
                                             ) : (
                                                 <button
                                                     onClick={() => setCurrentPage(page as number)}
-                                                    className={`btn btn-sm min-w-[34px] border ${currentPage === page ? 'bg-violet-600 text-white border-violet-600 font-semibold' : 'text-gray-600 border-gray-300 hover:bg-gray-100 bg-white' }`}
+                                                    className={`btn btn-sm min-w-[34px] border ${currentPage === page ? 'bg-brand-600 text-brand-contrast border-brand-600 font-semibold' : 'text-slate-600 border-slate-300 hover:bg-slate-100 bg-white' }`}
                                                 >
                                                     {page}
                                                 </button>
@@ -613,7 +613,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
                                     <button
                                         onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                                         disabled={currentPage === totalPages}
-                                        className={`btn btn-sm border ${currentPage === totalPages ? 'text-gray-300 border-gray-200 cursor-not-allowed bg-white' : 'text-gray-600 border-gray-300 hover:bg-gray-100 bg-white cursor-pointer' }`}
+                                        className={`btn btn-sm border ${currentPage === totalPages ? 'text-slate-300 border-slate-200 cursor-not-allowed bg-white' : 'text-slate-600 border-slate-300 hover:bg-slate-100 bg-white cursor-pointer' }`}
                                     >
                                         Next
                                     </button>

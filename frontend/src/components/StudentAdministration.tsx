@@ -17,6 +17,7 @@ import ChangeSection from './ChangeSection';
 import { Student } from '../types';
 import api from '../api';
 import { notify, confirmDialog } from './ui/feedback';
+import { PageHeader, LoadingState, EmptyState } from './ui';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -143,7 +144,7 @@ const Pagination: React.FC<PaginationProps> = ({
 
                 {showLastPage && (
                     <>
-                        <span className="px-1 text-sm text-gray-400">...</span>
+                        <span className="px-1 text-sm text-slate-400">...</span>
                         <button
                             onClick={() => onPageChange(totalPages)}
                             className={`btn btn-sm min-w-[32px] px-2 ${currentPage === totalPages ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800' }`}
@@ -183,13 +184,12 @@ const StudentAdminHeader: React.FC<{ activeView: StudentAdminView; setActiveView
 
         return (
             <div className="bg-white px-4 sm:px-6 py-4 border-b border-slate-200">
-                <div className="flex justify-between items-center flex-wrap gap-3">
-                    <div>
-                        <p className="page-eyebrow">Administration</p>
-                        <h2 className="page-title">Students</h2>
-                    </div>
-
-                    <div className="flex items-center flex-wrap gap-2">
+                <PageHeader
+                    eyebrow="Administration"
+                    title="Students"
+                    icon={<UserIcon className="w-6 h-6" />}
+                    className="!mb-0 !items-center"
+                    actions={<>
                         {hasPermission('administration.student.student-administration', 'read') && (
                             <button className={btn('students')} onClick={() => setActiveView('students')}>Students</button>
                         )}
@@ -240,8 +240,8 @@ const StudentAdminHeader: React.FC<{ activeView: StudentAdminView; setActiveView
                         {hasPermission('administration.student.demote-students', 'write') && (
                             <button className={btn('demote')} onClick={() => setActiveView('demote')}>De-promote</button>
                         )}
-                    </div>
-                </div>
+                    </>}
+                />
             </div>
         );
     };
@@ -537,14 +537,14 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
 
         // Render table
         const table = () => {
-            if (loading) return <div className="p-6 text-gray-600 text-center">Loading...</div>;
-            if (!students.length) return <div className="p-6 text-gray-600 text-center">No students found</div>;
+            if (loading) return <div className="card"><LoadingState label="Loading students…" /></div>;
+            if (!students.length) return <div className="card"><EmptyState title="No students found" description="Try changing the class, section or search filters." /></div>;
 
             return (
                 <div className="card overflow-hidden">
-                    <div className="overflow-auto">
-                        <table className="min-w-full text-sm divide-y divide-gray-200">
-                            <thead>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm divide-y divide-slate-200">
+                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                                 <tr>
                                     <th className="px-4 py-3 text-left cursor-pointer hover:bg-slate-100 select-none" onClick={() => handleSort('name')}>
                                         Student Name <span className="ml-1 opacity-75">{sortConfig?.key === 'name' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}</span>
@@ -561,18 +561,18 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                                 </tr>
                             </thead>
 
-                            <tbody className="divide-y divide-gray-200 bg-white">
+                            <tbody className="divide-y divide-slate-100 bg-white">
                                 {paginationData.currentStudents.map(s => (
-                                    <tr key={s.admNo} className="hover:bg-gray-50">
+                                    <tr key={s.admNo} className="hover:bg-slate-50">
                                         <td className="px-4 py-2 flex items-center gap-2">
                                             {s.photo ? (
-                                                <img src={s.photo} className="w-8 h-8 rounded-full object-cover border" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                                <img src={s.photo} className="w-8 h-8 rounded-full object-cover border border-slate-200" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                             ) : (
-                                                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center border">
-                                                    <UserIcon className="w-5 h-5 text-gray-400" />
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
+                                                    <UserIcon className="w-5 h-5 text-slate-400" />
                                                 </div>
                                             )}
-                                            <span className="font-medium text-blue-600">{s.name}</span>
+                                            <span className="font-medium text-brand-600">{s.name}</span>
                                         </td>
                                         <td className="px-4 py-2">{s.admNo}</td>
                                         <td className="px-4 py-2">{s.rollNo}</td>
@@ -583,7 +583,7 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
 
                                         <td className="px-4 py-2">
                                             <div className="flex items-center gap-1">
-                                                <button onClick={() => onView(s)} className="btn btn-sm text-xs bg-indigo-100 text-indigo-700 hover:bg-indigo-200" title="Details">
+                                                <button onClick={() => onView(s)} className="btn-soft btn-sm" title="Details">
                                                     <span>ℹ️</span> Details
                                                 </button>
                                                 {hasPermission('administration.student.update-student-details', 'write') && (
@@ -595,13 +595,13 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                                                                 onEdit(s);
                                                             }
                                                         }}
-                                                        className={`btn btn-sm ${s.is_locked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                                                        className={`btn btn-sm ${s.is_locked ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-brand-100 text-brand-700 hover:bg-brand-200'}`}
                                                         title={s.is_locked ? "Record locked (Promoted)" : "Edit"}
                                                     >
                                                         <span>{s.is_locked ? '🔒' : '✏️'}</span> Edit
                                                     </button>
                                                 )}
-                                                <button onClick={() => handlePrint(s)} className="btn btn-sm text-xs bg-orange-100 text-orange-700 hover:bg-orange-200" title="Print">
+                                                <button onClick={() => handlePrint(s)} className="btn btn-sm bg-orange-100 text-orange-700 hover:bg-orange-200" title="Print">
                                                     <span>🖨️</span> Print
                                                 </button>
                                                 {hasPermission('administration.student.make-student-inactive', 'write') && (
@@ -614,13 +614,13 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                                                                     handleDeleteClick(s);
                                                                 }
                                                             }}
-                                                            className={`btn btn-sm ${s.is_locked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                                                            className={`btn btn-sm ${s.is_locked ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
                                                             title={s.is_locked ? "Record locked (Promoted)" : "Deactivate"}
                                                         >
                                                             <span>{s.is_locked ? '🔒' : '🚫'}</span> Inactivate
                                                         </button>
                                                         {s.status === 'Inactive' && (
-                                                            <button onClick={() => handleActivate(s)} className="btn btn-sm text-xs bg-green-100 text-green-700 hover:bg-green-200" title="Activate">
+                                                            <button onClick={() => handleActivate(s)} className="btn btn-sm bg-emerald-100 text-emerald-700 hover:bg-emerald-200" title="Activate">
                                                                 <span>✅</span> Activate
                                                             </button>
                                                         )}
@@ -647,7 +647,7 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
         };
 
         return (
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
 
                 {/* Filters */}
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
@@ -684,7 +684,7 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
-                        <SearchIcon className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <SearchIcon className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     </div>
 
                     <button
@@ -700,9 +700,9 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                                 type="checkbox"
                                 checked={showInactive}
                                 onChange={e => setShowInactive(e.target.checked)}
-                                className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
+                                className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-slate-300 rounded"
                             />
-                            <span className="text-sm text-gray-700">Show Inactive</span>
+                            <span className="text-sm text-slate-700">Show Inactive</span>
                         </label>
                     </div>
 
@@ -711,7 +711,7 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                 {/* Items per page selector */}
                 {students.length > 0 && (
                     <div className="flex items-center justify-end mb-3 gap-2">
-                        <label className="label">Show:</label>
+                        <label className="label !mb-0">Show:</label>
                         <select
                             value={itemsPerPage}
                             onChange={(e) => setItemsPerPage(Number(e.target.value))}
@@ -723,7 +723,7 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                             <option value={50}>50</option>
                             <option value={100}>100</option>
                         </select>
-                        <span className="text-sm text-gray-600">per page</span>
+                        <span className="text-sm text-slate-500">per page</span>
                     </div>
                 )}
 
@@ -732,9 +732,9 @@ const StudentList: React.FC<{ onView: any; onEdit: any }> =
                 {/* Password Modal */}
                 {passwordModalOpen && (
                     <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex items-center justify-center z-50">
-                        <div className="card shadow-pop p-6 w-96">
+                        <div className="card shadow-pop p-6 w-96 max-w-[calc(100vw-2rem)]">
                             <h3 className="text-base font-semibold text-slate-900 mb-4">Confirm Deactivation</h3>
-                            <p className="mb-4 text-gray-600">Enter your password to mark <b>{studentToDelete?.name}</b> as Inactive.</p>
+                            <p className="mb-4 text-sm text-slate-500">Enter your password to mark <b>{studentToDelete?.name}</b> as Inactive.</p>
                             <input
                                 type="password"
                                 className="input mb-4"
@@ -842,7 +842,7 @@ const StudentAdministration: React.FC<StudentAdministrationProps> = () => {
     };
 
     return (
-        <div className="h-full bg-gray-100 overflow-y-auto">
+        <div className="h-full bg-surface-muted overflow-y-auto">
             <StudentAdminHeader activeView={activeView} setActiveView={setActiveView} />
             {render()}
         </div>

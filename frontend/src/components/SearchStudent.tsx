@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 import { UserIcon } from './icons';
+import { LoadingState, EmptyState, Badge } from './ui';
 
 interface ClassItem {
     id: number;
@@ -366,11 +367,11 @@ const SearchStudent: React.FC = () => {
     }, [monthlySummary]);
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-6">
             <div className="card">
-                <div className="border-b border-gray-100 px-6 py-4">
-                    <h3 className="text-xl font-semibold text-gray-800">Search Student</h3>
-                    <p className="mt-1 text-sm text-gray-500">
+                <div className="border-b border-slate-100 px-6 py-4">
+                    <h3 className="text-base font-semibold text-slate-900">Search Student</h3>
+                    <p className="mt-1 text-sm text-slate-500">
                         View complete student details with month-wise fee and attendance summary.
                     </p>
                 </div>
@@ -445,70 +446,67 @@ const SearchStudent: React.FC = () => {
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
                 <div className="card">
-                    <div className="border-b border-gray-100 px-5 py-4">
-                        <h4 className="font-semibold text-gray-800">Students</h4>
-                        <p className="mt-1 text-xs text-gray-500">
+                    <div className="border-b border-slate-100 px-5 py-4">
+                        <h4 className="text-base font-semibold text-slate-900">Students</h4>
+                        <p className="mt-1 text-sm text-slate-500">
                             {loadingStudents ? 'Searching students...' : `${students.length} result(s) found`}
                         </p>
                     </div>
 
                     <div className="max-h-[780px] overflow-y-auto">
                         {loadingStudents && (
-                            <div className="px-5 py-8 text-center text-sm text-gray-500">Loading students...</div>
+                            <LoadingState label="Loading students..." />
                         )}
 
                         {!loadingStudents && students.map((student) => (
                             <button
                                 key={student.student_id}
                                 onClick={() => loadStudentDetails(student)}
-                                className={`btn w-full items-start border-b border-gray-100 text-left ${selectedStudent?.student_id === student.student_id ? 'bg-violet-50' : 'hover:bg-gray-50'}`}
+                                className={`flex w-full items-start gap-3 px-5 py-4 border-b border-slate-100 text-left transition-colors ${selectedStudent?.student_id === student.student_id ? 'bg-brand-50' : 'hover:bg-slate-50'}`}
                             >
                                 {student.photo ? (
                                     <img
                                         src={student.photo}
                                         alt={student.name}
-                                        className="h-14 w-14 rounded-full border border-gray-200 object-cover"
+                                        className="h-14 w-14 rounded-full border border-slate-200 object-cover"
                                         onError={(e) => { (e.target as HTMLImageElement).style.display='none'; (e.target as HTMLImageElement).parentElement?.classList.add('flex', 'items-center', 'justify-center', 'bg-gray-50'); }}
                                     />
                                 ) : (
-                                    <div className="h-14 w-14 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center">
-                                        <UserIcon className="h-8 w-8 text-gray-400" />
+                                    <div className="h-14 w-14 rounded-full border border-slate-200 bg-slate-50 flex items-center justify-center">
+                                        <UserIcon className="h-8 w-8 text-slate-400" />
                                     </div>
                                 )}
                                 <div className="min-w-0 flex-1">
-                                    <div className="truncate font-semibold text-gray-900">{student.name}</div>
-                                    <div className="mt-1 text-xs text-gray-500">
+                                    <div className="truncate font-semibold text-slate-900">{student.name}</div>
+                                    <div className="mt-1 text-xs text-slate-500">
                                         {student.class || '-'} {student.section || ''}
                                     </div>
-                                    <div className="mt-1 text-xs text-gray-500">
+                                    <div className="mt-1 text-xs text-slate-500">
                                         Adm No: {student.admNo || student.admission_no || '-'}
                                     </div>
-                                    <div className="mt-2 inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-700">
-                                        {student.status || 'Unknown'}
-                                    </div>
+                                    <Badge status={student.status || 'Unknown'} className="mt-2" />
                                 </div>
                             </button>
                         ))}
 
                         {!loadingStudents && hasSearched && students.length === 0 && (
-                            <div className="px-5 py-8 text-center text-sm text-gray-500">No students found for the selected filters.</div>
+                            <EmptyState compact title="No students found" description="No students found for the selected filters." />
                         )}
 
                         {!loadingStudents && !hasSearched && (
-                            <div className="px-5 py-8 text-center text-sm text-gray-500">Run a search to load students.</div>
+                            <EmptyState compact title="No search yet" description="Run a search to load students." />
                         )}
                     </div>
                 </div>
 
                 <div className="space-y-6">
                     {!selectedStudent && (
-                        <div className="card flex min-h-[420px] items-center justify-center border-dashed text-center">
-                            <div>
-                                <h4 className="text-2xl font-semibold text-gray-700">Student details will appear here</h4>
-                                <p className="mt-2 text-sm text-gray-500">
-                                    Search and choose a student to view the monthly fee and attendance summary.
-                                </p>
-                            </div>
+                        <div className="card flex min-h-[420px] items-center justify-center border-dashed">
+                            <EmptyState
+                                icon={<UserIcon className="w-6 h-6" />}
+                                title="Student details will appear here"
+                                description="Search and choose a student to view the monthly fee and attendance summary."
+                            />
                         </div>
                     )}
 
@@ -529,14 +527,12 @@ const SearchStudent: React.FC = () => {
                                                 <UserIcon className="h-16 w-16 text-gray-300" />
                                             </div>
                                         )}
-                                        <h3 className="mt-4 text-xl font-semibold text-gray-900">{selectedStudent.name}</h3>
+                                        <h3 className="mt-4 text-lg font-semibold text-slate-900">{selectedStudent.name}</h3>
                                         <p className="mt-1 text-sm text-gray-500">
                                             {selectedStudent.class || '-'} / {selectedStudent.section || '-'}
                                         </p>
                                         <p className="mt-2 text-sm text-gray-500">{selectedStudent.branch || '-'}</p>
-                                        <div className="mt-4 inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                                            {selectedStudent.status || 'Unknown'}
-                                        </div>
+                                        <Badge status={selectedStudent.status || 'Unknown'} className="mt-4" />
                                     </div>
 
                                     <div className="space-y-4 border-b border-gray-100 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
@@ -573,20 +569,20 @@ const SearchStudent: React.FC = () => {
 
                             <div className="card">
                                 <div className="border-b border-gray-100 px-6 py-4">
-                                    <h4 className="font-semibold text-gray-800">Monthly Fee and Attendance Summary</h4>
+                                    <h4 className="text-base font-semibold text-slate-900">Monthly Fee and Attendance Summary</h4>
                                     <p className="mt-1 text-sm text-gray-500">
                                         Month-wise snapshot for the selected student.
                                     </p>
                                 </div>
 
                                 {loadingDetails ? (
-                                    <div className="px-6 py-10 text-center text-sm text-gray-500">Loading student summary...</div>
+                                    <LoadingState label="Loading student summary..." />
                                 ) : monthlySummary.length === 0 ? (
-                                    <div className="px-6 py-10 text-center text-sm text-gray-500">No fee or attendance records available for this student.</div>
+                                    <EmptyState compact title="No records" description="No fee or attendance records available for this student." />
                                 ) : (
                                     <div className="overflow-x-auto rounded-lg border border-slate-200">
-                                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                            <thead className="">
+                                        <table className="min-w-full divide-y divide-slate-200 text-sm">
+                                            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                                                 <tr className="text-left">
                                                     <th className="px-4 py-3">Month</th>
                                                     <th className="px-4 py-3">Fee Payable</th>
@@ -600,10 +596,10 @@ const SearchStudent: React.FC = () => {
                                                     <th className="px-4 py-3">Other</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-gray-100 bg-white">
+                                            <tbody className="divide-y divide-slate-100 bg-white">
                                                 {monthlySummary.map((row) => (
-                                                    <tr key={row.key} className="hover:bg-gray-50">
-                                                        <td className="px-4 py-3 font-semibold text-gray-900">{row.label}</td>
+                                                    <tr key={row.key} className="hover:bg-slate-50">
+                                                        <td className="px-4 py-3 font-semibold text-slate-900">{row.label}</td>
                                                         <td className="px-4 py-3">Rs {formatCurrency(row.feePayable)}</td>
                                                         <td className="px-4 py-3 text-emerald-700">Rs {formatCurrency(row.feePaid)}</td>
                                                         <td className="px-4 py-3 text-rose-700">Rs {formatCurrency(row.feeDue)}</td>
@@ -616,7 +612,7 @@ const SearchStudent: React.FC = () => {
                                                     </tr>
                                                 ))}
                                             </tbody>
-                                            <tfoot className="bg-gray-50 text-sm font-semibold text-gray-800">
+                                            <tfoot className="bg-slate-50 text-sm font-semibold text-slate-800">
                                                 <tr>
                                                     <td className="px-4 py-3">Total</td>
                                                     <td className="px-4 py-3">Rs {formatCurrency(feeTotals.payable)}</td>

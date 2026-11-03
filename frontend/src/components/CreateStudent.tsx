@@ -24,21 +24,21 @@ const CollapsibleSection = React.memo(
     return (
       <div className="card md:col-span-4 mt-6 overflow-hidden">
         <div
-          className="flex justify-between items-center p-4 bg-gray-50 cursor-pointer border-b hover:bg-gray-100 transition-colors"
+          className="card-header bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors"
           onClick={() => setIsOpen(!isOpen)}
         >
-          <h3 className="text-lg font-semibold text-gray-700 flex items-center">
+          <h3 className="text-base font-semibold text-slate-900 flex items-center">
             {title}
           </h3>
           <button
             type="button"
-            className="text-sm text-blue-600 hover:underline font-medium focus:outline-none"
+            className="text-sm text-brand-600 hover:underline font-medium focus:outline-none"
           >
             {isOpen ? "Collapse" : "Expand"}
           </button>
         </div>
         {isOpen && (
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
+          <div className="card-body grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
             {children}
           </div>
         )}
@@ -102,7 +102,7 @@ const FormField = React.memo(
             id={inputId}
             checked={checked}
             onChange={onChange}
-            className="h-5 w-5 text-violet-600 border-gray-300 rounded focus:ring-violet-500 cursor-pointer"
+            className="h-5 w-5 text-brand-600 border-slate-300 rounded focus:ring-brand-500 cursor-pointer"
             disabled={disabled}
           />
           <label
@@ -180,7 +180,7 @@ const PhotoUpload = React.memo(
     return (
       <div className="flex flex-col items-center">
         <label className={LABEL_STYLE}>{title}</label>
-        <div className="w-28 h-28 rounded-md bg-gray-100 mb-2 flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-300 hover:border-violet-500 transition-colors">
+        <div className="w-28 h-28 rounded-lg bg-slate-100 mb-2 flex items-center justify-center overflow-hidden border-2 border-dashed border-slate-300 hover:border-brand-500 transition-colors">
           {photo ? (
             <img
               src={photo}
@@ -188,7 +188,7 @@ const PhotoUpload = React.memo(
               className="w-full h-full object-cover"
             />
           ) : (
-            <UserIcon className="w-12 h-12 text-gray-400" />
+            <UserIcon className="w-12 h-12 text-slate-400" />
           )}
         </div>
         {!isViewMode && (
@@ -202,7 +202,7 @@ const PhotoUpload = React.memo(
             />
             <label
               htmlFor={id}
-              className="cursor-pointer bg-gray-600 text-white px-3 py-1 rounded-md hover:bg-gray-700 text-xs shadow-sm w-full text-center"
+              className="btn-secondary btn-sm cursor-pointer w-full"
             >
               Upload
             </label>
@@ -1011,12 +1011,12 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
   };
 
   return (
-    <div className="p-4 md:p-6 bg-gray-50 min-h-full">
+    <div className="p-4 md:p-6 bg-surface-muted min-h-full">
       <form ref={formRef} id="create-student-form">
         <div className="card p-6 space-y-4">
           {/* HEADER */}
-          <div className="flex justify-between items-center border-b pb-4 mb-4 bg-gray-100 p-4 -m-6 rounded-t-lg">
-            <h2 className="text-xl font-semibold text-gray-700">
+          <div className="flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 mb-4 bg-slate-50 p-4 -m-6 rounded-t-xl">
+            <h2 className="text-lg font-semibold text-slate-900">
               {mode === "create"
                 ? "Create New Student"
                 : mode === "edit"
@@ -1400,7 +1400,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
 
           {/* --- 4. PARENT DETAILS --- */}
           <CollapsibleSection title="Parent Details">
-            <h4 className="md:col-span-4 font-medium text-gray-700 mt-2 mb-2 border-b pb-1">
+            <h4 className="md:col-span-4 text-sm font-semibold text-slate-900 mt-2 mb-2 border-b border-slate-200 pb-1">
               Father's Details
             </h4>
             <FormField
@@ -1470,7 +1470,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
               disabled={isViewMode}
             />
 
-            <h4 className="md:col-span-4 font-medium text-gray-700 mt-4 mb-2 border-b pb-1">
+            <h4 className="md:col-span-4 text-sm font-semibold text-slate-900 mt-4 mb-2 border-b border-slate-200 pb-1">
               Mother's Details
             </h4>
             <FormField
@@ -1532,7 +1532,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
               disabled={isViewMode}
             />
 
-            <h4 className="md:col-span-4 font-medium text-gray-700 mt-4 mb-2 border-b pb-1">
+            <h4 className="md:col-span-4 text-sm font-semibold text-slate-900 mt-4 mb-2 border-b border-slate-200 pb-1">
               Guardian's Details
             </h4>
             <FormField
@@ -1645,7 +1645,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
             </div>
 
             <div className="md:col-span-4">
-              <h4 className="font-medium text-gray-700 mb-2">
+              <h4 className="text-base font-semibold text-slate-900 mb-2">
                 Admission Documents
               </h4>
               <div className="grid gap-4 md:grid-cols-3">
@@ -1691,7 +1691,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
                   <input
                     id="document-file"
                     type="file"
-                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+                    className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"
                     onChange={handleDocumentFileChange}
                     disabled={isViewMode}
                   />
@@ -1708,7 +1708,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
                     Add Document
                   </button>
                   {documentUploadSuccess && (
-                    <span className="text-sm text-green-600">{documentUploadSuccess}</span>
+                    <span className="text-sm text-emerald-600">{documentUploadSuccess}</span>
                   )}
                   {documentUploadError && (
                     <span className="text-sm text-red-600">{documentUploadError}</span>
@@ -1717,19 +1717,19 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
               )}
 
               {pendingDocuments.length > 0 && (
-                <div className="mt-4 bg-gray-50 p-3 rounded-lg border">
-                  <h5 className="font-medium text-gray-700 mb-2">Documents queued for upload</h5>
-                  <ul className="space-y-2 text-sm text-gray-700">
+                <div className="mt-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                  <h5 className="text-sm font-semibold text-slate-900 mb-2">Documents queued for upload</h5>
+                  <ul className="space-y-2 text-sm text-slate-700">
                     {pendingDocuments.map((doc, index) => (
-                      <li key={`${doc.document_type_id}-${index}`} className="flex items-center justify-between gap-3 bg-white p-3 rounded border">
+                      <li key={`${doc.document_type_id}-${index}`} className="flex items-center justify-between gap-3 bg-white p-3 rounded-lg border border-slate-200">
                         <div>
                           <div className="font-semibold">{doc.document_type_name}</div>
-                          {doc.document_no && <div className="text-xs text-gray-500">No: {doc.document_no}</div>}
-                          <div className="text-xs text-gray-500">{doc.file.name}</div>
+                          {doc.document_no && <div className="text-xs text-slate-500">No: {doc.document_no}</div>}
+                          <div className="text-xs text-slate-500">{doc.file.name}</div>
                         </div>
                         <button
                           type="button"
-                          className="text-sm text-red-600 hover:text-red-800"
+                          className="btn-ghost btn-sm text-red-600 hover:text-red-700 hover:bg-red-50"
                           onClick={() => removePendingDocument(index)}
                         >
                           Remove
@@ -1748,8 +1748,8 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
           {(mode === 'view' || mode === 'edit') && academicHistory.length > 0 && (
             <CollapsibleSection title="Promotion History" defaultOpen={true}>
               <div className="md:col-span-4 overflow-x-auto">
-                <table className="min-w-full text-sm divide-y divide-gray-200 border">
-                  <thead className="">
+                <table className="min-w-full text-sm divide-y divide-slate-200 border border-slate-200 rounded-lg">
+                  <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     <tr>
                       <th className="px-4 py-2 text-left">Academic Year</th>
                       <th className="px-4 py-2 text-left">Class</th>
@@ -1759,7 +1759,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
                       <th className="px-4 py-2 text-left">Date</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-slate-100">
                     {academicHistory.map((rec) => (
                       <tr key={rec.id}>
                         <td className="px-4 py-2">{rec.academic_year}</td>
@@ -1768,11 +1768,11 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
                         <td className="px-4 py-2">{rec.roll_no || '-'}</td>
                         <td className="px-4 py-2">
                           {rec.is_promoted ?
-                            <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs">Promoted</span> :
-                            <span className="text-gray-500 bg-gray-50 px-2 py-0.5 rounded text-xs">Enrolled</span>
+                            <span className="badge-success">Promoted</span> :
+                            <span className="badge-neutral">Enrolled</span>
                           }
                         </td>
-                        <td className="px-4 py-2 text-gray-500 text-xs">
+                        <td className="px-4 py-2 text-slate-500 text-xs">
                           {rec.promoted_date ? new Date(rec.promoted_date).toLocaleDateString() :
                             rec.created_at ? new Date(rec.created_at).toLocaleDateString() : '-'}
                         </td>
@@ -1785,7 +1785,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
           )}
 
           {/* FOOTER BUTTONS */}
-          <div className="flex justify-end space-x-4 pt-4 border-t mt-6">
+          <div className="flex flex-wrap justify-end gap-3 pt-4 border-t border-slate-200 mt-6">
             <button
               type="button"
               onClick={onCancel}

@@ -4,6 +4,7 @@ import { canWrite } from '../utils/permissions';
 import { PencilIcon, TrashIcon } from './icons';
 import { SetupIcon } from './icons';
 import { auth } from '../api';
+import { Alert, LoadingState, EmptyState } from './ui';
 
 interface DocumentType {
     id: number;
@@ -126,16 +127,16 @@ const DocumentAdministration: React.FC = () => {
     });
 
     return (
-        <div className="min-h-full bg-slate-50 p-6">
+        <div className="min-h-full bg-surface-muted p-4 sm:p-6">
             <div className="max-w-7xl mx-auto">
 
                 {/* Header */}
-                <div className="flex items-center space-x-3 mb-6">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                        <SetupIcon className="w-7 h-7 text-blue-700" />
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center flex-shrink-0 ring-1 ring-inset ring-brand-600/10">
+                        <SetupIcon className="w-5 h-5" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold text-slate-900">Add Document Category</h1>
+                        <h2 className="text-base font-semibold text-slate-900">Add Document Category</h2>
                         <p className="text-sm text-slate-500">Manage allowed document categories for the institution</p>
                     </div>
                 </div>
@@ -147,23 +148,19 @@ const DocumentAdministration: React.FC = () => {
                     <div className="lg:col-span-2">
                         {isAdminAllBranches ? (
                             <div className="card">
-                                <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl">
-                                    <h2 className="text-sm font-semibold text-slate-700">
+                                <div className="card-header bg-slate-50 rounded-t-xl">
+                                    <h3 className="text-base font-semibold text-slate-900">
                                         {editingDocType ? '✏️ Edit Document Category' : '➕ Add Document Category'}
-                                    </h2>
+                                    </h3>
                                 </div>
 
                                 <form onSubmit={handleSubmit} className="p-5 space-y-4">
 
                                     {error && (
-                                        <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md text-sm">
-                                            {error}
-                                        </div>
+                                        <Alert tone="error">{error}</Alert>
                                     )}
                                     {successMessage && (
-                                        <div className="bg-green-50 border border-green-200 text-green-700 p-3 rounded-md text-sm">
-                                            {successMessage}
-                                        </div>
+                                        <Alert tone="success">{successMessage}</Alert>
                                     )}
 
                                     {/* Document Name */}
@@ -199,7 +196,7 @@ const DocumentAdministration: React.FC = () => {
                                             <label className="flex items-center gap-2 text-sm text-slate-700 whitespace-nowrap cursor-pointer">
                                                 <input
                                                     type="checkbox"
-                                                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                                                     checked={formData.is_active}
                                                     onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                                                 />
@@ -258,14 +255,14 @@ const DocumentAdministration: React.FC = () => {
                     {/* RIGHT: Document Categories Table */}
                     <div className="lg:col-span-3">
                         <div className="card">
-                            <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl flex flex-wrap items-center justify-between gap-3">
+                            <div className="card-header flex-wrap bg-slate-50 rounded-t-xl">
                                 <div className="flex items-center gap-3">
-                                    <h2 className="text-sm font-semibold text-slate-700">📋 Document categories</h2>
-                                    <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                                    <h3 className="text-base font-semibold text-slate-900">📋 Document categories</h3>
+                                    <span className="badge-brand">
                                         Total: {filteredTypes.length}
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                     <input
                                         type="text"
                                         placeholder="Category name"
@@ -296,7 +293,7 @@ const DocumentAdministration: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="overflow-x-auto rounded-lg border border-slate-200">
+                            <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-slate-200">
                                     <thead className="">
                                         <tr>
@@ -317,14 +314,14 @@ const DocumentAdministration: React.FC = () => {
                                     <tbody className="bg-white divide-y divide-slate-100">
                                         {loading && filteredTypes.length === 0 ? (
                                             <tr>
-                                                <td colSpan={4} className="px-5 py-8 text-center text-sm text-slate-500">
-                                                    Loading...
+                                                <td colSpan={4}>
+                                                    <LoadingState />
                                                 </td>
                                             </tr>
                                         ) : filteredTypes.length === 0 ? (
                                             <tr>
-                                                <td colSpan={4} className="px-5 py-8 text-center text-sm text-red-400 bg-red-50">
-                                                    No category
+                                                <td colSpan={4}>
+                                                    <EmptyState compact title="No category" />
                                                 </td>
                                             </tr>
                                         ) : (
@@ -334,17 +331,17 @@ const DocumentAdministration: React.FC = () => {
                                                         {type.name}
                                                     </td>
                                                     <td className="px-5 py-3">
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                                        <span className="badge-neutral font-mono">
                                                             {type.code}
                                                         </span>
                                                     </td>
                                                     <td className="px-5 py-3">
                                                         {type.is_active ? (
-                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                            <span className="badge-success">
                                                                 Active
                                                             </span>
                                                         ) : (
-                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                            <span className="badge-danger">
                                                                 Inactive
                                                             </span>
                                                         )}
@@ -354,13 +351,13 @@ const DocumentAdministration: React.FC = () => {
                                                             <>
                                                                 <button
                                                                     onClick={() => handleEdit(type)}
-                                                                    className="btn text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 mr-1"
+                                                                    className="btn-soft btn-sm mr-1"
                                                                     title="Edit"
                                                                 >
                                                                     <PencilIcon className="w-3.5 h-3.5" />
                                                                 </button>
                                                                 <button
-                                                                    className="btn text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100"
+                                                                    className="btn btn-sm text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700"
                                                                     title="Delete (Deactivate)"
                                                                     onClick={() => {
                                                                         handleEdit(type);

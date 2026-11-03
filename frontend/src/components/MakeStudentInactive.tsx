@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { confirmDialog } from './ui/feedback';
+import { Alert, LoadingState, EmptyState } from './ui';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -224,19 +225,19 @@ const MakeStudentInactive: React.FC = () => {
     // Render
     // ─────────────────────────────────────────────────────────────────────────
     return (
-        <div className="p-6 bg-gray-50 min-h-full">
-            <div className="flex gap-6">
+        <div className="p-4 sm:p-6 bg-surface-muted min-h-full">
+            <div className="flex flex-col lg:flex-row gap-6">
                 {/* ── LEFT PANEL ──────────────────────────────────────────── */}
-                <div className="w-1/2">
+                <div className="w-full lg:w-1/2">
                     {/* Search Panel */}
                     <div className="card p-4 mb-4">
-                        <h3 className="text-base font-semibold text-gray-700 mb-3">
+                        <h3 className="text-base font-semibold text-slate-900 mb-3">
                             Make Student Inactive
-                            <span className="ml-2 text-xs text-blue-500 cursor-pointer hover:underline">Get Help</span>
+                            <span className="ml-2 text-xs font-normal text-brand-600 cursor-pointer hover:underline">Get Help</span>
                         </h3>
 
                         {/* Row 1: adm search + name search */}
-                        <div className="grid grid-cols-2 gap-2 mb-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
                             <input
                                 type="text"
                                 placeholder="search adm. number"
@@ -320,21 +321,18 @@ const MakeStudentInactive: React.FC = () => {
 
                     {/* Message Banner */}
                     {message && (
-                        <div className={`mb-3 px-4 py-2 rounded text-sm font-medium ${message.type === 'success'
-                            ? 'bg-green-50 border border-green-200 text-green-700'
-                            : 'bg-red-50 border border-red-200 text-red-700'
-                            }`}>
+                        <Alert tone={message.type === 'success' ? 'success' : 'error'} className="mb-3">
                             {message.text}
-                        </div>
+                        </Alert>
                     )}
 
                     {/* Fee Table */}
                     {student && (
-                        <div className="card">
+                        <div className="card overflow-hidden">
                             {/* Fee Header */}
-                            <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200">
-                                <span className="font-semibold text-gray-700 flex items-center gap-1">
-                                    <span className="text-green-600">₹</span> Fee
+                            <div className="card-header py-2.5">
+                                <span className="text-base font-semibold text-slate-900 flex items-center gap-1">
+                                    <span className="text-emerald-600">₹</span> Fee
                                 </span>
                                 <button
                                     onClick={handleNullify}
@@ -346,10 +344,11 @@ const MakeStudentInactive: React.FC = () => {
                             </div>
 
                             {loadingFees ? (
-                                <div className="p-6 text-center text-gray-500 text-sm">Loading fee structure...</div>
+                                <LoadingState label="Loading fee structure..." />
                             ) : fees.length === 0 ? (
-                                <div className="p-6 text-center text-gray-500 text-sm">No fee records found.</div>
+                                <EmptyState compact title="No fee records found." />
                             ) : (
+                                <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="">
@@ -364,9 +363,9 @@ const MakeStudentInactive: React.FC = () => {
                                     <tbody>
                                         {fees.map((fee, idx) => {
                                             const isPaid = fee.paidAmount > 0;
-                                            const rowBg = isPaid ? 'bg-green-100' : 'bg-white';
+                                            const rowBg = isPaid ? 'bg-emerald-50' : 'bg-white';
                                             return (
-                                                <tr key={fee.id} className={`${rowBg} border-t border-gray-100`}>
+                                                <tr key={fee.id} className={`${rowBg} border-t border-slate-100`}>
                                                     <td className="px-2 py-2 text-center">
                                                         {!isPaid && (
                                                             <input type="checkbox" className="rounded" />
@@ -385,16 +384,17 @@ const MakeStudentInactive: React.FC = () => {
                                         })}
                                     </tbody>
                                 </table>
+                                </div>
                             )}
                         </div>
                     )}
                 </div>
 
                 {/* ── RIGHT PANEL ─────────────────────────────────────────── */}
-                <div className="w-1/2">
+                <div className="w-full lg:w-1/2">
                     <div className="card p-5">
-                        <h3 className="text-base font-semibold text-gray-700 mb-4 flex items-center gap-1">
-                            <span className="text-blue-500">ℹ</span> Student Detail
+                        <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center gap-1">
+                            <span className="text-brand-500">ℹ</span> Student Detail
                         </h3>
 
                         <table className="w-full text-sm">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Student } from '../types';
 import { notify, confirmDialog } from './ui/feedback';
+import { LoadingState, EmptyState } from './ui';
 
 interface PromoteStudentsProps {
     onBack?: () => void;
@@ -198,17 +199,17 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
     };
 
     return (
-        <div className="p-4 bg-gray-100 min-h-full">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Bulk Student Upgrade</h2>
+        <div className="p-4 sm:p-6 bg-surface-muted min-h-full">
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
+                <h2 className="text-base font-semibold text-slate-900">Bulk Student Upgrade</h2>
                 {onBack && <button onClick={onBack} className="btn-secondary btn-sm">Back</button>}
             </div>
 
-            <div className="flex gap-4 h-[80vh]">
+            <div className="flex flex-col lg:flex-row gap-4 lg:h-[80vh]">
                 {/* ----------------- SOURCE PANEL ----------------- */}
-                <div className="card flex-1 flex flex-col">
-                    <div className="p-3 border-b bg-indigo-50 rounded-t">
-                        <h3 className="font-semibold text-indigo-700">Source (Current State)</h3>
+                <div className="card flex-1 min-w-0 flex flex-col overflow-hidden">
+                    <div className="p-3 border-b border-slate-200 bg-brand-50">
+                        <h3 className="text-base font-semibold text-brand-700">Source (Current State)</h3>
                         <div className="flex gap-2 mt-2">
                             <select value={sourceYear} onChange={e => setSourceYear(e.target.value)} className="input w-1/3">
                                 {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -231,7 +232,7 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
                     </div>
 
                     <div className="flex-1 overflow-auto p-2">
-                        <h4 className="text-sm font-bold mb-2">{sourceStudents.length} Students Found</h4>
+                        <h4 className="text-sm font-semibold text-slate-700 mb-2">{sourceStudents.length} Students Found</h4>
                         <table className="w-full text-sm border-collapse">
                             <thead>
                                 <tr className="text-left">
@@ -243,11 +244,11 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {loadingSource ? <tr><td colSpan={5} className="p-4 text-center">Loading...</td></tr> :
+                                {loadingSource ? <tr><td colSpan={5}><LoadingState /></td></tr> :
                                     sourceStudents.map((s) => {
                                         const hasDue = s.total_due && s.total_due > 0;
                                         return (
-                                            <tr key={s.student_id} className="hover:bg-indigo-50">
+                                            <tr key={s.student_id} className="hover:bg-brand-50">
                                                 <td className="p-2 border">
                                                     <input
                                                         type="checkbox"
@@ -266,7 +267,7 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
                                                 <td className="p-2 border">{s.admNo}</td>
                                                 <td className="p-2 border">{s.first_name || s.name} {s.last_name || ''}</td>
                                                 <td className="p-2 border">{s.class} {s.section}</td>
-                                                <td className={`p-2 border text-right ${hasDue ? 'text-red-600 font-semibold' : 'text-green-600'}`}>
+                                                <td className={`p-2 border text-right ${hasDue ? 'text-red-600 font-semibold' : 'text-emerald-600'}`}>
                                                     ₹{s.total_due || 0}
                                                 </td>
                                             </tr>
@@ -278,23 +279,23 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
                 </div>
 
                 {/* ----------------- ACTION CENTER ----------------- */}
-                <div className="flex flex-col justify-center items-center gap-4 w-32">
+                <div className="flex lg:flex-col justify-center items-center gap-4 lg:w-32">
                     <button
                         onClick={handleUpgrade}
                         disabled={selectedStudentIds.length === 0 || processing}
-                        className={`btn shadow-lg transform ${selectedStudentIds.length > 0 && !processing ? 'bg-indigo-600 text-white hover:scale-105 hover:bg-indigo-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                        className={`btn shadow-lg transform ${selectedStudentIds.length > 0 && !processing ? 'bg-brand-600 text-brand-contrast hover:scale-105 hover:bg-brand-700' : 'bg-slate-300 text-slate-500 cursor-not-allowed'}`}
                     >
                         {processing ? '...' : 'Upgrade >>'}
                     </button>
-                    <div className="text-xs text-center text-gray-500">
+                    <div className="text-xs text-center text-slate-500">
                         {selectedStudentIds.length} Selected
                     </div>
                 </div>
 
                 {/* ----------------- TARGET PANEL ----------------- */}
-                <div className="card flex-1 flex flex-col">
-                    <div className="p-3 border-b bg-green-50 rounded-t">
-                        <h3 className="font-semibold text-green-700">Target (Promote To)</h3>
+                <div className="card flex-1 min-w-0 flex flex-col overflow-hidden">
+                    <div className="p-3 border-b border-slate-200 bg-emerald-50">
+                        <h3 className="text-base font-semibold text-emerald-700">Target (Promote To)</h3>
                         <div className="flex gap-2 mt-2">
                             <select value={targetYear} onChange={e => setTargetYear(e.target.value)} className="input w-1/2">
                                 {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -311,7 +312,7 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
                     </div>
 
                     <div className="flex-1 overflow-auto p-2">
-                        <h4 className="text-sm font-bold mb-2">{targetStudents.length} Students Already in Target</h4>
+                        <h4 className="text-sm font-semibold text-slate-700 mb-2">{targetStudents.length} Students Already in Target</h4>
                         <table className="w-full text-sm border-collapse">
                             <thead>
                                 <tr className="text-left">
@@ -321,16 +322,16 @@ const PromoteStudents: React.FC<PromoteStudentsProps> = ({ onBack }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {loadingTarget ? <tr><td colSpan={3} className="p-4 text-center">Loading...</td></tr> :
+                                {loadingTarget ? <tr><td colSpan={3}><LoadingState /></td></tr> :
                                     targetStudents.map((s) => (
                                         <tr key={s.student_id}>
                                             <td className="p-2 border">{s.admNo}</td>
                                             <td className="p-2 border">{s.first_name || s.name}</td>
-                                            <td className="p-2 border text-green-600">Promoted</td>
+                                            <td className="p-2 border"><span className="badge-success">Promoted</span></td>
                                         </tr>
                                     ))}
                                 {targetStudents.length === 0 && !loadingTarget && (
-                                    <tr><td colSpan={3} className="p-4 text-center text-red-400">No Records Found</td></tr>
+                                    <tr><td colSpan={3}><EmptyState compact title="No Records Found" /></td></tr>
                                 )}
                             </tbody>
                         </table>

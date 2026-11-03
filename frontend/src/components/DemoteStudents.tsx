@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Student } from '../types';
 import { notify, confirmDialog } from './ui/feedback';
+import { LoadingState, EmptyState } from './ui';
 
 interface DemoteStudentsProps {
     onBack?: () => void;
@@ -175,12 +176,12 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
     const previousYears = getPreviousYears();
 
     return (
-        <div className="p-4 min-h-full bg-gray-50">
+        <div className="p-4 sm:p-6 min-h-full bg-surface-muted">
             {/* ── Header ── */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-800">De-promote Students</h2>
-                    <p className="text-sm text-gray-500 mt-0.5">
+                    <h2 className="text-base font-semibold text-slate-900">De-promote Students</h2>
+                    <p className="text-sm text-slate-500 mt-0.5">
                         Correction tool — reverses a mistaken promotion. Financial records are preserved.
                     </p>
                 </div>
@@ -192,7 +193,7 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
             </div>
 
             {/* ── ERP Info Banner ── */}
-            <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 mb-4 text-sm text-amber-800 flex gap-2">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-sm text-amber-800 flex gap-2">
                 <span className="text-lg">ℹ️</span>
                 <div>
                     <strong>ERP Rule — No Financial Data is Deleted:</strong> De-promotion deactivates fee
@@ -224,13 +225,13 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
 
                     {/* STEP 2: The EARLIER year (where students should go back) */}
                     <div>
-                        <label className="block text-sm font-semibold text-green-700 mb-1">
+                        <label className="block text-sm font-semibold text-emerald-700 mb-1">
                             ② Demote BACK TO (Previous Year — Send Them Back Here)
                         </label>
                         <select
                             value={restoreYear}
                             onChange={e => setRestoreYear(e.target.value)}
-                            className="input border-green-300 bg-green-50"
+                            className="input border-emerald-300 bg-emerald-50"
                             disabled={!sourceYear}
                         >
                             <option value="">— Select Year —</option>
@@ -238,7 +239,7 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
                                 <option key={y} value={y}>{y}</option>
                             ))}
                         </select>
-                        <p className="text-xs text-green-600 mt-1">
+                        <p className="text-xs text-emerald-600 mt-1">
                             {sourceYear
                                 ? <>Only shows years <strong>before</strong> {sourceYear}</>
                                 : 'Select "Demote FROM" year first'
@@ -253,15 +254,15 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
                 </div>
 
                 {sourceYear && restoreYear && (
-                    <div className="mt-3 p-3 bg-gray-100 rounded text-center">
-                        <div className="text-sm font-medium text-gray-700 flex items-center justify-center gap-3 flex-wrap">
+                    <div className="mt-3 p-3 bg-slate-100 rounded-lg text-center">
+                        <div className="text-sm font-medium text-slate-700 flex items-center justify-center gap-3 flex-wrap">
                             <span className="bg-red-100 text-red-700 px-3 py-1 rounded font-bold">{sourceYear}</span>
                             <span className="text-red-500 font-bold text-lg">→</span>
-                            <span className="text-gray-500 font-semibold">DEMOTE BACK TO</span>
-                            <span className="text-green-500 font-bold text-lg">→</span>
-                            <span className="bg-green-100 text-green-700 px-3 py-1 rounded font-bold">{restoreYear}</span>
+                            <span className="text-slate-500 font-semibold">DEMOTE BACK TO</span>
+                            <span className="text-emerald-500 font-bold text-lg">→</span>
+                            <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded font-bold">{restoreYear}</span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-slate-500 mt-1">
                             Students currently in {sourceYear} will be moved back to {restoreYear}
                         </p>
                     </div>
@@ -270,13 +271,13 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
 
             {/* ── Student Table ── */}
             {sourceYear && (
-                <div className="card">
-                    <div className="p-3 border-b flex items-center justify-between gap-3 bg-red-50 rounded-t-lg">
+                <div className="card overflow-hidden">
+                    <div className="p-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-red-50">
                         <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-red-700">
                                 🔍 Students currently in <strong>{sourceYear}</strong>
                             </span>
-                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                            <span className="badge-danger">
                                 {promotedStudents.length} found
                             </span>
                         </div>
@@ -284,23 +285,24 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
                             placeholder="Search by name or adm no..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="input w-56"
+                            className="input w-full sm:w-56"
                         />
                     </div>
 
                     <div className="overflow-auto max-h-[50vh]">
                         {loading ? (
-                            <div className="p-8 text-center text-gray-500">Loading students...</div>
+                            <LoadingState label="Loading students..." />
                         ) : filtered.length === 0 ? (
-                            <div className="p-8 text-center text-gray-400">
-                                {promotedStudents.length === 0
+                            <EmptyState
+                                compact
+                                title={promotedStudents.length === 0
                                     ? `No students found currently in ${sourceYear}.`
                                     : 'No students match your search.'
                                 }
-                            </div>
+                            />
                         ) : (
                             <table className="w-full text-sm border-collapse">
-                                <thead className="sticky top-0">
+                                <thead className="sticky top-0 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                                     <tr>
                                         <th className="p-2 border text-center w-10">
                                             <input
@@ -339,9 +341,9 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
                                             </td>
                                             <td className="p-2 border">{s.class}</td>
                                             <td className="p-2 border">{s.section}</td>
-                                            <td className="p-2 border text-gray-500">{s.branch}</td>
+                                            <td className="p-2 border text-slate-500">{s.branch}</td>
                                             <td className="p-2 border text-center">
-                                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                                                <span className="badge-brand">
                                                     {sourceYear}
                                                 </span>
                                             </td>
@@ -353,14 +355,14 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
                     </div>
 
                     {/* Footer action */}
-                    <div className="p-3 border-t bg-gray-50 rounded-b-lg flex items-center justify-between">
-                        <span className="text-sm text-gray-600">
+                    <div className="p-3 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
+                        <span className="text-sm text-slate-600">
                             {selectedIds.length} student(s) selected
                         </span>
                         <button
                             onClick={handleDemote}
                             disabled={selectedIds.length === 0 || !restoreYear || processing}
-                            className={`btn ${selectedIds.length > 0 && restoreYear && !processing ? 'bg-red-600 text-white hover:bg-red-700 shadow' : 'bg-gray-200 text-gray-400 cursor-not-allowed' }`}
+                            className={`btn ${selectedIds.length > 0 && restoreYear && !processing ? 'bg-red-600 text-white hover:bg-red-700 shadow-sm' : 'bg-slate-200 text-slate-400 cursor-not-allowed' }`}
                         >
                             {processing
                                 ? '⏳ Processing...'
@@ -372,7 +374,7 @@ const DemoteStudents: React.FC<DemoteStudentsProps> = ({ onBack }) => {
             )}
 
             {!sourceYear && (
-                <div className="text-center p-12 text-gray-400">
+                <div className="card text-center p-12 text-slate-500">
                     <div className="text-5xl mb-3">📋</div>
                     <p className="text-base">
                         Select the <strong>Demote FROM</strong> year to see students currently there.

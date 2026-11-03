@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import DocumentAdministration from './DocumentAdministration';
 import StudentDocumentManagement from './StudentDocumentManagement';
-import { DocumentReportIcon, SetupIcon, SearchIcon, DownloadIcon, TrashIcon, RefreshIcon, UserIcon } from './icons';
+import { DocumentReportIcon, SetupIcon, SearchIcon, DownloadIcon, TrashIcon, UserIcon } from './icons';
 import api from '../api';
 import { auth } from '../api';
 import axios from 'axios';
 import { notify, confirmDialog } from './ui/feedback';
+import { PageHeader, LoadingState, EmptyState, Spinner } from './ui';
 
 type DocTab = 'dashboard' | 'add-category' | 'upload-documents' | 'student-doc-view';
 
@@ -145,23 +146,23 @@ const StudentDocumentView: React.FC = () => {
     };
 
     return (
-        <div className="min-h-full bg-slate-50 p-6">
+        <div className="min-h-full bg-surface-muted p-4 sm:p-6">
             <div className="max-w-7xl mx-auto space-y-5">
 
                 {/* Header */}
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                        <DocumentReportIcon className="w-7 h-7 text-blue-700" />
+                    <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center flex-shrink-0 ring-1 ring-inset ring-brand-600/10">
+                        <DocumentReportIcon className="w-5 h-5" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold text-slate-900">Student Documents — View</h1>
+                        <h2 className="text-base font-semibold text-slate-900">Student Documents — View</h2>
                         <p className="text-sm text-slate-500">See documents uploaded for each student</p>
                     </div>
                 </div>
 
                 {/* Filter */}
                 <div className="card p-5">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                             <label className="label">Class</label>
                             <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)}
@@ -198,26 +199,28 @@ const StudentDocumentView: React.FC = () => {
 
                 {/* Loading */}
                 {loading && (
-                    <div className="card p-10 text-center">
-                        <RefreshIcon className="w-7 h-7 mx-auto text-blue-500 animate-spin" />
-                        <p className="mt-2 text-sm text-slate-500">Loading students...</p>
+                    <div className="card">
+                        <LoadingState label="Loading students..." />
                     </div>
                 )}
 
                 {/* No results */}
                 {!loading && hasSearched && students.length === 0 && (
-                    <div className="card p-10 text-center">
-                        <UserIcon className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                        <p className="text-sm text-slate-500">No students found. Try adjusting your filters.</p>
+                    <div className="card">
+                        <EmptyState
+                            icon={<UserIcon className="w-6 h-6" />}
+                            title="No students found"
+                            description="No students found. Try adjusting your filters."
+                        />
                     </div>
                 )}
 
                 {/* Student Rows with expandable document list */}
                 {!loading && students.length > 0 && (
                     <div className="card overflow-hidden">
-                        <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                            <h3 className="text-sm font-semibold text-slate-700">Students</h3>
-                            <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2.5 py-0.5 rounded-full">{students.length} found</span>
+                        <div className="card-header py-3 bg-slate-50">
+                            <h3 className="text-base font-semibold text-slate-900">Students</h3>
+                            <span className="badge-brand">{students.length} found</span>
                         </div>
 
                         <div className="divide-y divide-slate-100">
@@ -248,7 +251,7 @@ const StudentDocumentView: React.FC = () => {
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 {docMap[sid] !== undefined && (
-                                                    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${docs.length > 0 ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500'}`}>
+                                                    <span className={docs.length > 0 ? 'badge-success' : 'badge-danger'}>
                                                         {docs.length} doc{docs.length !== 1 ? 's' : ''}
                                                     </span>
                                                 )}
@@ -260,16 +263,18 @@ const StudentDocumentView: React.FC = () => {
                                         {isExpanded && (
                                             <div className="bg-slate-50 border-t border-slate-100 px-5 py-4">
                                                 {isLoadingThis ? (
-                                                    <div className="text-center py-4">
-                                                        <RefreshIcon className="w-5 h-5 mx-auto text-blue-500 animate-spin" />
-                                                        <p className="text-xs text-slate-400 mt-1">Loading documents...</p>
+                                                    <div className="flex items-center justify-center gap-2 py-4 text-sm text-slate-500">
+                                                        <Spinner size="sm" /> Loading documents...
                                                     </div>
                                                 ) : docs.length === 0 ? (
-                                                    <div className="text-center py-4">
-                                                        <DocumentReportIcon className="w-8 h-8 mx-auto text-slate-200 mb-1" />
-                                                        <p className="text-xs text-slate-400">No documents uploaded for this student yet.</p>
-                                                    </div>
+                                                    <EmptyState
+                                                        compact
+                                                        icon={<DocumentReportIcon className="w-6 h-6" />}
+                                                        title="No documents"
+                                                        description="No documents uploaded for this student yet."
+                                                    />
                                                 ) : (
+                                                    <div className="overflow-x-auto">
                                                     <table className="min-w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
                                                         <thead className="">
                                                             <tr>
@@ -283,9 +288,9 @@ const StudentDocumentView: React.FC = () => {
                                                         </thead>
                                                         <tbody className="bg-white divide-y divide-slate-100">
                                                             {docs.map(doc => (
-                                                                <tr key={doc.id} className="hover:bg-blue-50 transition-colors">
+                                                                <tr key={doc.id} className="hover:bg-brand-50 transition-colors">
                                                                     <td className="px-4 py-2.5">
-                                                                        <span className="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                                                                        <span className="badge-brand">
                                                                             {doc.document_type_code}
                                                                         </span>
                                                                         <span className="ml-2 text-xs text-slate-600">{doc.document_type_name}</span>
@@ -300,11 +305,11 @@ const StudentDocumentView: React.FC = () => {
                                                                     <td className="px-4 py-2.5 text-center">
                                                                         <div className="flex justify-center gap-1">
                                                                             <button onClick={() => handleDownload(doc.id, doc.file_name)}
-                                                                                className="btn text-blue-600 bg-blue-50 hover:bg-blue-100" title="Download">
+                                                                                className="btn-soft btn-sm" title="Download">
                                                                                 <DownloadIcon className="w-3.5 h-3.5" />
                                                                             </button>
                                                                             <button onClick={() => handleDelete(doc.id, sid)}
-                                                                                className="btn text-red-500 bg-red-50 hover:bg-red-100" title="Delete">
+                                                                                className="btn btn-sm text-red-600 bg-red-50 hover:bg-red-100" title="Delete">
                                                                                 <TrashIcon className="w-3.5 h-3.5" />
                                                                             </button>
                                                                         </div>
@@ -313,6 +318,7 @@ const StudentDocumentView: React.FC = () => {
                                                             ))}
                                                         </tbody>
                                                     </table>
+                                                    </div>
                                                 )}
                                             </div>
                                         )}
@@ -341,26 +347,25 @@ const DocumentManagement: React.FC = () => {
     const navBtn = (tab: DocTab, label: string) => (
         <button
             onClick={() => { setActiveTab(tab); closeDropdowns(); }}
-            className={`btn btn-sm border ${activeTab === tab ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
+            className={activeTab === tab ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
         >
             {label}
         </button>
     );
 
     return (
-        <div className="min-h-full bg-slate-50">
+        <div className="min-h-full bg-surface-muted">
 
             {/* ─── Top Nav Bar ─── */}
-            <div className="bg-white border-b border-slate-200 shadow-sm">
-                <div className="max-w-7xl mx-auto px-5">
-                    <div className="flex items-center justify-between py-3">
-
-                        <div className="flex items-center gap-2">
-                            <DocumentReportIcon className="w-5 h-5 text-blue-700" />
-                            <span className="font-bold text-slate-800 text-sm uppercase tracking-wide">Document Management</span>
-                        </div>
-
-                        <div className="flex items-center gap-1 flex-wrap">
+            <div className="bg-white border-b border-slate-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+                    <PageHeader
+                        eyebrow="Administration"
+                        title="Document Management"
+                        subtitle="Manage student and institution documents"
+                        icon={<DocumentReportIcon className="w-6 h-6" />}
+                        className="!mb-0 !items-center"
+                        actions={<>
 
                             {navBtn('dashboard', 'Dashboard')}
 
@@ -368,15 +373,15 @@ const DocumentManagement: React.FC = () => {
                             <div className="relative">
                                 <button
                                     onClick={() => { setMasterOpen(v => !v); setStudentDocOpen(false); }}
-                                    className={`btn btn-sm border ${activeTab === 'add-category' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
+                                    className={activeTab === 'add-category' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
                                 >
                                     Master ▾
                                 </button>
                                 {masterOpen && (
-                                    <div className="card shadow-pop absolute left-0 mt-1 w-40 z-50">
+                                    <div className="menu left-0 w-40 z-50">
                                         <button
                                             onClick={() => { setActiveTab('add-category'); closeDropdowns(); }}
-                                            className="block w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors rounded-lg"
+                                            className="menu-item"
                                         >
                                             Add Category
                                         </button>
@@ -391,24 +396,23 @@ const DocumentManagement: React.FC = () => {
                             <div className="relative">
                                 <button
                                     onClick={() => { setStudentDocOpen(v => !v); setMasterOpen(false); }}
-                                    className={`btn btn-sm border ${activeTab === 'student-doc-view' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
+                                    className={activeTab === 'student-doc-view' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
                                 >
                                     Student Documents ▾
                                 </button>
                                 {studentDocOpen && (
-                                    <div className="card shadow-pop absolute right-0 mt-1 w-52 z-50">
+                                    <div className="menu right-0 w-52 z-50">
                                         <button
                                             onClick={() => { setActiveTab('student-doc-view'); closeDropdowns(); }}
-                                            className="block w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors rounded-lg"
+                                            className="menu-item"
                                         >
                                             View Uploaded Documents
                                         </button>
                                     </div>
                                 )}
                             </div>
-
-                        </div>
-                    </div>
+                        </>}
+                    />
                 </div>
             </div>
 
@@ -433,54 +437,42 @@ const DocumentManagement: React.FC = () => {
 type DashboardNavFn = (tab: DocTab) => void;
 
 const DocumentDashboard: React.FC<{ onNavigate: DashboardNavFn }> = ({ onNavigate }) => (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-blue-100 rounded-lg">
-                <DocumentReportIcon className="w-7 h-7 text-blue-700" />
-            </div>
-            <div>
-                <h1 className="text-xl font-bold text-slate-900">Document Management</h1>
-                <p className="text-sm text-slate-500">Manage student and institution documents</p>
-            </div>
-        </div>
-
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <DashCard
-                icon={<SetupIcon className="w-8 h-8 text-indigo-700" />}
-                iconBg="bg-indigo-100"
+                icon={<SetupIcon className="w-7 h-7 text-brand-700" />}
+                iconBg="bg-brand-100"
                 title="Document Categories (Master)"
                 desc="Add and manage allowed document types"
                 badge="Master → Add Category"
-                badgeColor="text-indigo-600 bg-indigo-50"
+                badgeColor="badge-brand"
                 onClick={() => onNavigate('add-category')}
             />
             <DashCard
-                icon={<UploadIcon className="w-8 h-8 text-blue-700" />}
-                iconBg="bg-blue-100"
+                icon={<UploadIcon className="w-7 h-7 text-brand-700" />}
+                iconBg="bg-brand-100"
                 title="Upload Documents"
                 desc="Search a student and upload their documents"
                 badge="Upload Documents"
-                badgeColor="text-blue-600 bg-blue-50"
+                badgeColor="badge-brand"
                 onClick={() => onNavigate('upload-documents')}
             />
             <DashCard
-                icon={<DocumentReportIcon className="w-8 h-8 text-teal-700" />}
+                icon={<DocumentReportIcon className="w-7 h-7 text-teal-700" />}
                 iconBg="bg-teal-100"
                 title="View Student Documents"
                 desc="See all documents uploaded per student"
                 badge="Student Documents → View"
-                badgeColor="text-teal-600 bg-teal-50"
+                badgeColor="badge bg-teal-50 text-teal-700 ring-1 ring-inset ring-teal-600/20"
                 onClick={() => onNavigate('student-doc-view')}
             />
         </div>
 
         <div className="card overflow-hidden">
-            <div className="px-5 py-3 bg-slate-50 border-b border-slate-200">
-                <h3 className="text-sm font-semibold text-slate-700">📊 Student Documents Count</h3>
+            <div className="card-header py-3 bg-slate-50">
+                <h3 className="text-base font-semibold text-slate-900">📊 Student Documents Count</h3>
             </div>
-            <div className="p-5 text-center text-sm text-slate-400 py-10">
-                Summary data will appear here once documents are uploaded.
-            </div>
+            <EmptyState compact title="No summary yet" description="Summary data will appear here once documents are uploaded." />
         </div>
     </div>
 );
@@ -491,13 +483,13 @@ const DashCard: React.FC<{
 }> = ({ icon, iconBg, title, desc, badge, badgeColor, onClick }) => (
     <div
         onClick={onClick}
-        className="card p-5 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all group"
+        className="tile flex items-center gap-4 cursor-pointer group"
     >
         <div className={`p-3 ${iconBg} rounded-xl group-hover:opacity-80 transition-opacity flex-shrink-0`}>{icon}</div>
         <div>
-            <h3 className="font-semibold text-slate-800 group-hover:text-blue-700 transition-colors">{title}</h3>
+            <h3 className="text-base font-semibold text-slate-900 group-hover:text-brand-700 transition-colors">{title}</h3>
             <p className="text-sm text-slate-500 mt-0.5">{desc}</p>
-            <span className={`inline-block mt-2 text-xs font-medium px-2.5 py-0.5 rounded-full ${badgeColor}`}>{badge}</span>
+            <span className={`${badgeColor} mt-2`}>{badge}</span>
         </div>
     </div>
 );

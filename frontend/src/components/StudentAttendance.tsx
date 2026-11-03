@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Page } from '../App';
-import { ChevronDownIcon } from './icons';
+import { ChevronDownIcon, ChartBarIcon } from './icons';
 import { Student } from '../types';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import api from '../api';
 import { notify, confirmDialog } from './ui/feedback';
+import { PageHeader, EmptyState, Alert } from './ui';
 
 const getNormalizedBranch = (): string => {
     const b = localStorage.getItem('currentBranch') || 'All';
@@ -75,15 +76,13 @@ const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({ activeTab, onTabCha
 
     return (
         <div className="bg-white px-4 sm:px-6 py-4 border-b border-slate-200">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <p className="page-eyebrow">Administration</p>
-                    <h2 className="page-title flex items-center gap-2">
-                        Student Attendance
-                        <span className="badge-neutral">Non Biometric</span>
-                    </h2>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
+            <PageHeader
+                eyebrow="Administration"
+                title="Student Attendance"
+                subtitle="Non Biometric"
+                icon={<ChartBarIcon className="w-6 h-6" />}
+                className="!mb-0 !items-center"
+                actions={<>
                     <button className={buttonStyle} onClick={() => navigateTo?.('student-administration')}>Student Directory</button>
                     <button className={activeTab === 'take' ? activeButtonStyle : buttonStyle} onClick={() => onTabChange('take')}>Take Attendance</button>
                     <button className={activeTab === 'register' ? activeButtonStyle : buttonStyle} onClick={() => onTabChange('register')}>Register View</button>
@@ -92,8 +91,8 @@ const AttendanceHeader: React.FC<AttendanceHeaderProps> = ({ activeTab, onTabCha
                         <DropdownItem action="SMS">Send SMS To All Present Students</DropdownItem>
                         <DropdownItem action="Month Report">Month Report</DropdownItem>
                     </Dropdown>
-                </div>
-            </div>
+                </>}
+            />
         </div>
     );
 };
@@ -293,7 +292,7 @@ const TakeAttendanceForm: React.FC = () => {
                     Take Attendance
                 </div>
                 <div className="p-4 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
                         <div>
                             <label className="label">Attendance Date</label>
                             <input
@@ -334,20 +333,16 @@ const TakeAttendanceForm: React.FC = () => {
                     </div>
 
                     {dateBlocked.blocked && (
-                        <div className="mt-4 p-4 bg-red-50 border border-red-300 rounded-lg flex items-center gap-3">
-                            <span className="text-red-600 text-2xl">🚫</span>
-                            <div>
-                                <p className="font-semibold text-red-700">Attendance Blocked</p>
-                                <p className="text-red-600 text-sm">{dateBlocked.reason} — Attendance cannot be taken on this date.</p>
-                            </div>
-                        </div>
+                        <Alert tone="error" title="Attendance Blocked" className="mt-4">
+                            {dateBlocked.reason} — Attendance cannot be taken on this date.
+                        </Alert>
                     )}
 
                     {students.length > 0 && (
-                        <div className="overflow-x-auto border rounded-lg">
-                            <div className="p-2 bg-gray-50 border-b flex gap-2">
-                                <button onClick={() => markAll('Present')} className="btn btn-sm text-xs bg-green-100 text-green-700 border border-green-200 hover:bg-green-200">Mark All Present</button>
-                                <button onClick={() => markAll('Absent')} className="btn btn-sm text-xs bg-red-100 text-red-700 border border-red-200 hover:bg-red-200">Mark All Absent</button>
+                        <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                            <div className="p-2 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-2">
+                                <button onClick={() => markAll('Present')} className="btn btn-sm bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100">Mark All Present</button>
+                                <button onClick={() => markAll('Absent')} className="btn btn-sm bg-red-50 text-red-700 border border-red-200 hover:bg-red-100">Mark All Absent</button>
                                 {/* <div className="h-4 w-px bg-gray-300" />
                                 <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-600 select-none">
                                     <input
@@ -378,8 +373,8 @@ const TakeAttendanceForm: React.FC = () => {
                                     </span>
                                 )} */}
                             </div>
-                            <table className="min-w-full divide-y divide-gray-200 text-m">
-                                <thead className="">
+                            <table className="min-w-full divide-y divide-slate-200 text-sm">
+                                <thead>
                                     <tr>
                                         {/* <th className="px-4 py-2 w-8"></th> */}
                                         <th className="px-4 py-2 text-left">Roll No.</th>
@@ -390,7 +385,7 @@ const TakeAttendanceForm: React.FC = () => {
                                         <th className="px-4 py-2 text-left">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
+                                <tbody className="bg-white divide-y divide-slate-100">
                                     {students.map(student => (
                                         <tr key={student.student_id}>
                                             {/* <td className="px-4 py-2">
@@ -417,7 +412,7 @@ const TakeAttendanceForm: React.FC = () => {
                                                         { val: 'Absent', label: 'A', color: 'red' },
                                                     ].map(opt => {
                                                         const colorMap: { [key: string]: { text: string; ring: string; label: string } } = {
-                                                            green: { text: 'text-green-600', ring: 'focus:ring-green-500', label: 'text-green-700' },
+                                                            green: { text: 'text-emerald-600', ring: 'focus:ring-emerald-500', label: 'text-emerald-700' },
                                                             red: { text: 'text-red-600', ring: 'focus:ring-red-500', label: 'text-red-700' },
                                                         };
                                                         const classes = colorMap[opt.color];
@@ -448,12 +443,12 @@ const TakeAttendanceForm: React.FC = () => {
                                     ))}
                                 </tbody>
                             </table>
-                            <div className="p-4 bg-gray-50 border-t flex justify-end">
+                            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
                                 <div className="flex flex-col items-end gap-1">
                                     <button
                                         onClick={handleSave}
                                         disabled={loading}
-                                        className={`btn ${isUpdateMode ? "bg-blue-600 hover:bg-blue-700" : "bg-green-600 hover:bg-green-700"} text-white disabled:bg-gray-400`}
+                                        className={isUpdateMode ? "btn-primary" : "btn-success"}
                                     >
                                         {loading
                                             ? (isUpdateMode ? "Updating..." : "Saving...")
@@ -561,9 +556,9 @@ const RegisterViewTab: React.FC = () => {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'Present': return 'bg-green-100 text-green-800';
+            case 'Present': return 'bg-emerald-100 text-emerald-800';
             case 'Absent': return 'bg-red-100 text-red-800';
-            case 'Leave': return 'bg-yellow-100 text-yellow-800';
+            case 'Leave': return 'bg-amber-100 text-amber-800';
             case 'Holiday': return 'bg-gray-100 text-gray-800';
             case 'Sunday': return 'bg-pink-100 text-pink-800';
             case 'Weekoff': return 'bg-blue-100 text-blue-800';
@@ -675,7 +670,7 @@ const RegisterViewTab: React.FC = () => {
                     Attendance Register
                 </div>
                 <div className="p-4 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
                         <div>
                             <label className="label">Class</label>
                             <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="input mt-1">
@@ -722,7 +717,7 @@ const RegisterViewTab: React.FC = () => {
                     </div>
 
                     {reportData && (
-                        <div className="overflow-x-auto border rounded-lg mt-4">
+                        <div className="overflow-x-auto border border-slate-200 rounded-xl mt-4">
                             <table className="min-w-full divide-y divide-gray-200 text-xs">
                                 <thead className="">
                                     <tr>
@@ -1029,6 +1024,11 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
         }
     };
 
+    // Excel template download / upload is not wired into the UI yet (see the commented-out
+    // buttons below). Kept intentionally; referenced here so the build stays clean.
+    void handleDownloadTemplate;
+    void handleUpload;
+
     const handleSave = async () => {
         if (Object.keys(attendanceData).length === 0) return;
         setSaving(true);
@@ -1101,9 +1101,9 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'Present': return 'bg-green-100 text-green-800 hover:bg-green-200';
+            case 'Present': return 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200';
             case 'Absent': return 'bg-red-100 text-red-800 hover:bg-red-200';
-            case 'Leave': return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
+            case 'Leave': return 'bg-amber-100 text-amber-800 hover:bg-amber-200';
             case 'Holiday': return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
             case 'Sunday': return 'bg-pink-100 text-pink-800 hover:bg-pink-200';
             default: return 'bg-gray-50 text-gray-400 hover:bg-gray-200';
@@ -1117,7 +1117,7 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                     Monthly Attendance Entry
                 </div>
                 <div className="p-4 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
                         <div>
                             <label className="label">Class</label>
                             <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="input mt-1">
@@ -1190,14 +1190,14 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                     */}
                     {students.length > 0 && (
                         <div className="mt-4">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-sm text-gray-500">Click on a cell to toggle Present/Absent</span>
+                            <div className="flex flex-wrap justify-between items-center gap-3 mb-2">
+                                <span className="text-sm text-slate-500">Click on a cell to toggle Present/Absent</span>
                                 <div className="flex flex-col items-end gap-1">
                                     <div className="flex gap-2">
                                         <button
                                             onClick={handleReset}
                                             disabled={loading || Object.keys(attendanceData).length === 0}
-                                            className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md text-sm font-semibold disabled:bg-gray-400"
+                                            className="btn-secondary"
                                         >
                                             Reset Changes
                                         </button>
@@ -1211,7 +1211,7 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="overflow-x-auto border rounded-lg max-h-[70vh]">
+                            <div className="overflow-x-auto border border-slate-200 rounded-xl max-h-[70vh]">
                                 <table className="min-w-full divide-y divide-gray-200 text-xs relative">
                                     <thead className="sticky top-0 z-20">
                                         <tr>
@@ -1291,17 +1291,17 @@ const RegisterView: React.FC = () => {
     return (
         <div className="space-y-4">
             {/* Sub Tabs */}
-            <div className="flex justify-center bg-gray-100 p-2 rounded-lg mx-4 mt-2">
-                <div className="card p-1 flex space-x-1">
+            <div className="flex justify-center mx-4 mt-2">
+                <div className="segmented flex-wrap">
                     <button
                         onClick={() => setSubTab('view')}
-                        className={`btn ${subTab === 'view' ? 'bg-sky-100 text-sky-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                        className={`segmented-item ${subTab === 'view' ? 'segmented-item-active' : ''}`}
                     >
                         Attendance Register Query
                     </button>
                     <button
                         onClick={() => setSubTab('entry')}
-                        className={`btn ${subTab === 'entry' ? 'bg-sky-100 text-sky-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                        className={`segmented-item ${subTab === 'entry' ? 'segmented-item-active' : ''}`}
                     >
                         Monthly Attendance Entry
                     </button>
@@ -1516,8 +1516,8 @@ const AbsentReport: React.FC = () => {
                             </>
                         ) : (
                             <div className="w-full space-y-4">
-                                <div className="bg-gray-50 p-3 rounded-md border">
-                                    <h4 className="text-sm font-medium text-gray-700 mb-2">Find Student by Class & Section</h4>
+                                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                    <h4 className="text-sm font-semibold text-slate-900 mb-2">Find Student by Class & Section</h4>
                                     <div className="flex flex-wrap gap-4 items-end">
                                         <div>
                                             <label className="label">Class</label>
@@ -1581,7 +1581,7 @@ const AbsentReport: React.FC = () => {
                                     <div className="flex-grow border-t border-gray-300"></div>
                                 </div>
 
-                                <div className="flex gap-2 items-end">
+                                <div className="flex flex-wrap sm:flex-nowrap gap-2 items-end">
                                     <div className="flex-grow">
                                         <label className="label">Search Student (Name, Adm No, Phone)</label>
                                         <input
@@ -1599,12 +1599,12 @@ const AbsentReport: React.FC = () => {
                                 </div>
 
                                 {searchResults.length > 0 && (
-                                    <div className="mt-2 border rounded-md max-h-40 overflow-y-auto bg-gray-50">
+                                    <div className="mt-2 border border-slate-200 rounded-lg max-h-40 overflow-y-auto bg-slate-50">
                                         {searchResults.map(s => (
                                             <div
                                                 key={s.student_id}
                                                 onClick={() => handleSelectStudent(s)}
-                                                className="p-2 hover:bg-violet-100 cursor-pointer border-b last:border-b-0 text-sm"
+                                                className="p-2 hover:bg-brand-50 cursor-pointer border-b border-slate-200 last:border-b-0 text-sm"
                                             >
                                                 <span className="font-semibold">{s.first_name} {s.last_name}</span>
                                                 <span className="text-gray-500 ml-2">({s.admission_no}) - Class {s.class} {s.section ? `- Sec ${s.section}` : ''}</span>
@@ -1615,9 +1615,9 @@ const AbsentReport: React.FC = () => {
 
                                 {selectedStudent && (
                                     <div className="card mt-6 overflow-hidden">
-                                        <div className="bg-violet-50 px-4 py-3 border-b border-violet-100 flex justify-between items-center">
-                                            <h3 className="text-lg font-semibold text-violet-800">Student Profile</h3>
-                                            <button onClick={() => setSelectedStudent(null)} className="text-sm text-violet-600 hover:text-violet-800 hover:underline">
+                                        <div className="card-header bg-brand-50 border-brand-100">
+                                            <h3 className="text-base font-semibold text-brand-800">Student Profile</h3>
+                                            <button onClick={() => setSelectedStudent(null)} className="text-sm text-brand-600 hover:text-brand-800 hover:underline">
                                                 Change Student
                                             </button>
                                         </div>
@@ -1631,11 +1631,11 @@ const AbsentReport: React.FC = () => {
                                                         <span className="text-3xl text-gray-400">👤</span>
                                                     )}
                                                 </div>
-                                                <h2 className="text-xl font-bold text-gray-800">{selectedStudent.name}</h2>
+                                                <h2 className="text-lg font-semibold text-slate-900">{selectedStudent.name}</h2>
                                                 <p className="text-sm text-gray-500">{selectedStudent.admNo}</p>
-                                                <div className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                <span className="badge-success mt-2">
                                                     Active
-                                                </div>
+                                                </span>
                                             </div>
 
                                             {/* Detailed Info */}
@@ -1687,26 +1687,26 @@ const AbsentReport: React.FC = () => {
 
                                         {/* Attendance Stats */}
                                         {results.length > 0 && (
-                                            <div className="bg-gray-50 border-t px-4 py-3 grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
+                                            <div className="bg-slate-50 border-t border-slate-200 px-4 py-3 grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
                                                 <div className="card p-2">
                                                     <div className="text-xs text-gray-500 uppercase font-semibold">Total Days</div>
                                                     <div className="text-xl font-bold text-gray-800">{results.length}</div>
                                                 </div>
                                                 <div className="card p-2">
-                                                    <div className="text-xs text-green-600 uppercase font-semibold">Present</div>
-                                                    <div className="text-xl font-bold text-green-700">{results.filter(r => r.status === 'Present').length}</div>
+                                                    <div className="text-xs text-emerald-600 uppercase font-semibold">Present</div>
+                                                    <div className="text-xl font-bold text-emerald-700">{results.filter(r => r.status === 'Present').length}</div>
                                                 </div>
                                                 <div className="card p-2">
                                                     <div className="text-xs text-red-600 uppercase font-semibold">Absent</div>
                                                     <div className="text-xl font-bold text-red-700">{results.filter(r => r.status === 'Absent').length}</div>
                                                 </div>
                                                 <div className="card p-2">
-                                                    <div className="text-xs text-yellow-600 uppercase font-semibold">Leave</div>
-                                                    <div className="text-xl font-bold text-yellow-700">{results.filter(r => r.status === 'Leave').length}</div>
+                                                    <div className="text-xs text-amber-600 uppercase font-semibold">Leave</div>
+                                                    <div className="text-xl font-bold text-amber-700">{results.filter(r => r.status === 'Leave').length}</div>
                                                 </div>
                                                 <div className="card p-2">
-                                                    <div className="text-xs text-blue-600 uppercase font-semibold">Percentage</div>
-                                                    <div className="text-xl font-bold text-blue-700">
+                                                    <div className="text-xs text-brand-600 uppercase font-semibold">Percentage</div>
+                                                    <div className="text-xl font-bold text-brand-700">
                                                         {results.length > 0
                                                             ? Math.round((results.filter(r => r.status === 'Present').length / results.length) * 100)
                                                             : 0}%
@@ -1721,7 +1721,7 @@ const AbsentReport: React.FC = () => {
                     </div>
 
                     {results.length > 0 ? (
-                        <div className="overflow-x-auto border rounded-lg mt-4">
+                        <div className="overflow-x-auto border border-slate-200 rounded-xl mt-4">
                             {/* {reportType === 'today' && (
                                 <div className="p-2 bg-gray-50 border-b flex items-center gap-3 flex-wrap">
                                     <label className="flex items-center gap-1.5 cursor-pointer text-xs text-gray-600 select-none">
@@ -1796,7 +1796,7 @@ const AbsentReport: React.FC = () => {
                                                     <td className="px-4 py-2 whitespace-nowrap text-gray-500">{item.father}</td>
                                                     <td className="px-4 py-2 whitespace-nowrap text-gray-500">{item.smsNo || item.fatherMobile}</td>
                                                     <td className="px-4 py-2 whitespace-nowrap">
-                                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${item.status === 'Absent' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                        <span className={item.status === 'Absent' ? 'badge-danger' : 'badge-warning'}>
                                                             {item.status}
                                                         </span>
                                                     </td>
@@ -1805,11 +1805,11 @@ const AbsentReport: React.FC = () => {
                                                 <>
                                                     <td className="px-4 py-2 whitespace-nowrap">{item.date}</td>
                                                     <td className="px-4 py-2 whitespace-nowrap">
-                                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${item.status === 'Present' ? 'bg-green-100 text-green-800' :
-                                                            item.status === 'Absent' ? 'bg-red-100 text-red-800' :
-                                                                item.status === 'Leave' ? 'bg-yellow-100 text-yellow-800' :
-                                                                    'bg-gray-100 text-gray-800'
-                                                            }`}>
+                                                        <span className={item.status === 'Present' ? 'badge-success' :
+                                                            item.status === 'Absent' ? 'badge-danger' :
+                                                                item.status === 'Leave' ? 'badge-warning' :
+                                                                    'badge-neutral'
+                                                            }>
                                                             {item.status}
                                                         </span>
                                                     </td>
@@ -1821,7 +1821,7 @@ const AbsentReport: React.FC = () => {
                             </table>
                         </div>
                     ) : (
-                        !loading && (reportType === 'today' || selectedStudent) && <div className="text-center text-gray-500 mt-4">No records found</div>
+                        !loading && (reportType === 'today' || selectedStudent) && <EmptyState compact title="No records found" className="mt-4" />
                     )}
                 </div>
             </div>
@@ -1850,21 +1850,14 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ navigateTo, defau
             case 'absent-report' as any:
                 return <AbsentReport />;
             case 'today':
-                return <div className="p-4 text-center text-gray-500">Today's Report Coming Soon</div>;
+                return <EmptyState title="Today's Report Coming Soon" />;
             default:
                 return <TakeAttendanceForm />;
         }
     };
 
-    // Enhanced DropdownItem to handle clicks
-    const ActionDropdownItem: React.FC<{ children: React.ReactNode, onClick: () => void }> = ({ children, onClick }) => (
-        <a href="#" onClick={(e) => { e.preventDefault(); onClick(); }} className="menu-item" role="menuitem">
-            {children}
-        </a>
-    );
-
     return (
-        <div className="h-full overflow-y-auto bg-gray-100">
+        <div className="h-full overflow-y-auto bg-surface-muted">
             <AttendanceHeader
                 activeTab={activeTab}
                 onTabChange={setActiveTab}

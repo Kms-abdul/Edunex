@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { ArrowBackIcon } from './icons';
 import { notify, confirmDialog } from './ui/feedback';
+import { LoadingState, EmptyState } from './ui';
 
 interface ChangeSectionProps {
     onBack?: () => void;
@@ -139,27 +140,27 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
     const selectedStudentsList = sourceStudents.filter(s => s.student_id && selectedStudentIds.includes(s.student_id));
 
     return (
-        <div className="p-6 bg-gray-50 min-h-full">
-            <div className="flex justify-between items-center mb-6">
+        <div className="p-4 sm:p-6 bg-surface-muted min-h-full">
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
                 <div className="flex items-center gap-2">
                     {onBack && (
                         <button onClick={onBack} className="btn-icon" aria-label="Go back">
-                            <ArrowBackIcon className="w-5 h-5 text-gray-600" />
+                            <ArrowBackIcon className="w-5 h-5 text-slate-600" />
                         </button>
                     )}
-                    <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Change in Section</h2>
+                    <h2 className="text-base font-semibold text-slate-900">Change in Section</h2>
                 </div>
-                <div className="bg-orange-100 text-orange-700 px-4 py-2 rounded-md font-semibold border border-orange-200">
+                <div className="bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg text-sm font-semibold border border-amber-200">
                     Academic Year: {academicYear}
                 </div>
             </div>
 
-            <div className="flex gap-6 h-[75vh]">
+            <div className="flex flex-col lg:flex-row gap-6 lg:h-[75vh]">
                 {/* ----------------- LEFT PANEL: SOURCE STUDENTS ----------------- */}
-                <div className="card flex-[1.5] flex flex-col overflow-hidden">
-                    <div className="p-4 bg-violet-50 border-b border-gray-200">
-                        <h3 className="font-bold text-violet-800 mb-3 uppercase tracking-wider text-sm">Students</h3>
-                        <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="card flex-[1.5] min-w-0 flex flex-col overflow-hidden">
+                    <div className="p-4 bg-brand-50 border-b border-slate-200">
+                        <h3 className="font-semibold text-brand-800 mb-3 uppercase tracking-wider text-sm">Students</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                             <select
                                 value={sourceClass}
                                 onChange={e => { setSourceClass(e.target.value); setSourceSection(''); }}
@@ -193,26 +194,26 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
                         <table className="min-w-full text-sm border-collapse">
                             <thead className="sticky top-0 z-10 shadow-sm">
                                 <tr className="text-left border-b">
-                                    <th className="p-3 w-12"><input type="checkbox" onChange={handleSelectAll} checked={sourceStudents.filter(s => s.student_id !== undefined).length > 0 && selectedStudentIds.length === sourceStudents.filter(s => s.student_id !== undefined).length} className="w-4 h-4 rounded text-violet-600" /></th>
+                                    <th className="p-3 w-12"><input type="checkbox" onChange={handleSelectAll} checked={sourceStudents.filter(s => s.student_id !== undefined).length > 0 && selectedStudentIds.length === sourceStudents.filter(s => s.student_id !== undefined).length} className="w-4 h-4 rounded text-brand-600" /></th>
                                     <th className="p-3">Admission No</th>
                                     <th className="p-3">Student Name</th>
                                     <th className="p-3">Father Name</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-slate-100">
                                 {loadingSource ? (
-                                    <tr><td colSpan={4} className="p-10 text-center text-gray-500 italic">Loading students...</td></tr>
+                                    <tr><td colSpan={4}><LoadingState label="Loading students..." /></td></tr>
                                 ) : sourceStudents.length === 0 ? (
-                                    <tr><td colSpan={4} className="p-10 text-center text-gray-500 italic">No records found. Please select class and section.</td></tr>
+                                    <tr><td colSpan={4}><EmptyState compact title="No records found" description="Please select class and section." /></td></tr>
                                 ) : (
                                     sourceStudents.map((s) => (
-                                        <tr key={s.student_id ?? s.admNo ?? s.admission_no} className={`hover:bg-violet-50 transition-colors ${s.student_id && selectedStudentIds.includes(s.student_id) ? 'bg-violet-50/50' : ''}`}>
+                                        <tr key={s.student_id ?? s.admNo ?? s.admission_no} className={`hover:bg-brand-50 transition-colors ${s.student_id && selectedStudentIds.includes(s.student_id) ? 'bg-brand-50/50' : ''}`}>
                                             <td className="p-3">
                                                 <input
                                                     type="checkbox"
                                                     checked={s.student_id ? selectedStudentIds.includes(s.student_id) : false}
                                                     onChange={() => handleSelectOne(s.student_id)}
-                                                    className="w-4 h-4 rounded text-violet-600"
+                                                    className="w-4 h-4 rounded text-brand-600"
                                                 />
                                             </td>
                                             <td className="p-3 font-mono text-gray-600">{s.admNo || s.admission_no}</td>
@@ -224,21 +225,21 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
                             </tbody>
                         </table>
                     </div>
-                    <div className="p-3 bg-gray-50 border-t flex justify-between items-center text-sm">
-                        <span className="text-gray-600 font-medium">Total: <b className="text-violet-700">{sourceStudents.length}</b></span>
-                        <span className="text-gray-600 font-medium">Selected: <b className="text-violet-700">{selectedStudentIds.length}</b></span>
+                    <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-sm">
+                        <span className="text-slate-600 font-medium">Total: <b className="text-brand-700">{sourceStudents.length}</b></span>
+                        <span className="text-slate-600 font-medium">Selected: <b className="text-brand-700">{selectedStudentIds.length}</b></span>
                     </div>
                 </div>
 
                 {/* ----------------- RIGHT PANEL: SELECTED STUDENTS & ACTION ----------------- */}
-                <div className="card flex-1 flex flex-col overflow-hidden">
-                    <div className="p-4 bg-emerald-50 border-b border-gray-200">
-                        <h3 className="font-bold text-emerald-800 mb-3 uppercase tracking-wider text-sm">Selected Students</h3>
-                        <div className="flex gap-3">
+                <div className="card flex-1 min-w-0 flex flex-col overflow-hidden">
+                    <div className="p-4 bg-emerald-50 border-b border-slate-200">
+                        <h3 className="font-semibold text-emerald-800 mb-3 uppercase tracking-wider text-sm">Selected Students</h3>
+                        <div className="flex flex-wrap gap-3">
                             <select
                                 value={targetSection}
                                 onChange={e => setTargetSection(e.target.value)}
-                                className="input flex-1"
+                                className="input flex-1 min-w-[10rem]"
                             >
                                 <option value="">Select Target Section</option>
                                 {sections.filter(s => s !== sourceSection).map(section => <option key={section} value={section}>{section}</option>)}
@@ -246,14 +247,14 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
                             <button
                                 onClick={handleChangeSection}
                                 disabled={selectedStudentIds.length === 0 || !targetSection || processing}
-                                className={`btn ${selectedStudentIds.length > 0 && targetSection && !processing ? 'bg-violet-600 text-white hover:bg-violet-700 active:transform active:scale-95' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                className={`btn ${selectedStudentIds.length > 0 && targetSection && !processing ? 'bg-brand-600 text-brand-contrast hover:bg-brand-700 active:transform active:scale-95' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
                             >
                                 {processing ? 'Processing...' : 'Click here for change section'}
                             </button>
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-auto bg-gray-50/30">
+                    <div className="flex-1 overflow-auto bg-slate-50/30">
                         <table className="min-w-full text-sm border-collapse">
                             <thead className="sticky top-0 z-10 shadow-sm border-b">
                                 <tr className="text-left">
@@ -262,9 +263,9 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
                                     <th className="p-3">Father Name</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-slate-100">
                                 {selectedStudentsList.length === 0 ? (
-                                    <tr><td colSpan={3} className="p-10 text-center text-gray-400 italic">No students selected from the left panel.</td></tr>
+                                    <tr><td colSpan={3}><EmptyState compact title="No students selected" description="No students selected from the left panel." /></td></tr>
                                 ) : (
                                     selectedStudentsList.map((s) => (
                                         <tr key={s.student_id} className="bg-white">
@@ -277,8 +278,8 @@ const ChangeSection: React.FC<ChangeSectionProps> = ({ onBack }) => {
                             </tbody>
                         </table>
                     </div>
-                    <div className="p-3 bg-gray-50 border-t flex justify-between items-center text-sm">
-                        <span className="text-gray-600 font-medium">Selected Count: <b className="text-emerald-700">{selectedStudentIds.length}</b></span>
+                    <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-sm">
+                        <span className="text-slate-600 font-medium">Selected Count: <b className="text-emerald-700">{selectedStudentIds.length}</b></span>
                     </div>
                 </div>
             </div>
