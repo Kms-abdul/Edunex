@@ -24,14 +24,16 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
     const categories = [
         {
             id: 'hr_master' as MainCategory,
-            name: 'HR Master',
+            name: 'HR setup',
+            description: 'Departments, designations, shifts and staff types.',
             icon: <DocumentIcon className="w-6 h-6" />,
             iconBg: 'bg-blue-50',
             iconColor: 'text-blue-600',
         },
         {
             id: 'employee_details' as MainCategory,
-            name: 'Employee Details',
+            name: 'Staff',
+            description: 'Staff records and staff details.',
             icon: <UserIcon className="w-6 h-6" />,
             iconBg: 'bg-emerald-50',
             iconColor: 'text-emerald-600',
@@ -39,6 +41,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         {
             id: 'attendance' as MainCategory,
             name: 'Attendance',
+            description: 'Who came in, and in / out times.',
             icon: <ChartBarIcon className="w-6 h-6" />,
             iconBg: 'bg-orange-50',
             iconColor: 'text-orange-600',
@@ -58,7 +61,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         },
         {
             id: 'staff-categories',
-            name: 'Staff Categories',
+            name: 'Staff types',
             icon: <DocumentIcon className="w-6 h-6" />,
             iconBg: 'bg-pink-50',
             iconColor: 'text-pink-600',
@@ -68,7 +71,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         },
         {
             id: 'staff-document-types',
-            name: 'Document Types',
+            name: 'Document types',
             icon: <DocumentIcon className="w-6 h-6" />,
             iconBg: 'bg-indigo-50',
             iconColor: 'text-indigo-600',
@@ -78,7 +81,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         },
         {
             id: 'staff-statuses',
-            name: 'Staff Statuses',
+            name: 'Staff statuses',
             icon: <DocumentIcon className="w-6 h-6" />,
             iconBg: 'bg-purple-50',
             iconColor: 'text-purple-600',
@@ -108,7 +111,8 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         },
         {
             id: 'staff-master',
-            name: 'Staff Master',
+            name: 'Staff records',
+            description: 'Add staff and see the full staff list.',
             icon: <UserIcon className="w-6 h-6" />,
             iconBg: 'bg-emerald-50',
             iconColor: 'text-emerald-600',
@@ -118,7 +122,8 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         },
         {
             id: 'staff-profile-list',
-            name: 'Staff Profile',
+            name: hasPermission('hr.hr.staff-master', 'read') ? 'Staff details' : 'My details',
+            description: hasPermission('hr.hr.staff-master', 'read') ? 'Open any staff member’s details.' : 'Your own details and today’s attendance.',
             icon: <UserIcon className="w-6 h-6" />,
             iconBg: 'bg-teal-50',
             iconColor: 'text-teal-600',
@@ -128,7 +133,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         },
         {
             id: 'staff-update-list',
-            name: 'Staff Update',
+            name: 'Update staff details',
             icon: <UserIcon className="w-6 h-6" />,
             iconBg: 'bg-amber-50',
             iconColor: 'text-amber-600',
@@ -138,7 +143,8 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         },
         {
             id: 'attendance-summary',
-            name: 'Attendance Summary',
+            name: 'Attendance',
+            description: 'Present, absent and leave for the month.',
             icon: <ChartBarIcon className="w-6 h-6" />,
             iconBg: 'bg-slate-50',
             iconColor: 'text-slate-600',
@@ -148,14 +154,16 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
         },
         {
             id: 'punch-log',
-            name: 'Punch Log',
+            name: 'In / out times',
+            description: 'When each staff member came in and went out.',
             icon: <TimeIcon className="w-6 h-6" />,
             iconBg: 'bg-slate-50',
             iconColor: 'text-slate-600',
             page: 'hr-punch-log' as Page,
             permission: 'hr.attendance.punch-log',
             category: 'attendance',
-            comingSoon: true
+            // The page is live and reachable from the HR tabs, so it is no longer marked "coming soon".
+            comingSoon: false
         }
     ];
 
@@ -168,22 +176,21 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
     return (
         <div className="max-w-7xl mx-auto">
             {activeCategory ? (
-                <div className="mb-5 flex items-center gap-3">
+                <div className="mb-5 flex flex-wrap items-center gap-3">
                     <button
+                        type="button"
                         onClick={() => setActiveCategory(null)}
-                        className="btn-secondary btn-sm"
+                        className="btn-secondary min-h-[44px]"
                     >
-                        <ArrowLeft className="w-3.5 h-3.5" />
-                        Back to Categories
+                        <ArrowLeft className="w-4 h-4" />
+                        Back
                     </button>
-                    <div className="h-5 w-px bg-slate-200" />
                     <h3 className="text-base font-semibold text-slate-900">{activeCategoryMeta?.name}</h3>
-                    <span className="badge-neutral">{visibleModules.length}</span>
                 </div>
             ) : (
                 <div className="mb-5">
-                    <h3 className="text-base font-semibold text-slate-900">Categories</h3>
-                    <p className="text-sm text-slate-500">Choose a category to see its modules.</p>
+                    <h3 className="text-base font-semibold text-slate-900">What do you want to do?</h3>
+                    <p className="text-sm text-slate-500">Tap a box to open it.</p>
                 </div>
             )}
 
@@ -193,6 +200,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
                         <ModuleTile
                             key={category.id}
                             name={category.name}
+                            description={category.description}
                             icon={category.icon}
                             iconClassName={`${category.iconBg} ${category.iconColor}`}
                             onClick={() => setActiveCategory(category.id)}
@@ -200,13 +208,14 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
                     ))
                 ) : visibleModules.length === 0 ? (
                     <div className="col-span-full card">
-                        <EmptyState title="No modules available" description="You don't have access to any modules in this category." />
+                        <EmptyState title="Nothing to open here" description="You do not have access to anything in this group. Ask your admin if you need it." />
                     </div>
                 ) : (
                     visibleModules.map((module) => (
                         <ModuleTile
                             key={module.id}
                             name={module.name}
+                            description={(module as { description?: string }).description}
                             icon={module.icon}
                             iconClassName={`${module.iconBg} ${module.iconColor}`}
                             comingSoon={module.comingSoon}

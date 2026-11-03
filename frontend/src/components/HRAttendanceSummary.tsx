@@ -3,37 +3,10 @@ import { hr } from '../api';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { useAuth } from '../contexts/AuthContext';
-import { LoadingState, EmptyState, ErrorState } from './ui';
-
-const generateMonthOptions = () => {
-  const options = [];
-  const currentDate = new Date();
-
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-    const year = d.getFullYear();
-    const month = d.getMonth();
-
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-
-    const monthNameFull = d.toLocaleDateString('en-US', { month: 'long' });
-    const monthNameShort = d.toLocaleDateString('en-US', { month: 'short' });
-
-    const value = `${year}-${String(month + 1).padStart(2, '0')}`;
-    const firstDayStr = `01 ${monthNameShort} ${year}`;
-    const lastDayStr = `${String(lastDay.getDate()).padStart(2, '0')} ${monthNameShort} ${year}`;
-
-    const label = `${monthNameFull}-${year}(${firstDayStr} To ${lastDayStr})`;
-
-    const localFirstDayStr = new Date(firstDay.getTime() - (firstDay.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-    const localLastDayStr = new Date(lastDay.getTime() - (lastDay.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-
-    options.push({ value, label, firstDay: localFirstDayStr, lastDay: localLastDayStr });
-  }
-
-  return options;
-};
+import { LoadingState, EmptyState, ErrorState, DataList, Button } from './ui';
+import type { Column } from './ui';
+import { ArrowLeft, Download, RotateCw } from 'lucide-react';
+import { generateMonthOptions, formatTime, formatDay, AttendanceStatus, AttendanceFilters, branchesOf, statusInfo } from './staff/attendanceUi';
 
 interface AttendanceRecord {
   id: number;
@@ -258,176 +231,265 @@ const HRAttendanceSummary: React.FC = () => {
     return `${hour}:${m}${ampm}`;
   };
 
+  // Absent / leave cells are tinted, but always also carry a word (never colour alone).
   const getCellColorClass = (status: string) => {
     status = (status || '').toUpperCase();
-    if (status === 'ABSENT' || status.includes('LEAVE')) return 'bg-amber-400 text-white'; // Tan/amber marks absent or leave
+    if (status === 'ABSENT' || status.includes('LEAVE')) return 'bg-amber-100 text-amber-900'; // marks absent or leave
     return '';
   };
 
+  /* ---------------- presentation-only state (no effect on data or export) ---------------- */
+  const [branch, setBranch] = useState('');
+  const [view, setView] = useState<'cards' | 'grid'>(() => {
+    try { return window.matchMedia('(min-width: 768px)').matches ? 'grid' : 'cards'; } catch { return 'cards'; }
+  });
+  const [openStaffId, setOpenStaffId] = useState<string | null>(null);
+
+  const branches = useMemo(() => branchesOf(records), [records]);
+  const visibleStaff = useMemo(
+    () => (branch ? groupedData.filter(s => s.branch_name === branch) : groupedData),
+    [groupedData, branch]
+  );
+  const openStaff = openStaffId ? visibleStaff.find(s => s.employee_id === openStaffId) || null : null;
+
+  // Counts shown on the phone cards (display only; the Excel file is unchanged).
+  const countsFor = (staff: StaffMonthlyData) => {
+    const c = { present: 0, half: 0, absent: 0, leave: 0, late: 0, off: 0 };
+    Object.values(staff.daily_records).forEach(r => {
+      const st = (r.attendance_status || '').toUpperCase();
+      if (st === 'PRESENT') c.present++;
+      else if (st === 'HALF_DAY') c.half++;
+      else if (st === 'ABSENT') c.absent++;
+      else if (st.includes('LEAVE')) c.leave++;
+      else if (st === 'HOLIDAY' || st === 'WEEK_OFF' || st === 'WEEKOFF') c.off++;
+      if ((st === 'PRESENT' || st === 'HALF_DAY') && r.late_minutes > 0) c.late++;
+    });
+    return c;
+  };
+
+  const staffColumns: Column<StaffMonthlyData & { _c: ReturnType<typeof countsFor> }>[] = [
+    { key: 'staff_name', header: 'Staff', primary: true },
+    { key: 'designation', header: 'Designation', secondary: true, render: s => `${s.designation} · ${s.employee_id}` },
+    { key: 'present', header: 'Present', align: 'center', render: s => <span className="badge-success">{s._c.present} Present</span> },
+    { key: 'absent', header: 'Absent', align: 'center', render: s => <span className={s._c.absent ? 'badge-danger' : 'badge-neutral'}>{s._c.absent} Absent</span> },
+    { key: 'leave', header: 'Leave', align: 'center', render: s => <span className={s._c.leave ? 'badge-warning' : 'badge-neutral'}>{s._c.leave} Leave</span> },
+    { key: 'half', header: 'Half day', align: 'center', render: s => <span className="badge-neutral">{s._c.half} Half day</span> },
+    { key: 'late', header: 'Late', align: 'center', render: s => <span className={s._c.late ? 'badge-warning' : 'badge-neutral'}>{s._c.late} Late</span> },
+    { key: 'off', header: 'Holiday / Week off', align: 'center', hideOnMobile: true, render: s => <span className="badge-neutral">{s._c.off} Off</span> },
+  ];
+
+  const syncAndRefresh = async () => {
+    try {
+      setIsSyncing(true);
+      await hr.processAttendanceSync();
+      await fetchAttendance();
+    } catch (err: any) {
+      setError(err.message || 'Failed to process sync');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   return (
-    <div className="h-full flex flex-col">
-      <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <div className="flex flex-col">
+      <div className="mb-4 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">Attendance Summary</h2>
+          <h2 className="text-base font-semibold text-slate-900">Attendance</h2>
+          <p className="text-sm text-slate-500">Who was present, absent or on leave this month.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
+        <div className="grid grid-cols-1 sm:flex gap-2">
+          <Button
+            variant="success"
             onClick={exportToExcel}
             disabled={loading || groupedData.length === 0}
-            className="btn-success"
+            icon={<Download className="w-4 h-4" />}
+            className="min-h-[44px]"
           >
             Download Excel
-          </button>
-          <button
-            onClick={async () => {
-              try {
-                setIsSyncing(true);
-                await hr.processAttendanceSync();
-                await fetchAttendance();
-              } catch (err: any) {
-                setError(err.message || 'Failed to process sync');
-              } finally {
-                setIsSyncing(false);
-              }
-            }}
+          </Button>
+          <Button
+            onClick={syncAndRefresh}
             disabled={isSyncing || loading}
-            className="btn-primary"
+            loading={isSyncing}
+            icon={<RotateCw className="w-4 h-4" />}
+            className="min-h-[44px]"
           >
-            {isSyncing ? 'Processing...' : 'Process & Refresh'}
-          </button>
+            {isSyncing ? 'Getting latest times…' : 'Get latest times'}
+          </Button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="card p-4 mb-4 flex flex-wrap gap-4 items-end">
-        <div>
-          <label className="label">-Select- Month</label>
-          <select value={selectedMonth} onChange={handleMonthChange} className="input">
-            <option value="">-Select-</option>
-            {monthOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label">Employee Search</label>
-          <input type="text" name="employee" placeholder="Name or ID..." value={filters.employee} onChange={handleFilterChange} disabled={!isManager} className={`input ${!isManager ? 'bg-slate-100 cursor-not-allowed' : ''}`} />
-        </div>
-        <div>
-          <label className="label">Status</label>
-          <select name="status" value={filters.status} onChange={handleFilterChange} className="input">
-            <option value="ALL">All Statuses</option>
-            <option value="PRESENT">Present</option>
-            <option value="ABSENT">Absent</option>
-            <option value="HALF_DAY">Half Day</option>
-          </select>
-        </div>
-      </div>
+      <AttendanceFilters
+        monthOptions={monthOptions}
+        selectedMonth={selectedMonth}
+        onMonthChange={handleMonthChange}
+        branches={branches}
+        branch={branch}
+        onBranchChange={v => { setBranch(v); setOpenStaffId(null); }}
+        employee={filters.employee}
+        onFilterChange={handleFilterChange}
+        employeeDisabled={!isManager}
+        status={filters.status}
+      />
 
-      {/* Main Grid Table */}
-      <div className="flex-1 card overflow-hidden flex flex-col">
-        {loading ? (
-          <LoadingState label="Loading attendance data…" />
-        ) : error ? (
-          <ErrorState title="Couldn't load attendance" message={error} onRetry={fetchAttendance} />
-        ) : groupedData.length === 0 ? (
-          <EmptyState title="No attendance records" description="No attendance records found for the selected period." />
-        ) : (
-          <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 250px)' }}>
-            <table className="w-full text-xs text-center whitespace-nowrap table-fixed border-collapse" style={{ minWidth: 'max-content' }}>
-              <thead className="bg-slate-50 text-slate-600 border-b border-slate-300 sticky top-0 z-10">
-                <tr>
-                  <th rowSpan={2} className="px-2 py-2 border border-slate-300 sticky left-0 z-20 w-10 bg-slate-50 border-r-2">Sno</th>
-                  <th rowSpan={2} className="px-3 py-2 border border-slate-300 sticky left-[40px] z-20 w-32 bg-slate-50 border-r-2">Staff Employee Id</th>
-                  <th rowSpan={2} className="px-3 py-2 border border-slate-300 sticky left-[168px] z-20 w-48 bg-slate-50 text-left border-r-2">Staff name</th>
-                  <th rowSpan={2} className="px-3 py-2 border border-slate-300 sticky left-[360px] z-20 w-40 bg-slate-50 text-left border-r-4 shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]">Designation</th>
-                  {/* 
-                  <th rowSpan={2} className="px-2 py-2 border border-slate-300 w-16">Total days</th>
-                  <th rowSpan={2} className="px-2 py-2 border border-slate-300 w-16">WeekOff</th>
-                  <th rowSpan={2} className="px-2 py-2 border border-slate-300 w-16">Holidays</th>
-                  <th rowSpan={2} className="px-2 py-2 border border-slate-300 w-16">Present</th>
-                  <th rowSpan={2} className="px-2 py-2 border border-slate-300 w-16 border-r-4">Absent</th>*/}
+      {branch && groupedData.length > 0 && (
+        <p className="text-sm text-slate-500 mb-3">Showing {branch} only. The Excel file still has all branches.</p>
+      )}
 
-                  {datesInMonth.map(date => (
-                    <th key={date} colSpan={2} className="px-2 py-1 border border-slate-300 bg-slate-50 font-extrabold text-[11px] w-[240px] min-w-[240px]">
-                      {monthDisplayFormat(date)}
-                    </th>
-                  ))}
-                </tr>
-                <tr>
-                  {datesInMonth.map(date => (
-                    <React.Fragment key={`${date}-sub`}>
-                      <th className="px-2 py-2 border border-slate-300 bg-white w-[120px] min-w-[120px]">In Time</th>
-                      <th className="px-2 py-2 border border-slate-300 bg-white w-[120px] min-w-[120px]">Out Time</th>
-                    </React.Fragment>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {groupedData.map((staff, index) => (
-                  <tr key={staff.employee_id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-2 py-2 border border-slate-300 sticky left-0 bg-white z-10 border-r-2">{index + 1}</td>
-                    <td className="px-3 py-2 border border-slate-300 sticky left-[40px] bg-white z-10 border-r-2">{staff.employee_id}</td>
-                    <td className="px-3 py-2 border border-slate-300 sticky left-[168px] bg-white z-10 text-left font-semibold truncate max-w-[192px] border-r-2" title={staff.staff_name}>{staff.staff_name}</td>
-                    <td className="px-3 py-2 border border-slate-300 sticky left-[360px] bg-white z-10 text-left truncate max-w-[160px] border-r-4 shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]" title={staff.designation}>{staff.designation}</td>
-
-                    {/*<td className="px-2 py-2 border border-slate-300 font-medium">{staff.total_days}</td>
-                    <td className="px-2 py-2 border border-slate-300">{staff.weekoffs}</td>
-                    <td className="px-2 py-2 border border-slate-300">{staff.holidays}</td>
-                    <td className="px-2 py-2 border border-slate-300 font-medium">{staff.present}</td>
-                    <td className="px-2 py-2 border border-slate-300 font-medium text-red-500 border-r-4">{staff.absent}</td>*/}
-
-                    {datesInMonth.map(date => {
-                      const record = staff.daily_records[date];
-                      if (!record) {
-                        return (
-                          <React.Fragment key={`${date}-empty`}>
-                            <td className="px-2 py-2 border border-slate-300 text-slate-400">-</td>
-                            <td className="px-2 py-2 border border-slate-300 text-slate-400">-</td>
-                          </React.Fragment>
-                        );
-                      }
-
-                      const status = (record.attendance_status || '').toUpperCase();
-                      const colorClass = getCellColorClass(status);
-
-                      // If absent/leave, show a spanned block or single block with '1'
-                      if (['ABSENT', 'LEAVE'].some(s => status.includes(s))) {
-                        return (
-                          <td key={`${date}-absent`} colSpan={2} className={`px-2 py-2 border border-slate-300 font-bold ${colorClass}`}>
-                            1
-                          </td>
-                        );
-                      }
-
-                      if (status === 'HALF_DAY') {
-                        return (
-                          <React.Fragment key={`${date}-half`}>
-                            <td className="px-2 py-2 border border-slate-300">{formatTime12h(record.first_in)}</td>
-                            <td className={`px-2 py-2 border border-slate-300 font-bold ${getCellColorClass('ABSENT')}`}>0.5</td>
-                          </React.Fragment>
-                        );
-                      }
-
-                      // Regular punch data
-                      return (
-                        <React.Fragment key={`${date}-punch`}>
-                          <td className={`px-2 py-2 border border-slate-300 ${colorClass}`}>
-                            {formatTime12h(record.first_in)}
-                          </td>
-                          <td className={`px-2 py-2 border border-slate-300 ${colorClass}`}>
-                            {formatTime12h(record.last_out)}
-                          </td>
-                        </React.Fragment>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {loading ? (
+        <div className="card"><LoadingState label="Loading attendance…" /></div>
+      ) : error ? (
+        <div className="card"><ErrorState title="Couldn't load attendance" message={error} onRetry={fetchAttendance} /></div>
+      ) : visibleStaff.length === 0 ? (
+        <div className="card"><EmptyState title="No attendance found" description="Nothing was found for this month. Try another month or clear the search." /></div>
+      ) : openStaff ? (
+        /* ---------- One person, day by day ---------- */
+        <div className="card">
+          <div className="card-header flex flex-col sm:flex-row sm:items-center gap-3">
+            <button type="button" className="btn-secondary min-h-[44px] self-start" onClick={() => setOpenStaffId(null)}>
+              <ArrowLeft className="w-4 h-4" /> All staff
+            </button>
+            <div className="min-w-0">
+              <p className="font-semibold text-slate-900 break-words">{openStaff.staff_name}</p>
+              <p className="text-sm text-slate-500">{openStaff.designation} · {openStaff.employee_id}</p>
+            </div>
           </div>
-        )}
-      </div>
+          <ul className="divide-y divide-slate-100">
+            {datesInMonth.map(date => {
+              const r = openStaff.daily_records[date];
+              const st = (r?.attendance_status || '').toUpperCase();
+              const showTimes = r && !(st === 'ABSENT' || st.includes('LEAVE') || st === 'HOLIDAY' || st === 'WEEK_OFF');
+              return (
+                <li key={date} className="px-4 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-900">{formatDay(date)}</p>
+                    {showTimes && (
+                      <p className="text-sm text-slate-600">In {formatTime(r.first_in)} · Out {formatTime(r.last_out)}</p>
+                    )}
+                  </div>
+                  <AttendanceStatus status={r ? r.attendance_status : null} lateMinutes={r?.late_minutes} />
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : (
+        <>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-slate-500">{visibleStaff.length} staff</p>
+            <div className="segmented" role="tablist" aria-label="How to show attendance">
+              <button type="button" role="tab" aria-selected={view === 'cards'} onClick={() => setView('cards')}
+                className={`segmented-item min-h-[40px] ${view === 'cards' ? 'segmented-item-active' : ''}`}>By person</button>
+              <button type="button" role="tab" aria-selected={view === 'grid'} onClick={() => setView('grid')}
+                className={`segmented-item min-h-[40px] ${view === 'grid' ? 'segmented-item-active' : ''}`}>Full month table</button>
+            </div>
+          </div>
+
+          {view === 'cards' ? (
+            <>
+              <p className="text-sm text-slate-500 mb-2">Tap a name to see each day.</p>
+              <DataList
+                columns={staffColumns}
+                rows={visibleStaff.map(s => ({ ...s, _c: countsFor(s) }))}
+                rowKey={s => s.employee_id}
+                onRowClick={s => setOpenStaffId(s.employee_id)}
+              />
+            </>
+          ) : (
+            /* ---------- Full month grid (truly a grid: scrolls sideways inside its card) ---------- */
+            <div className="card overflow-hidden">
+              <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 'calc(100vh - 250px)' }}>
+                <table className="w-full text-xs text-center whitespace-nowrap table-fixed border-collapse" style={{ minWidth: 'max-content' }}>
+                  <thead className="bg-slate-50 text-slate-600 border-b border-slate-300 sticky top-0 z-10">
+                    <tr>
+                      <th rowSpan={2} className="px-2 py-2 border border-slate-300 w-10 bg-slate-50 md:sticky md:left-0 md:z-20 border-r-2">No.</th>
+                      <th rowSpan={2} className="px-3 py-2 border border-slate-300 w-32 bg-slate-50 md:sticky md:left-[40px] md:z-20 border-r-2">Employee number</th>
+                      <th rowSpan={2} className="px-3 py-2 border border-slate-300 w-48 bg-slate-50 text-left sticky left-0 md:left-[168px] z-20 border-r-2">Staff name</th>
+                      <th rowSpan={2} className="px-3 py-2 border border-slate-300 w-40 bg-slate-50 text-left md:sticky md:left-[360px] md:z-20 border-r-4 md:shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]">Designation</th>
+                      {datesInMonth.map(date => (
+                        <th key={date} colSpan={2} className="px-2 py-1 border border-slate-300 bg-slate-50 font-extrabold text-[11px] w-[240px] min-w-[240px]">
+                          {monthDisplayFormat(date)}
+                        </th>
+                      ))}
+                    </tr>
+                    <tr>
+                      {datesInMonth.map(date => (
+                        <React.Fragment key={`${date}-sub`}>
+                          <th className="px-2 py-2 border border-slate-300 bg-white w-[120px] min-w-[120px]">In</th>
+                          <th className="px-2 py-2 border border-slate-300 bg-white w-[120px] min-w-[120px]">Out</th>
+                        </React.Fragment>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {visibleStaff.map((staff, index) => (
+                      <tr key={staff.employee_id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-2 py-2 border border-slate-300 bg-white md:sticky md:left-0 md:z-10 border-r-2">{index + 1}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-white md:sticky md:left-[40px] md:z-10 border-r-2">{staff.employee_id}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-white sticky left-0 md:left-[168px] z-10 text-left font-semibold truncate max-w-[192px] border-r-2" title={staff.staff_name}>{staff.staff_name}</td>
+                        <td className="px-3 py-2 border border-slate-300 bg-white md:sticky md:left-[360px] md:z-10 text-left truncate max-w-[160px] border-r-4 md:shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]" title={staff.designation}>{staff.designation}</td>
+
+                        {datesInMonth.map(date => {
+                          const record = staff.daily_records[date];
+                          if (!record) {
+                            return (
+                              <React.Fragment key={`${date}-empty`}>
+                                <td className="px-2 py-2 border border-slate-300 text-slate-400">-</td>
+                                <td className="px-2 py-2 border border-slate-300 text-slate-400">-</td>
+                              </React.Fragment>
+                            );
+                          }
+
+                          const status = (record.attendance_status || '').toUpperCase();
+                          const colorClass = getCellColorClass(status);
+
+                          // Absent / leave: one block spanning In and Out, in words
+                          if (['ABSENT', 'LEAVE'].some(s => status.includes(s))) {
+                            return (
+                              <td key={`${date}-absent`} colSpan={2} className={`px-2 py-2 border border-slate-300 font-bold ${colorClass}`}>
+                                {statusInfo(status).label}
+                              </td>
+                            );
+                          }
+
+                          if (status === 'HALF_DAY') {
+                            return (
+                              <React.Fragment key={`${date}-half`}>
+                                <td className="px-2 py-2 border border-slate-300">{formatTime12h(record.first_in)}</td>
+                                <td className={`px-2 py-2 border border-slate-300 font-bold ${getCellColorClass('ABSENT')}`}>Half day</td>
+                              </React.Fragment>
+                            );
+                          }
+
+                          if (status === 'HOLIDAY' || status === 'WEEK_OFF') {
+                            return (
+                              <td key={`${date}-off`} colSpan={2} className="px-2 py-2 border border-slate-300 text-slate-500">
+                                {statusInfo(status).label}
+                              </td>
+                            );
+                          }
+
+                          // Regular punch data
+                          return (
+                            <React.Fragment key={`${date}-punch`}>
+                              <td className={`px-2 py-2 border border-slate-300 ${colorClass}`}>
+                                {formatTime12h(record.first_in)}{record.late_minutes > 0 && <span className="ml-1 text-amber-700 font-semibold">(Late)</span>}
+                              </td>
+                              <td className={`px-2 py-2 border border-slate-300 ${colorClass}`}>
+                                {formatTime12h(record.last_out)}
+                              </td>
+                            </React.Fragment>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

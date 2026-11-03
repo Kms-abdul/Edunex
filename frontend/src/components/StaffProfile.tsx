@@ -12,6 +12,8 @@ import { StaffLoginAccessTab } from './hr/staff-profile/StaffLoginAccessTab';
 import { UpdateStaffDetails } from './hr/UpdateStaffDetails';
 import { Page } from '../App';
 import { LoadingState, EmptyState, ErrorState } from './ui';
+import { ArrowLeft, Pencil } from 'lucide-react';
+import { formatTime, AttendanceStatus } from './staff/attendanceUi';
 
 export interface StaffProfileData {
     id: number;
@@ -85,7 +87,7 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ staffId, onBack, navigateTo
     if (loading) {
         return (
             <div className="card">
-                <LoadingState label="Loading staff profile…" />
+                <LoadingState label="Loading staff details…" />
             </div>
         );
     }
@@ -95,15 +97,15 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ staffId, onBack, navigateTo
             <div className="card">
                 {staffId ? (
                     <ErrorState
-                        title={error ? "Couldn't load staff profile" : 'Profile not found'}
-                        message={error ? 'The staff profile could not be loaded. Please try again.' : 'This staff record does not exist or has been removed.'}
+                        title={error ? "Couldn't load staff details" : 'Staff not found'}
+                        message={error ? 'Please check your internet and try again.' : 'This staff record does not exist or has been removed.'}
                         onRetry={() => { setError(null); fetchProfile(); }}
                     />
                 ) : (
                     <EmptyState
                         icon={<UserIcon className="w-6 h-6" />}
-                        title="No staff profile linked to this account"
-                        description="Your login isn't connected to a staff record yet. Ask your HR administrator to link your account to your staff profile."
+                        title="Your details are not linked yet"
+                        description="Your login is not linked to a staff record yet. Please ask the HR office to link it."
                         action={onBack && <button type="button" className="btn-secondary btn-sm" onClick={onBack}>← Back</button>}
                     />
                 )}
@@ -112,13 +114,13 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ staffId, onBack, navigateTo
     }
 
     const tabs = [
-        { id: 'overview', label: 'Overview' },
+        { id: 'overview', label: 'Summary' },
         { id: 'personal', label: 'Personal' },
-        { id: 'employment', label: 'Employment' },
-        ...(hasPermission('hr.hr.staff-bank-details', 'read') || hasPermission('hr.hr.staff-payroll', 'read') ? [{ id: 'bank', label: 'Bank & Statutory' }] : []),
-        ...(hasPermission('hr.hr.staff-payroll', 'read') ? [{ id: 'salary', label: 'Salary & Payroll' }] : []),
+        { id: 'employment', label: 'Job' },
+        ...(hasPermission('hr.hr.staff-bank-details', 'read') || hasPermission('hr.hr.staff-payroll', 'read') ? [{ id: 'bank', label: 'Bank & PF' }] : []),
+        ...(hasPermission('hr.hr.staff-payroll', 'read') ? [{ id: 'salary', label: 'Salary' }] : []),
         ...(hasPermission('hr.hr.staff-documents', 'read') ? [{ id: 'documents', label: 'Documents' }] : []),
-        ...(hasPermission('hr.hr.staff-login', 'read') ? [{ id: 'login', label: 'Login & Access' }] : []),
+        ...(hasPermission('hr.hr.staff-login', 'read') ? [{ id: 'login', label: 'Login' }] : []),
     ];
 
     const canEditProfile = hasPermission('hr.hr.staff-update', 'write') || hasPermission('hr.hr.staff-master', 'write');
@@ -139,69 +141,100 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ staffId, onBack, navigateTo
         );
     }
 
-    return (
-        <div className="space-y-6">
-            {/* Header Area */}
-            <div className="card overflow-hidden">
-                <div className="h-32 bg-gradient-to-r from-brand-600 to-brand-800 relative">
-                    <div className="absolute top-4 right-6 flex gap-3">
-                        {(hasPermission('hr.hr.staff-update', 'write') || hasPermission('hr.hr.staff-master', 'write')) && (
-                            <button
-                                onClick={() => openEditor()}
-                                className="text-sm font-semibold text-white bg-white/20 hover:bg-white/30 px-4 py-1.5 rounded-lg transition"
-                            >
-                                Edit Profile
-                            </button>
-                        )}
-                        {onBack && (
-                            <button
-                                onClick={onBack}
-                                className="text-sm font-semibold text-white bg-black/20 hover:bg-black/30 px-4 py-1.5 rounded-lg transition"
-                            >
-                                ← Back
-                            </button>
-                        )}
-                    </div>
-                </div>
-                <div className="px-6 md:px-8 pb-6 relative">
-                    <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-                        <div className="w-24 h-24 rounded-full border-4 border-white bg-slate-100 flex items-center justify-center flex-shrink-0 shadow-md -mt-12 z-10 relative">
-                            <UserIcon className="w-12 h-12 text-slate-400" />
-                        </div>
+    const initials = (profile.display_name || `${profile.first_name || ''} ${profile.last_name || ''}`)
+        .split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join('') || '?';
+    const isActive = profile.staff_status_name?.toLowerCase() === 'active' || profile.employment_status?.toLowerCase() === 'active';
+    const today = profile.today_attendance;
 
-                        <div className="flex-1 pt-2 md:pt-4">
-                            <h1 className="text-xl font-semibold text-slate-900 tracking-tight uppercase">{profile.display_name}</h1>
-                            <p className="text-slate-500 font-medium">
-                                {profile.designation_name ?? 'No Designation'} • {profile.department_name ?? 'No Department'}
+    return (
+        <div className="space-y-4 sm:space-y-6">
+            {/* Summary first: who this is, how to reach them, today's attendance */}
+            <div className="card overflow-hidden">
+                <div className="p-4 sm:p-6">
+                    <div className="flex items-start gap-4">
+                        <div
+                            className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-600/10 flex items-center justify-center flex-shrink-0 text-xl sm:text-2xl font-semibold"
+                            aria-hidden="true"
+                        >
+                            {initials}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-lg sm:text-xl font-semibold text-slate-900 leading-snug break-words">{profile.display_name}</h1>
+                            <p className="text-sm text-slate-600 break-words">
+                                {profile.designation_name ?? 'No designation'} · {profile.department_name ?? 'No department'}
                             </p>
-                            <div className="mt-2 flex flex-wrap items-center gap-3">
-                                <span className="badge-brand">{profile.staff_code}</span>
-                                {profile.employee_id && (
-                                    <span className="badge-neutral">ID: {profile.employee_id}</span>
-                                )}
-                                <span className={
-                                    profile.staff_status_name?.toLowerCase() === 'active' || profile.employment_status.toLowerCase() === 'active'
-                                        ? 'badge-success'
-                                        : 'badge-neutral'
-                                }>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <span className={isActive ? 'badge-success' : 'badge-neutral'}>
                                     {profile.staff_status_name ?? profile.employment_status}
                                 </span>
+                                <span className="badge-brand">{profile.staff_code}</span>
+                                {profile.employee_id && (
+                                    <span className="badge-neutral">Employee number {profile.employee_id}</span>
+                                )}
                             </div>
                         </div>
                     </div>
+
+                    <dl className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                        <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+                            <dt className="text-xs text-slate-500">Phone</dt>
+                            <dd className="font-medium text-slate-900">
+                                {profile.mobile ? <a href={`tel:${profile.mobile}`} className="text-brand-700 hover:underline">{profile.mobile}</a> : '—'}
+                            </dd>
+                        </div>
+                        {profile.branch_name && (
+                            <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+                                <dt className="text-xs text-slate-500">Branch</dt>
+                                <dd className="font-medium text-slate-900 break-words">{profile.branch_name}</dd>
+                            </div>
+                        )}
+                        {today !== undefined && (
+                            <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+                                <dt className="text-xs text-slate-500">Today</dt>
+                                <dd className="font-medium text-slate-900 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    {today ? (
+                                        <>
+                                            <span>In {formatTime(today.first_in)} · Out {formatTime(today.last_out)}</span>
+                                            <AttendanceStatus status={today.status} />
+                                        </>
+                                    ) : (
+                                        <span className="text-slate-600">No in / out time yet</span>
+                                    )}
+                                </dd>
+                            </div>
+                        )}
+                    </dl>
+
+                    {((hasPermission('hr.hr.staff-update', 'write') || hasPermission('hr.hr.staff-master', 'write')) || onBack) && (
+                        <div className="mt-4 grid grid-cols-1 sm:flex gap-2">
+                            {(hasPermission('hr.hr.staff-update', 'write') || hasPermission('hr.hr.staff-master', 'write')) && (
+                                <button type="button" onClick={() => openEditor()} className="btn-primary min-h-[44px]">
+                                    <Pencil className="w-4 h-4" /> Edit details
+                                </button>
+                            )}
+                            {onBack && (
+                                <button type="button" onClick={onBack} className="btn-secondary min-h-[44px]">
+                                    <ArrowLeft className="w-4 h-4" /> Back
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
-                {/* Tab Navigation */}
-                <div className="border-t border-slate-200 px-6 md:px-8">
-                    <div className="flex overflow-x-auto hide-scrollbar">
+                {/* Tabs: a strip that scrolls sideways on phones, big enough to tap */}
+                <div className="border-t border-slate-200 px-2 sm:px-4 py-2">
+                    <div className="flex gap-1 overflow-x-auto" role="tablist" aria-label="Staff details sections">
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}
+                                type="button"
+                                role="tab"
+                                aria-selected={activeTab === tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`px-4 py-4 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors
+                                className={`min-h-[44px] px-4 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors flex-shrink-0
                                     ${activeTab === tab.id
-                                        ? 'border-brand-600 text-brand-600'
-                                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                                        ? 'bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-600/20'
+                                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                                     }`}
                             >
                                 {tab.label}
@@ -212,7 +245,7 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ staffId, onBack, navigateTo
             </div>
 
             {/* Tab Content Area */}
-            <div className="card p-6 md:p-8">
+            <div className="card p-4 sm:p-6 md:p-8">
                 {activeTab === 'overview' && <StaffOverviewTab profile={profile} />}
                 {activeTab === 'personal' && <StaffPersonalTab profile={profile} />}
                 {activeTab === 'employment' && <StaffEmploymentTab profile={profile} />}
