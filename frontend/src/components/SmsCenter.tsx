@@ -225,7 +225,7 @@ const SmsReportsTab: React.FC = () => {
                             { label: '⏭ Skipped',      value: grand.skipped,       bg: 'bg-amber-400',   text: 'text-white' },
                             { label: '📈 Delivery Rate', value: `${grand.delivery_rate}%`, bg: 'bg-brand-600', text: 'text-white' },
                         ].map(c => (
-                            <div key={c.label} className={`${c.bg} rounded-xl p-4 flex flex-col items-center justify-center shadow-sm`}>
+                            <div key={c.label} className={`${c.bg} rounded-xl p-4 flex flex-col items-center justify-center shadow-card`}>
                                 <span className={`text-2xl font-bold ${c.text}`}>{c.value}</span>
                                 <span className={`text-xs mt-1 opacity-80 ${c.text}`}>{c.label}</span>
                             </div>
@@ -312,10 +312,10 @@ const SmsReportsTab: React.FC = () => {
                         </div>
                         <div className="overflow-x-auto max-h-96">
                             <table className="min-w-full text-sm divide-y divide-slate-100">
-                                <thead className="sticky top-0">
+                                <thead className="bg-slate-50 sticky top-0">
                                     <tr>
                                                                                 {['Sent At', 'Type', 'Event', 'Student', 'Phone', 'Branch', 'Status', 'Reason'].map(h => (
-                                            <th key={h} className="px-3 py-2.5 text-left">
+                                            <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                                                 {h}
                                             </th>
                                         ))}
@@ -337,7 +337,7 @@ const SmsReportsTab: React.FC = () => {
                                             <td className="px-3 py-2 text-xs font-mono text-slate-600">{r.phone}</td>
                                             <td className="px-3 py-2 text-xs text-slate-500">{r.branch_name || '—'}</td>
                                             <td className="px-3 py-2">
-                                                <span className={`${STATUS_COLORS[r.status] || 'badge-neutral'}`}>
+                                                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${STATUS_COLORS[r.status] || 'bg-slate-100 text-slate-600'}`}>
                                                     {r.status}
                                                 </span>
                                             </td>
@@ -357,7 +357,7 @@ const SmsReportsTab: React.FC = () => {
                             </table>
                         </div>
                         {totalPages > 1 && (
-                            <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50">
+                            <div className="px-4 py-3 border-t border-slate-200 flex items-center justify-between bg-slate-50">
                                 <button onClick={() => fetchReport(page - 1)} disabled={page <= 1 || loading}
                                     className="btn-secondary btn-sm">
                                     ← Prev
@@ -726,7 +726,7 @@ const TemplatesTab: React.FC = () => {
                     <div>
                         <label className="label">Preview (sample data)</label>
                         <div className="rounded-2xl bg-slate-100 p-4 min-h-[160px]">
-                            <div className="bg-white rounded-xl rounded-tl-none shadow-sm p-3 text-sm text-slate-800 whitespace-pre-wrap break-words">
+                            <div className="bg-white rounded-xl rounded-tl-none shadow-card p-3 text-sm text-slate-800 whitespace-pre-wrap break-words">
                                 {preview || <span className="text-slate-300">Your message will appear here…</span>}
                             </div>
                         </div>
@@ -755,7 +755,7 @@ const TemplatesTab: React.FC = () => {
                 <div>
                     <label className="label">Event</label>
                     <select value={eventFilter} onChange={e => setEventFilter(e.target.value)}
-                        className="input w-auto">
+                        className="input">
                         <option value="">All events</option>
                         {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
                     </select>
@@ -763,7 +763,7 @@ const TemplatesTab: React.FC = () => {
                 <div>
                     <label className="label">Status</label>
                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-                        className="input w-auto">
+                        className="input">
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
                         <option value="all">All</option>
@@ -796,12 +796,12 @@ const TemplatesTab: React.FC = () => {
             )}
 
             {!error && (
-                <div className="card overflow-x-auto">
+                <div className="border border-slate-200 rounded-lg overflow-x-auto">
                     <table className="min-w-full text-sm divide-y divide-slate-200">
-                        <thead className="">
+                        <thead className="bg-slate-50">
                             <tr>
                                 {['Name', 'Event', 'Applies to', 'Send to', 'DLT ID', 'Default', 'Status', 'Updated', ''].map(h => (
-                                    <th key={h} className="px-3 py-2 text-left">{h}</th>
+                                    <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>
                                 ))}
                             </tr>
                         </thead>
@@ -814,7 +814,7 @@ const TemplatesTab: React.FC = () => {
                                     </td>
                                     <td className="px-3 py-2 text-slate-600">{t.event_name}</td>
                                     <td className="px-3 py-2">
-                                        <span className={`${t.is_common ? 'badge-brand' : 'badge-neutral'}`}>
+                                        <span className={`${t.is_common ? 'badge-neutral' : 'badge-brand'}`}>
                                             {t.applies_to}
                                         </span>
                                     </td>
@@ -826,7 +826,7 @@ const TemplatesTab: React.FC = () => {
                                     </td>
                                     <td className="px-3 py-2 space-y-1">
                                         <div>
-                                            <span className={`${t.is_active ? 'badge-success' : 'badge-neutral'}`}>
+                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${t.is_active ? 'badge-success' : 'bg-slate-100 text-slate-500'}`}>
                                                 {t.is_active ? 'Active' : 'Inactive'}
                                             </span>
                                         </div>
@@ -866,7 +866,7 @@ const TemplatesTab: React.FC = () => {
                     <div className="card shadow-pop w-full max-w-2xl max-h-[80vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4">
                             <h4 className="font-semibold text-slate-800">History: {historyFor.name}</h4>
-                            <button onClick={() => setHistoryFor(null)} className="btn-icon">✕</button>
+                            <button onClick={() => setHistoryFor(null)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
                         </div>
                         {history.length === 0 && <p className="text-sm text-slate-400">Loading…</p>}
                         <div className="space-y-3">
@@ -978,7 +978,7 @@ const AccountCard: React.FC<{
     };
 
     const badge = !account
-        ? { text: 'Not set up', cls: 'badge-neutral' }
+        ? { text: 'Not set up', cls: 'bg-slate-100 text-slate-500' }
         : account.is_active
             ? { text: 'Saved · Active', cls: 'badge-success' }
             : { text: 'Saved · Off', cls: 'badge-warning' };
@@ -997,7 +997,7 @@ const AccountCard: React.FC<{
                         </p>
                     )}
                 </div>
-                <span className={`whitespace-nowrap ${badge.cls}`}>{badge.text}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${badge.cls}`}>{badge.text}</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1021,7 +1021,7 @@ const AccountCard: React.FC<{
                             onChange={e => set('auth_token', e.target.value)} className={inputCls} />
                         {canEdit && (
                             <button type="button" onClick={() => setShowToken(s => !s)}
-                                className="btn-secondary btn-sm h-auto">
+                                className="btn-secondary btn-sm">
                                 {showToken ? 'Hide' : 'Show'}
                             </button>
                         )}
@@ -1306,7 +1306,7 @@ const FeeReceiptCard: React.FC = () => {
             : null;
     }
 
-    const selectCls = 'input w-auto disabled:bg-slate-100';
+    const selectCls = 'input disabled:bg-slate-100';
     const status = data.status;
 
     return (
@@ -1596,7 +1596,7 @@ const EventsTab: React.FC = () => {
                                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addField(); } }}
                                 className={inputCls} />
                             <button type="button" onClick={addField}
-                                className="btn-secondary h-auto">
+                                className="btn-secondary">
                                 + Add
                             </button>
                         </div>
@@ -1652,7 +1652,7 @@ const EventsTab: React.FC = () => {
                 <div>
                     <label className="label">Status</label>
                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-                        className="input w-auto">
+                        className="input">
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
                         <option value="all">All</option>
@@ -1679,12 +1679,12 @@ const EventsTab: React.FC = () => {
             {error && <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">{error}</div>}
 
             {!error && (
-                <div className="card overflow-x-auto">
+                <div className="border border-slate-200 rounded-lg overflow-x-auto">
                     <table className="min-w-full text-sm divide-y divide-slate-200">
-                        <thead className="">
+                        <thead className="bg-slate-50">
                             <tr>
                                 {['Name', 'Type', 'Applies to', 'Extra fields', 'Status', 'Updated', ''].map(h => (
-                                    <th key={h} className="px-3 py-2 text-left">{h}</th>
+                                    <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase">{h}</th>
                                 ))}
                             </tr>
                         </thead>
@@ -1697,7 +1697,7 @@ const EventsTab: React.FC = () => {
                                     </td>
                                     <td className="px-3 py-2 text-slate-600">{ev.type_label}</td>
                                     <td className="px-3 py-2">
-                                        <span className={`${ev.is_common ? 'badge-brand' : 'badge-neutral'}`}>
+                                        <span className={`${ev.is_common ? 'badge-neutral' : 'badge-brand'}`}>
                                             {ev.applies_to}
                                         </span>
                                     </td>
@@ -1705,7 +1705,7 @@ const EventsTab: React.FC = () => {
                                         {ev.custom_fields.length ? ev.custom_fields.map(f => `{${f}}`).join(' ') : '—'}
                                     </td>
                                     <td className="px-3 py-2">
-                                        <span className={`${ev.is_active ? 'badge-success' : 'badge-neutral'}`}>
+                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ev.is_active ? 'badge-success' : 'bg-slate-100 text-slate-500'}`}>
                                             {ev.is_active ? 'Active' : 'Inactive'}
                                         </span>
                                     </td>
@@ -1743,7 +1743,7 @@ const EventsTab: React.FC = () => {
                     <div className="card shadow-pop w-full max-w-2xl max-h-[80vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4">
                             <h4 className="font-semibold text-slate-800">History: {historyFor.name}</h4>
-                            <button onClick={() => setHistoryFor(null)} className="btn-icon">✕</button>
+                            <button onClick={() => setHistoryFor(null)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
                         </div>
                         {history.length === 0 && <p className="text-sm text-slate-400">Loading…</p>}
                         <div className="space-y-3">
@@ -1990,7 +1990,7 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
 
             {event && !event.ready && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                    <div className="label">This event can't be sent yet:</div>
+                    <div className="font-medium mb-1">This event can't be sent yet:</div>
                     <ul className="list-disc ml-5">{event.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
                 </div>
             )}
@@ -2037,7 +2037,7 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
                     {/* Step 3: extra fields (General) */}
                     {event.custom_fields.length > 0 && (
                         <div className="space-y-2">
-                            <label className="label">3. Message details</label>
+                            <label className="block text-sm font-medium text-slate-700">3. Message details</label>
                             {event.custom_fields.map(f => (
                                 <div key={f}>
                                     <label className="block text-xs text-slate-500 mb-1 font-mono">{`{${f}}`}</label>
@@ -2051,8 +2051,8 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
 
                     {/* Recipient list */}
                     {recipients.length > 0 && (
-                        <div className="card overflow-hidden">
-                            <div className="p-2 bg-slate-50 border-b border-slate-100 flex items-center gap-3">
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                            <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
                                 <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
                                     <input type="checkbox" checked={selected.size === recipients.length}
                                         ref={el => { if (el) el.indeterminate = selected.size > 0 && selected.size < recipients.length; }}
@@ -2063,13 +2063,13 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
                             </div>
                             <div className="max-h-80 overflow-y-auto">
                                 <table className="min-w-full text-sm divide-y divide-slate-200">
-                                    <thead className="sticky top-0">
+                                    <thead className="bg-slate-50 sticky top-0">
                                         <tr>
                                             <th className="px-3 py-2 w-8"></th>
-                                            <th className="px-3 py-2 text-left">Name</th>
-                                            <th className="px-3 py-2 text-left">Class</th>
-                                            <th className="px-3 py-2 text-left">Phone</th>
-                                            {event.event_type === 'FEE_DUE' && <th className="px-3 py-2 text-right">Overdue</th>}
+                                            <th className="px-3 py-2 text-left font-medium text-slate-500">Name</th>
+                                            <th className="px-3 py-2 text-left font-medium text-slate-500">Class</th>
+                                            <th className="px-3 py-2 text-left font-medium text-slate-500">Phone</th>
+                                            {event.event_type === 'FEE_DUE' && <th className="px-3 py-2 text-right font-medium text-slate-500">Overdue</th>}
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-slate-100">
@@ -2115,7 +2115,7 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
                                 Preview for <strong>{preview.student}</strong> · {preview.count} parent(s) will receive this SMS
                             </div>
                             {preview.text && (
-                                <div className="bg-white rounded-xl rounded-tl-none shadow-sm p-3 text-sm text-slate-800 whitespace-pre-wrap break-words">
+                                <div className="bg-white rounded-xl rounded-tl-none shadow-card p-3 text-sm text-slate-800 whitespace-pre-wrap break-words">
                                     {preview.text}
                                 </div>
                             )}
@@ -2134,7 +2134,7 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
                     <ResultBar result={result} />
                     {result.results.filter(r => r.status !== 'sent').length > 0 && (
                         <div className="border border-slate-200 rounded-lg p-3 text-sm max-h-60 overflow-y-auto">
-                            <div className="label">Not sent:</div>
+                            <div className="font-medium text-slate-700 mb-1">Not sent:</div>
                             {result.results.filter(r => r.status !== 'sent').map(r => (
                                 <div key={r.student_id} className="text-slate-600">
                                     {r.name} — <span className={r.status === 'failed' ? 'text-red-600' : 'text-amber-600'}>{r.status}</span>: {r.reason}
