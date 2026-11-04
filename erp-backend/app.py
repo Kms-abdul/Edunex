@@ -24,6 +24,7 @@ from routes.remittance_routes import bp as remittance_bp
 from routes.reconciliation_routes import bp as reconciliation_bp
 from routes.attendance_routes import bp as attendance_bp
 from routes.report_routes import bp as report_bp
+from routes.dashboard_routes import bp as dashboard_bp
 from routes.org_routes import bp as org_bp
 from routes.academic_routes import bp as academic_bp
 from routes.timetable_routes import timetable_bp
@@ -151,6 +152,7 @@ def create_app():
     app.register_blueprint(reconciliation_bp)
     app.register_blueprint(attendance_bp)
     app.register_blueprint(report_bp)
+    app.register_blueprint(dashboard_bp)
     app.register_blueprint(org_bp)
     app.register_blueprint(academic_bp)
     app.register_blueprint(timetable_bp, url_prefix="/api/timetable")

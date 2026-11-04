@@ -1,12 +1,12 @@
 import React from 'react';
 import { Page } from '../App';
-import TaskHome from './shell/TaskHome';
+import SchoolOverview from './shell/SchoolOverview';
 
 interface MainContentProps {
     navigateTo: (page: Page) => void;
 }
 
-/** Home screen: a plain-language list of the tasks this user can do. */
-const MainContent: React.FC<MainContentProps> = ({ navigateTo }) => <TaskHome navigateTo={navigateTo} />;
+/** Home screen: live information about the school (students, attendance, fees, staff, what's coming up). */
+const MainContent: React.FC<MainContentProps> = () => <SchoolOverview />;
 
 export default MainContent;
