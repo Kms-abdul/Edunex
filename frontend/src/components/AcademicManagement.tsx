@@ -1,5 +1,4 @@
 import React from 'react';
-import { ChevronRight } from 'lucide-react';
 import { Page } from '../App';
 import {
     AcademicIcon,
@@ -11,6 +10,7 @@ import {
     UserIcon,
 } from './icons';
 import PageHeader from './ui/PageHeader';
+import ModuleTile from './ui/ModuleTile';
 
 interface AcademicManagementProps {
     navigateTo: (page: Page) => void;
@@ -31,7 +31,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
     const academicModules: AcademicModule[] = [
         {
             id: 'academic',
-            name: 'Exams, marks and subjects',
+            name: 'Academic',
             hint: 'Enter marks, set up exams and subjects, print report cards',
             icon: <AcademicIcon className="w-6 h-6" />,
             iconBg: 'bg-blue-50',
@@ -56,7 +56,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         },
         {
             id: 'lesson-plan',
-            name: 'Lesson plan',
+            name: 'Lesson Plan',
             icon: <PencilIcon className="w-6 h-6" />,
             iconBg: 'bg-amber-50',
             iconColor: 'text-amber-600',
@@ -64,7 +64,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         },
         {
             id: 'time-table',
-            name: 'Timetable',
+            name: 'Time Table',
             hint: 'See and plan the periods for each class',
             icon: <TimeIcon className="w-6 h-6" />,
             iconBg: 'bg-teal-50',
@@ -73,7 +73,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         },
         {
             id: 'online-exam',
-            name: 'Online exam',
+            name: 'Online Exam',
             icon: <DocumentReportIcon className="w-6 h-6" />,
             iconBg: 'bg-pink-50',
             iconColor: 'text-pink-600',
@@ -81,7 +81,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         },
         {
             id: 'academic-content',
-            name: 'Study material',
+            name: 'Academic Content',
             icon: <DashboardIcon className="w-6 h-6" />,
             iconBg: 'bg-indigo-50',
             iconColor: 'text-indigo-600',
@@ -97,7 +97,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         },
         {
             id: 'online-class',
-            name: 'Online class',
+            name: 'Online Class',
             hint: 'Start or join a live class',
             icon: <UserIcon className="w-6 h-6" />,
             iconBg: 'bg-cyan-50',
@@ -106,7 +106,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         },
         {
             id: 'activity-planner',
-            name: 'Activity planner',
+            name: 'Activity Planner',
             icon: <PencilIcon className="w-6 h-6" />,
             iconBg: 'bg-emerald-50',
             iconColor: 'text-emerald-600',
@@ -114,56 +114,30 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
         }
     ];
 
-    const ready = academicModules.filter(m => m.page && !m.comingSoon);
-    const soon = academicModules.filter(m => m.comingSoon);
-
     return (
         <div className="min-h-full bg-surface-muted">
-            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 sm:py-6">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-6">
                 <PageHeader
-                    eyebrow="Academics"
-                    title="Teaching and exams"
-                    subtitle="What do you want to do?"
+                    title="Academic Management"
+                    subtitle="Manage all academic activities and resources"
                     icon={<AcademicIcon className="w-6 h-6" />}
                     className="mb-5"
                 />
 
-                <section className="card overflow-hidden">
-                    <ul className="divide-y divide-slate-100">
-                        {ready.map(module => (
-                            <li key={module.id}>
-                                <button
-                                    type="button"
-                                    onClick={() => module.page && navigateTo(module.page)}
-                                    className="w-full min-h-[64px] flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 active:bg-slate-100 focus:outline-none focus-visible:bg-brand-50"
-                                >
-                                    <span className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${module.iconBg} ${module.iconColor}`} aria-hidden="true">
-                                        {module.icon}
-                                    </span>
-                                    <span className="min-w-0 flex-1">
-                                        <span className="block text-[15px] font-medium text-slate-900">{module.name}</span>
-                                        {module.hint && <span className="block text-sm text-slate-500">{module.hint}</span>}
-                                    </span>
-                                    <ChevronRight className="w-5 h-5 text-slate-400 flex-shrink-0" aria-hidden="true" />
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                </section>
-
-                {soon.length > 0 && (
-                    <section className="mt-5">
-                        <h2 className="text-sm font-medium text-slate-500 mb-2">Coming soon</h2>
-                        <ul className="flex flex-wrap gap-2">
-                            {soon.map(module => (
-                                <li key={module.id} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-500">
-                                    <span className={`w-5 h-5 flex items-center justify-center ${module.iconColor} opacity-70 [&>svg]:w-4 [&>svg]:h-4`} aria-hidden="true">{module.icon}</span>
-                                    {module.name}
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                )}
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                    {academicModules.map(module => (
+                        <ModuleTile
+                            key={module.id}
+                            name={module.name}
+                            description={module.hint}
+                            icon={module.icon}
+                            iconClassName={`${module.iconBg} ${module.iconColor}`}
+                            active={!!module.page && !module.comingSoon}
+                            comingSoon={module.comingSoon}
+                            onClick={() => module.page && navigateTo(module.page)}
+                        />
+                    ))}
+                </div>
             </div>
         </div>
     );

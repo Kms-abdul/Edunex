@@ -12,7 +12,6 @@ import { setIntent } from '../utils/intent';
 
 // Pages are code-split: each module downloads only when it is first opened.
 const Profile = lazy(() => import('./Profile'));
-const Fee = lazy(() => import('./Fee'));
 const FeeType = lazy(() => import('./FeeType'));
 const ClassFeeStructure = lazy(() => import('./ClassFeeStructure'));
 const AssignSpecialFee = lazy(() => import('./AssignSpecialFee'));
@@ -141,7 +140,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
           {financialPages.includes(currentPage) ? (
             <FinancialLayout currentPage={currentPage} navigateTo={navigateTo}>
               <Suspense fallback={<LoadingState label="Loading page…" className="py-24" />}>
-              {currentPage === 'fee' && <Fee navigateTo={navigateTo} />}
               {currentPage === 'fee-type' && <FeeType />}
               {currentPage === 'class-fee-structure' && <ClassFeeStructure />}
               {currentPage === 'assign-special-fee' && <AssignSpecialFee navigateTo={navigateTo} />}

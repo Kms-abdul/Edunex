@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ChevronRight } from 'lucide-react';
 import {
     TodayCollection,
@@ -27,6 +27,15 @@ const FeeReports: React.FC = () => {
         setActiveTab(id);
         window.scrollTo({ top: 0 });
     };
+    // The Fees tabs (Daily Report / Fee Due Reports) can switch report while this page is open
+    useEffect(() => {
+        const onOpen = (e: Event) => {
+            const id = (e as CustomEvent).detail;
+            if (FEE_REPORTS.some(r => r.id === id)) openReport(id as FeeReportId);
+        };
+        window.addEventListener('kampusops:open-fee-report', onOpen);
+        return () => window.removeEventListener('kampusops:open-fee-report', onOpen);
+    }, []);
     const [receiptData, setReceiptData] = useState<any>(null);
     const [loadingReceipt, setLoadingReceipt] = useState(false);
     const [, setError] = useState('');

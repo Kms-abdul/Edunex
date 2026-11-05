@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDownIcon, UserIcon, LogoutIcon, MenuIcon } from './icons';
-import { ChevronLeft, ChevronRight, MapPin, Building2, GitBranch, CalendarDays, Check, Download } from 'lucide-react';
+import { MapPin, Building2, GitBranch, CalendarDays, Check, Download } from 'lucide-react';
 import { canInstall, promptInstall, onInstallAvailabilityChange } from '../utils/pwa';
 import { applyBrandTheme, DEFAULT_BRAND_COLOR } from '../theme';
 import { canWrite } from '../utils/permissions';
@@ -40,7 +40,8 @@ interface HeaderProps {
 
 
 
-const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, goBack, goForward, canGoBack, canGoForward }) => {
+// Back/forward: the browser and phone back buttons work (every page has its own #address)
+const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout }) => {
   const { user: authUser, switchContext } = useAuth();
   const user = authUser || JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -488,14 +489,6 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
               <MenuIcon className="w-5 h-5" />
             </button>
 
-            <div className="hidden sm:flex items-center gap-0.5 mr-1">
-              <button onClick={goBack} disabled={!canGoBack} className="btn-icon h-8 w-8 disabled:opacity-40 text-brand-contrast/80 hover:bg-white/15 hover:text-brand-contrast" title="Back" aria-label="Back">
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button onClick={goForward} disabled={!canGoForward} className="btn-icon h-8 w-8 disabled:opacity-40 text-brand-contrast/80 hover:bg-white/15 hover:text-brand-contrast" title="Forward" aria-label="Forward">
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
 
             <a
               href="#"

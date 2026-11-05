@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Page } from '../App';
-import { ReceiptIcon, CurrencyRupeeIcon } from './icons';
-import PageHeader from './ui/PageHeader';
+import { ReceiptIcon, CurrencyRupeeIcon, DashboardIcon, FinancialIcon, DocumentIcon, DiscountIcon, TimeIcon, DocumentReportIcon } from './icons';
 import { useAuth } from '../contexts/AuthContext';
-import { visibleFeeNav } from './fee-setup/feeNav';
+import { visibleFeeNav, FeeNavItem } from './fee-setup/feeNav';
+import ModuleTile from './ui/ModuleTile';
+import FeesDashboard from './fee-dashboard/FeesDashboard';
+import { setIntent } from '../utils/intent';
 
 interface FinancialLayoutProps {
     children: React.ReactNode;
@@ -11,111 +13,139 @@ interface FinancialLayoutProps {
     navigateTo: (page: Page) => void;
 }
 
-/** Big, tap-friendly pill used for both rows of Fees navigation. */
-const NavPill: React.FC<{ active: boolean; onClick: () => void; icon?: React.ReactNode; children: React.ReactNode; current?: boolean }> = ({ active, onClick, icon, children, current }) => (
-    <button
-        type="button"
-        onClick={onClick}
-        aria-current={current ? 'page' : undefined}
-        className={`min-h-[44px] px-3.5 rounded-lg text-sm font-semibold whitespace-nowrap flex-shrink-0 inline-flex items-center gap-2 transition-colors
-            ${active ? 'bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-600/20' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
-    >
-        {icon && <span className={active ? 'text-brand-600' : 'text-slate-400'}>{icon}</span>}
-        <span>{children}</span>
-    </button>
-);
+type FeesTab = 'dashboard' | 'masters' | 'reports' | 'cash' | 'daily' | 'due' | 'concessions';
+
+interface TabDef {
+    id: FeesTab;
+    label: string;
+    icon: React.ReactNode;
+    /** Tile pages come from this Fees menu group (fee-setup/feeNav) */
+    group?: string;
+    /** Tabs that open a report directly */
+    report?: string;
+}
+
+const TABS: TabDef[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon className="w-4 h-4" />, group: 'home' },
+    { id: 'masters', label: 'Fee Masters', icon: <FinancialIcon className="w-4 h-4" />, group: 'setup' },
+    { id: 'reports', label: 'Fee Reports', icon: <DocumentIcon className="w-4 h-4" />, group: 'reports' },
+    { id: 'cash', label: 'Cash Management', icon: <FinancialIcon className="w-4 h-4" />, group: 'cash' },
+    { id: 'daily', label: 'Daily Report', icon: <TimeIcon className="w-4 h-4" />, group: 'reports', report: 'today' },
+    { id: 'due', label: 'Fee Due Reports', icon: <DocumentReportIcon className="w-4 h-4" />, group: 'reports', report: 'due' },
+    { id: 'concessions', label: 'Concessions', icon: <DiscountIcon className="w-4 h-4" />, group: 'discounts' },
+];
+
+const TAB_KEY = 'kampusops.feesTab';
+const readTab = (): FeesTab => {
+    try { return (sessionStorage.getItem(TAB_KEY) as FeesTab) || 'dashboard'; } catch { return 'dashboard'; }
+};
+
+/** Which tab a sub-page belongs to, so the right tab stays underlined while working inside it. */
+const tabForPage = (page: Page, groupOf: (p: Page) => string | undefined): FeesTab | null => {
+    if (page === 'fee-reports') return 'reports';
+    const g = groupOf(page);
+    return (TABS.find(t => t.group === g && !t.report)?.id) || null;
+};
 
 const FinancialLayout: React.FC<FinancialLayoutProps> = ({ children, currentPage, navigateTo }) => {
     const { hasPermission } = useAuth();
-    const canAccess = (permission?: string) => {
-        if (!permission) return true;
-        return hasPermission(permission, 'read');
-    };
+    const canAccess = (permission?: string) => (!permission ? true : hasPermission(permission, 'read'));
 
     // Same pages and permission checks as before (see fee-setup/feeNav).
     const groups = visibleFeeNav(canAccess);
-    const activeGroup = groups.find(g => g.items.some(i => i.page === currentPage));
+    const groupItems = (id?: string): FeeNavItem[] => groups.find(g => g.id === id)?.items || [];
+    const groupOf = (p: Page) => groups.find(g => g.items.some(i => i.page === p))?.id;
+    const tabs = TABS.filter(t => (t.report ? groupItems(t.group).some(i => i.page === 'fee-reports') : groupItems(t.group).length > 0));
 
-    // A section tapped in the top row shows its pages underneath, without leaving the current page.
-    const [openGroupId, setOpenGroupId] = useState<string | null>(null);
-    useEffect(() => { setOpenGroupId(null); }, [currentPage]);
-    const shownGroup = groups.find(g => g.id === openGroupId) || activeGroup;
+    const [tab, setTab] = useState<FeesTab>(readTab);
+    useEffect(() => { try { sessionStorage.setItem(TAB_KEY, tab); } catch { /* ignore */ } }, [tab]);
 
-    const onGroupTap = (groupId: string) => {
-        const g = groups.find(x => x.id === groupId);
-        if (!g) return;
-        if (g.items.length === 1) {
-            navigateTo(g.items[0].page);
+    const onFeesHome = currentPage === 'fee';
+    const activeTab: FeesTab | null = onFeesHome ? (tabs.some(t => t.id === tab) ? tab : tabs[0]?.id ?? null) : tabForPage(currentPage, groupOf);
+
+    const openTab = (t: TabDef) => {
+        if (t.report) {
+            // Daily / due tabs open that report straight away
+            if (currentPage === 'fee-reports') {
+                window.dispatchEvent(new CustomEvent('kampusops:open-fee-report', { detail: t.report }));
+                return;
+            }
+            setIntent('fee-reports', t.report);
+            navigateTo('fee-reports');
             return;
         }
-        setOpenGroupId(prev => (prev === groupId && activeGroup?.id !== groupId ? null : groupId));
+        setTab(t.id);
+        if (!onFeesHome) navigateTo('fee');
     };
 
-    const collectButton = currentPage !== 'take-fee' && (
-        <button className="btn-primary" onClick={() => navigateTo('take-fee')}>
-            <ReceiptIcon className="w-4 h-4" />
-            Collect fee
-        </button>
-    );
+    const current = TABS.find(t => t.id === activeTab);
+    const tiles = current && current.id !== 'dashboard' ? groupItems(current.group) : [];
 
     return (
         <div className="flex flex-col h-full bg-surface-muted overflow-hidden">
-            <div className="flex-1 flex flex-col h-full overflow-hidden">
-                {/* Fees header + section tabs */}
-                <div className="bg-white border-b border-slate-200 z-20 relative flex flex-col">
-                    {/* Phones: a slim title so the page itself gets the room */}
-                    <div className="sm:hidden px-4 pt-3 pb-1 flex items-center justify-between gap-3">
-                        <p className="text-base font-semibold text-slate-900">Fees</p>
-                        {collectButton}
-                    </div>
-                    <div className="hidden sm:block px-6 pt-5">
-                        <PageHeader
-                            eyebrow="Fees"
-                            title="Fees & money"
-                            subtitle="Collect fees, set up fees, see reports, petty cash and discounts."
-                            icon={<CurrencyRupeeIcon className="w-6 h-6" />}
-                            className="mb-3"
-                            actions={collectButton || undefined}
-                        />
-                    </div>
-
-                    {groups.length > 0 && (
-                        <nav aria-label="Fees sections" className="px-2 sm:px-4 pb-2 flex gap-1 overflow-x-auto">
-                            {groups.map(g => (
-                                <NavPill
-                                    key={g.id}
-                                    active={shownGroup?.id === g.id}
-                                    current={activeGroup?.id === g.id}
-                                    icon={g.icon}
-                                    onClick={() => onGroupTap(g.id)}
-                                >
-                                    {g.name}
-                                </NavPill>
-                            ))}
-                        </nav>
+            {/* Header + tabs */}
+            <div className="bg-white border-b border-slate-200 z-20">
+                <div className="flex items-center justify-between gap-3 px-4 sm:px-6 pt-4 sm:pt-5 pb-2">
+                    <h1 className="flex items-center gap-2 text-lg sm:text-2xl font-bold text-slate-900 tracking-tight">
+                        <CurrencyRupeeIcon className="w-6 h-6 text-brand-600" />
+                        Financial Administration
+                    </h1>
+                    {currentPage !== 'take-fee' && (
+                        <button className="btn-primary" onClick={() => navigateTo('take-fee')}>
+                            <ReceiptIcon className="w-4 h-4" />
+                            Collect Fee
+                        </button>
                     )}
                 </div>
 
-                {/* Pages inside the chosen section */}
-                {shownGroup && shownGroup.items.length > 1 && (
-                    <nav aria-label={`${shownGroup.name} pages`} className="bg-white/80 backdrop-blur border-b border-slate-200 px-2 sm:px-4 py-1.5 flex gap-1 overflow-x-auto z-10">
-                        {shownGroup.items.map(item => (
-                            <NavPill
-                                key={item.page}
-                                active={currentPage === item.page}
-                                current={currentPage === item.page}
-                                icon={item.icon}
-                                onClick={() => navigateTo(item.page)}
-                            >
-                                {item.name}
-                            </NavPill>
-                        ))}
+                {tabs.length > 0 && (
+                    <nav aria-label="Fees sections" className="px-2 sm:px-4 flex gap-1 overflow-x-auto">
+                        {tabs.map(t => {
+                            const active = activeTab === t.id;
+                            return (
+                                <button
+                                    key={t.id}
+                                    type="button"
+                                    onClick={() => openTab(t)}
+                                    aria-current={active ? 'page' : undefined}
+                                    className={`relative min-h-[44px] px-3 inline-flex items-center gap-2 whitespace-nowrap text-sm font-medium transition-colors
+                                        ${active ? 'text-brand-700' : 'text-slate-500 hover:text-slate-900'}`}
+                                >
+                                    <span className={active ? 'text-brand-600' : 'text-slate-400'}>{t.icon}</span>
+                                    {t.label}
+                                    <span className={`absolute inset-x-2 bottom-0 h-0.5 rounded-full ${active ? 'bg-brand-600' : 'bg-transparent'}`} />
+                                </button>
+                            );
+                        })}
                     </nav>
                 )}
+            </div>
 
-                <div className="flex-1 overflow-y-auto bg-surface-muted p-4 sm:p-6 relative">
-                    {children}
-                </div>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto bg-surface-muted p-4 sm:p-6 relative">
+                {!onFeesHome ? children : current?.id === 'dashboard' ? (
+                    <FeesDashboard />
+                ) : current ? (
+                    <div className="max-w-6xl mx-auto">
+                        <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 mb-4">
+                            <span className="text-brand-600">{current.icon}</span>
+                            {current.label} Modules
+                        </h2>
+                        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                            {tiles.map(item => (
+                                <ModuleTile
+                                    key={item.page}
+                                    name={item.name}
+                                    description={item.hint}
+                                    icon={item.icon}
+                                    onClick={() => navigateTo(item.page)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <p className="text-sm text-slate-500">You don't have access to any Fees pages yet.</p>
+                )}
             </div>
         </div>
     );

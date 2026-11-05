@@ -18,7 +18,7 @@ from sqlalchemy import func, extract, or_
 from extensions import db
 from helpers import token_required, has_permission, get_user_allowed_branches
 from models import (Student, StudentFee, FeePayment, Attendance, StaffMaster,
-                    AttendanceHead, HolidayCalendar, Branch)
+                    AttendanceHead, HolidayCalendar, Branch, FeeType)
 
 bp = Blueprint("dashboard_routes", __name__)
 
@@ -260,3 +260,154 @@ def dashboard_overview(current_user):
         db.session.rollback()
         print(f"[ERROR] dashboard overview failed: {e}")
         return jsonify({"error": "Could not load the school overview"}), 500
+
+
+# ---------------------------------------------------------------------------
+# Fees dashboard (Fees section -> Dashboard tab)
+# ---------------------------------------------------------------------------
+
+MONTHS = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"]
+
+
+def _fy_start(year_label):
+    """'2026-2027' or '2026-27' -> 2026; falls back to the current financial year."""
+    try:
+        return int(str(year_label).split("-")[0])
+    except (ValueError, IndexError):
+        t = date.today()
+        return t.year if t.month >= 4 else t.year - 1
+
+
+def _fy_months(start):
+    """[(label, first_day, last_day)] for Apr..Mar of the financial year starting in `start`."""
+    out = []
+    for i, label in enumerate(MONTHS):
+        m = 4 + i
+        y = start if m <= 12 else start + 1
+        m = m if m <= 12 else m - 12
+        first = date(y, m, 1)
+        nxt = date(y + (m == 12), 1 if m == 12 else m + 1, 1)
+        out.append((label, first, nxt - timedelta(days=1)))
+    return out
+
+
+def _top(rows, n=6, other_label="Other"):
+    merged = defaultdict(float)
+    for k, v in rows:
+        merged[k or "Not set"] += float(v or 0)
+    rows = sorted(merged.items(), key=lambda r: r[1], reverse=True)
+    rows = [r for r in rows if r[1] > 0]
+    head, tail = rows[:n], rows[n:]
+    if tail:
+        head.append((other_label, sum(v for _, v in tail)))
+    return [{"label": k, "amount": _money(v)} for k, v in head]
+
+
+@bp.route("/api/dashboard/fees", methods=["GET"])
+@token_required
+def dashboard_fees(current_user):
+    year = request.headers.get("X-Academic-Year")
+    if not year:
+        return jsonify({"error": "Academic Year header is required"}), 400
+    if not _can(current_user, "home.dashboard.main", "fees.fee.fee-dashboard", "fees.fee.fee-reports",
+                "fees.collections.receipt-entry"):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    try:
+        names, _ = _branch_scope(current_user)
+        start = _fy_start(year)
+        months = _fy_months(start)
+        last_months = _fy_months(start - 1)
+
+        def student_scope(q):
+            q = q.filter(Student.status == "Active")
+            if names is not None:
+                q = q.filter(Student.branch.in_(names))
+            return q
+
+        def fee_scope(q):
+            q = q.join(Student, Student.student_id == StudentFee.student_id) \
+                 .filter(StudentFee.is_active == True, StudentFee.academic_year == year)  # noqa: E712
+            return student_scope(q)
+
+        def pay_scope(q):
+            q = q.filter(FeePayment.status == "A")
+            if names is not None:
+                q = q.filter(FeePayment.branch.in_(names))
+            return q
+
+        total_students = student_scope(db.session.query(func.count(Student.student_id))).scalar() or 0
+        totals = fee_scope(db.session.query(
+            func.coalesce(func.sum(StudentFee.total_fee), 0),
+            func.coalesce(func.sum(StudentFee.paid_amount), 0),
+            func.coalesce(func.sum(StudentFee.due_amount), 0),
+            func.coalesce(func.sum(StudentFee.concession), 0),
+        )).one()
+        total_fee, collected, outstanding, concession = (float(x or 0) for x in totals)
+
+        # Fee due each month (by last date to pay) vs money collected that month
+        due_rows = fee_scope(db.session.query(StudentFee.due_date, func.coalesce(func.sum(StudentFee.total_fee), 0))) \
+            .filter(StudentFee.due_date >= months[0][1], StudentFee.due_date <= months[-1][2]) \
+            .group_by(StudentFee.due_date).all()
+
+        def by_month(rows, ranges):
+            out = [0.0] * 12
+            for d, v in rows:
+                if d is None:
+                    continue
+                for i, (_, a, b) in enumerate(ranges):
+                    if a <= d <= b:
+                        out[i] += float(v or 0)
+                        break
+            return out
+
+        paid_rows = pay_scope(db.session.query(FeePayment.payment_date, func.coalesce(func.sum(FeePayment.amount_paid), 0))) \
+            .filter(FeePayment.payment_date >= last_months[0][1], FeePayment.payment_date <= months[-1][2]) \
+            .group_by(FeePayment.payment_date).all()
+        due_by_month = by_month(due_rows, months)
+        paid_by_month = by_month(paid_rows, months)
+        paid_last_year = by_month(paid_rows, last_months)
+
+        type_rows = fee_scope(db.session.query(
+            func.coalesce(FeeType.displayname, FeeType.feetype), func.coalesce(func.sum(StudentFee.total_fee), 0))) \
+            .outerjoin(FeeType, FeeType.id == StudentFee.fee_type_id) \
+            .group_by(func.coalesce(FeeType.displayname, FeeType.feetype)).all()
+
+        class_rows = fee_scope(db.session.query(
+            Student.clazz,
+            func.coalesce(func.sum(StudentFee.total_fee), 0),
+            func.coalesce(func.sum(StudentFee.paid_amount), 0))) \
+            .group_by(Student.clazz).all()
+
+        mode_rows = pay_scope(db.session.query(FeePayment.payment_mode, func.coalesce(func.sum(FeePayment.amount_paid), 0))) \
+            .filter(FeePayment.academic_year == year).group_by(FeePayment.payment_mode).all()
+
+        branch_rows = []
+        if names is None or len(names) > 1:
+            branch_rows = pay_scope(db.session.query(FeePayment.branch, func.coalesce(func.sum(FeePayment.amount_paid), 0))) \
+                .filter(FeePayment.academic_year == year).group_by(FeePayment.branch).all()
+
+        mode_names = {"CardSwap": "Card", "Online": "Bank transfer"}
+        return jsonify({
+            "academic_year": year,
+            "last_year": f"{start - 1}-{start}",
+            "branch": names[0] if names and len(names) == 1 else "All branches",
+            "kpis": {
+                "students": total_students,
+                "total_fee": _money(total_fee),
+                "collected": _money(collected),
+                "collection_percent": round(collected * 100 / total_fee, 1) if total_fee else None,
+                "outstanding": _money(outstanding),
+                "concession": _money(concession),
+            },
+            "monthly": [{"month": m[0], "fee": _money(due_by_month[i]), "collected": _money(paid_by_month[i]),
+                         "last_year": _money(paid_last_year[i])} for i, m in enumerate(months)],
+            "by_fee_type": _top(type_rows, 5),
+            "by_class": [{"class": c or "No class", "fee": _money(f), "collected": _money(p)} for c, f, p in class_rows],
+            "by_mode": _top([(mode_names.get(m, m), v) for m, v in mode_rows], 6),
+            "by_branch": _top(branch_rows, 6, "Other branches"),
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] fees dashboard failed: {e}")
+        return jsonify({"error": "Could not load the fees dashboard"}), 500
