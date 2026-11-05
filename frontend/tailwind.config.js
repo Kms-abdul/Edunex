@@ -64,8 +64,9 @@ export default {
                 md: '0.5rem',
             },
             keyframes: {
-                'fade-in': { from: { opacity: '0', transform: 'translateY(4px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
-                'scale-in': { from: { opacity: '0', transform: 'scale(0.98)' }, to: { opacity: '1', transform: 'scale(1)' } },
+                // End with transform: none so finished animations don't trap position:fixed children
+                'fade-in': { from: { opacity: '0', transform: 'translateY(4px)' }, to: { opacity: '1', transform: 'none' } },
+                'scale-in': { from: { opacity: '0', transform: 'scale(0.98)' }, to: { opacity: '1', transform: 'none' } },
             },
             animation: {
                 'fade-in': 'fade-in 180ms ease-out both',
