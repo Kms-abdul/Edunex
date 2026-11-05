@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { LoadingState } from './ui/States';
+import ErrorBoundary from './ui/ErrorBoundary';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import MainContent from './MainContent';
@@ -143,6 +144,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
         />
         {/* Bottom padding leaves room for the phone tab bar */}
         <main className="flex-1 min-h-0 pb-24 md:pb-0">
+          <ErrorBoundary key={currentPage} onHome={() => navigateTo('dashboard')}>
           <Suspense fallback={<LoadingState label="Loading page…" className="py-24" />}>
           {currentPage === 'dashboard' && <MainContent navigateTo={navigateTo} />}
           {currentPage === 'profile' && <Profile />}
@@ -218,6 +220,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
           )}
 
           </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
       <BottomNav currentPage={currentPage} navigateTo={navigateTo} openMenu={() => setIsSidebarOpen(true)} />

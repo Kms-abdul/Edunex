@@ -6,6 +6,7 @@ import { PencilIcon } from './icons';
 import { auth } from '../api';
 import { Alert, ActionBar, Button, DataList, Field, notify } from './ui';
 import type { Column } from './ui';
+import { API_URL } from '../config'; // shared API address (works with or without VITE_API_URL)
 
 interface DocumentType {
     id: number;
@@ -41,11 +42,6 @@ const DocumentAdministration: React.FC = () => {
         is_active: true
     });
 
-    const API_URL = import.meta.env.VITE_API_URL;
-
-        if (!API_URL) {
-        throw new Error("VITE_API_URL is not defined");
-        }
 
     useEffect(() => {
         fetchDocumentTypes();

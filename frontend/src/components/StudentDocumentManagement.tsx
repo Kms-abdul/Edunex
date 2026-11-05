@@ -8,6 +8,7 @@ import { notify } from './ui/feedback';
 import { Alert, LoadingState, EmptyState, Steps, ActionBar, Button, Field, DataList } from './ui';
 import type { Column } from './ui';
 import { StudentAvatar, classLabel } from './students/common';
+import { API_URL } from '../config'; // shared API address (works with or without VITE_API_URL)
 
 interface DocumentType {
     id: number;
@@ -69,7 +70,6 @@ const StudentDocumentManagement: React.FC = () => {
     const [uploadError, setUploadError] = useState('');
     const [uploadSuccess, setUploadSuccess] = useState('');
 
-    const API_URL = import.meta.env.VITE_API_URL || '/api';
 
     useEffect(() => {
         api.get('/classes')

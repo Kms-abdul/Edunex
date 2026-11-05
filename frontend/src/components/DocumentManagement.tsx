@@ -9,6 +9,7 @@ import { ChevronDown, ChevronRight, Upload } from 'lucide-react';
 import { notify, confirmDialog } from './ui/feedback';
 import { PageHeader, LoadingState, EmptyState, Spinner, Field, Button } from './ui';
 import { StudentAvatar, classLabel } from './students/common';
+import { API_URL } from '../config'; // shared API address (works with or without VITE_API_URL)
 
 type DocTab = 'dashboard' | 'add-category' | 'upload-documents' | 'student-doc-view';
 
@@ -52,7 +53,6 @@ const StudentDocumentView: React.FC = () => {
     const [docMap, setDocMap] = useState<Record<number, StudentDocument[]>>({});
     const [loadingDocs, setLoadingDocs] = useState<number | null>(null);
 
-    const API_URL = import.meta.env.VITE_API_URL || '/api';
 
     useEffect(() => {
         api.get('/classes').then(res => setClassOptions(res.data.classes || []));
