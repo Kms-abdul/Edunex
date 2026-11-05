@@ -3,8 +3,8 @@ import axios from "axios";
 import { API_URL } from "../config";
 import { auth } from '../api';
 import { User, Lock, Eye, EyeOff, ArrowRight, Mail, KeyRound, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
-import Learnspacelogo from '../images/Learnspacelogo.webp';
-import LoginBg from '../images/LoginBg.webp';
+import KampusOpsLogo from '../images/kampusops-logo.webp';
+import KampusOpsMark from '../images/kampusops-mark.webp';
 import DeLogo from '../images/DE LOGO.webp';
 
 interface LoginProps {
@@ -188,7 +188,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   const titles: Record<ViewState, { title: string; subtitle: string }> = {
-    'login': { title: 'Sign in', subtitle: 'Type your username and password to open Edunex.' },
+    'login': { title: 'Sign in', subtitle: 'Type your username and password to open KampusOps.' },
     'forgot-email': { title: 'Forgot password?', subtitle: 'We will email you a 6-digit code to set a new password.' },
     'forgot-otp': { title: 'Check your email', subtitle: `Type the 6-digit code we sent to ${email}` },
     'forgot-reset': { title: 'Choose a new password', subtitle: 'Your code is correct. Now type a new password.' },
@@ -208,13 +208,31 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   return (
     <div className="min-h-screen w-full flex bg-white">
       {/* ── LEFT PANEL (brand visual) ── */}
-      <div className="hidden lg:block lg:w-[46%] xl:w-1/2 relative overflow-hidden bg-[#eef4fd]" aria-hidden="true">
-        <img
-          src={LoginBg}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover object-top"
-        />
-        <div className="absolute inset-y-0 right-0 w-px bg-slate-200/60" />
+      <div className="hidden lg:flex lg:w-[46%] xl:w-1/2 relative overflow-hidden flex-col justify-between bg-gradient-to-br from-[#eef4ff] via-white to-[#fff4e8] px-12 xl:px-16 py-12" aria-hidden="true">
+        {/* soft brand shapes */}
+        <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-brand-100/60 blur-3xl" />
+        <div className="pointer-events-none absolute -left-20 bottom-10 h-72 w-72 rounded-full bg-orange-100/70 blur-3xl" />
+        <img src={KampusOpsMark} alt="" className="pointer-events-none absolute right-10 bottom-10 w-64 opacity-[0.07]" />
+
+        <img src={KampusOpsLogo} alt="" className="relative h-14 w-auto self-start object-contain" />
+
+        <div className="relative max-w-md">
+          <h2 className="text-4xl xl:text-5xl font-bold leading-tight tracking-tight text-[#14204a]">
+            Your whole school,<br />in one simple app.
+          </h2>
+          <p className="mt-4 text-lg text-slate-600">Fees, attendance, marks and staff — easy enough for everyone, on any phone or computer.</p>
+          <ul className="mt-8 space-y-3 text-[15px] text-slate-700">
+            {['Collect fees and print receipts', 'Take attendance in a few taps', 'Marks, report cards and timetables', 'Staff attendance and details'].map(t => (
+              <li key={t} className="flex items-center gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white"><CheckCircle2 className="h-4 w-4" /></span>
+                {t}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="relative text-sm text-slate-500">KampusOps · School Management Platform</p>
+        <div className="absolute inset-y-0 right-0 w-px bg-slate-200/70" />
       </div>
 
       {/* ── RIGHT PANEL (form) ── */}
@@ -223,7 +241,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           <div className="w-full max-w-[400px] animate-fade-in">
             {/* Logo */}
             <div className="flex flex-col items-center text-center mb-6 sm:mb-8">
-              <img src={Learnspacelogo} alt="Edunex" className="h-16 sm:h-20 w-auto object-contain mb-4" />
+              <img src={KampusOpsLogo} alt="KampusOps — School Management Platform" className="h-12 sm:h-14 w-auto max-w-full object-contain mb-6" />
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{titles[view].title}</h1>
               <p className="text-[15px] text-slate-600 mt-1.5">{titles[view].subtitle}</p>
             </div>
@@ -454,7 +472,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
         {/* ── Footer ── */}
         <div className="flex items-center justify-between px-6 sm:px-12 py-5 border-t border-slate-100">
-          <p className="text-xs text-slate-400">© {new Date().getFullYear()} Edunex · School ERP</p>
+          <p className="text-xs text-slate-400">© {new Date().getFullYear()} KampusOps · School Management Platform</p>
           <img src={DeLogo} alt="DE" className="h-8 w-auto object-contain opacity-90" />
         </div>
       </div>

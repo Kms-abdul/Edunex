@@ -7,7 +7,7 @@ import {
 import type { Page } from '../../App';
 
 /**
- * Everything a person can DO in Edunex, written in plain words.
+ * Everything a person can DO in KampusOps, written in plain words.
  * Used by the Home screen, the bottom tab bar and the Menu.
  *
  * `permission` is a comma-separated list; the task shows if the user can read ANY of them.

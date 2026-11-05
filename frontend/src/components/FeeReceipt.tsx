@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Printer, X } from 'lucide-react';
-import ReceiptLogo from '../images/Receiptlogo.png';
+import ReceiptLogo from '../images/kampusops-mark.png'; // shown only when the school has no logo uploaded
 import api from '../api';
 import { notify } from './ui/feedback';
 
@@ -298,7 +298,7 @@ const FeeReceipt: React.FC<FeeReceiptProps> = ({ onClose, receiptData }) => {
   const API_BASE = import.meta.env.VITE_API_URL || '';
   const rawLogo = matchingBranch?.school_logo || null;
   const schoolLogo = rawLogo ? (rawLogo.startsWith('/static') ? rawLogo : (rawLogo.startsWith('/') ? `${API_BASE}${rawLogo}` : rawLogo)) : ReceiptLogo;
-  const schoolName = matchingBranch?.school_name || "Edunex";
+  const schoolName = matchingBranch?.school_name || "KampusOps";
   const resolvedLogo = schoolLogo;
   return (
     <div className="bg-slate-900/50 backdrop-blur-[2px] fixed inset-0 flex justify-center items-end sm:items-center z-50 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="fee-receipt-title">

@@ -5,7 +5,7 @@ import {
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Page } from "../App";
 import { useAuth } from '../contexts/AuthContext';
-import Learnspacelogo from '../images/Learnspacelogo.webp';
+import KampusOpsMark from '../images/kampusops-mark.webp';
 import { navCategories, isInSection } from './shell/nav';
 
 
@@ -76,12 +76,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, navigateTo: ra
             className="flex items-center gap-2.5 min-w-0"
           >
             <img
-              src={Learnspacelogo}
-              alt="Edunex Logo"
+              src={KampusOpsMark}
+              alt="KampusOps"
               className="h-9 w-9 object-contain flex-shrink-0 rounded-lg bg-white p-0.5 shadow-sm"
             />
             <div className={`leading-tight min-w-0 ${!isOpen && 'md:hidden'}`}>
-              <p className="text-sm font-bold text-brand-contrast tracking-tight truncate">Edunex</p>
+              <p className="text-sm font-bold text-brand-contrast tracking-tight truncate">KampusOps</p>
               <p className="text-2xs font-medium text-brand-contrast/70 uppercase tracking-wider">School app</p>
             </div>
           </a>

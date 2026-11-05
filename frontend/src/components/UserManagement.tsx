@@ -319,8 +319,8 @@ const UserManagement: React.FC = () => {
         eyebrow="Control Panel"
         title="Users"
         subtitle={isGlobalManager
-          ? 'People who can sign in to Edunex, in all schools. Add a user, change their role, or turn their login off.'
-          : 'People who can sign in to Edunex in your school. Add a user, change their role, or turn their login off.'}
+          ? 'People who can sign in to KampusOps, in all schools. Add a user, change their role, or turn their login off.'
+          : 'People who can sign in to KampusOps in your school. Add a user, change their role, or turn their login off.'}
         actions={
           <Button onClick={openCreate} icon={<Plus className="w-4 h-4" />}>
             Add user

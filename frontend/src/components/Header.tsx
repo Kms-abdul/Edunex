@@ -7,7 +7,7 @@ import { applyBrandTheme, DEFAULT_BRAND_COLOR } from '../theme';
 import { canWrite } from '../utils/permissions';
 import { Page } from '../App';
 import api from '../api';
-import Learnspacelogo1 from '../images/Learnspacelogo1.webp';
+import KampusOpsMark from '../images/kampusops-mark.webp';
 import { useAuth } from '../contexts/AuthContext';
 
 const SheetGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -90,8 +90,8 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
     }
   }
 
-  const schoolLogo = (isAllSchools || !rawLogo) ? Learnspacelogo1 : (rawLogo.startsWith('/static') ? rawLogo : (rawLogo.startsWith('/') ? `${API_BASE}${rawLogo}` : rawLogo));
-  const schoolName = isAllSchools ? 'Edunex' : (selectedSchool !== 'All' ? selectedSchool : (user.school_name || 'Edunex'));
+  const schoolLogo = (isAllSchools || !rawLogo) ? KampusOpsMark : (rawLogo.startsWith('/static') ? rawLogo : (rawLogo.startsWith('/') ? `${API_BASE}${rawLogo}` : rawLogo));
+  const schoolName = isAllSchools ? 'KampusOps' : (selectedSchool !== 'All' ? selectedSchool : (user.school_name || 'KampusOps'));
   const themeColor = isAllSchools ? DEFAULT_BRAND_COLOR : (user.school_theme || DEFAULT_BRAND_COLOR);
 
   // Publish the active school's colour to the design system (presentation only)
@@ -506,7 +506,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout, go
                 src={schoolLogo}
                 alt={schoolName}
                 className="h-9 w-auto max-w-[110px] object-contain rounded-md bg-white/95 px-1.5 py-0.5 shadow-sm"
-                onError={(e) => { (e.target as HTMLImageElement).src = Learnspacelogo1; }}
+                onError={(e) => { (e.target as HTMLImageElement).src = KampusOpsMark; }}
               />
               <div className="leading-tight min-w-0 max-w-[40vw] md:max-w-none">
                 <p className="font-semibold text-sm text-brand-contrast truncate">{schoolName}</p>

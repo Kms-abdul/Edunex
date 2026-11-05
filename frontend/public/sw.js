@@ -1,10 +1,10 @@
-/* Edunex service worker — makes the app installable and quick to open.
+/* KampusOps service worker — makes the app installable and quick to open.
  *
  * - Never caches API, uploads or backend static files: data is always live.
  * - App pages: network first, falls back to the last saved copy when offline.
  * - Built JS/CSS/images under /assets/ have hashed names, so cache-first is safe.
  */
-const VERSION = 'edunex-v1';
+const VERSION = 'kampusops-v1'; // bump to refresh cached app files and icons
 const SHELL = `${VERSION}-shell`;
 const ASSETS = `${VERSION}-assets`;
 

@@ -6,8 +6,8 @@ import {
 } from 'recharts';
 import { ProgressReportData } from '../reportcardtypes';
 import api from '../api';
-import ReceiptLogo from '../images/Receiptlogo.png'; // fallback logo (same as FeeReceipt)
-import RightLogo from '../images/MSEA.png';
+import ReceiptLogo from '../images/kampusops-mark.png'; // fallback logo (same as FeeReceipt)
+import RightLogo from '../images/kampusops-logo.png';
 
 interface ReportCardProps {
   data: ProgressReportData;
@@ -248,7 +248,7 @@ const ReportCard: React.FC<ReportCardProps> = ({ data }) => {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0, minWidth: '160px', maxWidth: '220px' }}>
           <img
             src={STATIC_RIGHT_LOGO}
-            alt="Edunex"
+            alt="KampusOps"
             style={{ maxHeight: '40px', maxWidth: '100%', width: 'auto', objectFit: 'contain' }}
             onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
           />

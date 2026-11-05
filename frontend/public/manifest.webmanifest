@@ -1,22 +1,58 @@
 {
-  "name": "Edunex School App",
-  "short_name": "Edunex",
-  "description": "Fees, attendance, students, marks and staff for your school.",
+  "name": "KampusOps \u2014 School Management Platform",
+  "short_name": "KampusOps",
+  "description": "KampusOps: fees, attendance, students, marks and staff for your school.",
   "id": "/",
   "start_url": "/#dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#f6f7f9",
-  "theme_color": "#2563eb",
-  "categories": ["education", "productivity"],
+  "theme_color": "#14204a",
+  "categories": [
+    "education",
+    "productivity"
+  ],
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
-    { "name": "Collect fee", "url": "/#take-fee", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Take attendance", "url": "/#student-attendance", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+    {
+      "name": "Collect fee",
+      "url": "/#take-fee",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Take attendance",
+      "url": "/#student-attendance",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }
