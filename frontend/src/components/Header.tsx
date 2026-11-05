@@ -30,6 +30,8 @@ const SheetOption: React.FC<{ active?: boolean; onClick: () => void; children: R
 
 interface HeaderProps {
   toggleSidebar: () => void;
+  /** The top-bar menu button only shows when the side menu is hidden (to bring it back). */
+  isSidebarOpen?: boolean;
   navigateTo: (page: Page) => void;
   onLogout: () => void;
   goBack: () => void;
@@ -41,7 +43,7 @@ interface HeaderProps {
 
 
 // Back/forward: the browser and phone back buttons work (every page has its own #address)
-const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ toggleSidebar, isSidebarOpen, navigateTo, onLogout }) => {
   const { user: authUser, switchContext } = useAuth();
   const user = authUser || JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -483,9 +485,9 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout }) 
           <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={toggleSidebar}
-              className="btn-icon hidden md:inline-flex text-brand-contrast/90 hover:bg-white/15 hover:text-brand-contrast"
-              aria-label="Show or hide the menu"
-              title="Show or hide the menu"
+              className={`btn-icon hidden ${isSidebarOpen ? '' : 'md:inline-flex'} text-brand-contrast/90 hover:bg-white/15 hover:text-brand-contrast`}
+              aria-label="Show the menu"
+              title="Show the menu"
             >
               <MenuIcon className="w-5 h-5" />
             </button>

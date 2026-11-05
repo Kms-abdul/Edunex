@@ -2,7 +2,7 @@ import React from 'react';
 import {
   HeadphoneIcon, UserIcon, ControlPanelIcon
 } from './icons';
-import { PanelLeftClose } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Page } from "../App";
 import { useAuth } from '../contexts/AuthContext';
 import KampusOpsLogo from '../images/kampusops-logo.webp';
@@ -75,14 +75,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, navigateTo: ra
             className="flex items-center min-w-0"
             aria-label="KampusOps home"
           >
-            <img src={KampusOpsLogo} alt="KampusOps — School Management Platform" className="h-9 w-auto max-w-[180px] object-contain" />
+            <img src={KampusOpsLogo} alt="KampusOps — School Management Platform" className="h-9 w-auto max-w-[160px] object-contain" />
           </a>
+          {/* Menu button: hides the menu (desktop) / closes the drawer (phone) */}
           <button
             onClick={toggleSidebar}
-            className="btn-icon h-8 w-8 md:hidden text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-            aria-label="Close menu"
+            className="btn-icon h-9 w-9 flex-shrink-0 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+            aria-label="Hide the menu"
+            title="Hide the menu"
           >
-            <PanelLeftClose className="w-4 h-4" />
+            <Menu className="w-5 h-5" />
           </button>
         </div>
 

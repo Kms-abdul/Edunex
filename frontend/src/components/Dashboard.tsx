@@ -135,6 +135,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
       <div className="flex flex-col flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
         <Header
           toggleSidebar={toggleSidebar}
+          isSidebarOpen={isSidebarOpen}
           navigateTo={navigateTo}
           onLogout={onLogout}
           goBack={goBack}
