@@ -620,7 +620,7 @@ const RemittanceDeposit: React.FC = () => {
   );
 
   return (
-    <div className="max-w-5xl space-y-4">
+    <div className=" space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-slate-900">Deposit cash</h2>
         <p className="text-sm text-slate-500">Send the day's cash to the bank or head office.</p>

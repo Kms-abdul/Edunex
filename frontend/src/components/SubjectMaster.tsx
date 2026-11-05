@@ -279,7 +279,7 @@ const SubjectMaster: React.FC = () => {
     }
 
     return (
-        <div className="max-w-4xl">
+        <div className="">
             <SetupIntro
                 title="Subject list"
                 context={[`Year ${academicYear}`, isSpecificBranch ? currentBranch : null]}

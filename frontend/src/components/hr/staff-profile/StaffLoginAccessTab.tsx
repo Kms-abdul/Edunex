@@ -13,7 +13,7 @@ interface Props {
 
 export const StaffLoginAccessTab: React.FC<Props> = ({ profile, onResetPassword, onChangeRole }) => {
     return (
-        <div className="space-y-4 max-w-3xl">
+        <div className="space-y-4">
             <InfoSection
                 title="Login account"
                 action={onResetPassword && <SectionAction onClick={onResetPassword}>Set a new password</SectionAction>}

@@ -415,7 +415,7 @@ const GradeScaleManager: React.FC = () => {
     /* ------------------------------------------------------------ List */
     if (mode === 'list') {
         return (
-            <div className="max-w-4xl">
+            <div className="">
                 <SetupIntro
                     title="Grades"
                     context={contextLine}
@@ -451,7 +451,7 @@ const GradeScaleManager: React.FC = () => {
     const editingNew = !selectedScaleId;
 
     return (
-        <div className="max-w-3xl">
+        <div className="">
             <button type="button" onClick={backToList} className="mb-2 inline-flex items-center gap-1.5 min-h-[44px] px-1 text-sm font-medium text-brand-700 hover:text-brand-800">
                 <ArrowLeft className="w-4 h-4" aria-hidden="true" /> All grade scales
             </button>

@@ -544,7 +544,7 @@ const PettyCash: React.FC = () => {
         />
 
         {view === 'new' ? (
-          <div className="card p-4 sm:p-5 max-w-3xl">
+          <div className="card p-4 sm:p-5">
             {saved ? (
               renderDone()
             ) : (

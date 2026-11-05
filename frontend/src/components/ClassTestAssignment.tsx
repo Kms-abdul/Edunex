@@ -381,7 +381,7 @@ const ClassTestAssignment: React.FC = () => {
 
     if (isAllBranchesMode) {
         return (
-            <div className="max-w-2xl">
+            <div className="">
                 <SetupIntro title="Exams for each class" />
                 <Alert tone="warning" title="Choose one branch first">
                     You are looking at all branches. Choose one branch at the top of the screen to add exams to its classes.

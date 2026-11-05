@@ -483,11 +483,11 @@ const MarksEntryAllSubjects: React.FC = () => {
     return (
         <div>
             <PageHeader title="Enter marks for all subjects" className="mb-4" />
-            <Steps steps={STEPS} current={step} onJump={() => setStep(0)} className="mb-5 max-w-3xl" />
+            <Steps steps={STEPS} current={step} onJump={() => setStep(0)} className="mb-5" />
 
             {/* ---------------- Step 1: Choose exam ---------------- */}
             {step === 0 && (
-                <div className="max-w-3xl">
+                <div>
                     {messageAlert}
                     <div className="card p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Field label="Class" htmlFor="mas-class">
@@ -595,9 +595,9 @@ const MarksEntryAllSubjects: React.FC = () => {
             {/* ---------------- Step 2: Enter marks ---------------- */}
             {step === 1 && (
                 <>
-                    <div className="max-w-3xl">{messageAlert}</div>
+                    <div>{messageAlert}</div>
 
-                    <div className="card p-4 mb-4 flex items-start justify-between gap-3 max-w-3xl">
+                    <div className="card p-4 mb-4 flex items-start justify-between gap-3">
                         <div className="min-w-0">
                             <p className="font-semibold text-slate-900 break-words">
                                 {[classObj?.class_name, selectedSection ? `Section ${selectedSection}` : null, testObj?.test_name].filter(Boolean).join(' · ')}

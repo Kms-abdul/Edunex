@@ -138,7 +138,7 @@ const FundAllocation: React.FC = () => {
             />
 
             {view === 'new' ? (
-                <div className="card p-4 sm:p-5 max-w-2xl">
+                <div className="card p-4 sm:p-5">
                     {saved ? (
                         <div className="space-y-4">
                             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-6 text-center">

@@ -1538,7 +1538,7 @@ const EventsTab: React.FC = () => {
         const allVars = [...(currentType?.variables || []),
                          ...(currentType?.allows_custom_fields ? form.custom_fields : [])];
         return (
-            <div className="space-y-4 max-w-3xl">
+            <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <h3 className="text-base font-semibold text-slate-800">
                         {editing ? `Edit event: ${editing.name}` : 'New event'}
@@ -1977,7 +1977,7 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
     if (result) {
         const notSent = result.results.filter(r => r.status !== 'sent');
         return (
-            <div className="space-y-4 max-w-2xl">
+            <div className="space-y-4">
                 <div className="text-center py-4">
                     <div className="mx-auto w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3">
                         <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -2031,7 +2031,7 @@ const SendSmsTab: React.FC<{ canSend: boolean }> = ({ canSend }) => {
         : (!canSend ? 'You do not have permission to send SMS.' : preview?.problem ? 'Fix the problem above before sending.' : '');
 
     return (
-        <div className="space-y-5 max-w-3xl">
+        <div className="space-y-5">
             {/* Branch / account status */}
             {!options.branch ? (
                 <Alert tone="warning">{options.account_message}</Alert>

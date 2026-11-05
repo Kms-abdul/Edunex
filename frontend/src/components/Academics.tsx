@@ -150,7 +150,7 @@ const Academics: React.FC = () => {
                             />
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start max-w-5xl">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                             {groups.map(g => <TaskGroup key={g.title} group={g} onOpen={setView} />)}
                         </div>
                     )}

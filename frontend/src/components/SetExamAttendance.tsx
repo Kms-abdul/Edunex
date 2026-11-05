@@ -338,7 +338,7 @@ const SetExamAttendance: React.FC = () => {
     /* Step 1: class and exam */
     if (step === 0) {
         return (
-            <div className="max-w-3xl">
+            <div className="">
                 {intro}
                 <Steps steps={STEP_TITLES} current={0} className="mb-4" />
                 <div className="card p-4">
@@ -389,7 +389,7 @@ const SetExamAttendance: React.FC = () => {
 
     /* Step 2: months */
     return (
-        <div className="max-w-3xl">
+        <div className="">
             {intro}
             <Steps steps={STEP_TITLES} current={1} onJump={() => setOnMonths(false)} className="mb-4" />
 

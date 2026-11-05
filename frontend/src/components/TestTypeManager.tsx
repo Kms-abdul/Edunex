@@ -185,7 +185,7 @@ const TestTypeManager: React.FC = () => {
     ];
 
     return (
-        <div className="max-w-4xl">
+        <div className="">
             <SetupIntro
                 title="Exam names"
                 context={[academicYear ? `Year ${academicYear}` : 'Loading year…', 'Same for all branches']}

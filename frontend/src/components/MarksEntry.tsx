@@ -435,7 +435,7 @@ const MarksEntry: React.FC<MarksEntryProps> = ({ onDone }) => {
     );
 
     return (
-        <div className="max-w-3xl">
+        <div className="">
             <PageHeader title="Enter marks for one subject" className="mb-4" />
             <Steps steps={STEPS} current={step} onJump={step < 2 ? goToStep : undefined} className="mb-5" />
 

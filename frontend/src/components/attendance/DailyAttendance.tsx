@@ -410,7 +410,8 @@ const DailyAttendance: React.FC<{ navigateTo?: (page: Page) => void }> = ({ navi
                     </div>
 
                     {/* One row per student */}
-                    <ul className="space-y-2">
+                    {/* One column on phones; 2-3 columns on wide screens so the page is filled */}
+                    <ul className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
                         {students.map(student => {
                             const id = student.student_id!;
                             const status = attendance[id];

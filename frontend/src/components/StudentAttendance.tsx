@@ -1297,7 +1297,7 @@ const StudentAttendance: React.FC<StudentAttendanceProps> = ({ navigateTo, defau
 
     return (
         <div className="min-h-full bg-surface-muted">
-            <div className={`mx-auto px-4 py-4 sm:px-6 ${activeTab === 'take' ? 'max-w-3xl' : 'max-w-6xl'}`}>
+            <div className="w-full max-w-[1600px] mx-auto px-4 py-4 sm:px-6">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <h1 className="text-xl font-semibold text-slate-900">Student attendance</h1>
                     <button type="button" className="btn-ghost btn-sm" onClick={() => navigateTo?.('student-administration')}>

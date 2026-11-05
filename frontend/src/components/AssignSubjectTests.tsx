@@ -220,7 +220,7 @@ export default function AssignSubjectTests() {
     /* Step 1: choose class and exam */
     if (step === 0) {
         return (
-            <div className="min-h-full max-w-3xl">
+            <div className="min-h-full">
                 {intro}
                 <Steps steps={STEP_TITLES} current={0} className="mb-4" />
                 <div className="card p-4">
@@ -266,7 +266,7 @@ export default function AssignSubjectTests() {
 
     /* Step 2: tick subjects and enter marks */
     return (
-        <div className="min-h-full max-w-3xl">
+        <div className="min-h-full">
             {intro}
             <Steps steps={STEP_TITLES} current={1} onJump={() => setStep(0)} className="mb-4" />
 

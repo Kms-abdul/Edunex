@@ -303,7 +303,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
     /* Step 1: choose class, exam and subject */
     if (step === 0) {
         return (
-            <div className="max-w-3xl">
+            <div className="">
                 <Steps steps={STEP_TITLES} current={0} className="mb-4" />
                 <div className="card p-4">
                     <p className="text-sm text-slate-600 mb-4">Fill marks in an Excel sheet on your computer, then upload it here. First choose what the marks are for.</p>
@@ -359,7 +359,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
     /* Step 2: download the sheet */
     if (step === 1) {
         return (
-            <div className="max-w-3xl">
+            <div className="">
                 <Steps steps={STEP_TITLES} current={1} onJump={i => setStep(i as 0 | 1 | 2)} className="mb-4" />
                 {summaryCard}
                 {message && (
@@ -399,7 +399,7 @@ const MarksUpload: React.FC<MarksUploadProps> = () => {
     /* Step 3: upload the filled sheet (picking the file saves the marks, as before) */
     const done = message?.type === 'success';
     return (
-        <div className="max-w-3xl">
+        <div className="">
             <Steps steps={STEP_TITLES} current={2} onJump={i => setStep(i as 0 | 1 | 2)} className="mb-4" />
             {summaryCard}
             {fileInput}
