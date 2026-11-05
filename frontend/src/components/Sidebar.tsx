@@ -2,10 +2,10 @@ import React from 'react';
 import {
   HeadphoneIcon, UserIcon, ControlPanelIcon
 } from './icons';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { PanelLeftClose } from 'lucide-react';
 import { Page } from "../App";
 import { useAuth } from '../contexts/AuthContext';
-import KampusOpsMark from '../images/kampusops-mark.webp';
+import KampusOpsLogo from '../images/kampusops-logo.webp';
 import { navCategories, isInSection } from './shell/nav';
 
 
@@ -64,30 +64,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, navigateTo: ra
 
       <aside
         className={`flex-shrink-0 bg-white border-r border-slate-200 flex flex-col overflow-hidden transition-[width] duration-300 ease-in-out
-          ${isOpen ? 'w-[248px]' : 'w-0 overflow-hidden md:w-[72px]'}
+          ${isOpen ? 'w-[248px]' : 'w-0 overflow-hidden border-r-0'}
           md:relative fixed inset-y-0 left-0 h-full z-50 md:z-auto`}
       >
-        {/* Brand */}
-        <div className={`relative flex items-center h-[60px] flex-shrink-0 bg-gradient-to-br from-brand-700 to-brand-600 text-brand-contrast ${isOpen ? 'px-4 justify-between' : 'px-4 justify-between md:justify-center md:px-0'}`}>
-          <div className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-white/10 blur-xl" />
+        {/* Brand: always white with the KampusOps logo, whatever the school's colour */}
+        <div className="flex items-center justify-between gap-2 h-[60px] flex-shrink-0 bg-white border-b border-slate-200 px-4">
           <a
             href="#"
             onClick={(e) => { e.preventDefault(); navigateTo('dashboard'); }}
-            className="flex items-center gap-2.5 min-w-0"
+            className="flex items-center min-w-0"
+            aria-label="KampusOps home"
           >
-            <img
-              src={KampusOpsMark}
-              alt="KampusOps"
-              className="h-9 w-9 object-contain flex-shrink-0 rounded-lg bg-white p-0.5 shadow-sm"
-            />
-            <div className={`leading-tight min-w-0 ${!isOpen && 'md:hidden'}`}>
-              <p className="text-sm font-bold text-brand-contrast tracking-tight truncate">KampusOps</p>
-              <p className="text-2xs font-medium text-brand-contrast/70 uppercase tracking-wider">School app</p>
-            </div>
+            <img src={KampusOpsLogo} alt="KampusOps — School Management Platform" className="h-9 w-auto max-w-[180px] object-contain" />
           </a>
           <button
             onClick={toggleSidebar}
-            className={`btn-icon h-8 w-8 md:hidden text-brand-contrast/80 hover:bg-white/15 hover:text-brand-contrast`}
+            className="btn-icon h-8 w-8 md:hidden text-slate-500 hover:bg-slate-100 hover:text-slate-900"
             aria-label="Close menu"
           >
             <PanelLeftClose className="w-4 h-4" />
@@ -133,17 +125,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, navigateTo: ra
           </div>
         </nav>
 
-        {/* Collapse control (desktop) */}
-        <div className="hidden md:flex items-center border-t border-slate-100 p-3 flex-shrink-0">
-          <button
-            onClick={toggleSidebar}
-            title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-            className={`btn-ghost h-9 w-full ${isOpen ? 'justify-start px-3' : 'justify-center px-0'}`}
-          >
-            {isOpen ? <PanelLeftClose className="w-4 h-4 text-slate-400" /> : <PanelLeftOpen className="w-4 h-4 text-slate-400" />}
-            <span className={`text-xs ${!isOpen && 'md:hidden'}`}>Collapse</span>
-          </button>
-        </div>
       </aside>
     </>
   );

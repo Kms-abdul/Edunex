@@ -483,8 +483,9 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, navigateTo, onLogout }) 
           <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={toggleSidebar}
-              className="btn-icon hidden text-brand-contrast/80 hover:bg-white/15 hover:text-brand-contrast"
-              aria-label="Toggle navigation"
+              className="btn-icon hidden md:inline-flex text-brand-contrast/90 hover:bg-white/15 hover:text-brand-contrast"
+              aria-label="Show or hide the menu"
+              title="Show or hide the menu"
             >
               <MenuIcon className="w-5 h-5" />
             </button>

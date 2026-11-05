@@ -89,7 +89,12 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
   // Sidebar starts open on desktop and collapsed on small screens (presentation only)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => (typeof window === 'undefined' ? true : window.innerWidth >= 768));
+  // Desktop: open unless the user hid it last time (remembered). Phones: closed (bottom tab bar has Menu).
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    if (window.innerWidth < 768) return false;
+    try { return localStorage.getItem('kampusops.menuHidden') !== '1'; } catch { return true; }
+  });
   const {
     currentPage,
     navigateTo,
@@ -100,7 +105,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
   } = useNavigationHistory(initialPage || 'dashboard');
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+    const next = !isSidebarOpen;
+    setIsSidebarOpen(next);
+    if (window.innerWidth >= 768) {
+      try { localStorage.setItem('kampusops.menuHidden', next ? '0' : '1'); } catch { /* ignore */ }
+    }
   };
 
   // Old page names that never had their own screen: send people to where that job lives now
