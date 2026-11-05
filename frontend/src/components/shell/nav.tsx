@@ -8,15 +8,15 @@ export interface NavSection { title: string; short: string; icon: React.ReactNod
 // so the right item stays highlighted while working inside it.
 export const navCategories: NavSection[] = [
   { title: 'Home', short: 'Home', icon: <Home className="w-5 h-5" />, page: 'dashboard', permission: '*' },
-  { title: 'Fees', short: 'Fees', icon: <Wallet className="w-5 h-5" />, page: 'fee', permission: 'fees.collections.receipt-entry',
-    match: ['fee', 'take-fee', 'class-fee-structure', 'assign-special-fee', 'concession-master', 'student-concession', 'update-student-fee-structure', 'update-rebate-date', 'delete-fee-receipt', 'deleted-receipts', 'adjust-fee-report', 'petty-cash', 'fund-allocation', 'month-wise-ledger', 'reconciliation-dashboard', 'remittance-'] },
   { title: 'Administration', short: 'Admin', icon: <Users className="w-5 h-5" />, page: 'administration', permission: 'administration.students.management',
     match: ['administration', 'student-administration', 'student-attendance', 'student-document-management', 'document-management', 'document-administration', 'sms-center', 'create-student', 'import-student-data'] },
   { title: 'Academics', short: 'Academics', icon: <BookOpen className="w-5 h-5" />, page: 'academic', permission: 'academics.academic.management',
     match: ['academic', 'academics', 'timetable', 'online-class'] },
+  { title: 'Finance', short: 'Finance', icon: <Wallet className="w-5 h-5" />, page: 'fee', permission: 'fees.collections.receipt-entry',
+    match: ['fee', 'take-fee', 'class-fee-structure', 'assign-special-fee', 'concession-master', 'student-concession', 'update-student-fee-structure', 'update-rebate-date', 'delete-fee-receipt', 'deleted-receipts', 'adjust-fee-report', 'petty-cash', 'fund-allocation', 'month-wise-ledger', 'reconciliation-dashboard', 'remittance-'] },
   { title: 'HR Management', short: 'HR', icon: <Contact className="w-5 h-5" />, page: 'hr-management', permission: 'hr.hr.hr-management,hr.hr.staff-profile',
     match: ['hr-', 'staff-profile'] },
-  { title: 'School setup', short: 'Setup', icon: <Settings className="w-5 h-5" />, page: 'setup', permission: 'setup.school.setup',
+  { title: 'School Set Up', short: 'Setup', icon: <Settings className="w-5 h-5" />, page: 'setup', permission: 'setup.school.setup',
     match: ['setup', 'classes-management', 'configuration'] },
 ];
 
