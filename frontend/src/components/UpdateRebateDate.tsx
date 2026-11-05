@@ -115,7 +115,7 @@ const UpdateRebateDate: React.FC = () => {
     const branchLabel = branch === 'All' || branch === 'All Branches' ? 'All branches' : branch;
 
     return (
-        <div className="max-w-5xl mx-auto space-y-4">
+        <div className="w-full max-w-[1600px] mx-auto space-y-4">
             <div>
                 <h2 className="text-lg font-semibold text-slate-900">Last date to pay</h2>
                 <Intro>

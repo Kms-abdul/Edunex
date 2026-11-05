@@ -434,7 +434,7 @@ const DeleteFeeReceipt: React.FC = () => {
 
     if (!canReadReceipts) {
         return (
-            <div className="p-4 sm:p-8 max-w-4xl mx-auto">
+            <div className="w-full p-4 sm:p-8 max-w-[1600px] mx-auto">
                 <div className="card">
                     <ErrorState title="You can't open this page" message="You do not have permission to see or cancel fee receipts. Ask an admin for access." />
                 </div>
@@ -443,7 +443,7 @@ const DeleteFeeReceipt: React.FC = () => {
     }
 
     return (
-        <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
+        <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-4">
             {/* Header */}
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">

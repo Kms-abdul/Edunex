@@ -234,7 +234,7 @@ const FeeTypeManagement: React.FC = () => {
     /* ------------------------------------------------------------ Add / edit form */
     if (showForm) {
         return (
-            <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-4">
+            <form onSubmit={handleSubmit} className="w-full max-w-[1600px] mx-auto space-y-4">
                 <div>
                     <h2 className="text-lg font-semibold text-slate-900">{editingId ? 'Edit fee type' : 'Add a fee type'}</h2>
                     <Intro>
@@ -381,7 +381,7 @@ const FeeTypeManagement: React.FC = () => {
     ];
 
     return (
-        <div className="max-w-6xl mx-auto space-y-4">
+        <div className="w-full max-w-[1600px] mx-auto space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                 <div>
                     <h2 className="text-lg font-semibold text-slate-900">Fee types</h2>

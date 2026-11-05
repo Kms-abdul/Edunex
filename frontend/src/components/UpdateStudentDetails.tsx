@@ -403,7 +403,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
     if (step === 0) {
         return (
             <div className="p-4 sm:p-6 bg-surface-muted min-h-full">
-                <div className="max-w-3xl mx-auto space-y-4">
+                <div className="w-full max-w-[1600px] mx-auto space-y-4">
                     <Steps steps={STEPS} current={0} />
                     <p className="text-sm text-slate-600">Correct details like date of birth, phone or Aadhaar for a whole class at once.</p>
                     <div className="card">
@@ -452,7 +452,7 @@ const UpdateStudentDetails: React.FC<UpdateStudentDetailsProps> = ({ onBack }) =
     /* ------------------------------------------------------------ Step 2: edit */
     return (
         <div className="p-4 sm:p-6 bg-surface-muted min-h-full">
-            <div className="max-w-7xl mx-auto space-y-4">
+            <div className="max-w-[1600px] mx-auto space-y-4">
                 <Steps steps={STEPS} current={1} onJump={() => leaveToClassChoice()} />
 
                 <div className="card">

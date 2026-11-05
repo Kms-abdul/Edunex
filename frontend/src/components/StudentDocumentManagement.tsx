@@ -290,7 +290,7 @@ const StudentDocumentManagement: React.FC = () => {
     if (!selectedStudent) {
         return (
             <div className="min-h-full bg-surface-muted p-4 sm:p-6">
-                <div className="max-w-5xl mx-auto space-y-4">
+                <div className="w-full max-w-[1600px] mx-auto space-y-4">
                     <Steps steps={STEPS} current={0} />
                     <p className="text-sm text-slate-600">Find the student, then see which documents are uploaded and which are missing.</p>
                     <div className="card">
@@ -370,7 +370,7 @@ const StudentDocumentManagement: React.FC = () => {
     /* ------------------------------------------------------------ Step 2: this student's documents */
     return (
         <div className="min-h-full bg-surface-muted p-4 sm:p-6">
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <Steps steps={STEPS} current={1} onJump={() => { setSelectedStudent(null); setStudentDocuments([]); setFormOpen(false); }} />
 
                 {/* Who */}

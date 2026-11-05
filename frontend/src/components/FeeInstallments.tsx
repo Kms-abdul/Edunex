@@ -493,7 +493,7 @@ const FeeInstallments: React.FC = () => {
     // ── Render: bulk created ────────────────────────────────────────────────────
     if (bulkDone) {
         return (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <SuccessPanel title={`${bulkDone.count} installments created`}>For {bulkDone.feeName}.</SuccessPanel>
                 <ActionBar>
                     <Button variant="secondary" size="lg" onClick={backToList}>See all installments</Button>
@@ -514,7 +514,7 @@ const FeeInstallments: React.FC = () => {
     if (bulkMode) {
         const countInvalid = bulkConfig.count > 12 || bulkConfig.count < 1;
         return (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <Steps steps={BULK_STEPS} current={bulkStep} onJump={setBulkStep} />
 
                 {bulkStep === 0 && (
@@ -637,7 +637,7 @@ const FeeInstallments: React.FC = () => {
     if (showSingle) {
         const missing = !formData.title || !formData.start_date || !formData.end_date || !formData.last_pay_date;
         return (
-            <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-4">
+            <form onSubmit={handleSubmit} className="w-full max-w-[1600px] mx-auto space-y-4">
                 <div>
                     <h2 className="text-lg font-semibold text-slate-900">{editingId ? 'Edit installment' : 'Add one installment'}</h2>
                     <Intro>One part of a fee, with the dates it covers and the last date to pay.</Intro>
@@ -716,7 +716,7 @@ const FeeInstallments: React.FC = () => {
     ];
 
     return (
-        <div className="max-w-6xl mx-auto space-y-4">
+        <div className="w-full max-w-[1600px] mx-auto space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                 <div>
                     <h2 className="text-lg font-semibold text-slate-900">Installments</h2>

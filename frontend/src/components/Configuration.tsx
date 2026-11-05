@@ -637,7 +637,7 @@ const Configuration: React.FC<ConfigurationProps> = () => {
 
     return (
         <div className="min-h-full bg-surface-muted">
-            <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-5 sm:py-6">
+            <div className="max-w-[1600px] mx-auto w-full px-4 sm:px-6 py-5 sm:py-6">
                 {active === null && (
                     <>
                         <PageHeader

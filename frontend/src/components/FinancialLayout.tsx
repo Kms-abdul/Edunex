@@ -126,7 +126,7 @@ const FinancialLayout: React.FC<FinancialLayoutProps> = ({ children, currentPage
                 {!onFeesHome ? children : current?.id === 'dashboard' ? (
                     <FeesDashboard />
                 ) : current ? (
-                    <div className="max-w-6xl mx-auto">
+                    <div className="w-full max-w-[1600px] mx-auto">
                         <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 mb-4">
                             <span className="text-brand-600">{current.icon}</span>
                             {current.label} Modules

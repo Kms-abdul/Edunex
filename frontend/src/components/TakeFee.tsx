@@ -1342,7 +1342,7 @@ const TakeFee: React.FC<{ navigateTo?: (page: Page) => void }> = ({ navigateTo }
     return (
         <div className="container-fluid mx-auto">
             <div ref={topRef} className="p-4 scroll-mt-4">
-                <div className="card p-4 sm:p-5 max-w-3xl mx-auto">
+                <div className="w-full card p-4 sm:p-5 max-w-[1600px] mx-auto">
                     <Steps
                         steps={STEP_LABELS}
                         current={step}

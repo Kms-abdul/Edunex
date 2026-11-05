@@ -208,7 +208,7 @@ const SchoolOverview: React.FC = () => {
   const nothingAllowed = data && !st && !at && !fe && !sf;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 py-5 sm:py-7 space-y-5">
+    <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 py-5 sm:py-7 space-y-5">
       {/* Heading */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">

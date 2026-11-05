@@ -90,7 +90,7 @@ const DeletedReceiptsReport: React.FC = () => {
     };
 
     return (
-        <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
+        <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-4">
             <div>
                 <h2 className="text-lg font-semibold text-slate-900">Cancelled receipts</h2>
                 <p className="text-sm text-slate-500">Receipts that were cancelled, who cancelled them, and why.</p>

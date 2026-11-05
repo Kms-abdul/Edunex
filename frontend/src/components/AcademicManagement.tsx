@@ -116,7 +116,7 @@ const AcademicManagement: React.FC<AcademicManagementProps> = ({ navigateTo }) =
 
     return (
         <div className="min-h-full bg-surface-muted">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-6">
+            <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 py-5 sm:py-6">
                 <PageHeader
                     title="Academic Management"
                     subtitle="Manage all academic activities and resources"

@@ -205,7 +205,7 @@ const RolePermissions: React.FC = () => {
   const allowedCount = permissions.filter(p => isPermissionChecked(p.id)).length;
   const checkboxClass = 'w-5 h-5 flex-shrink-0 text-brand-600 rounded border-slate-300 focus:ring-brand-500 focus:ring-2';
   return (
-    <div className="min-h-full bg-slate-50 p-4 md:p-6 max-w-6xl mx-auto">
+    <div className="w-full min-h-full bg-slate-50 p-4 md:p-6 max-w-[1600px] mx-auto">
       <PageHeader
         eyebrow="Control Panel"
         title="Roles and access"

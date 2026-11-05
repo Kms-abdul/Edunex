@@ -231,7 +231,7 @@ const UpdateStudentFeeStructure: React.FC = () => {
     /* ------------------------------------------------------------ Step 1: find student */
     if (!selectedStudentId) {
         return (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <Steps steps={STEP_TITLES} current={0} />
                 <div className="card">
                     <div className="card-body space-y-4">
@@ -296,7 +296,7 @@ const UpdateStudentFeeStructure: React.FC = () => {
     );
 
     return (
-        <div className="max-w-5xl mx-auto space-y-4">
+        <div className="w-full max-w-[1600px] mx-auto space-y-4">
             <Steps steps={STEP_TITLES} current={1} onJump={() => { setSelectedStudentId(null); setPickedStudent(null); }} />
 
             <div className="card">

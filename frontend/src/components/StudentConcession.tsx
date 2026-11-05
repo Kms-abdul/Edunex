@@ -292,7 +292,7 @@ const StudentConcession: React.FC = () => {
     /* ------------------------------------------------------------ Done */
     if (done) {
         return (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <SuccessPanel title="Discount given">
                     {selectedConcessionTitle}: {rupees(done.total)} off on {done.count} fee{done.count === 1 ? '' : 's'} for {studentText}.
                 </SuccessPanel>
@@ -310,7 +310,7 @@ const StudentConcession: React.FC = () => {
     if (step === 0) {
         const shownStudents = students.slice(0, MAX_STUDENTS_SHOWN);
         return (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <Steps steps={STEP_TITLES} current={0} />
                 <div className="card">
                     <div className="card-body space-y-4">
@@ -381,7 +381,7 @@ const StudentConcession: React.FC = () => {
     /* ------------------------------------------------------------ Step 2: choose discount */
     if (step === 1) {
         return (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <Steps steps={STEP_TITLES} current={1} onJump={setStep} />
                 <p className="text-sm text-slate-600">For <strong>{studentText}</strong>. Which discount?</p>
 
@@ -441,7 +441,7 @@ const StudentConcession: React.FC = () => {
     if (step === 2) {
         const allSelected = selectableCount > 0 && selectedInstallmentIds.length === selectableCount;
         return (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <Steps steps={STEP_TITLES} current={2} onJump={setStep} />
                 <p className="text-sm text-slate-600">
                     {studentText} · <strong>{selectedConcessionTitle}</strong>. Tick the fees that get the discount.
@@ -502,7 +502,7 @@ const StudentConcession: React.FC = () => {
 
     /* ------------------------------------------------------------ Step 4: review */
     return (
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div className="w-full max-w-[1600px] mx-auto space-y-4">
             <Steps steps={STEP_TITLES} current={3} onJump={setStep} />
             <div className="card">
                 <div className="card-body">

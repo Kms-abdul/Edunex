@@ -164,7 +164,7 @@ const DocumentAdministration: React.FC = () => {
 
     return (
         <div className="min-h-full bg-surface-muted p-4 sm:p-6">
-            <div className="max-w-5xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
 
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <p className="text-sm text-slate-600 max-w-xl">

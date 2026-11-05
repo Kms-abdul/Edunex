@@ -316,7 +316,7 @@ const Profile: React.FC = () => {
     const sectionTitle = 'text-base font-semibold text-slate-900';
 
     return (
-        <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
+        <div className="w-full max-w-[1600px] mx-auto p-4 md:p-6 space-y-4">
             <PageHeader
                 eyebrow="My account"
                 title="Username and password"

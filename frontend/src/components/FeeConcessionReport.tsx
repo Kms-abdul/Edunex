@@ -72,7 +72,7 @@ const FeeConcessionReport: React.FC = () => {
     ];
 
     return (
-        <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
+        <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-4">
             <div>
                 <h2 className="text-lg font-semibold text-slate-900">Concessions given</h2>
                 <p className="text-sm text-slate-500">Students who get a fee concession. Tap a student to see it month by month.</p>

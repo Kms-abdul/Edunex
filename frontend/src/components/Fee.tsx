@@ -16,7 +16,7 @@ const Fee: React.FC<FeeProps> = ({ navigateTo }) => {
     const groups = visibleFeeNav(canAccess).filter(g => g.id !== 'home' && g.id !== 'collect');
 
     return (
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="w-full max-w-[1600px] mx-auto space-y-6">
             {/* Main job first */}
             <div className="card">
                 <div className="card-body flex flex-col sm:flex-row sm:items-center gap-4">

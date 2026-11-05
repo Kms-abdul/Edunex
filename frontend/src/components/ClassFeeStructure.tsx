@@ -485,7 +485,7 @@ const ClassFeeStructure: React.FC = () => {
     /* ------------------------------------------------------------ Saved */
     if (saved) {
         return (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <SuccessPanel title={`Fees saved for Class ${saved.className}`}>
                     {saved.newCount} fee{saved.newCount === 1 ? '' : 's'} for new students · {saved.oldCount} fee{saved.oldCount === 1 ? '' : 's'} for old students
                 </SuccessPanel>
@@ -510,7 +510,7 @@ const ClassFeeStructure: React.FC = () => {
     /* ------------------------------------------------------------ Step 1: class */
     if (step === 0) {
         return (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <Steps steps={STEP_TITLES} current={0} />
                 {branchWarning}
                 <div className="card">
@@ -565,7 +565,7 @@ const ClassFeeStructure: React.FC = () => {
         const isNew = step === 1;
         const fees = isNew ? newAdmissionFees : existingStudentFees;
         return (
-            <div className="max-w-4xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <Steps steps={STEP_TITLES} current={step} onJump={goTo} />
                 {branchWarning}
                 <p className="text-sm text-slate-600">
@@ -617,7 +617,7 @@ const ClassFeeStructure: React.FC = () => {
     );
 
     return (
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div className="w-full max-w-[1600px] mx-auto space-y-4">
             <Steps steps={STEP_TITLES} current={3} onJump={goTo} />
             {branchWarning}
             <p className="text-sm text-slate-600">Check the fees for Class <strong>{selectedClass}</strong> ({academicYear}) and save.</p>

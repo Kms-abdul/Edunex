@@ -11,6 +11,7 @@ import {
 } from './admission/fields';
 import type { AdmissionFormCtx } from './admission/fields';
 import AdmissionSummary from './admission/AdmissionSummary';
+import { StepRail, LiveSummary } from './admission/AdmissionSidePanels';
 import AdmissionDocuments from './admission/AdmissionDocuments';
 import type { DocumentType, PendingDocument } from './admission/AdmissionDocuments';
 import {
@@ -983,7 +984,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
   if (isViewMode) {
     return (
       <div ref={topRef} className="p-4 md:p-6 bg-surface-muted min-h-full">
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div className="w-full max-w-[1600px] mx-auto space-y-4">
           <h2 className="text-lg font-semibold text-slate-900">Student details</h2>
           <AdmissionSummary data={formData} photo={studentPhoto} />
           {historySection}
@@ -1001,7 +1002,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
     const admissionNo = savedStudent.data?.admission_no || savedStudent.data?.student?.admission_no;
     return (
       <div ref={topRef} className="p-4 md:p-6 bg-surface-muted min-h-full">
-        <div className="max-w-xl mx-auto card card-body text-center py-10 space-y-4">
+        <div className="w-full max-w-[1600px] mx-auto card card-body text-center py-10 space-y-4">
           <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-500" aria-hidden="true" />
           <div>
             <h2 className="text-xl font-semibold text-slate-900">Student saved</h2>
@@ -1055,7 +1056,12 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
 
   return (
     <div ref={topRef} className="p-4 md:p-6 bg-surface-muted min-h-full">
-      <form ref={formRef} id="create-student-form" onSubmit={(e) => e.preventDefault()} className="max-w-3xl mx-auto" noValidate>
+      {/* Desktop: steps on the left, form in the middle, live summary on the right. Phones: form only. */}
+      <div className="mx-auto max-w-[1600px] grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_320px] gap-5 items-start">
+      <div className="hidden lg:block">
+        <StepRail step={step} errors={errors} onJump={goToStep} />
+      </div>
+      <form ref={formRef} id="create-student-form" onSubmit={(e) => e.preventDefault()} className="min-w-0" noValidate>
         <AdmissionFormContext.Provider value={formCtx}>
           <div className="flex items-center justify-between gap-3 mb-3">
             <h2 className="text-base font-semibold text-brand-700">{mode === "create" ? "Add a new student" : "Edit student"}</h2>
@@ -1063,7 +1069,7 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
               Clear form
             </button>
           </div>
-          <Steps steps={[...ADMISSION_STEPS]} current={step} onJump={goToStep} className="mb-5" />
+          <Steps steps={[...ADMISSION_STEPS]} current={step} onJump={goToStep} className="mb-5 lg:[&_ol]:hidden" />
 
           <div className="space-y-4">
             {/* ---------------- Step 1: Student ---------------- */}
@@ -1291,6 +1297,10 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
           </ActionBar>
         </AdmissionFormContext.Provider>
       </form>
+      <div className="hidden xl:block">
+        <LiveSummary data={formData} photo={studentPhoto} errors={errors} documents={pendingDocuments.length} mode={mode} />
+      </div>
+      </div>
     </div>
   );
 };

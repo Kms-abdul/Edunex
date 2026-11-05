@@ -298,7 +298,7 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
     /* ------------------------------------------------------------ Done */
     if (done) {
         return (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <SuccessPanel title="Fees given">
                     {done.assigned} fee{done.assigned === 1 ? '' : 's'} added for {done.students} student{done.students === 1 ? '' : 's'} of {classText}.
                     {done.skipped > 0 && <> {done.skipped} skipped because the student already had it.</>}
@@ -314,7 +314,7 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
     /* ------------------------------------------------------------ Step 1: class */
     if (step === 0) {
         return (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <Steps steps={STEP_TITLES} current={0} />
                 <div className="card">
                     <div className="card-body space-y-4">
@@ -346,7 +346,7 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
     if (step === 1) {
         const allShownSelected = filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.includes(s.student_id));
         return (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <Steps steps={STEP_TITLES} current={1} onJump={setStep} />
                 <p className="text-sm text-slate-600">{classText} · Tick the students who should pay the extra fee.</p>
 
@@ -399,7 +399,7 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
     /* ------------------------------------------------------------ Step 3: fees */
     if (step === 2) {
         return (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <Steps steps={STEP_TITLES} current={2} onJump={setStep} />
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <p className="text-sm text-slate-600">Tick each fee and type how much each student pays.</p>
@@ -458,7 +458,7 @@ const AssignSpecialFee: React.FC<AssignSpecialFeeProps> = ({ navigateTo }) => {
 
     /* ------------------------------------------------------------ Step 4: review */
     return (
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div className="w-full max-w-[1600px] mx-auto space-y-4">
             <Steps steps={STEP_TITLES} current={3} onJump={setStep} />
             <div className="card">
                 <div className="card-body">

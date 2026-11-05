@@ -53,7 +53,7 @@ const TaskHome: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }
   const name = (user as any)?.name || user?.username || '';
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-5 sm:py-7 space-y-6">
+    <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 py-5 sm:py-7 space-y-6">
       {/* Greeting */}
       <div>
         <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">

@@ -194,7 +194,7 @@ const CreateStaffWizard: React.FC<CreateStaffWizardProps> = ({ onClose, onSucces
     const typeLabel: Record<string, string> = { PERMANENT: 'Permanent', CONTRACT: 'Contract', PROBATION: 'Probation', INTERN: 'Intern' };
 
     return (
-        <div id="create-staff-top" className="card mb-6 max-w-4xl mx-auto scroll-mt-4">
+        <div id="create-staff-top" className="w-full card mb-6 max-w-[1600px] mx-auto scroll-mt-4">
             <div className="card-header">
                 <div className="min-w-0 flex-1">
                     <Steps steps={tabs.map(t => t.label)} current={stepIndex} onJump={goTo} />

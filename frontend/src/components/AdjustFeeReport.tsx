@@ -188,7 +188,7 @@ const AdjustFeeReport: React.FC = () => {
     void handleViewReceipt;
 
     return (
-        <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
+        <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-4">
             <div>
                 <h2 className="text-lg font-semibold text-slate-900">Fee adjustments</h2>
                 <p className="text-sm text-slate-500">Changes made to students' fees after they were set.</p>

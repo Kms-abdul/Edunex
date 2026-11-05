@@ -219,7 +219,7 @@ const Administration: React.FC<AdministrationProps> = ({ navigateTo }) => {
     return (
         <div className="min-h-full bg-surface-muted">
             <div className="bg-white border-b border-slate-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
+                <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pt-5">
                     <PageHeader
                         title="Administration"
                         subtitle="Choose what you want to do"
@@ -229,7 +229,7 @@ const Administration: React.FC<AdministrationProps> = ({ navigateTo }) => {
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {readyModules.map((module) => (
                         <ModuleTile

@@ -218,7 +218,7 @@ const StaffSupport: React.FC = () => {
 
     return (
         <div className="min-h-full bg-slate-50 p-4 md:p-6">
-            <div className="max-w-6xl mx-auto">
+            <div className="w-full max-w-[1600px] mx-auto">
 
                 {/* ── Header ── */}
                 <PageHeader

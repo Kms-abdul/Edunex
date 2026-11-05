@@ -174,7 +174,7 @@ const HRManagement: React.FC<HRManagementProps> = ({ navigateTo }) => {
     const activeCategoryMeta = categories.find(c => c.id === activeCategory);
 
     return (
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
             {activeCategory ? (
                 <div className="mb-5 flex flex-wrap items-center gap-3">
                     <button

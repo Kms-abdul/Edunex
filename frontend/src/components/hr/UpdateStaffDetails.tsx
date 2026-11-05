@@ -218,7 +218,7 @@ export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSucces
 
     if (loading) {
         return (
-            <div className="card max-w-4xl mx-auto">
+            <div className="w-full card max-w-[1600px] mx-auto">
                 <LoadingState label="Loading staff details…" />
             </div>
         );
@@ -239,7 +239,7 @@ export const UpdateStaffDetails: React.FC<Props> = ({ staffId, onClose, onSucces
     const fullName = [form.first_name, form.middle_name, form.last_name].filter(Boolean).join(' ');
 
     return (
-        <div className="card mb-6 max-w-4xl mx-auto">
+        <div className="w-full card mb-6 max-w-[1600px] mx-auto">
             <div className="card-header">
                 <div className="min-w-0">
                     <p className="text-sm text-slate-500">Change details of</p>

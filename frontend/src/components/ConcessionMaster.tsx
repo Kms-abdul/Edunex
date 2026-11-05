@@ -318,7 +318,7 @@ const ConcessionMaster: React.FC = () => {
     /* ------------------------------------------------------------ Add / edit form */
     if (showForm) {
         return (
-            <div className="max-w-2xl mx-auto space-y-4">
+            <div className="w-full max-w-[1600px] mx-auto space-y-4">
                 <div>
                     <h2 className="text-lg font-semibold text-slate-900">{isEditing ? 'Edit discount type' : 'Add a discount type'}</h2>
                     <Intro>For branch <strong>{branch}</strong> · Year <strong>{academicYear || '—'}</strong></Intro>
@@ -440,7 +440,7 @@ const ConcessionMaster: React.FC = () => {
     ];
 
     return (
-        <div className="max-w-5xl mx-auto space-y-4">
+        <div className="w-full max-w-[1600px] mx-auto space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                 <div>
                     <h2 className="text-lg font-semibold text-slate-900">Discount types</h2>
