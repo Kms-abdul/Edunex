@@ -21,10 +21,7 @@ const TakeFee = lazy(() => import('./TakeFee'));
 const Administration = lazy(() => import('./Administration'));
 const SetupSchool = lazy(() => import('./SetupSchool'));
 const ClassesManagement = lazy(() => import('./ClassesManagement'));
-const AcademicManagement = lazy(() => import('./AcademicManagement'));
 const Academics = lazy(() => import('./Academics'));
-const Timetable = lazy(() => import('./Timetable'));
-const OnlineClass = lazy(() => import('./OnlineClass'));
 const StudentAttendance = lazy(() => import('./StudentAttendance'));
 const StudentAdministration = lazy(() => import('./StudentAdministration'));
 const ConcessionMaster = lazy(() => import('./ConcessionMaster'));
@@ -200,10 +197,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
           ) : (
             <>
               {currentPage === 'administration' && <Administration navigateTo={navigateTo} />}
-              {currentPage === 'academic' && <AcademicManagement navigateTo={navigateTo} />}
-              {currentPage === 'academics' && <Academics />}
-              {currentPage === 'timetable' && <Timetable />}
-              {currentPage === 'online-class' && <OnlineClass />}
+              {/* One Academics screen for all its pages, so the menu bar stays put while switching */}
+              {(['academic', 'academics', 'timetable', 'online-class'] as Page[]).includes(currentPage) && (
+                <Academics currentPage={currentPage} navigateTo={navigateTo} />
+              )}
               {currentPage === 'setup' && <SetupSchool navigateTo={navigateTo} />}
               {currentPage === 'classes-management' && <ClassesManagement navigateTo={navigateTo} />}
               {currentPage === 'student-attendance' && <StudentAttendance navigateTo={navigateTo} />}

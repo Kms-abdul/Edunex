@@ -1,6 +1,8 @@
-import React, { useState } from "react";
-import { GraduationCap, ChevronRight, ArrowLeft } from "lucide-react";
-import { PageHeader, EmptyState } from "./ui";
+import React, { Suspense, lazy, useEffect, useState } from "react";
+import { GraduationCap } from "lucide-react";
+import { EmptyState, LoadingState, ModuleMenuBar } from "./ui";
+import type { ModuleMenu } from "./ui";
+import type { Page } from "../App";
 import { useAuth } from "../contexts/AuthContext";
 import SubjectMaster from "./SubjectMaster";
 import ClassSubjectAssignment from "./ClassSubjectAssignment";
@@ -15,7 +17,7 @@ import MarksUpload from "./MarksUpload";
 import StudentReportCard from "./StudentReportCard";
 import SetExamAttendance from "./SetExamAttendance";
 import MarksEntryAllSubjects from "./MarksEntryAllSubjects";
-import { consumeIntent } from '../utils/intent';
+import { consumeIntent, setIntent } from '../utils/intent';
 
 
 // --- Types ---
@@ -35,135 +37,127 @@ type AcademicView =
     | "MARKS_ENTRY_ALL_SUBJECTS"
     | "ACADEMIC_SETTING"
     | "STUDENT_REPORT_CARD"
-    | "SET_EXAM_ATTENDANCE";
+    | "SET_EXAM_ATTENDANCE"
+    | "TIMETABLE"
+    | "ONLINE_CLASS";
 
-interface MenuItem {
+const Timetable = lazy(() => import("./Timetable"));
+const OnlineClass = lazy(() => import("./OnlineClass"));
+
+interface Entry {
+    view: AcademicView;
     label: string;
     hint: string;
-    view: AcademicView;
+    allowed: boolean;
 }
 
-interface MenuGroup {
-    title: string;
-    items: MenuItem[];
-}
+/** View shown when the module opens on one of the Academics pages. */
+const viewForPage = (page: Page): AcademicView | null =>
+    page === 'timetable' ? 'TIMETABLE' : page === 'online-class' ? 'ONLINE_CLASS' : null;
 
-// --- Tap-friendly task list (works the same with a finger or a mouse) ---
-const TaskGroup: React.FC<{ group: MenuGroup; onOpen: (v: AcademicView) => void }> = ({ group, onOpen }) => (
-    <section className="card overflow-hidden">
-        <h2 className="px-4 pt-4 pb-2 text-base font-semibold text-slate-900">{group.title}</h2>
-        <ul className="divide-y divide-slate-100">
-            {group.items.map(item => (
-                <li key={item.view}>
-                    <button
-                        type="button"
-                        onClick={() => onOpen(item.view)}
-                        className="w-full min-h-[56px] flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 active:bg-slate-100 focus:outline-none focus-visible:bg-brand-50"
-                    >
-                        <span className="min-w-0 flex-1">
-                            <span className="block text-[15px] font-medium text-slate-900">{item.label}</span>
-                            <span className="block text-sm text-slate-500">{item.hint}</span>
-                        </span>
-                        <ChevronRight className="w-5 h-5 text-slate-400 flex-shrink-0" aria-hidden="true" />
-                    </button>
-                </li>
-            ))}
-        </ul>
-    </section>
-);
-
-// --- Main ERP Component ---
-const Academics: React.FC = () => {
+// --- Academics Management: one header with dropdown menus, the chosen screen below ---
+const Academics: React.FC<{ currentPage: Page; navigateTo: (page: Page) => void }> = ({ currentPage, navigateTo }) => {
     // A shortcut (e.g. Home → "Enter marks") may open a specific screen directly
-    const [view, setView] = useState<AcademicView>(() => (consumeIntent('academics') as AcademicView | null) || "HOME");
+    const [view, setView] = useState<AcademicView>(() =>
+        viewForPage(currentPage) || (consumeIntent('academics') as AcademicView | null) || "HOME");
     const { hasPermission } = useAuth();
+    const can = (codes: string) => codes.split(',').some(c => hasPermission(c.trim(), 'read'));
 
-    const canSubjectMaster = hasPermission('academics.academic.subject-master', 'read');
-    // const canTimetable = hasPermission('academics.timetable.timetable-management', 'read');
-    const canClassSubjects = hasPermission('academics.academic.class-subject-assignment', 'read');
-    const canStudentSubjects = hasPermission('academics.academic.assign-student-subjects', 'read');
-    const canSubjectTests = hasPermission('academics.academic.assign-subject-tests', 'read');
-    const canStudentTests = hasPermission('academics.academic.assign-student-tests', 'read');
-    const canTestType = hasPermission('academics.academic.test-type-manager', 'read');
-    const canClassTest = hasPermission('academics.academic.class-test-assignment', 'read');
-    const canGrading = hasPermission('academics.academic.grade-scale-manager', 'read');
-    const canMarksEntry = hasPermission('academics.academic.marks-entry', 'read');
-    const canMarksEntryAll = hasPermission('academics.academic.marks-entry-all-subjects', 'read');
-    const canMarksUpload = hasPermission('academics.academic.marks-upload', 'read');
-    const canExamAttendance = hasPermission('attendance.attendance.set-exam-attendance', 'read');
-    const canReportCard = hasPermission('home.dashboard.student-report-card', 'read');
+    // Keep the screen in step with the page (sidebar, back button, links from other modules)
+    useEffect(() => {
+        const fromPage = viewForPage(currentPage);
+        if (fromPage) { setView(fromPage); return; }
+        const intent = consumeIntent('academics') as AcademicView | null;
+        if (intent) setView(intent);
+        else setView(v => (v === 'TIMETABLE' || v === 'ONLINE_CLASS' ? 'HOME' : v));
+    }, [currentPage]);
 
-    // Same permission checks as before; only the way the list is shown has changed.
-    const groups: MenuGroup[] = [
+    const open = (v: AcademicView) => {
+        const page = v === 'TIMETABLE' ? 'timetable' : v === 'ONLINE_CLASS' ? 'online-class' : null;
+        if (page) { if (page !== currentPage) navigateTo(page); setView(v); return; }
+        // Screens inside Academics: stay on this page; coming from Timetable/Online class, hand the choice over
+        if (viewForPage(currentPage)) { setIntent('academics', v); navigateTo('academics'); return; }
+        setView(v);
+    };
+
+    // Same permission keys as before: each screen can be given to a user on its own.
+    const groups: { id: string; label: string; entries: Entry[] }[] = [
         {
-            title: "Marks",
-            items: [
-                ...(canMarksEntry ? [{ label: "Enter marks for one subject", hint: "One exam, one subject, the whole class", view: "MARKS_ENTRY_SUBJECT" as AcademicView }] : []),
-                ...(canMarksEntryAll ? [{ label: "Enter marks for all subjects", hint: "Each student's marks in every subject", view: "MARKS_ENTRY_ALL_SUBJECTS" as AcademicView }] : []),
-                ...(canMarksUpload ? [{ label: "Upload marks from Excel", hint: "Fill marks in a sheet, then upload it", view: "MARKS_ENTRY_UPLOAD" as AcademicView }] : []),
+            id: 'marks', label: 'Enter Marks', entries: [
+                { view: 'MARKS_ENTRY_SUBJECT', label: 'Subject wise', hint: 'One exam, one subject, the whole class', allowed: can('academics.academic.marks-entry') },
+                { view: 'MARKS_ENTRY_ALL_SUBJECTS', label: 'All subjects', hint: "Each student's marks in every subject", allowed: can('academics.academic.marks-entry-all-subjects') },
+                { view: 'MARKS_ENTRY_UPLOAD', label: 'Upload marks from Excel', hint: 'Fill marks in a sheet, then upload it', allowed: can('academics.academic.marks-upload') },
             ],
         },
         {
-            title: "Exams",
-            items: [
-                ...(canClassTest ? [{ label: "Add an exam to classes", hint: "Choose which exams each class writes", view: "ADD_EXAM" as AcademicView }] : []),
-                ...(canTestType ? [{ label: "Exam names", hint: "Create exam names like Unit test 1", view: "CREATE_TEST" as AcademicView }] : []),
-                ...(canSubjectTests ? [{ label: "Subjects in each exam", hint: "Choose the subjects for an exam", view: "ASSIGN_SUBJECT_TESTS" as AcademicView }] : []),
-                ...(canStudentTests ? [{ label: "Students in each exam", hint: "Choose which students write an exam", view: "ASSIGN_STUDENT_TESTS" as AcademicView }] : []),
-                ...(canExamAttendance ? [{ label: "Exam attendance", hint: "Choose which months count for attendance", view: "SET_EXAM_ATTENDANCE" as AcademicView }] : []),
-                ...(canGrading ? [{ label: "Grades", hint: "Marks needed for each grade (A, B, C…)", view: "GRADING" as AcademicView }] : []),
+            id: 'actions', label: 'Academic Actions', entries: [
+                { view: 'ADD_EXAM', label: 'Add exams to classes', hint: 'Choose which exams each class writes', allowed: can('academics.academic.class-test-assignment') },
+                { view: 'ASSIGN_SUBJECT_TESTS', label: 'Subjects in each exam', hint: 'Choose the subjects for an exam', allowed: can('academics.academic.assign-subject-tests') },
+                { view: 'ASSIGN_STUDENT_TESTS', label: 'Students in each exam', hint: 'Choose which students write an exam', allowed: can('academics.academic.assign-student-tests') },
+                { view: 'ASSIGN_SUBJECTS', label: 'Subjects for a class', hint: 'Choose the subjects each class studies', allowed: can('academics.academic.class-subject-assignment') },
+                { view: 'ASSIGN_STUDENT_SUBJECTS', label: 'Subjects for students', hint: 'Choose optional subjects for each student', allowed: can('academics.academic.assign-student-subjects') },
+                { view: 'SET_EXAM_ATTENDANCE', label: 'Exam attendance', hint: 'Choose which months count for attendance', allowed: can('attendance.attendance.set-exam-attendance') },
             ],
         },
         {
-            title: "Subjects",
-            items: [
-                ...(canSubjectMaster ? [{ label: "Subject list", hint: "Add or change subjects", view: "SUBJECTS" as AcademicView }] : []),
-                // ...(canTimetable ? [{ label: "Timetable", hint: "", view: "TIMETABLE" }] : []),
-                ...(canClassSubjects ? [{ label: "Subjects for a class", hint: "Choose the subjects each class studies", view: "ASSIGN_SUBJECTS" as AcademicView }] : []),
-                ...(canStudentSubjects ? [{ label: "Subjects for students", hint: "Choose optional subjects for each student", view: "ASSIGN_STUDENT_SUBJECTS" as AcademicView }] : []),
+            id: 'masters', label: 'Masters', entries: [
+                { view: 'CREATE_TEST', label: 'Exam names', hint: 'Create exam names like Unit test 1', allowed: can('academics.academic.test-type-manager') },
+                { view: 'SUBJECTS', label: 'Subject list', hint: 'Add or change subjects', allowed: can('academics.academic.subject-master') },
+                { view: 'GRADING', label: 'Grades', hint: 'Marks needed for each grade (A, B, C…)', allowed: can('academics.academic.grade-scale-manager') },
             ],
         },
         {
-            title: "Report cards",
-            items: [
-                ...(canReportCard ? [{ label: "Student report card", hint: "See and print a student's report card", view: "STUDENT_REPORT_CARD" as AcademicView }] : []),
+            id: 'classroom', label: 'Classroom', entries: [
+                { view: 'TIMETABLE', label: 'Time table', hint: 'Class periods and teacher timetable', allowed: can('academics.timetable.timetable-management,academics.timetable.subject-teacher-assignment') },
+                // Online class had no permission check before; it stays open to everyone in Academics.
+                { view: 'ONLINE_CLASS', label: 'Online class', hint: 'Start or join a live class', allowed: true },
             ],
         },
-    ].filter(g => g.items.length > 0);
+        {
+            id: 'reports', label: 'Reports', entries: [
+                { view: 'STUDENT_REPORT_CARD', label: 'Student report card', hint: "See and print a student's report card", allowed: can('home.dashboard.student-report-card') },
+            ],
+        },
+    ];
+
+    const menus: ModuleMenu[] = groups.map(g => ({
+        id: g.id,
+        label: g.label,
+        items: g.entries.filter(e => e.allowed).map(e => ({
+            id: e.view, label: e.label, hint: e.hint, active: view === e.view, onSelect: () => open(e.view),
+        })),
+    }));
+    const anyAllowed = menus.some(m => m.items.length > 0);
+    const currentGroup = groups.find(g => g.entries.some(e => e.view === view));
+    const currentEntry = currentGroup?.entries.find(e => e.view === view);
+    // A screen opened by a link the user has no access to is not shown.
+    const allowed = !!currentEntry?.allowed;
 
     return (
         <div className="min-h-full bg-surface-muted flex flex-col">
-            {view === "HOME" ? (
-                <div className="flex-1 p-4 sm:p-6">
-                    <PageHeader
-                        eyebrow="Academics"
-                        title="Exams and marks"
-                        subtitle="What do you want to do?"
-                        icon={<GraduationCap className="w-6 h-6" />}
-                        className="mb-5"
-                    />
-                    {groups.length === 0 ? (
-                        <div className="card">
-                            <EmptyState
-                                title="Nothing to show"
-                                description="You do not have access to any exam tasks. Ask your school admin if you need it."
-                            />
+            <ModuleMenuBar title="Academics Management" icon={<GraduationCap className="w-6 h-6" />} menus={menus} />
+
+            {view === "HOME" || !allowed ? (
+                <div className="flex-1 flex items-center justify-center p-6">
+                    {anyAllowed ? (
+                        <div className="text-center text-slate-500 max-w-sm">
+                            <GraduationCap className="w-12 h-12 mx-auto text-slate-300" aria-hidden="true" />
+                            <p className="mt-3 text-base">Select an action from the menu above to manage academic data.</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-                            {groups.map(g => <TaskGroup key={g.title} group={g} onOpen={setView} />)}
+                        <div className="card w-full max-w-lg">
+                            <EmptyState
+                                title="Nothing to show"
+                                description="You do not have access to any Academics screens. Ask your school admin if you need it."
+                            />
                         </div>
                     )}
                 </div>
             ) : (
-                <div className={`flex-1 ${view === 'ADD_EXAM' ? 'p-2' : 'p-4 sm:p-6'}`}>
-                    <button
-                        type="button"
-                        onClick={() => setView("HOME")}
-                        className="no-print mb-4 inline-flex items-center gap-1.5 min-h-[44px] px-1 text-sm font-medium text-brand-700 hover:text-brand-800"
-                    >
-                        <ArrowLeft className="w-4 h-4" aria-hidden="true" /> All exam tasks
-                    </button>
+                <div className={`flex-1 ${view === 'ADD_EXAM' ? 'p-2' : view === 'TIMETABLE' || view === 'ONLINE_CLASS' ? '' : 'p-4 sm:p-6'}`}>
+                    <p className={`no-print text-sm text-slate-500 ${view === 'TIMETABLE' || view === 'ONLINE_CLASS' ? 'px-4 sm:px-6 pt-4' : 'mb-3'}`}>
+                        {currentGroup?.label} <span aria-hidden="true">›</span> <span className="font-semibold text-slate-800">{currentEntry?.label}</span>
+                    </p>
 
                     {view === "SUBJECTS" && <SubjectMaster />}
                     {view === "ASSIGN_SUBJECTS" && <ClassSubjectAssignment />}
@@ -177,8 +171,12 @@ const Academics: React.FC = () => {
                     {view === "MARKS_ENTRY_UPLOAD" && <MarksUpload />}
                     {view === "STUDENT_REPORT_CARD" && <StudentReportCard />}
                     {view === "SET_EXAM_ATTENDANCE" && <SetExamAttendance />}
-                    {/* {view === "TIMETABLE" && <Timetable />} */}
                     {view === "MARKS_ENTRY_ALL_SUBJECTS" && <MarksEntryAllSubjects />}
+                    {(view === "TIMETABLE" || view === "ONLINE_CLASS") && (
+                        <Suspense fallback={<LoadingState label="Loading page…" className="py-24" />}>
+                            {view === "TIMETABLE" ? <Timetable /> : <OnlineClass />}
+                        </Suspense>
+                    )}
                 </div>
             )}
         </div>
