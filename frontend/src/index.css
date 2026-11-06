@@ -227,8 +227,9 @@
   .btn-lg {
     @apply h-11 px-5 text-base;
   }
+  /* Main action: a light tint of the branch colour with dark text (readable for any branch colour) */
   .btn-primary {
-    @apply btn bg-brand-600 text-brand-contrast shadow-sm hover:bg-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2;
+    @apply btn bg-brand-100 text-brand-800 font-semibold border border-brand-200 shadow-sm hover:bg-brand-200 hover:border-brand-300 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200;
   }
   .btn-secondary {
     @apply btn bg-white text-slate-700 border border-slate-300 shadow-sm hover:bg-slate-50 hover:border-slate-400;

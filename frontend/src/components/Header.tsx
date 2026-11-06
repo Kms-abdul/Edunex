@@ -501,13 +501,13 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, isSidebarOpen, navigateT
               <img
                 src={schoolLogo}
                 alt={schoolName}
-                className="h-9 w-auto max-w-[110px] object-contain rounded-md bg-white/95 px-1.5 py-0.5 shadow-sm"
+                className="h-10 md:h-12 w-auto max-w-[120px] md:max-w-[170px] object-contain rounded-lg bg-white px-1.5 py-1 shadow-sm"
                 onError={(e) => { (e.target as HTMLImageElement).src = KampusOpsMark; }}
               />
               <div className="leading-tight min-w-0 max-w-[40vw] md:max-w-none">
-                <p className="font-semibold text-sm text-brand-contrast truncate">{schoolName}</p>
+                <p className="font-bold text-base md:text-xl leading-tight text-brand-contrast truncate">{schoolName}</p>
                 {branchLabel && (
-                  <p className="text-xs text-brand-contrast/70 truncate">{branchLabel}</p>
+                  <p className="text-xs md:text-sm text-brand-contrast/80 truncate">{branchLabel}</p>
                 )}
               </div>
             </a>

@@ -43,10 +43,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, navigateTo: ra
       className={`relative flex items-center rounded-lg text-sm font-medium transition-colors group
         ${isOpen ? 'px-3 py-2 gap-3' : 'px-3 py-2 gap-3 md:justify-center md:px-0 md:py-2.5'}
         ${active
-          ? 'bg-brand-600 text-brand-contrast shadow-sm shadow-brand-600/30'
-          : 'text-slate-600 hover:bg-brand-50 hover:text-brand-700'}`}
+          ? 'bg-brand-50 text-brand-800 font-semibold ring-1 ring-inset ring-brand-600/15 before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-1 before:rounded-full before:bg-brand-500'
+          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
     >
-      <span className={`flex-shrink-0 ${active ? 'text-brand-contrast' : 'text-slate-400 group-hover:text-brand-600'}`}>{icon}</span>
+      <span className={`flex-shrink-0 ${active ? 'text-brand-600' : 'text-slate-400 group-hover:text-slate-600'}`}>{icon}</span>
       <span className={`whitespace-nowrap ${!isOpen && 'md:hidden'}`}>{title}</span>
     </a>
   );
