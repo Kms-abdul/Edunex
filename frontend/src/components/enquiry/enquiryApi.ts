@@ -13,6 +13,8 @@ export interface EnquiryOptions {
 }
 
 export type DiscountType = 'NONE' | 'PERCENT' | 'AMOUNT';
+export type StudentType = 'NEW' | 'OLD';
+export const studentTypeLabel = (t?: StudentType | null) => (t === 'OLD' ? 'Old student (already in school)' : 'New student');
 
 export interface Scheme {
   id: number;
@@ -43,6 +45,7 @@ export interface SchemeQuote {
 export interface Quote {
   class_name: string;
   academic_year: string;
+  student_type?: StudentType;
   tuition_fee_type: string | null;
   tuition_fee: number | null;
   tuition_installments?: { name: string; amount: number }[];
@@ -73,6 +76,7 @@ export interface EnquiryRow {
   contact: string;
   aadhaar_masked: string | null;
   status: string;
+  student_type?: StudentType;
   printed_at?: string | null;
   print_count?: number;
   match?: 'aadhaar' | 'phone';
@@ -117,8 +121,8 @@ export const enquiryApi = {
     (id ? api.put(`/enquiry/schemes/${id}`, body) : api.post('/enquiry/schemes', body)).then(r => r.data),
   copySchemes: (branchId: number, fromYear: string, toYear: string) =>
     api.post<{ message: string; copied: number }>('/enquiry/schemes/copy', { branch_id: branchId, from_year: fromYear, to_year: toYear }).then(r => r.data),
-  quote: (branchId: number, year: string, className: string) =>
-    api.get<Quote>('/enquiry/quote', { params: { branch_id: branchId, academic_year: year, class_name: className } }).then(r => r.data),
+  quote: (branchId: number, year: string, className: string, studentType: StudentType) =>
+    api.get<Quote>('/enquiry/quote', { params: { branch_id: branchId, academic_year: year, class_name: className, student_type: studentType } }).then(r => r.data),
   // POST so Aadhaar never appears in a URL
   check: (branchId: number, year: string, aadhaar: string, contact: string) =>
     api.post<CheckResult>('/enquiry/check', { branch_id: branchId, academic_year: year, aadhaar, contact }).then(r => r.data),

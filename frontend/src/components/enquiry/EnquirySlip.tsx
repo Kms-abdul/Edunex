@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { PrintData, rupees, niceDate, joinWindow, discountLabel } from './enquiryApi';
+import { PrintData, rupees, niceDate, joinWindow, discountLabel, studentTypeLabel } from './enquiryApi';
 
 const logoSrc = (url: string | null) => {
   if (!url) return null;
@@ -40,6 +40,7 @@ export const EnquirySlip: React.FC<{ data: PrintData; yearName?: string }> = ({ 
           <Row label="Student name" value={data.student_name} />
           <Row label="Guardian name" value={data.guardian_name} />
           <Row label="Class" value={`${data.class_name} (${yearName || data.academic_year})`} />
+          <Row label="Fees for" value={studentTypeLabel(data.student_type)} />
           <Row label="Contact" value={data.contact} />
           {data.aadhaar_masked && <Row label="Aadhaar" value={data.aadhaar_masked} />}
         </dl>

@@ -61,6 +61,9 @@ class Enquiry(db.Model, AuditMixin):
     guardian_name = db.Column(db.String(100), nullable=False)
     class_name = db.Column(db.String(50), nullable=False)
     contact = db.Column(db.String(10), nullable=False)
+    # Which fee list the quote used: "fees for new students" or the regular (old student) fees
+    student_type = db.Column(db.Enum("NEW", "OLD", name="enquiry_student_type"), nullable=False,
+                             default="NEW", server_default="NEW")
 
     # Aadhaar (optional): never stored or returned in plain text
     aadhaar_encrypted = db.Column(db.Text, nullable=True)

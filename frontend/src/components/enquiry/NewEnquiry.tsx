@@ -3,7 +3,7 @@ import { Printer, Plus, AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
 import { ActionBar, Alert, Badge, Button, Field, LoadingState, confirmDialog, notify } from '../ui';
 import {
   CheckResult, EnquiryOptions, PrintData, Quote, enquiryApi, errorField, errorText,
-  rupees, niceDate, yearLabel, joinWindow, discountLabel, aadhaarLooksRight, isDeskScreen,
+  rupees, niceDate, yearLabel, joinWindow, discountLabel, aadhaarLooksRight, isDeskScreen, StudentType,
 } from './enquiryApi';
 import { EnquirySlip, SlipPrintPortal, printSlip } from './EnquirySlip';
 
@@ -89,6 +89,8 @@ const NewEnquiry: React.FC<{ options: EnquiryOptions; branchId: number; onOpenEn
     return saved && years.some(y => y.code === saved) ? saved : options.default_year || years[0]?.code || '';
   });
   const [form, setForm] = useState(EMPTY);
+  // Which fee list to quote: the class's "fees for new students" or the regular fees for old students
+  const [studentType, setStudentType] = useState<StudentType>('NEW');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [classes, setClasses] = useState<string[] | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -111,12 +113,12 @@ const NewEnquiry: React.FC<{ options: EnquiryOptions; branchId: number; onOpenEn
     if (!form.class_name || !year) { setQuote(null); return; }
     let live = true;
     setQuoteLoading(true);
-    enquiryApi.quote(branchId, year, form.class_name)
+    enquiryApi.quote(branchId, year, form.class_name, studentType)
       .then(q => live && setQuote(q))
       .catch(() => live && setQuote(null))
       .finally(() => live && setQuoteLoading(false));
     return () => { live = false; };
-  }, [branchId, year, form.class_name]);
+  }, [branchId, year, form.class_name, studentType]);
 
   // Earlier-visit check once a full Aadhaar or phone number is typed
   const aadhaarDigits = digits(form.aadhaar);
@@ -159,7 +161,7 @@ const NewEnquiry: React.FC<{ options: EnquiryOptions; branchId: number; onOpenEn
     if (saving || !validate() || sameYear) return;
     setSaving(true);
     try {
-      const res = await enquiryApi.create({ branch_id: branchId, academic_year: year, ...form, contact: phoneDigits, aadhaar: aadhaarDigits });
+      const res = await enquiryApi.create({ branch_id: branchId, academic_year: year, student_type: studentType, ...form, contact: phoneDigits, aadhaar: aadhaarDigits });
       if (res.enquiry.print) {
         setSaved({ id: res.enquiry.id, data: res.enquiry.print });
         notify.success(res.message);
@@ -175,7 +177,7 @@ const NewEnquiry: React.FC<{ options: EnquiryOptions; branchId: number; onOpenEn
   };
 
   const startNew = () => {
-    setSaved(null); setForm(EMPTY); setErrors({}); setCheck(null); setQuote(null);
+    setSaved(null); setForm(EMPTY); setStudentType('NEW'); setErrors({}); setCheck(null); setQuote(null);
     window.setTimeout(() => firstInput.current?.focus(), 50);
   };
 
@@ -201,6 +203,21 @@ const NewEnquiry: React.FC<{ options: EnquiryOptions; branchId: number; onOpenEn
             {years.map(y => <option key={y.code} value={y.code}>{y.name}</option>)}
           </select>
         </Field>
+        <fieldset>
+          <legend className="block text-sm font-medium text-slate-800 mb-1.5">Show fees for <span className="text-red-600" aria-hidden="true">*</span></legend>
+          <div className="grid grid-cols-2 gap-2" role="radiogroup">
+            {(['NEW', 'OLD'] as StudentType[]).map(t => (
+              <button key={t} type="button" role="radio" aria-checked={studentType === t} onClick={() => setStudentType(t)}
+                className={`min-h-[44px] rounded-lg border px-3 text-sm font-medium transition-colors
+                  ${studentType === t ? 'border-brand-300 bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-300' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
+                {t === 'NEW' ? 'New student' : 'Old student'}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-sm text-slate-500">
+            {studentType === 'NEW' ? 'Joining the school now: uses "Fees for new students".' : 'Already studying here: uses the fees for old students.'}
+          </p>
+        </fieldset>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Student name" htmlFor="enq-student" required error={errors.student_name}>
             <input ref={firstInput} id="enq-student" className="input" autoComplete="off" autoCapitalize="words" maxLength={100}
@@ -266,7 +283,7 @@ const NewEnquiry: React.FC<{ options: EnquiryOptions; branchId: number; onOpenEn
         ) : quote ? (
           <>
             <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2.5">
-              <span className="text-sm text-slate-600">Tuition fee · Class {quote.class_name}</span>
+              <span className="text-sm text-slate-600">Tuition fee · Class {quote.class_name} · {studentType === 'OLD' ? 'Old student' : 'New student'}</span>
               <span className="text-lg font-bold text-slate-900 tabular-nums">{quote.tuition_fee !== null ? rupees(quote.tuition_fee) : '—'}</span>
             </div>
             {quote.tuition_installments && quote.tuition_installments.length > 1 && (

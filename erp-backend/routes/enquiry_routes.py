@@ -181,8 +181,17 @@ def branch_classes(branch):
 
 
 # --------------------------------------------------------------------------- fee quote
-def tuition_rows(branch, year, class_name, fee_type_name):
-    """Class fee rows of the tuition fee type: this branch's rows, else school-wide ('All') rows."""
+STUDENT_TYPES = ("NEW", "OLD")
+
+
+def tuition_rows(branch, year, class_name, fee_type_name, student_type="NEW"):
+    """Class fee rows of the tuition fee type for this branch (else school-wide 'All' rows).
+
+    The Fees module keeps two lists per class: "fees for new students" (isnewadmission)
+    and the regular "fees for old students". NEW uses the new-student rows, and falls back
+    to the regular rows when the class has no separate new-student tuition. OLD uses only
+    the regular rows. The two lists are never added together.
+    """
     if not fee_type_name:
         return []
     base = (ClassFeeStructure.query.join(FeeType, FeeType.id == ClassFeeStructure.feetypeid)
@@ -191,13 +200,25 @@ def tuition_rows(branch, year, class_name, fee_type_name):
                     func.lower(FeeType.feetype) == fee_type_name.strip().lower()))
     for level in (branch.branch_name, "All"):
         rows = base.filter(ClassFeeStructure.branch == level).all()
-        if rows:
-            return rows
+        if not rows:
+            continue
+        new_rows = [r for r in rows if r.isnewadmission]
+        old_rows = [r for r in rows if not r.isnewadmission]
+        if student_type == "OLD":
+            return old_rows
+        return new_rows or old_rows
     return []
 
 
-def tuition_fee(branch, year, class_name, fee_type_name):
-    rows = tuition_rows(branch, year, class_name, fee_type_name)
+def clean_student_type(value):
+    v = str(value or "NEW").strip().upper()
+    if v not in STUDENT_TYPES:
+        raise UserError("Please choose New student or Old student.", field="student_type")
+    return v
+
+
+def tuition_fee(branch, year, class_name, fee_type_name, student_type="NEW"):
+    rows = tuition_rows(branch, year, class_name, fee_type_name, student_type)
     return sum((Decimal(r.totalamount or 0) for r in rows), Decimal("0")) if rows else None
 
 
@@ -229,7 +250,8 @@ def fill_missing_installments(e):
     snap = e.quote_snapshot
     if not snap or "tuition_installments" in snap or snap.get("tuition_fee") is None or not e.branch:
         return
-    rows = tuition_rows(e.branch, e.academic_year, e.class_name, snap.get("tuition_fee_type"))
+    rows = tuition_rows(e.branch, e.academic_year, e.class_name, snap.get("tuition_fee_type"),
+                        snap.get("student_type") or "NEW")
     inst = tuition_installments(rows)
     if inst and abs(sum(i["amount"] for i in inst) - float(snap["tuition_fee"])) < 0.01:
         e.quote_snapshot = {**snap, "tuition_installments": inst}
@@ -253,7 +275,7 @@ def offer_schemes(branch, year, on_date):
     return q.order_by(AdmissionScheme.display_order, AdmissionScheme.id).all()
 
 
-def build_quote(branch, year, class_name, on_date):
+def build_quote(branch, year, class_name, on_date, student_type="NEW"):
     schemes = offer_schemes(branch, year, on_date)
     fee_type = schemes[0].tuition_fee_type if schemes else None
     if not fee_type:  # no scheme yet: fall back to a fee type called "...tuition..."
@@ -262,13 +284,13 @@ def build_quote(branch, year, class_name, on_date):
                                    or_(FeeType.branch == branch.branch_name, FeeType.branch == "All"))
               .order_by(FeeType.id).first())
         fee_type = ft.feetype if ft else None
-    rows = tuition_rows(branch, year, class_name, fee_type)
+    rows = tuition_rows(branch, year, class_name, fee_type, student_type)
     fee = sum((Decimal(r.totalamount or 0) for r in rows), Decimal("0")) if rows else None
 
     out = []
     for s in schemes:
         s_fee = fee if s.tuition_fee_type.strip().lower() == (fee_type or "").strip().lower() \
-            else tuition_fee(branch, year, class_name, s.tuition_fee_type)
+            else tuition_fee(branch, year, class_name, s.tuition_fee_type, student_type)
         off = scheme_discount(s, s_fee)
         out.append({
             "name": s.name,
@@ -283,6 +305,7 @@ def build_quote(branch, year, class_name, on_date):
     return {
         "class_name": class_name,
         "academic_year": year,
+        "student_type": student_type,
         "tuition_fee_type": fee_type,
         "tuition_fee": _money(fee) if fee is not None else None,
         "tuition_installments": tuition_installments(rows),
@@ -322,6 +345,7 @@ def enquiry_dict(e, full=False):
         "student_name": e.student_name, "guardian_name": e.guardian_name,
         "class_name": e.class_name, "contact": e.contact,
         "aadhaar_masked": mask_aadhaar(e.aadhaar_last4), "status": e.status,
+        "student_type": e.student_type or "NEW",
         "printed_at": e.printed_at.isoformat() if e.printed_at else None,
         "print_count": e.print_count or 0,
     }
@@ -512,7 +536,8 @@ def enquiry_quote(current_user):
     class_name = str(request.args.get("class_name") or "").strip()
     if class_name not in branch_classes(branch):
         raise UserError("Please choose the class.", field="class_name")
-    return jsonify(build_quote(branch, year, class_name, get_today()))
+    student_type = clean_student_type(request.args.get("student_type"))
+    return jsonify(build_quote(branch, year, class_name, get_today(), student_type))
 
 
 def find_earlier_visits(user, branch, year, aadhaar=None, contact=None):
@@ -609,6 +634,7 @@ def create_enquiry(current_user):
         raise UserError("Please choose the class.", field="class_name")
     contact = clean_phone(data.get("contact"))
     aadhaar = clean_aadhaar(data.get("aadhaar"))
+    student_type = clean_student_type(data.get("student_type"))
     fp = aadhaar_fingerprint(aadhaar) if aadhaar else None
 
     if fp:
@@ -618,13 +644,13 @@ def create_enquiry(current_user):
                             status=409, existing_id=dup.id, existing_no=dup.enquiry_no)
 
     today = get_today()
-    quote = build_quote(branch, year, class_name, today)
+    quote = build_quote(branch, year, class_name, today, student_type)
     enquiry = Enquiry(
         branch_id=branch.id, school_id=branch.school_id, academic_year=year,
         enquiry_no=next_enquiry_no(branch, year), enquiry_date=today,
         student_name=student_name, guardian_name=guardian_name, class_name=class_name, contact=contact,
         aadhaar_encrypted=encrypt_secret(aadhaar) if aadhaar else None,
-        aadhaar_hash=fp, aadhaar_last4=aadhaar[-4:] if aadhaar else None,
+        aadhaar_hash=fp, aadhaar_last4=aadhaar[-4:] if aadhaar else None, student_type=student_type,
         status="NEW", created_by=current_user.user_id,
     )
     enquiry.quote_snapshot = {

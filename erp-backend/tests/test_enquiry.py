@@ -270,3 +270,29 @@ def test_old_enquiry_gets_installments_and_even_split(env):
         assert [i["amount"] for i in split] == [3334, 3333, 3333]
         fs.installments_count = 0
         assert tuition_installments([fs]) == [{"name": "Full year (one payment)", "amount": 10000}]
+
+
+def test_new_and_old_student_fees_are_separate(env):
+    from extensions import db
+    from models import ClassFeeStructure, FeeType
+    qs = {"branch_id": env["ids"]["A"], "academic_year": "2027-2028", "class_name": "5"}
+    get = lambda t: env["c"].get("/api/enquiry/quote", query_string={**qs, "student_type": t},
+                                 headers=env["h"]("su")).get_json()
+    assert get("OLD")["tuition_fee"] == 40000
+    assert get("NEW")["tuition_fee"] == 40000            # no separate new-student tuition yet: regular fee
+    with env["app"].app_context():
+        ft = FeeType.query.filter_by(feetype="Tuition Fee").first()
+        old = ClassFeeStructure.query.filter_by(clazz="5", feetypeid=ft.id).first()
+        db.session.add(ClassFeeStructure(clazz="5", feetypeid=ft.id, academicyear="2027-2028", academic_year="2027-2028",
+                                         totalamount=30000, monthly_amount=10000, installments_count=3,
+                                         isnewadmission=True, branch="Alpha", branch_id=old.branch_id,
+                                         school_id=old.school_id, location=old.location))
+        db.session.commit()
+    new_q = get("NEW")
+    assert new_q["tuition_fee"] == 30000 and new_q["student_type"] == "NEW"   # never 70000
+    assert sum(i["amount"] for i in new_q["tuition_installments"]) == 30000
+    assert get("OLD")["tuition_fee"] == 40000
+    r = _enquiry(env, student_name="Old Boy", student_type="OLD")
+    e = r.get_json()["enquiry"]
+    assert r.status_code == 201 and e["student_type"] == "OLD" and e["print"]["tuition_fee"] == 40000
+    assert _enquiry(env, student_name="Bad Type", student_type="MAYBE").status_code == 400
