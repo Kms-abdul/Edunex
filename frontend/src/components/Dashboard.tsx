@@ -48,6 +48,7 @@ const FundAllocation = lazy(() => import('./FundAllocation'));
 const MonthWiseLedger = lazy(() => import('./MonthWiseLedger'));
 const PettyCashApproval = lazy(() => import('./PettyCashApproval'));
 const SmsCenter = lazy(() => import('./SmsCenter'));
+const EnquiryModule = lazy(() => import('./enquiry/EnquiryModule'));
 const HRManagement = lazy(() => import('./HRManagement'));
 const ReconciliationDashboard = lazy(() => import('./ReconciliationDashboard'));
 const RemittanceApprovals = lazy(() => import('./RemittanceApprovals'));
@@ -214,6 +215,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
               {currentPage === 'control-panel' && <ControlPanel navigateTo={navigateTo} />}
               {currentPage === 'staffsupport' && <StaffSupport />}
               {currentPage === 'sms-center' && <SmsCenter navigateTo={navigateTo} />}
+              {currentPage === 'enquiry' && <EnquiryModule />}
             </>
           )}
 

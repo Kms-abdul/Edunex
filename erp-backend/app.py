@@ -52,6 +52,7 @@ from routes.sms_event_routes import bp as sms_event_bp
 from routes.hr_routes import bp as hr_bp
 from routes.biometric_routes import bp as biometric_bp
 from routes.attendance_sync import attendance_sync_bp
+from routes.enquiry_routes import bp as enquiry_bp
 from routes.staff_attendance_routes import bp as staff_attendance_bp
 from routes.media_routes import bp as media_bp
 # -----------------------------
@@ -86,7 +87,10 @@ def create_app():
     DB_PORT = os.getenv("DB_PORT")
     DB_NAME = os.getenv("DB_NAME")
 
-    if DB_HOST:
+    if os.getenv("TEST_DATABASE_URL"):
+        # Automated tests only: a throwaway database, never the real one
+        app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("TEST_DATABASE_URL")
+    elif DB_HOST:
         app.config["SQLALCHEMY_DATABASE_URI"] = (
             f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
         )
@@ -153,6 +157,7 @@ def create_app():
     app.register_blueprint(attendance_bp)
     app.register_blueprint(report_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(enquiry_bp)
     app.register_blueprint(org_bp)
     app.register_blueprint(academic_bp)
     app.register_blueprint(timetable_bp, url_prefix="/api/timetable")

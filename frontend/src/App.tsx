@@ -49,6 +49,7 @@ export type Page =
   | "fee-concession-report"
   | "adjust-fee-report"
   | 'sms-center'
+  | 'enquiry'
   | 'fund-allocation'
   | 'month-wise-ledger'
   | 'petty-cash-approval'

@@ -66,11 +66,13 @@ const Administration: React.FC<AdministrationProps> = ({ navigateTo }) => {
         },
         {
             id: 'inquiry',
-            name: 'Inquiry',
+            name: 'Admission Enquiry',
+            description: 'Note a parent\'s enquiry and print the fee and scheme paper',
             icon: <SearchIcon className="w-6 h-6" />,
             iconBg: 'bg-amber-50',
             iconColor: 'text-amber-600',
-            comingSoon: true
+            page: 'enquiry',
+            permission: ['administration.enquiry.enquiry', 'administration.enquiry.schemes'],
         },
         {
             id: 'hostel',

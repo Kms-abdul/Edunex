@@ -9,7 +9,7 @@ export interface NavSection { title: string; short: string; icon: React.ReactNod
 export const navCategories: NavSection[] = [
   { title: 'Home', short: 'Home', icon: <Home className="w-5 h-5" />, page: 'dashboard', permission: '*' },
   { title: 'Administration', short: 'Admin', icon: <Users className="w-5 h-5" />, page: 'administration', permission: 'administration.students.management',
-    match: ['administration', 'student-administration', 'student-attendance', 'student-document-management', 'document-management', 'document-administration', 'sms-center', 'create-student', 'import-student-data'] },
+    match: ['administration', 'student-administration', 'student-attendance', 'student-document-management', 'document-management', 'document-administration', 'sms-center', 'enquiry', 'create-student', 'import-student-data'] },
   { title: 'Academics', short: 'Academics', icon: <BookOpen className="w-5 h-5" />, page: 'academic', permission: 'academics.academic.management',
     match: ['academic', 'academics', 'timetable', 'online-class'] },
   { title: 'Finance', short: 'Finance', icon: <Wallet className="w-5 h-5" />, page: 'fee', permission: 'fees.collections.receipt-entry',

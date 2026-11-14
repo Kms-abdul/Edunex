@@ -391,10 +391,17 @@ tspan {
   font-family: 'Inter', 'Noto Sans Arabic', sans-serif !important;
 }
 
+/* Enquiry slip: printed from a hidden copy, the rest of the app is hidden while printing */
+.slip-print-portal { display: none; }
+
 @media print {
   .no-print {
     display: none !important;
   }
+
+  body.printing-slip > #root { display: none !important; }
+  body.printing-slip > .slip-print-portal { display: block !important; padding: 0; }
+  body.printing-slip { background: #fff; }
 
   * {
     -webkit-print-color-adjust: exact;
