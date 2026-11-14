@@ -59,7 +59,7 @@ export const SlipView: React.FC<{
         <Alert tone="success" title={title}>Print it and give the paper to the parent.</Alert>
       ) : (
         <Alert tone="success" title={title}>
-          Saved. Print it later from the office computer: <b>Admission Enquiry › To print</b>. You can also share it as PDF with the Print button.
+          Saved. Print it later from the office computer: <b>Admission Enquiry › Enquiry list</b> shows it as <b>Not printed</b>. You can also share it as PDF with the Print button.
         </Alert>
       )}
       <div className="flex items-center gap-2 text-sm">

@@ -50,7 +50,7 @@ export const EnquirySlip: React.FC<{ data: PrintData; yearName?: string }> = ({ 
           <p className="font-semibold">Tuition fee for the year</p>
           <p className="text-base font-bold">{data.tuition_fee !== null ? rupees(data.tuition_fee) : 'To be announced'}</p>
         </div>
-        {data.tuition_installments && data.tuition_installments.length > 1 && (
+        {data.tuition_installments && data.tuition_installments.length > 0 && (
           <table className="mt-2 w-full border-collapse text-[12px]">
             <thead>
               <tr className="border-y border-slate-300 text-left">

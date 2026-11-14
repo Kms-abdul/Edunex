@@ -247,3 +247,26 @@ def test_print_tracking(env):
     after = env["c"].get("/api/enquiry", query_string=q, headers=env["h"]("clerk")).get_json()
     assert all(r["id"] != e["id"] for r in after["enquiries"]) and after["not_printed"] == before["not_printed"] - 1
     assert env["c"].post(f"/api/enquiry/{e['id']}/printed", headers=env["h"]("nobody")).status_code == 403
+
+
+def test_old_enquiry_gets_installments_and_even_split(env):
+    from extensions import db
+    from enquiry_models import Enquiry
+    from routes.enquiry_routes import tuition_installments
+    from types import SimpleNamespace
+    e = _enquiry(env, student_name="Old Paper").get_json()["enquiry"]
+    with env["app"].app_context():
+        row = db.session.get(Enquiry, e["id"])
+        snap = dict(row.quote_snapshot)
+        snap.pop("tuition_installments")                     # saved before installments existed
+        row.quote_snapshot = snap
+        db.session.commit()
+    got = env["c"].get(f"/api/enquiry/{e['id']}", headers=env["h"]("su")).get_json()["enquiry"]["print"]
+    assert len(got["tuition_installments"]) == 10 and sum(i["amount"] for i in got["tuition_installments"]) == 40000
+    with env["app"].app_context():
+        fs = SimpleNamespace(totalamount=10000, monthly_amount=None, installments_count=3, feetypeid=999,
+                             academicyear="2027-2028", academic_year="2027-2028", branch="Alpha", location="All")
+        split = tuition_installments([fs])
+        assert [i["amount"] for i in split] == [3334, 3333, 3333]
+        fs.installments_count = 0
+        assert tuition_installments([fs]) == [{"name": "Full year (one payment)", "amount": 10000}]

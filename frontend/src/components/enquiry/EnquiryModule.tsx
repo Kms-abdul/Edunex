@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ClipboardList, PlusCircle, List, Gift, Printer } from 'lucide-react';
+import { ClipboardList, PlusCircle, List, Gift } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { EmptyState, ErrorState, Field, LoadingState, notify } from '../ui';
 import { EnquiryOptions, PrintData, enquiryApi, errorText, yearLabel } from './enquiryApi';
@@ -7,7 +7,7 @@ import NewEnquiry, { SlipView } from './NewEnquiry';
 import EnquiryList from './EnquiryList';
 import SchemesSetup from './SchemesSetup';
 
-type Tab = 'new' | 'list' | 'print' | 'schemes';
+type Tab = 'new' | 'list' | 'schemes';
 const TAB_KEY = 'kampusops.enquiryTab';
 const BRANCH_KEY = 'kampusops.enquiryBranch';
 
@@ -23,7 +23,6 @@ const EnquiryModule: React.FC = () => {
   const tabs = ([
     canEnquiry && { id: 'new', label: 'New enquiry', short: 'New', icon: <PlusCircle className="w-4 h-4" /> },
     canEnquiry && { id: 'list', label: 'Enquiry list', short: 'List', icon: <List className="w-4 h-4" /> },
-    canEnquiry && { id: 'print', label: 'To print', short: 'Print', icon: <Printer className="w-4 h-4" /> },
     canSchemes && { id: 'schemes', label: 'Schemes', short: 'Schemes', icon: <Gift className="w-4 h-4" /> },
   ].filter(Boolean)) as { id: Tab; label: string; short: string; icon: React.ReactNode }[];
 
@@ -36,8 +35,6 @@ const EnquiryModule: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [branchId, setBranchId] = useState<number | null>(null);
   const [opened, setOpened] = useState<{ id: number; data: PrintData; year: string; printedAt: string | null } | null>(null);
-  const [toPrintCount, setToPrintCount] = useState(0);
-  const [countTick, setCountTick] = useState(0);
   const [reload, setReload] = useState(0);
 
   useEffect(() => { try { sessionStorage.setItem(TAB_KEY, tab); } catch { /* ignore */ } }, [tab]);
@@ -68,16 +65,6 @@ const EnquiryModule: React.FC = () => {
     }
   };
 
-  // How many slips are still waiting to be printed (badge on the "To print" tab)
-  useEffect(() => {
-    if (!branchId || !canEnquiry) return;
-    let live = true;
-    enquiryApi.list({ branch_id: branchId, printed: 'no', page: 1 })
-      .then(d => live && setToPrintCount(d.not_printed))
-      .catch(() => { /* badge only */ });
-    return () => { live = false; };
-  }, [branchId, canEnquiry, tab, opened, countTick]);
-
   const headerBranchChosen = !!options?.current_branch_id;
 
   let body: React.ReactNode;
@@ -94,15 +81,12 @@ const EnquiryModule: React.FC = () => {
   } else if (opened) {
     body = (
       <SlipView key={opened.id} enquiryId={opened.id} data={opened.data} yearName={yearLabel(options.academic_years, opened.year)}
-        title={`Enquiry ${opened.data.enquiry_no}`} printedAt={opened.printedAt} onBack={() => setOpened(null)}
-        onPrinted={() => setCountTick(n => n + 1)} />
+        title={`Enquiry ${opened.data.enquiry_no}`} printedAt={opened.printedAt} onBack={() => setOpened(null)} />
     );
   } else if (tab === 'new') {
     body = <NewEnquiry key={branchId} options={options} branchId={branchId} onOpenEnquiry={openEnquiry} />;
   } else if (tab === 'list') {
     body = <EnquiryList key={`list-${branchId}`} options={options} branchId={branchId} onOpen={openEnquiry} />;
-  } else if (tab === 'print') {
-    body = <EnquiryList key={`print-${branchId}`} mode="toprint" options={options} branchId={branchId} onOpen={openEnquiry} />;
   } else {
     body = <SchemesSetup key={branchId} options={options} branchId={branchId} />;
   }
@@ -137,9 +121,6 @@ const EnquiryModule: React.FC = () => {
                     <span className={active ? 'text-brand-600' : 'text-slate-400'}>{t.icon}</span>
                     <span className="sm:hidden">{t.short}</span>
                     <span className="hidden sm:inline">{t.label}</span>
-                    {t.id === 'print' && toPrintCount > 0 && (
-                      <span className="ml-0.5 rounded-full bg-amber-100 px-1.5 text-xs font-semibold text-amber-800 tabular-nums">{toPrintCount}</span>
-                    )}
                     <span className={`absolute inset-x-2 bottom-0 h-0.5 rounded-full ${active ? 'bg-brand-600' : 'bg-transparent'}`} />
                   </button>
                 );

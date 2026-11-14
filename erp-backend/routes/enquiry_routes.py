@@ -15,7 +15,8 @@ import hmac
 import os
 import re
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_DOWN, Decimal, InvalidOperation
+from types import SimpleNamespace
 
 from flask import Blueprint, current_app, g, jsonify, request
 from sqlalchemy import func, or_
@@ -204,9 +205,35 @@ def tuition_installments(rows):
     """Installment split exactly as the Fees module shows it (same helper, same titles)."""
     out = []
     for fs in rows:
-        for inst in generate_installments(fs):
+        insts = generate_installments(fs)
+        total = Decimal(fs.totalamount or 0)
+        if not insts and (fs.installments_count or 0) > 0 and total > 0:
+            # Count saved without a per-installment amount: split evenly, the rounding
+            # difference goes to the first installment (same rule as the Fees module)
+            n = fs.installments_count
+            each = (total / n).quantize(Decimal("1"), rounding=ROUND_DOWN)
+            proxy = SimpleNamespace(monthly_amount=each, installments_count=n, totalamount=total,
+                                    feetypeid=fs.feetypeid, academicyear=fs.academicyear or fs.academic_year,
+                                    branch=fs.branch, location=fs.location)
+            insts = generate_installments(proxy)
+        if not insts and total > 0:
+            insts = [{"month": "Full year (one payment)", "amount": total}]
+        for inst in insts:
             out.append({"name": inst["month"], "amount": _money(inst["amount"])})
     return out
+
+
+def fill_missing_installments(e):
+    """Enquiries saved before installments were printed: add them once from the fee setup,
+    but only if they add up to the tuition fee the parent was given (the paper must not change)."""
+    snap = e.quote_snapshot
+    if not snap or "tuition_installments" in snap or snap.get("tuition_fee") is None or not e.branch:
+        return
+    rows = tuition_rows(e.branch, e.academic_year, e.class_name, snap.get("tuition_fee_type"))
+    inst = tuition_installments(rows)
+    if inst and abs(sum(i["amount"] for i in inst) - float(snap["tuition_fee"])) < 0.01:
+        e.quote_snapshot = {**snap, "tuition_installments": inst}
+        db.session.commit()
 
 
 def scheme_discount(scheme, fee):
@@ -670,6 +697,7 @@ def get_enquiry(current_user, enquiry_id):
     if not e:
         raise UserError("This enquiry was not found.", status=404)
     resolve_branch(current_user, e.branch_id)  # ownership check
+    fill_missing_installments(e)
     return jsonify({"enquiry": enquiry_dict(e, full=True)})
 
 
