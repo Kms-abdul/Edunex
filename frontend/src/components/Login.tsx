@@ -5,7 +5,7 @@ import { auth } from '../api';
 import { User, Lock, Eye, EyeOff, ArrowRight, Mail, KeyRound, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 import KampusOpsLogo from '../images/kampusops-logo.webp';
 import KampusOpsMark from '../images/kampusops-mark.webp';
-import DeLogo from '../images/DE LOGO.webp';
+
 
 interface LoginProps {
   onLoginSuccess: (user: any) => void;
@@ -472,8 +472,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
         {/* ── Footer ── */}
         <div className="flex items-center justify-between px-6 sm:px-12 py-5 border-t border-slate-100">
-          <p className="text-xs text-slate-400">© {new Date().getFullYear()} KampusOps · School Management Platform</p>
-          <img src={DeLogo} alt="DE" className="h-8 w-auto object-contain opacity-90" />
+          <p className="text-md text-slate-800">© {new Date().getFullYear()} KampusOps · School Management Platform</p>
         </div>
       </div>
     </div>
