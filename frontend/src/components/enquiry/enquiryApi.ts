@@ -45,6 +45,7 @@ export interface Quote {
   academic_year: string;
   tuition_fee_type: string | null;
   tuition_fee: number | null;
+  tuition_installments?: { name: string; amount: number }[];
   fee_note: string | null;
   schemes: SchemeQuote[];
 }
@@ -72,6 +73,8 @@ export interface EnquiryRow {
   contact: string;
   aadhaar_masked: string | null;
   status: string;
+  printed_at?: string | null;
+  print_count?: number;
   match?: 'aadhaar' | 'phone';
   print?: PrintData;
 }
@@ -81,6 +84,20 @@ export interface CheckResult {
   enquiries: EnquiryRow[];
   students: { admission_no: string; name: string; class_name: string; branch: string; status: string; match: 'aadhaar' | 'phone' }[];
 }
+
+// Verhoeff check digit used by Aadhaar: a failure means a likely typing mistake (warning only)
+const V_D = [[0,1,2,3,4,5,6,7,8,9],[1,2,3,4,0,6,7,8,9,5],[2,3,4,0,1,7,8,9,5,6],[3,4,0,1,2,8,9,5,6,7],[4,0,1,2,3,9,5,6,7,8],
+  [5,9,8,7,6,0,4,3,2,1],[6,5,9,8,7,1,0,4,3,2],[7,6,5,9,8,2,1,0,4,3],[8,7,6,5,9,3,2,1,0,4],[9,8,7,6,5,4,3,2,1,0]];
+const V_P = [[0,1,2,3,4,5,6,7,8,9],[1,5,7,6,2,8,3,0,9,4],[5,8,0,3,7,9,6,1,4,2],[8,9,1,6,0,4,3,5,2,7],[9,4,5,3,1,2,6,8,7,0],
+  [4,2,8,6,5,7,3,9,0,1],[2,7,9,3,8,0,6,4,1,5],[7,0,4,6,9,1,3,2,5,8]];
+export const aadhaarLooksRight = (digits: string) => {
+  let c = 0;
+  digits.split('').reverse().forEach((ch, i) => { c = V_D[c][V_P[i % 8][Number(ch)]]; });
+  return c === 0;
+};
+
+/** True on tablets / computers, where a printer is usually attached. */
+export const isDeskScreen = () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
 
 /** Plain-words message for any failed request. */
 export const errorText = (err: any): string =>
@@ -108,7 +125,8 @@ export const enquiryApi = {
   create: (body: Record<string, unknown>) =>
     api.post<{ message: string; enquiry: EnquiryRow }>('/enquiry', body).then(r => r.data),
   list: (params: Record<string, unknown>) =>
-    api.get<{ enquiries: EnquiryRow[]; total: number; page: number; page_size: number }>('/enquiry', { params }).then(r => r.data),
+    api.get<{ enquiries: EnquiryRow[]; total: number; page: number; page_size: number; not_printed: number }>('/enquiry', { params }).then(r => r.data),
+  markPrinted: (id: number) => api.post<{ enquiry: EnquiryRow }>(`/enquiry/${id}/printed`).then(r => r.data.enquiry),
   get: (id: number) => api.get<{ enquiry: EnquiryRow }>(`/enquiry/${id}`).then(r => r.data.enquiry),
 };
 

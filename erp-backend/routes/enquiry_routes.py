@@ -23,8 +23,8 @@ from sqlalchemy.exc import IntegrityError
 
 from crypto_utils import encrypt_secret
 from enquiry_models import AdmissionScheme, Enquiry, EnquirySequence
-from extensions import db, get_today, limiter
-from helpers import get_user_allowed_branches, has_permission, token_required
+from extensions import db, get_now, get_today, limiter
+from helpers import generate_installments, get_user_allowed_branches, has_permission, token_required
 from models import (Branch, ClassDisplayOrder, ClassFeeStructure, ClassMaster, ClassSection,
                     FeeType, OrgMaster, School, Student)
 
@@ -98,11 +98,15 @@ def clean_phone(value, required=True):
 
 
 def clean_aadhaar(value):
+    """12 digits, not starting with 0 or 1. A failed check digit is only a warning
+    (shown on the form): the front desk must be able to save what the parent gives."""
     digits = re.sub(r"\D", "", str(value or ""))
     if not digits:
         return None
-    if len(digits) != 12 or digits[0] in "01" or not _verhoeff_ok(digits):
-        raise UserError("This Aadhaar number is not correct. Please check the 12 digits.", field="aadhaar")
+    if len(digits) != 12:
+        raise UserError("Aadhaar has 12 digits. Please check the number, or leave it empty.", field="aadhaar")
+    if digits[0] in "01":
+        raise UserError("An Aadhaar number never starts with 0 or 1. Please check the number.", field="aadhaar")
     return digits
 
 
@@ -176,10 +180,10 @@ def branch_classes(branch):
 
 
 # --------------------------------------------------------------------------- fee quote
-def tuition_fee(branch, year, class_name, fee_type_name):
-    """Tuition fee for one class: rows of that fee type for this branch, else school-wide ('All') rows."""
+def tuition_rows(branch, year, class_name, fee_type_name):
+    """Class fee rows of the tuition fee type: this branch's rows, else school-wide ('All') rows."""
     if not fee_type_name:
-        return None
+        return []
     base = (ClassFeeStructure.query.join(FeeType, FeeType.id == ClassFeeStructure.feetypeid)
             .filter(ClassFeeStructure.clazz == class_name,
                     ClassFeeStructure.academic_year == year,
@@ -187,8 +191,22 @@ def tuition_fee(branch, year, class_name, fee_type_name):
     for level in (branch.branch_name, "All"):
         rows = base.filter(ClassFeeStructure.branch == level).all()
         if rows:
-            return sum((Decimal(r.totalamount or 0) for r in rows), Decimal("0"))
-    return None
+            return rows
+    return []
+
+
+def tuition_fee(branch, year, class_name, fee_type_name):
+    rows = tuition_rows(branch, year, class_name, fee_type_name)
+    return sum((Decimal(r.totalamount or 0) for r in rows), Decimal("0")) if rows else None
+
+
+def tuition_installments(rows):
+    """Installment split exactly as the Fees module shows it (same helper, same titles)."""
+    out = []
+    for fs in rows:
+        for inst in generate_installments(fs):
+            out.append({"name": inst["month"], "amount": _money(inst["amount"])})
+    return out
 
 
 def scheme_discount(scheme, fee):
@@ -217,7 +235,8 @@ def build_quote(branch, year, class_name, on_date):
                                    or_(FeeType.branch == branch.branch_name, FeeType.branch == "All"))
               .order_by(FeeType.id).first())
         fee_type = ft.feetype if ft else None
-    fee = tuition_fee(branch, year, class_name, fee_type)
+    rows = tuition_rows(branch, year, class_name, fee_type)
+    fee = sum((Decimal(r.totalamount or 0) for r in rows), Decimal("0")) if rows else None
 
     out = []
     for s in schemes:
@@ -239,6 +258,7 @@ def build_quote(branch, year, class_name, on_date):
         "academic_year": year,
         "tuition_fee_type": fee_type,
         "tuition_fee": _money(fee) if fee is not None else None,
+        "tuition_installments": tuition_installments(rows),
         "fee_note": None if fee is not None else f"Tuition fee for {year} is not set yet.",
         "schemes": out,
     }
@@ -275,6 +295,8 @@ def enquiry_dict(e, full=False):
         "student_name": e.student_name, "guardian_name": e.guardian_name,
         "class_name": e.class_name, "contact": e.contact,
         "aadhaar_masked": mask_aadhaar(e.aadhaar_last4), "status": e.status,
+        "printed_at": e.printed_at.isoformat() if e.printed_at else None,
+        "print_count": e.print_count or 0,
     }
     if full:
         d["print"] = e.quote_snapshot
@@ -601,8 +623,16 @@ def list_enquiries(current_user):
     if not has_permission(current_user, PERM_ENQUIRY, "read"):
         return _forbidden()
     branch = resolve_branch(current_user, request.args.get("branch_id"))
-    year = resolve_year(request.args.get("academic_year"))
-    q = Enquiry.query.filter(Enquiry.branch_id == branch.id, Enquiry.academic_year == year)
+    # Year is optional ("To print" shows every year)
+    year = resolve_year(request.args.get("academic_year")) if request.args.get("academic_year") else None
+    q = Enquiry.query.filter(Enquiry.branch_id == branch.id)
+    if year:
+        q = q.filter(Enquiry.academic_year == year)
+    printed = request.args.get("printed")
+    if printed == "no":
+        q = q.filter(Enquiry.printed_at.is_(None))
+    elif printed == "yes":
+        q = q.filter(Enquiry.printed_at.isnot(None))
     text = str(request.args.get("q") or "").strip()[:60]
     if text:
         like = f"%{text}%"
@@ -626,7 +656,9 @@ def list_enquiries(current_user):
         page = 1
     total = q.count()
     rows = q.order_by(Enquiry.enquiry_date.desc(), Enquiry.id.desc()).offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).all()
-    return jsonify({"enquiries": [enquiry_dict(e) for e in rows], "total": total, "page": page, "page_size": PAGE_SIZE})
+    not_printed = Enquiry.query.filter(Enquiry.branch_id == branch.id, Enquiry.printed_at.is_(None)).count()
+    return jsonify({"enquiries": [enquiry_dict(e) for e in rows], "total": total, "page": page,
+                    "page_size": PAGE_SIZE, "not_printed": not_printed})
 
 
 @bp.route("/api/enquiry/<int:enquiry_id>", methods=["GET"])
@@ -639,3 +671,21 @@ def get_enquiry(current_user, enquiry_id):
         raise UserError("This enquiry was not found.", status=404)
     resolve_branch(current_user, e.branch_id)  # ownership check
     return jsonify({"enquiry": enquiry_dict(e, full=True)})
+
+
+@bp.route("/api/enquiry/<int:enquiry_id>/printed", methods=["POST"])
+@token_required
+def mark_printed(current_user, enquiry_id):
+    """Called after the user confirms the paper came out of the printer."""
+    if not has_permission(current_user, PERM_ENQUIRY, "read"):
+        return _forbidden()
+    e = db.session.get(Enquiry, enquiry_id)
+    if not e:
+        raise UserError("This enquiry was not found.", status=404)
+    resolve_branch(current_user, e.branch_id)  # ownership check
+    e.printed_at = get_now()
+    e.printed_by = current_user.user_id
+    e.print_count = (e.print_count or 0) + 1
+    e.updated_by = current_user.user_id
+    db.session.commit()
+    return jsonify({"message": "Marked as printed.", "enquiry": enquiry_dict(e)})

@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Printer, Plus, AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
-import { ActionBar, Alert, Button, Field, LoadingState, notify } from '../ui';
+import { ActionBar, Alert, Badge, Button, Field, LoadingState, confirmDialog, notify } from '../ui';
 import {
   CheckResult, EnquiryOptions, PrintData, Quote, enquiryApi, errorField, errorText,
-  rupees, niceDate, yearLabel, joinWindow, discountLabel,
+  rupees, niceDate, yearLabel, joinWindow, discountLabel, aadhaarLooksRight, isDeskScreen,
 } from './enquiryApi';
 import { EnquirySlip, SlipPrintPortal, printSlip } from './EnquirySlip';
 
@@ -13,25 +13,73 @@ const EMPTY = { student_name: '', guardian_name: '', class_name: '', contact: ''
 const digits = (v: string) => v.replace(/\D/g, '');
 const groupAadhaar = (v: string) => digits(v).slice(0, 12).replace(/(\d{4})(?=\d)/g, '$1 ');
 
+/** Ask once the print screen closes, so "printed" is only recorded when the paper really came out. */
+export const usePrintTracking = (enquiryId: number, initiallyPrinted: boolean, onPrinted?: () => void) => {
+  const [printed, setPrinted] = useState(initiallyPrinted);
+  const mark = async () => {
+    try {
+      await enquiryApi.markPrinted(enquiryId);
+      setPrinted(true);
+      onPrinted?.();
+      notify.success('Marked as printed.');
+    } catch (err) {
+      notify.error(errorText(err));
+    }
+  };
+  const print = () => printSlip(async () => {
+    const ok = await confirmDialog('Did the enquiry paper print?', { title: 'Printed?', confirmText: 'Yes, printed', cancelText: 'No', tone: 'default' });
+    if (ok) await mark();
+  });
+  return { printed, print, mark };
+};
+
 /** Shows a saved slip with Print / New buttons (used after saving and when reopening an enquiry). */
 export const SlipView: React.FC<{
+  enquiryId: number;
   data: PrintData;
   yearName: string;
   title: string;
+  printedAt?: string | null;
+  autoPrint?: boolean;
   onNew?: () => void;
   onBack?: () => void;
-}> = ({ data, yearName, title, onNew, onBack }) => (
-  <div className="space-y-4">
-    <Alert tone="success" title={title}>Give this paper to the parent.</Alert>
-    <div className="card p-4 sm:p-6 overflow-x-auto"><EnquirySlip data={data} yearName={yearName} /></div>
-    <ActionBar>
-      {onBack && <Button variant="secondary" onClick={onBack}>Back</Button>}
-      {onNew && <Button variant="secondary" icon={<Plus className="w-4 h-4" />} onClick={onNew}>New enquiry</Button>}
-      <Button icon={<Printer className="w-4 h-4" />} onClick={printSlip}>Print</Button>
-    </ActionBar>
-    <SlipPrintPortal data={data} yearName={yearName} />
-  </div>
-);
+  onPrinted?: () => void;
+}> = ({ enquiryId, data, yearName, title, printedAt, autoPrint, onNew, onBack, onPrinted }) => {
+  const { printed, print, mark } = usePrintTracking(enquiryId, !!printedAt, onPrinted);
+  const desk = isDeskScreen();
+  useEffect(() => {
+    if (autoPrint) { const t = window.setTimeout(print, 300); return () => window.clearTimeout(t); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div className="space-y-4">
+      {printed ? (
+        <Alert tone="success" title={title}>Printed. Give this paper to the parent.</Alert>
+      ) : desk ? (
+        <Alert tone="success" title={title}>Print it and give the paper to the parent.</Alert>
+      ) : (
+        <Alert tone="success" title={title}>
+          Saved. Print it later from the office computer: <b>Admission Enquiry › To print</b>. You can also share it as PDF with the Print button.
+        </Alert>
+      )}
+      <div className="flex items-center gap-2 text-sm">
+        <Badge tone={printed ? 'success' : 'warning'}>{printed ? 'Printed' : 'Not printed yet'}</Badge>
+        {!printed && (
+          <button type="button" className="text-brand-700 underline underline-offset-2 min-h-[44px]" onClick={mark}>
+            Mark as printed
+          </button>
+        )}
+      </div>
+      <div className="card p-4 sm:p-6 overflow-x-auto"><EnquirySlip data={data} yearName={yearName} /></div>
+      <ActionBar>
+        {onBack && <Button variant="secondary" onClick={onBack}>Back</Button>}
+        {onNew && <Button variant="secondary" icon={<Plus className="w-4 h-4" />} onClick={onNew}>New enquiry</Button>}
+        <Button icon={<Printer className="w-4 h-4" />} onClick={print}>Print</Button>
+      </ActionBar>
+      <SlipPrintPortal data={data} yearName={yearName} />
+    </div>
+  );
+};
 
 const NewEnquiry: React.FC<{ options: EnquiryOptions; branchId: number; onOpenEnquiry: (id: number) => void }> = ({ options, branchId, onOpenEnquiry }) => {
   const years = options.academic_years;
@@ -47,7 +95,8 @@ const NewEnquiry: React.FC<{ options: EnquiryOptions; branchId: number; onOpenEn
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [check, setCheck] = useState<CheckResult | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState<PrintData | null>(null);
+  const [saved, setSaved] = useState<{ id: number; data: PrintData } | null>(null);
+  const desk = isDeskScreen();
   const firstInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => { try { localStorage.setItem(YEAR_KEY, year); } catch { /* ignore */ } }, [year]);
@@ -95,6 +144,7 @@ const NewEnquiry: React.FC<{ options: EnquiryOptions; branchId: number; onOpenEn
     if (!form.class_name) e.class_name = 'Please choose the class.';
     if (!/^[6-9]\d{9}$/.test(phoneDigits)) e.contact = 'Please type a 10-digit mobile number.';
     if (aadhaarDigits && aadhaarDigits.length !== 12) e.aadhaar = 'Aadhaar has 12 digits. Leave it empty if the parent does not have it.';
+    else if (aadhaarDigits && /^[01]/.test(aadhaarDigits)) e.aadhaar = 'An Aadhaar number never starts with 0 or 1. Please check the number.';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -111,9 +161,8 @@ const NewEnquiry: React.FC<{ options: EnquiryOptions; branchId: number; onOpenEn
     try {
       const res = await enquiryApi.create({ branch_id: branchId, academic_year: year, ...form, contact: phoneDigits, aadhaar: aadhaarDigits });
       if (res.enquiry.print) {
-        setSaved(res.enquiry.print);
+        setSaved({ id: res.enquiry.id, data: res.enquiry.print });
         notify.success(res.message);
-        window.setTimeout(printSlip, 300);
       }
     } catch (err: any) {
       const field = errorField(err);
@@ -133,7 +182,10 @@ const NewEnquiry: React.FC<{ options: EnquiryOptions; branchId: number; onOpenEn
   const yearName = yearLabel(years, year);
 
   if (saved) {
-    return <SlipView data={saved} yearName={yearName} title={`Enquiry ${saved.enquiry_no} saved`} onNew={startNew} />;
+    return (
+      <SlipView enquiryId={saved.id} data={saved.data} yearName={yearName} title={`Enquiry ${saved.data.enquiry_no} saved`}
+        autoPrint={desk} onNew={startNew} />
+    );
   }
 
   if (!options.can_write) {
@@ -170,7 +222,9 @@ const NewEnquiry: React.FC<{ options: EnquiryOptions; branchId: number; onOpenEn
           </Field>
         </div>
         <Field label="Student Aadhaar" htmlFor="enq-aadhaar" error={errors.aadhaar}
-          hint="Optional. Used to see if this child came before. Printed as XXXX XXXX 1234.">
+          hint={aadhaarDigits.length === 12 && !aadhaarLooksRight(aadhaarDigits)
+            ? <span className="text-amber-700">This number may have a typing mistake. Please check it with the parent. You can still save.</span>
+            : 'Optional. Used to see if this child came before. Printed as XXXX XXXX 1234.'}>
           <input id="enq-aadhaar" className="input tracking-wider" inputMode="numeric" autoComplete="off" maxLength={14}
             value={form.aadhaar} onChange={e => set('aadhaar', groupAadhaar(e.target.value))} placeholder="1234 5678 9012" />
         </Field>
@@ -215,6 +269,18 @@ const NewEnquiry: React.FC<{ options: EnquiryOptions; branchId: number; onOpenEn
               <span className="text-sm text-slate-600">Tuition fee · Class {quote.class_name}</span>
               <span className="text-lg font-bold text-slate-900 tabular-nums">{quote.tuition_fee !== null ? rupees(quote.tuition_fee) : '—'}</span>
             </div>
+            {quote.tuition_installments && quote.tuition_installments.length > 1 && (
+              <details className="rounded-lg border border-slate-200 px-3 text-sm">
+                <summary className="flex min-h-[44px] cursor-pointer items-center text-brand-700 font-medium">
+                  Paid in {quote.tuition_installments.length} installments (tap to see)
+                </summary>
+                <ul className="pb-2 divide-y divide-slate-100">
+                  {quote.tuition_installments.map((i, n) => (
+                    <li key={n} className="flex justify-between py-1.5"><span>{i.name}</span><span className="tabular-nums">{rupees(i.amount)}</span></li>
+                  ))}
+                </ul>
+              </details>
+            )}
             {quote.fee_note && (
               <Alert tone="warning">{quote.fee_note} Set it in Finance › Fee Masters. You can still save; the paper will say "To be announced".</Alert>
             )}
@@ -241,7 +307,7 @@ const NewEnquiry: React.FC<{ options: EnquiryOptions; branchId: number; onOpenEn
       <div className="lg:col-span-12">
         <ActionBar note={sameYear ? 'This child already has an enquiry for this year. Open it instead.' : undefined}>
           <Button size="lg" icon={<Printer className="w-5 h-5" />} loading={saving} disabled={!!sameYear} onClick={save}>
-            Save &amp; Print
+            {desk ? 'Save & Print' : 'Save'}
           </Button>
         </ActionBar>
       </div>

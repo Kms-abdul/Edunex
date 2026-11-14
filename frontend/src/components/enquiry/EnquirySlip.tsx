@@ -50,7 +50,29 @@ export const EnquirySlip: React.FC<{ data: PrintData; yearName?: string }> = ({ 
           <p className="font-semibold">Tuition fee for the year</p>
           <p className="text-base font-bold">{data.tuition_fee !== null ? rupees(data.tuition_fee) : 'To be announced'}</p>
         </div>
-        <p className="text-xs text-slate-500">Only the tuition fee is shown. Other fees (books, uniform, transport) are told at admission.</p>
+        {data.tuition_installments && data.tuition_installments.length > 1 && (
+          <table className="mt-2 w-full border-collapse text-[12px]">
+            <thead>
+              <tr className="border-y border-slate-300 text-left">
+                <th className="py-1 pr-2 font-semibold">Installment</th>
+                <th className="py-1 text-right font-semibold">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.tuition_installments.map((i, n) => (
+                <tr key={n} className="border-b border-slate-200">
+                  <td className="py-1 pr-2">{i.name}</td>
+                  <td className="py-1 text-right tabular-nums">{rupees(i.amount)}</td>
+                </tr>
+              ))}
+              <tr className="font-semibold">
+                <td className="py-1 pr-2">Total</td>
+                <td className="py-1 text-right tabular-nums">{rupees(data.tuition_fee)}</td>
+              </tr>
+            </tbody>
+          </table>
+        )}
+        <p className="mt-1 text-xs text-slate-500">Only the tuition fee is shown. Other fees (books, uniform, transport) are told at admission.</p>
       </section>
 
       {data.schemes.length > 0 && (
@@ -105,8 +127,14 @@ export const SlipPrintPortal: React.FC<{ data: PrintData | null; yearName?: stri
   );
 };
 
-export const printSlip = () => {
+export const printSlip = (onClosed?: () => void) => {
   document.body.classList.add('printing-slip');
+  const after = () => {
+    window.removeEventListener('afterprint', after);
+    document.body.classList.remove('printing-slip');
+    onClosed?.();
+  };
+  window.addEventListener('afterprint', after);
   // Let the browser apply the class before opening the print screen
   window.setTimeout(() => window.print(), 50);
 };

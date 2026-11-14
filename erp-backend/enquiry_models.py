@@ -76,6 +76,11 @@ class Enquiry(db.Model, AuditMixin):
     # Exactly what was printed (fee + schemes), so a reprint matches the parent's copy
     quote_snapshot = db.Column(db.JSON, nullable=True)
 
+    # Print tracking: enquiries taken on a phone are printed later at the office
+    printed_at = db.Column(db.DateTime, nullable=True)
+    printed_by = db.Column(db.Integer, db.ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    print_count = db.Column(db.Integer, nullable=False, default=0, server_default="0")
+
     branch = db.relationship("Branch", foreign_keys=[branch_id])
 
     __table_args__ = (
@@ -85,6 +90,7 @@ class Enquiry(db.Model, AuditMixin):
         db.Index("idx_enquiry_branch_year_date", "branch_id", "academic_year", "enquiry_date"),
         db.Index("idx_enquiry_contact", "contact"),
         db.Index("idx_enquiry_aadhaar_hash", "aadhaar_hash"),
+        db.Index("idx_enquiry_branch_printed", "branch_id", "printed_at"),
     )
 
 

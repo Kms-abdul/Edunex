@@ -78,7 +78,7 @@ def env(tmp_path_factory):
         db.session.add(ft)
         db.session.flush()
         db.session.add(ClassFeeStructure(clazz="5", feetypeid=ft.id, academicyear="2027-2028", academic_year="2027-2028",
-                                         totalamount=40000, branch="Alpha", branch_id=A.id, school_id=school.id))
+                                         totalamount=40000, monthly_amount=4000, installments_count=10, branch="Alpha", branch_id=A.id, school_id=school.id))
         db.session.add(Student(first_name="Old", last_name="Kid", admission_no="ADM1", clazz="5", branch="Alpha",
                                status="Active", Adharcardno=aadhaar("98765432109"), phone="9000000001"))
 
@@ -154,6 +154,8 @@ def test_quote_shows_tuition_and_schemes(env):
     assert s1["benefits"] == ["Free uniform", "Books 20% off"]
     assert s1["discount_amount"] == 4000 and s1["tuition_after"] == 36000
     assert s2["discount_amount"] == 5000 and s2["tuition_after"] == 35000
+    inst = d["tuition_installments"]
+    assert len(inst) == 10 and sum(i["amount"] for i in inst) == 40000
 
 
 def test_create_enquiry_numbers_and_snapshot(env):
@@ -180,7 +182,10 @@ def test_duplicate_aadhaar_same_branch_year_rejected(env):
 
 
 def test_input_validation(env):
-    assert _enquiry(env, aadhaar="123412341234").status_code == 400      # bad check digit
+    assert _enquiry(env, aadhaar="123412341234").status_code == 400      # never starts with 1
+    assert _enquiry(env, aadhaar="2345 6789").status_code == 400         # not 12 digits
+    # A failed check digit is only a warning on the form; it must still save
+    assert _enquiry(env, student_name="Check Digit", aadhaar="444698587555").status_code == 201
     assert _enquiry(env, contact="12345").status_code == 400
     assert _enquiry(env, student_name="R2D2").status_code == 400
     assert _enquiry(env, class_name="99").status_code == 400
@@ -229,3 +234,16 @@ def test_copy_schemes_to_next_year(env):
     again = env["c"].post("/api/enquiry/schemes/copy", json={"branch_id": env["ids"]["A"], "from_year": "2027-2028",
                                                              "to_year": "2026-2027"}, headers=env["h"]("su"))
     assert again.get_json()["copied"] == 0                                # no duplicates
+
+
+def test_print_tracking(env):
+    e = _enquiry(env, student_name="Phone Entry").get_json()["enquiry"]
+    assert e["printed_at"] is None and e["print_count"] == 0
+    q = {"branch_id": env["ids"]["A"], "printed": "no"}
+    before = env["c"].get("/api/enquiry", query_string=q, headers=env["h"]("clerk")).get_json()
+    assert any(r["id"] == e["id"] for r in before["enquiries"]) and before["not_printed"] >= 1
+    r = env["c"].post(f"/api/enquiry/{e['id']}/printed", headers=env["h"]("clerk"))
+    assert r.status_code == 200 and r.get_json()["enquiry"]["print_count"] == 1
+    after = env["c"].get("/api/enquiry", query_string=q, headers=env["h"]("clerk")).get_json()
+    assert all(r["id"] != e["id"] for r in after["enquiries"]) and after["not_printed"] == before["not_printed"] - 1
+    assert env["c"].post(f"/api/enquiry/{e['id']}/printed", headers=env["h"]("nobody")).status_code == 403
