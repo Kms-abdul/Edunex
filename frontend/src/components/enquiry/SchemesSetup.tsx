@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Pencil, Copy } from 'lucide-react';
 import { Alert, Badge, Button, EmptyState, ErrorState, Field, LoadingState, notify } from '../ui';
-import { DiscountType, EnquiryOptions, Scheme, enquiryApi, errorField, errorText, joinWindow, discountLabel } from './enquiryApi';
+import { DiscountType, EnquiryOptions, Scheme, enquiryApi, errorField, errorText, joinWindow, discountLabel, followupApi } from './enquiryApi';
+import DropdownSettings from './DropdownSettings';
 
 type Draft = {
   id?: number; name: string; valid_from: string; valid_to: string; tuition_fee_type: string;
@@ -25,6 +26,13 @@ const SchemesSetup: React.FC<{ options: EnquiryOptions; branchId: number }> = ({
   const [saving, setSaving] = useState(false);
   const [copyFrom, setCopyFrom] = useState('');
   const [reload, setReload] = useState(0);
+  const [commonBenefits, setCommonBenefits] = useState<string[]>([]);
+  const [listsTick, setListsTick] = useState(0);
+
+  // Common benefits (Settings below) to pick instead of typing
+  useEffect(() => {
+    followupApi.dropdowns(branchId).then(d => setCommonBenefits(d.benefits.map(b => b.label))).catch(() => setCommonBenefits([]));
+  }, [branchId, listsTick]);
 
   useEffect(() => {
     let live = true;
@@ -146,7 +154,19 @@ const SchemesSetup: React.FC<{ options: EnquiryOptions; branchId: number }> = ({
               </div>
             </Field>
             <Field label="What the parent gets (one per line)" htmlFor="sch-benefits" className="sm:col-span-2"
-              hint="Printed exactly as you type. For example: Free uniform (2 sets), Books at 20% discount.">
+              hint="Pick from the list or type your own. Printed exactly as written.">
+              {commonBenefits.length > 0 && (
+                <select className="input mb-2" value="" aria-label="Add a common benefit"
+                  onChange={e => {
+                    const v = e.target.value;
+                    if (!v) return;
+                    const lines = draft.benefits.split('\n').map(l => l.trim()).filter(Boolean);
+                    if (!lines.includes(v)) set('benefits', [...lines, v].join('\n'));
+                  }}>
+                  <option value="">+ Add a common benefit…</option>
+                  {commonBenefits.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              )}
               <textarea id="sch-benefits" className="input min-h-[110px]" maxLength={2000} value={draft.benefits}
                 onChange={e => set('benefits', e.target.value)} placeholder={'Free uniform (2 sets)\nBooks at 20% discount'} />
             </Field>
@@ -228,6 +248,8 @@ const SchemesSetup: React.FC<{ options: EnquiryOptions; branchId: number }> = ({
           <Button variant="secondary" icon={<Copy className="w-4 h-4" />} disabled={!copyFrom} onClick={copy}>Copy to {year}</Button>
         </section>
       )}
+
+      {canEdit && <DropdownSettings branchId={branchId} onChanged={() => setListsTick(n => n + 1)} />}
     </div>
   );
 };

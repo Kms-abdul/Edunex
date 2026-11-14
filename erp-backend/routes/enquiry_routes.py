@@ -33,6 +33,12 @@ bp = Blueprint("enquiry_routes", __name__)
 
 PERM_ENQUIRY = "administration.enquiry.enquiry"
 PERM_SCHEMES = "administration.enquiry.schemes"
+PERM_FOLLOWUP = "administration.enquiry.followup"
+PERM_DASHBOARD = "administration.enquiry.dashboard"
+
+
+def can_see_module(user):
+    return any(has_permission(user, p, "read") for p in (PERM_ENQUIRY, PERM_SCHEMES, PERM_FOLLOWUP, PERM_DASHBOARD))
 PAGE_SIZE = 20
 
 
@@ -361,7 +367,7 @@ def enquiry_dict(e, full=False):
 @bp.route("/api/enquiry/options", methods=["GET"])
 @token_required
 def enquiry_options(current_user):
-    if not (has_permission(current_user, PERM_ENQUIRY, "read") or has_permission(current_user, PERM_SCHEMES, "read")):
+    if not can_see_module(current_user):
         return _forbidden()
     allowed = get_user_allowed_branches(current_user)
     q = Branch.query.filter_by(is_active=True)
@@ -725,7 +731,7 @@ def list_enquiries(current_user):
 @bp.route("/api/enquiry/<int:enquiry_id>", methods=["GET"])
 @token_required
 def get_enquiry(current_user, enquiry_id):
-    if not has_permission(current_user, PERM_ENQUIRY, "read"):
+    if not (has_permission(current_user, PERM_ENQUIRY, "read") or has_permission(current_user, PERM_FOLLOWUP, "read")):
         return _forbidden()
     e = db.session.get(Enquiry, enquiry_id)
     if not e:

@@ -77,6 +77,11 @@ export interface EnquiryRow {
   aadhaar_masked: string | null;
   status: string;
   student_type?: StudentType;
+  next_call_date?: string | null;
+  next_call_slot?: 'MORNING' | 'AFTERNOON' | 'EVENING' | null;
+  last_outcome?: string | null;
+  call_count?: number;
+  close_reason?: string | null;
   printed_at?: string | null;
   print_count?: number;
   match?: 'aadhaar' | 'phone';
@@ -155,3 +160,89 @@ export const joinWindow = (from: string | null, to: string | null) => {
 
 export const discountLabel = (type: DiscountType, value: number) =>
   type === 'PERCENT' ? `${value}% off tuition fee` : type === 'AMOUNT' ? `${rupees(value)} off tuition fee` : '';
+
+/* ------------------------------------------------------------------ follow-up calls (step 2) */
+export type Outcome = 'CALL_LATER' | 'NO_ANSWER' | 'WILL_VISIT' | 'JOINED' | 'NOT_INTERESTED' | 'WRONG_NUMBER';
+export type CallSlot = 'MORNING' | 'AFTERNOON' | 'EVENING';
+export type EnquiryStatus = 'NEW' | 'FOLLOW_UP' | 'JOINED' | 'CLOSED';
+
+export const SLOT_LABEL: Record<CallSlot, string> = { MORNING: 'Morning', AFTERNOON: 'Afternoon', EVENING: 'Evening' };
+export const STATUS_LABEL: Record<EnquiryStatus, string> = {
+  NEW: 'Not called yet', FOLLOW_UP: 'Follow-up', JOINED: 'Joined', CLOSED: 'Not interested',
+};
+export const statusTone = (s?: string) =>
+  (s === 'JOINED' ? 'success' : s === 'CLOSED' ? 'danger' : s === 'FOLLOW_UP' ? 'brand' : 'warning') as 'success' | 'danger' | 'brand' | 'warning';
+
+export interface CallRow {
+  id: number; enquiry_no: string; enquiry_date: string; academic_year: string;
+  student_name: string; guardian_name: string; class_name: string; contact: string; status: EnquiryStatus;
+  next_call_date: string | null; next_call_slot: CallSlot | null;
+  last_outcome: Outcome | null; last_outcome_label: string | null; last_call_at: string | null;
+  last_called_by: string | null; call_count: number;
+}
+
+export interface HistoryItem {
+  id: number; called_at: string; called_by: string | null; outcome: Outcome; outcome_label: string;
+  reason: string | null; note: string | null; next_call_date: string | null; next_call_slot: CallSlot | null;
+}
+
+export interface DropdownOption { id: number; kind: 'REJECT_REASON' | 'BENEFIT'; label: string; display_order: number; is_active: boolean }
+
+export interface DashboardData {
+  from: string; to: string; today: string;
+  tiles: {
+    enquiries: number; called: number; not_called: number; in_follow_up: number; visits_planned: number;
+    joined: number; not_interested: number; joined_percent: number; calls_made: number; to_call_today: number; overdue: number;
+  };
+  reasons: { reason: string; count: number }[];
+  callers: { name: string; calls: number; joined: number }[];
+}
+
+export const followupApi = {
+  calls: (branchId: number, bucket: 'due' | 'upcoming', mine: boolean) =>
+    api.get<{ today: string; counts: { overdue: number; today: number; upcoming: number }; calls: CallRow[] }>(
+      '/enquiry/calls', { params: { branch_id: branchId, bucket, mine: mine ? '1' : undefined } }).then(r => r.data),
+  record: (enquiryId: number, body: Record<string, unknown>) =>
+    api.post<{ message: string; call: CallRow }>(`/enquiry/${enquiryId}/followups`, body).then(r => r.data),
+  history: (enquiryId: number) =>
+    api.get<{ enquiry: CallRow; close_reason: string | null; can_call: boolean; can_reopen: boolean; history: HistoryItem[] }>(
+      `/enquiry/${enquiryId}/followups`).then(r => r.data),
+  reopen: (enquiryId: number) => api.post<{ message: string }>(`/enquiry/${enquiryId}/reopen`).then(r => r.data),
+  dashboard: (branchId: number, period: string) =>
+    api.get<DashboardData>('/enquiry/dashboard', { params: { branch_id: branchId, period } }).then(r => r.data),
+  dropdowns: (branchId: number, all = false) =>
+    api.get<{ reject_reasons: DropdownOption[]; benefits: DropdownOption[] }>(
+      '/enquiry/dropdowns', { params: { branch_id: branchId, all: all ? '1' : undefined } }).then(r => r.data),
+  addDropdown: (branchId: number, kind: DropdownOption['kind'], label: string) =>
+    api.post<{ message: string; option: DropdownOption }>('/enquiry/dropdowns', { branch_id: branchId, kind, label }).then(r => r.data),
+  updateDropdown: (branchId: number, id: number, body: Partial<DropdownOption>) =>
+    api.put<{ message: string; option: DropdownOption }>(`/enquiry/dropdowns/${id}`, { branch_id: branchId, ...body }).then(r => r.data),
+};
+
+/** Add days to a yyyy-mm-dd date (no time-zone surprises). */
+export const addDays = (iso: string, days: number) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d + days));
+  return t.toISOString().slice(0, 10);
+};
+
+/** "Today", "Tomorrow", "Yesterday", or "Mon 18 Nov" */
+export const dayName = (iso: string | null, today: string) => {
+  if (!iso) return '';
+  if (iso === today) return 'Today';
+  if (iso === addDays(today, 1)) return 'Tomorrow';
+  if (iso === addDays(today, -1)) return 'Yesterday';
+  const d = new Date(`${iso}T00:00:00`);
+  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+};
+
+export const timeAgo = (isoDateTime: string | null) => {
+  if (!isoDateTime) return '';
+  const mins = Math.round((Date.now() - new Date(isoDateTime).getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+};

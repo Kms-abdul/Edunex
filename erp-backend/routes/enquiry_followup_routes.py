@@ -20,12 +20,10 @@ from enquiry_models import CALL_SLOTS, FOLLOWUP_OUTCOMES, Enquiry, EnquiryFollow
 from extensions import db, get_now, to_local_time
 from helpers import has_permission, token_required
 from models import User
-from routes.enquiry_routes import PERM_ENQUIRY, PERM_SCHEMES, UserError, parse_date, resolve_branch
+from routes.enquiry_routes import (PERM_DASHBOARD, PERM_ENQUIRY, PERM_FOLLOWUP, PERM_SCHEMES, UserError, parse_date,
+                                   resolve_branch)
 
 bp = Blueprint("enquiry_followup_routes", __name__)
-
-PERM_FOLLOWUP = "administration.enquiry.followup"
-PERM_DASHBOARD = "administration.enquiry.dashboard"
 
 OPEN_STATUSES = ("NEW", "FOLLOW_UP")
 CLOSING_OUTCOMES = ("NOT_INTERESTED", "WRONG_NUMBER")

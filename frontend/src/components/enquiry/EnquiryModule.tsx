@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { ClipboardList, PlusCircle, List, Gift } from 'lucide-react';
+import { ClipboardList, PlusCircle, List, Gift, Phone, BarChart3 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { EmptyState, ErrorState, Field, LoadingState, notify } from '../ui';
-import { EnquiryOptions, PrintData, enquiryApi, errorText, yearLabel } from './enquiryApi';
+import { EnquiryOptions, PrintData, enquiryApi, errorText, followupApi, yearLabel } from './enquiryApi';
 import NewEnquiry, { SlipView } from './NewEnquiry';
 import EnquiryList from './EnquiryList';
 import SchemesSetup from './SchemesSetup';
+import CallsList from './CallsList';
+import EnquiryDashboard from './EnquiryDashboard';
+import EnquiryHistory from './EnquiryHistory';
 
-type Tab = 'new' | 'list' | 'schemes';
+type Tab = 'new' | 'calls' | 'list' | 'dashboard' | 'schemes';
 const TAB_KEY = 'kampusops.enquiryTab';
 const BRANCH_KEY = 'kampusops.enquiryBranch';
 
@@ -19,11 +22,16 @@ const EnquiryModule: React.FC = () => {
   const { hasPermission } = useAuth();
   const canEnquiry = hasPermission('administration.enquiry.enquiry', 'read');
   const canSchemes = hasPermission('administration.enquiry.schemes', 'read');
+  const canCalls = hasPermission('administration.enquiry.followup', 'read');
+  const canCallWrite = hasPermission('administration.enquiry.followup', 'write');
+  const canDashboard = hasPermission('administration.enquiry.dashboard', 'read');
 
   const tabs = ([
     canEnquiry && { id: 'new', label: 'New enquiry', short: 'New', icon: <PlusCircle className="w-4 h-4" /> },
+    canCalls && { id: 'calls', label: 'Calls', short: 'Calls', icon: <Phone className="w-4 h-4" /> },
     canEnquiry && { id: 'list', label: 'Enquiry list', short: 'List', icon: <List className="w-4 h-4" /> },
-    canSchemes && { id: 'schemes', label: 'Schemes', short: 'Schemes', icon: <Gift className="w-4 h-4" /> },
+    canDashboard && { id: 'dashboard', label: 'Dashboard', short: 'Stats', icon: <BarChart3 className="w-4 h-4" /> },
+    canSchemes && { id: 'schemes', label: 'Schemes & settings', short: 'Schemes', icon: <Gift className="w-4 h-4" /> },
   ].filter(Boolean)) as { id: Tab; label: string; short: string; icon: React.ReactNode }[];
 
   const [tab, setTab] = useState<Tab>(() => {
@@ -36,6 +44,7 @@ const EnquiryModule: React.FC = () => {
   const [branchId, setBranchId] = useState<number | null>(null);
   const [opened, setOpened] = useState<{ id: number; data: PrintData; year: string; printedAt: string | null } | null>(null);
   const [reload, setReload] = useState(0);
+  const [callsDue, setCallsDue] = useState(0);
 
   useEffect(() => { try { sessionStorage.setItem(TAB_KEY, tab); } catch { /* ignore */ } }, [tab]);
 
@@ -65,6 +74,12 @@ const EnquiryModule: React.FC = () => {
     }
   };
 
+  // Badge on the Calls tab: calls due now (late + today)
+  useEffect(() => {
+    if (!branchId || !canCalls) return;
+    followupApi.calls(branchId, 'due', false).then(d => setCallsDue(d.counts.overdue + d.counts.today)).catch(() => { /* badge only */ });
+  }, [branchId, canCalls, tab, opened]);
+
   const headerBranchChosen = !!options?.current_branch_id;
 
   let body: React.ReactNode;
@@ -80,11 +95,18 @@ const EnquiryModule: React.FC = () => {
     body = <div className="card"><EmptyState title="Choose a branch" description="Choose the branch above to start." /></div>;
   } else if (opened) {
     body = (
-      <SlipView key={opened.id} enquiryId={opened.id} data={opened.data} yearName={yearLabel(options.academic_years, opened.year)}
-        title={`Enquiry ${opened.data.enquiry_no}`} printedAt={opened.printedAt} onBack={() => setOpened(null)} />
+      <div className="space-y-4">
+        {canCalls && <EnquiryHistory key={`h-${opened.id}`} enquiryId={opened.id} branchId={branchId} />}
+        <SlipView key={opened.id} enquiryId={opened.id} data={opened.data} yearName={yearLabel(options.academic_years, opened.year)}
+          title={`Enquiry ${opened.data.enquiry_no}`} printedAt={opened.printedAt} onBack={() => setOpened(null)} />
+      </div>
     );
   } else if (tab === 'new') {
     body = <NewEnquiry key={branchId} options={options} branchId={branchId} onOpenEnquiry={openEnquiry} />;
+  } else if (tab === 'calls') {
+    body = <CallsList key={`calls-${branchId}`} branchId={branchId} canCall={canCallWrite} onOpen={openEnquiry} onCountChange={setCallsDue} />;
+  } else if (tab === 'dashboard') {
+    body = <EnquiryDashboard key={`dash-${branchId}`} branchId={branchId} onGoToCalls={canCalls ? () => setTab('calls') : undefined} />;
   } else if (tab === 'list') {
     body = <EnquiryList key={`list-${branchId}`} options={options} branchId={branchId} onOpen={openEnquiry} />;
   } else {
@@ -121,6 +143,9 @@ const EnquiryModule: React.FC = () => {
                     <span className={active ? 'text-brand-600' : 'text-slate-400'}>{t.icon}</span>
                     <span className="sm:hidden">{t.short}</span>
                     <span className="hidden sm:inline">{t.label}</span>
+                    {t.id === 'calls' && callsDue > 0 && (
+                      <span className="rounded-full bg-red-100 px-1.5 text-xs font-semibold text-red-700 tabular-nums">{callsDue}</span>
+                    )}
                     <span className={`absolute inset-x-2 bottom-0 h-0.5 rounded-full ${active ? 'bg-brand-600' : 'bg-transparent'}`} />
                   </button>
                 );
