@@ -8,7 +8,7 @@ export interface NavSection { title: string; short: string; icon: React.ReactNod
 // so the right item stays highlighted while working inside it.
 export const navCategories: NavSection[] = [
   { title: 'Home', short: 'Home', icon: <Home className="w-5 h-5" />, page: 'dashboard', permission: '*' },
-  { title: 'Administration', short: 'Admin', icon: <Users className="w-5 h-5" />, page: 'administration', permission: 'administration.students.management',
+  { title: 'Administration', short: 'Admin', icon: <Users className="w-5 h-5" />, page: 'administration', permission: 'administration.students.management,administration.enquiry.enquiry,administration.enquiry.schemes',
     match: ['administration', 'student-administration', 'student-attendance', 'student-document-management', 'document-management', 'document-administration', 'sms-center', 'enquiry', 'create-student', 'import-student-data'] },
   { title: 'Academics', short: 'Academics', icon: <BookOpen className="w-5 h-5" />, page: 'academic', permission: 'academics.academic.management',
     match: ['academic', 'academics', 'timetable', 'online-class'] },
