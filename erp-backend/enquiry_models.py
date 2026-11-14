@@ -72,8 +72,15 @@ class Enquiry(db.Model, AuditMixin):
 
     status = db.Column(db.Enum("NEW", "FOLLOW_UP", "JOINED", "CLOSED", name="enquiry_status"),
                        nullable=False, default="NEW")
-    # Used by step 2 (follow-ups) and step 3 (convert to admission)
+    # Follow-up calls (step 2): when to call next, and a summary of the last call
     next_follow_up_date = db.Column(db.Date, nullable=True)
+    next_call_slot = db.Column(db.Enum("MORNING", "AFTERNOON", "EVENING", name="enquiry_call_slot"), nullable=True)
+    last_call_at = db.Column(db.DateTime, nullable=True)
+    last_called_by = db.Column(db.Integer, db.ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    last_outcome = db.Column(db.String(20), nullable=True)
+    call_count = db.Column(db.Integer, nullable=False, default=0, server_default="0")
+    close_reason = db.Column(db.String(150), nullable=True)
+    closed_at = db.Column(db.DateTime, nullable=True)
     converted_student_id = db.Column(db.Integer, db.ForeignKey("students.student_id", ondelete="SET NULL"), nullable=True)
 
     # Exactly what was printed (fee + schemes), so a reprint matches the parent's copy
@@ -94,6 +101,7 @@ class Enquiry(db.Model, AuditMixin):
         db.Index("idx_enquiry_contact", "contact"),
         db.Index("idx_enquiry_aadhaar_hash", "aadhaar_hash"),
         db.Index("idx_enquiry_branch_printed", "branch_id", "printed_at"),
+        db.Index("idx_enquiry_branch_status_next", "branch_id", "status", "next_follow_up_date"),
     )
 
 
@@ -109,4 +117,52 @@ class EnquirySequence(db.Model, AuditMixin):
     __table_args__ = (
         db.UniqueConstraint("branch_id", "academic_year", name="uq_enquiry_seq_branch_year"),
         db.CheckConstraint("last_no >= 0", name="chk_enquiry_seq_positive"),
+    )
+
+
+FOLLOWUP_OUTCOMES = ("CALL_LATER", "NO_ANSWER", "WILL_VISIT", "JOINED", "NOT_INTERESTED", "WRONG_NUMBER")
+CALL_SLOTS = ("MORNING", "AFTERNOON", "EVENING")
+
+
+class EnquiryFollowUp(db.Model, AuditMixin):
+    """One phone call to a parent. Never edited: the list is the call history."""
+    __tablename__ = "enquiry_followups"
+    __audit_module__ = "ADMISSION"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    school_id = db.Column(db.Integer, db.ForeignKey("schools.id", ondelete="SET NULL"), nullable=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branches.id", ondelete="CASCADE"), nullable=False)
+    enquiry_id = db.Column(db.Integer, db.ForeignKey("enquiries.id", ondelete="CASCADE"), nullable=False)
+
+    called_at = db.Column(db.DateTime, nullable=False)
+    # The logged-in person who recorded the call
+    called_by = db.Column(db.Integer, db.ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    outcome = db.Column(db.Enum(*FOLLOWUP_OUTCOMES, name="enquiry_followup_outcome"), nullable=False)
+    reason = db.Column(db.String(150), nullable=True)
+    note = db.Column(db.Text, nullable=True)
+    next_call_date = db.Column(db.Date, nullable=True)
+    next_call_slot = db.Column(db.Enum(*CALL_SLOTS, name="enquiry_followup_slot"), nullable=True)
+
+    caller = db.relationship("User", foreign_keys=[called_by])
+
+    __table_args__ = (
+        db.Index("idx_followup_enquiry", "enquiry_id", "called_at"),
+        db.Index("idx_followup_branch_called", "branch_id", "called_at"),
+    )
+
+
+class EnquiryOption(db.Model, AuditMixin):
+    """Dropdown lists the admin edits in Settings, so callers tap instead of typing."""
+    __tablename__ = "enquiry_options"
+    __audit_module__ = "ADMISSION"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    school_id = db.Column(db.Integer, db.ForeignKey("schools.id", ondelete="CASCADE"), nullable=True)
+    kind = db.Column(db.Enum("REJECT_REASON", "BENEFIT", name="enquiry_option_kind"), nullable=False)
+    label = db.Column(db.String(150), nullable=False)
+    display_order = db.Column(db.Integer, nullable=False, default=0)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+
+    __table_args__ = (
+        db.UniqueConstraint("school_id", "kind", "label", name="uq_enquiry_option_label"),
     )

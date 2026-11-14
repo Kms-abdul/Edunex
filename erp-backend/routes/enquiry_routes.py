@@ -14,7 +14,7 @@ import hashlib
 import hmac
 import os
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import ROUND_DOWN, Decimal, InvalidOperation
 from types import SimpleNamespace
 
@@ -347,6 +347,9 @@ def enquiry_dict(e, full=False):
         "aadhaar_masked": mask_aadhaar(e.aadhaar_last4), "status": e.status,
         "student_type": e.student_type or "NEW",
         "printed_at": e.printed_at.isoformat() if e.printed_at else None,
+        "next_call_date": e.next_follow_up_date.isoformat() if e.next_follow_up_date else None,
+        "next_call_slot": e.next_call_slot, "last_outcome": e.last_outcome, "call_count": e.call_count or 0,
+        "close_reason": e.close_reason,
         "print_count": e.print_count or 0,
     }
     if full:
@@ -652,6 +655,8 @@ def create_enquiry(current_user):
         aadhaar_encrypted=encrypt_secret(aadhaar) if aadhaar else None,
         aadhaar_hash=fp, aadhaar_last4=aadhaar[-4:] if aadhaar else None, student_type=student_type,
         status="NEW", created_by=current_user.user_id,
+        # First follow-up call the next day (it shows in Calls › Due from then)
+        next_follow_up_date=today + timedelta(days=1),
     )
     enquiry.quote_snapshot = {
         "header": print_header(branch),
@@ -681,6 +686,9 @@ def list_enquiries(current_user):
     q = Enquiry.query.filter(Enquiry.branch_id == branch.id)
     if year:
         q = q.filter(Enquiry.academic_year == year)
+    status = request.args.get("status")
+    if status in ("NEW", "FOLLOW_UP", "JOINED", "CLOSED"):
+        q = q.filter(Enquiry.status == status)
     printed = request.args.get("printed")
     if printed == "no":
         q = q.filter(Enquiry.printed_at.is_(None))

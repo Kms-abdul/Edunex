@@ -40,6 +40,8 @@ PERMISSION_CATALOG = [
     permission("Administration", "SMS", "SMS Account Choice", "administration.sms.account-choice", "Choose which SMS account a branch uses (school / own / none)"),
     permission("Administration", "Enquiry", "Enquiry", "administration.enquiry.enquiry", "See, add and print admission enquiries"),
     permission("Administration", "Enquiry", "Admission Schemes", "administration.enquiry.schemes", "Set up admission schemes (offers and discounts) shown on the enquiry slip"),
+    permission("Administration", "Enquiry", "Follow-up Calls", "administration.enquiry.followup", "See the calls list and record follow-up calls to parents"),
+    permission("Administration", "Enquiry", "Enquiry Dashboard", "administration.enquiry.dashboard", "See enquiry, call and admission numbers"),
     permission("Administration", "Student", "Student Administration", "administration.student.student-administration", "Access to Student Administration module"),
     permission("Administration", "Student", "Search Student", "administration.student.search-student"),
     permission("Administration", "Student", "Create Student", "administration.student.create-student"),
