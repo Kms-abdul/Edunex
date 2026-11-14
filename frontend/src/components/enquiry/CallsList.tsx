@@ -15,6 +15,7 @@ const CallsList: React.FC<{ branchId: number; canCall: boolean; onOpen: (id: num
   const [mine, setMine] = useState(false);
   const [data, setData] = useState<{ today: string; counts: { overdue: number; today: number; upcoming: number }; calls: CallRow[] } | null>(null);
   const [reasons, setReasons] = useState<string[]>([]);
+  const [callResults, setCallResults] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<CallRow | null>(null);
   const [reload, setReload] = useState(0);
@@ -29,7 +30,9 @@ const CallsList: React.FC<{ branchId: number; canCall: boolean; onOpen: (id: num
 
   useEffect(() => { setData(null); load(); }, [load, reload]);
   useEffect(() => {
-    followupApi.dropdowns(branchId).then(d => setReasons(d.reject_reasons.map(r => r.label))).catch(() => setReasons([]));
+    followupApi.dropdowns(branchId)
+      .then(d => { setReasons(d.reject_reasons.map(r => r.label)); setCallResults((d.call_results || []).map(r => r.label)); })
+      .catch(() => setReasons([]));
   }, [branchId]);
 
   // Back from the dialer: ask how the call went
@@ -115,7 +118,7 @@ const CallsList: React.FC<{ branchId: number; canCall: boolean; onOpen: (id: num
       )}
 
       {updating && canCall && (
-        <CallUpdateSheet call={updating} today={today} reasons={reasons}
+        <CallUpdateSheet call={updating} today={today} reasons={reasons} callResults={callResults}
           onClose={() => setUpdating(null)}
           onSaved={() => { setUpdating(null); setReload(n => n + 1); }} />
       )}

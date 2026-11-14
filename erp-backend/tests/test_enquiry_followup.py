@@ -141,3 +141,19 @@ def test_my_calls_filter(env):
     _call(env, eid, outcome="CALL_LATER", next_call_date=TODAY.isoformat())
     mine = _calls(env, mine="1").get_json()
     assert any(c["id"] == eid for c in mine["calls"])
+
+
+def test_custom_call_results(env):
+    q = {"branch_id": env["ids"]["A"]}
+    lists = env["c"].get("/api/enquiry/dropdowns", query_string=q, headers=env["h"]("su")).get_json()
+    assert "Will discuss with family" in [o["label"] for o in lists["call_results"]]
+    r = env["c"].post("/api/enquiry/dropdowns", json={**q, "kind": "CALL_RESULT", "label": "Wants to see the bus route"},
+                      headers=env["h"]("su"))
+    assert r.status_code == 201
+    eid = _new(env, "Custom Result")
+    when = (TODAY + dt.timedelta(days=3)).isoformat()
+    ok = _call(env, eid, outcome="CALL_LATER", reason="Wants to see the bus route", next_call_date=when)
+    assert ok.status_code == 201 and ok.get_json()["call"]["next_call_date"] == when
+    assert _call(env, eid, outcome="CALL_LATER", reason="Not in the list", next_call_date=when).status_code == 400
+    hist = env["c"].get(f"/api/enquiry/{eid}/followups", headers=env["h"]("su")).get_json()["history"]
+    assert hist[0]["outcome_label"] == "Wants to see the bus route"

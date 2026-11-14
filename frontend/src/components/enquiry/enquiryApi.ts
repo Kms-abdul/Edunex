@@ -186,7 +186,7 @@ export interface HistoryItem {
   reason: string | null; note: string | null; next_call_date: string | null; next_call_slot: CallSlot | null;
 }
 
-export interface DropdownOption { id: number; kind: 'REJECT_REASON' | 'BENEFIT'; label: string; display_order: number; is_active: boolean }
+export interface DropdownOption { id: number; kind: 'REJECT_REASON' | 'BENEFIT' | 'CALL_RESULT'; label: string; display_order: number; is_active: boolean }
 
 export interface DashboardData {
   from: string; to: string; today: string;
@@ -211,7 +211,7 @@ export const followupApi = {
   dashboard: (branchId: number, period: string) =>
     api.get<DashboardData>('/enquiry/dashboard', { params: { branch_id: branchId, period } }).then(r => r.data),
   dropdowns: (branchId: number, all = false) =>
-    api.get<{ reject_reasons: DropdownOption[]; benefits: DropdownOption[] }>(
+    api.get<{ reject_reasons: DropdownOption[]; benefits: DropdownOption[]; call_results: DropdownOption[] }>(
       '/enquiry/dropdowns', { params: { branch_id: branchId, all: all ? '1' : undefined } }).then(r => r.data),
   addDropdown: (branchId: number, kind: DropdownOption['kind'], label: string) =>
     api.post<{ message: string; option: DropdownOption }>('/enquiry/dropdowns', { branch_id: branchId, kind, label }).then(r => r.data),

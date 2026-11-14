@@ -158,7 +158,7 @@ class EnquiryOption(db.Model, AuditMixin):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     school_id = db.Column(db.Integer, db.ForeignKey("schools.id", ondelete="CASCADE"), nullable=True)
-    kind = db.Column(db.Enum("REJECT_REASON", "BENEFIT", name="enquiry_option_kind"), nullable=False)
+    kind = db.Column(db.Enum("REJECT_REASON", "BENEFIT", "CALL_RESULT", name="enquiry_option_kind"), nullable=False)
     label = db.Column(db.String(150), nullable=False)
     display_order = db.Column(db.Integer, nullable=False, default=0)
     is_active = db.Column(db.Boolean, nullable=False, default=True)

@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { Clock, PhoneOff, School, CheckCircle2, XCircle, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Sheet from '../cash/Sheet';
 import { Button, notify } from '../ui';
 import { CallRow, CallSlot, Outcome, SLOT_LABEL, addDays, dayName, errorText, followupApi } from './enquiryApi';
 
-const OUTCOMES: { id: Outcome; label: string; hint: string; icon: React.ReactNode; tone: string }[] = [
-  { id: 'CALL_LATER', label: 'Call me later', hint: 'Parent asked to call again', icon: <Clock className="w-6 h-6" />, tone: 'text-brand-700 bg-brand-50' },
-  { id: 'NO_ANSWER', label: 'Not answered', hint: 'No answer / switched off / busy', icon: <PhoneOff className="w-6 h-6" />, tone: 'text-slate-700 bg-slate-100' },
-  { id: 'WILL_VISIT', label: 'Will visit school', hint: 'Coming to see the school', icon: <School className="w-6 h-6" />, tone: 'text-amber-700 bg-amber-50' },
-  { id: 'JOINED', label: 'Admission confirmed', hint: 'Parent said yes', icon: <CheckCircle2 className="w-6 h-6" />, tone: 'text-emerald-700 bg-emerald-50' },
-  { id: 'NOT_INTERESTED', label: 'Not interested', hint: 'Parent said no', icon: <XCircle className="w-6 h-6" />, tone: 'text-red-700 bg-red-50' },
-  { id: 'WRONG_NUMBER', label: 'Wrong number', hint: 'Not this family', icon: <AlertTriangle className="w-6 h-6" />, tone: 'text-slate-700 bg-slate-100' },
+// Built-in results. The admin can add more "call again" results in Settings (they work like "Call me later").
+const OUTCOMES: { id: Outcome; label: string; dot: string }[] = [
+  { id: 'CALL_LATER', label: 'Call me later', dot: 'bg-brand-500' },
+  { id: 'NO_ANSWER', label: 'Not answered', dot: 'bg-slate-400' },
+  { id: 'WILL_VISIT', label: 'Will visit school', dot: 'bg-amber-500' },
+  { id: 'JOINED', label: 'Admission confirmed', dot: 'bg-emerald-500' },
+  { id: 'NOT_INTERESTED', label: 'Not interested', dot: 'bg-red-500' },
+  { id: 'WRONG_NUMBER', label: 'Wrong number', dot: 'bg-slate-400' },
 ];
 const SLOTS: CallSlot[] = ['MORNING', 'AFTERNOON', 'EVENING'];
 
@@ -27,10 +28,13 @@ const CallUpdateSheet: React.FC<{
   call: Pick<CallRow, 'id' | 'student_name' | 'guardian_name' | 'class_name' | 'contact'>;
   today: string;
   reasons: string[];
+  /** Admin's extra "call again" results from Settings */
+  callResults?: string[];
   onClose: () => void;
   onSaved: (row: CallRow) => void;
-}> = ({ call, today, reasons, onClose, onSaved }) => {
+}> = ({ call, today, reasons, callResults = [], onClose, onSaved }) => {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [custom, setCustom] = useState<string | null>(null);
   const [date, setDate] = useState<string>('');
   const [slot, setSlot] = useState<CallSlot | null>(null);
   const [reason, setReason] = useState('');
@@ -38,8 +42,8 @@ const CallUpdateSheet: React.FC<{
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const choose = (o: Outcome) => {
-    setOutcome(o); setError(null); setReason('');
+  const choose = (o: Outcome, customLabel: string | null = null) => {
+    setOutcome(o); setCustom(customLabel); setError(null); setReason('');
     setDate(o === 'NO_ANSWER' ? addDays(today, 1) : '');
     setSlot(null);
   };
@@ -60,7 +64,7 @@ const CallUpdateSheet: React.FC<{
     try {
       const res = await followupApi.record(call.id, {
         outcome, next_call_date: date || undefined, next_call_slot: slot || undefined,
-        reason: reason || undefined, note: note.trim() || undefined,
+        reason: (custom || reason) || undefined, note: note.trim() || undefined,
       });
       notify.success(res.message);
       onSaved(res.call);
@@ -75,7 +79,7 @@ const CallUpdateSheet: React.FC<{
 
   return (
     <Sheet
-      title={outcome ? chosen?.label : 'How did the call go?'}
+      title={outcome ? (custom || chosen?.label) : 'How did the call go?'}
       subtitle={`${call.student_name} · Class ${call.class_name} · ${call.guardian_name}`}
       onClose={onClose}
       footer={outcome ? (
@@ -86,15 +90,15 @@ const CallUpdateSheet: React.FC<{
       ) : undefined}
     >
       {!outcome ? (
-        <div className="grid grid-cols-2 gap-2.5">
-          {OUTCOMES.map(o => (
-            <button key={o.id} type="button" onClick={() => choose(o.id)}
-              className="flex min-h-[96px] flex-col items-start gap-2 rounded-xl border border-slate-200 bg-white p-3 text-left hover:border-brand-300 active:bg-slate-50">
-              <span className={`flex h-10 w-10 items-center justify-center rounded-lg ${o.tone}`}>{o.icon}</span>
-              <span>
-                <span className="block text-[15px] font-semibold leading-tight text-slate-900">{o.label}</span>
-                <span className="block text-xs text-slate-500 mt-0.5">{o.hint}</span>
-              </span>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            ...OUTCOMES.map(o => ({ key: o.id, label: o.label, dot: o.dot, pick: () => choose(o.id) })),
+            ...callResults.map(label => ({ key: `c-${label}`, label, dot: 'bg-brand-300', pick: () => choose('CALL_LATER', label) })),
+          ].map(b => (
+            <button key={b.key} type="button" onClick={b.pick}
+              className="flex min-h-[48px] items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm font-semibold text-slate-900 hover:border-brand-300 active:bg-slate-50">
+              <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${b.dot}`} aria-hidden="true" />
+              <span className="leading-tight">{b.label}</span>
             </button>
           ))}
         </div>

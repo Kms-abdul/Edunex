@@ -36,7 +36,10 @@ DEFAULT_OPTIONS = {
                       "Will join next year", "Not happy with facilities"],
     "BENEFIT": ["Free uniform (2 sets)", "Books at 20% discount", "No admission fee",
                 "Free school bag", "Free transport for 1 month"],
+    # Extra "call again" results the admin can add to (they work like "Call me later")
+    "CALL_RESULT": ["Will discuss with family", "Asked for fee details", "Busy, asked to call back"],
 }
+OPTION_KINDS = tuple(DEFAULT_OPTIONS)
 # "Not interested" can always use this, with the details in the note
 OTHER_REASON = "Other"
 
@@ -48,6 +51,13 @@ def _user_error(e):
 
 def _forbidden():
     return jsonify({"error": "You do not have access to this. Ask your school admin."}), 403
+
+
+def outcome_label(outcome, reason=None):
+    """Custom "call again" results show their own name instead of "Call me later"."""
+    if outcome == "CALL_LATER" and reason:
+        return reason
+    return OUTCOME_LABELS.get(outcome)
 
 
 def local_today():
@@ -76,11 +86,13 @@ def _user_names(ids):
 
 # --------------------------------------------------------------------------- dropdown lists
 def ensure_default_options(school_id):
-    """First use for a school: fill the lists with common choices the admin can change."""
-    if EnquiryOption.query.filter_by(school_id=school_id).first():
+    """First use of each list for a school: fill it with common choices the admin can change."""
+    have = {k for (k,) in db.session.query(EnquiryOption.kind).filter_by(school_id=school_id).distinct()}
+    missing = [k for k in DEFAULT_OPTIONS if k not in have]
+    if not missing:
         return
-    for kind, labels in DEFAULT_OPTIONS.items():
-        for i, label in enumerate(labels):
+    for kind in missing:
+        for i, label in enumerate(DEFAULT_OPTIONS[kind]):
             db.session.add(EnquiryOption(school_id=school_id, kind=kind, label=label, display_order=i))
     try:
         db.session.commit()
@@ -114,6 +126,7 @@ def list_dropdowns(current_user):
     return jsonify({
         "reject_reasons": [option_dict(o) for o in rows if o.kind == "REJECT_REASON"],
         "benefits": [option_dict(o) for o in rows if o.kind == "BENEFIT"],
+        "call_results": [option_dict(o) for o in rows if o.kind == "CALL_RESULT"],
     })
 
 
@@ -134,7 +147,7 @@ def add_dropdown(current_user):
     data = request.get_json(silent=True) or {}
     branch = resolve_branch(current_user, data.get("branch_id"))
     kind = data.get("kind")
-    if kind not in ("REJECT_REASON", "BENEFIT"):
+    if kind not in OPTION_KINDS:
         raise UserError("Please choose which list to add to.")
     label = _clean_label(data.get("label"))
     ensure_default_options(branch.school_id)
@@ -264,6 +277,11 @@ def record_call(current_user, enquiry_id):
 
     if outcome in ("CALL_LATER", "WILL_VISIT"):
         next_date, slot = _clean_next(data, today, required=True)
+        if outcome == "CALL_LATER" and data.get("reason"):
+            # One of the admin's extra "call again" results, e.g. "Will discuss with family"
+            reason = re.sub(r"\s+", " ", str(data.get("reason"))).strip()
+            if reason not in option_labels(e.school_id, "CALL_RESULT"):
+                raise UserError("Please choose how the call went.", field="outcome")
     elif outcome == "NO_ANSWER":
         next_date, slot = _clean_next(data, today, required=False)
         next_date = next_date or today + timedelta(days=1)
@@ -327,7 +345,7 @@ def call_history(current_user, enquiry_id):
         "can_reopen": has_permission(current_user, PERM_SCHEMES, "write") and e.status not in OPEN_STATUSES,
         "history": [{
             "id": r.id, "called_at": _iso_local(r.called_at), "called_by": names.get(r.called_by),
-            "outcome": r.outcome, "outcome_label": OUTCOME_LABELS.get(r.outcome), "reason": r.reason, "note": r.note,
+            "outcome": r.outcome, "outcome_label": outcome_label(r.outcome, r.reason), "reason": r.reason, "note": r.note,
             "next_call_date": r.next_call_date.isoformat() if r.next_call_date else None,
             "next_call_slot": r.next_call_slot,
         } for r in rows],

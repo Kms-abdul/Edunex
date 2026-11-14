@@ -4,6 +4,7 @@ import { Button, LoadingState, notify } from '../ui';
 import { DropdownOption, errorText, followupApi } from './enquiryApi';
 
 const LISTS: { kind: DropdownOption['kind']; title: string; hint: string; placeholder: string }[] = [
+  { kind: 'CALL_RESULT', title: 'Extra call results (call again)', hint: 'Shown with the call results. Each one asks when to call again.', placeholder: 'e.g. Wants to see the bus route' },
   { kind: 'REJECT_REASON', title: 'Reasons for "Not interested"', hint: 'Callers tap one of these. "Other" is always there too.', placeholder: 'e.g. Looking for CBSE board' },
   { kind: 'BENEFIT', title: 'Common scheme benefits', hint: 'Pick these when setting up a scheme instead of typing.', placeholder: 'e.g. Free school bag' },
 ];
@@ -15,7 +16,7 @@ const DropdownSettings: React.FC<{ branchId: number; onChanged?: () => void }> =
   const [busy, setBusy] = useState(false);
 
   const load = () => followupApi.dropdowns(branchId, true)
-    .then(d => setItems([...d.reject_reasons, ...d.benefits]))
+    .then(d => setItems([...(d.call_results || []), ...d.reject_reasons, ...d.benefits]))
     .catch(err => { setItems([]); notify.error(errorText(err)); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [branchId]);
@@ -45,7 +46,7 @@ const DropdownSettings: React.FC<{ branchId: number; onChanged?: () => void }> =
         <p className="text-sm text-slate-500">Keep these short and clear. Switched-off items stay in old records but are no longer offered.</p>
       </div>
       {!items ? <LoadingState className="py-6" /> : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-5">
           {LISTS.map(list => {
             const rows = items.filter(i => i.kind === list.kind);
             return (

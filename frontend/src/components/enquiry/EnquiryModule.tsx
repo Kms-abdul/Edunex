@@ -11,7 +11,6 @@ import EnquiryDashboard from './EnquiryDashboard';
 import EnquiryHistory from './EnquiryHistory';
 
 type Tab = 'new' | 'calls' | 'list' | 'dashboard' | 'schemes';
-const TAB_KEY = 'kampusops.enquiryTab';
 const BRANCH_KEY = 'kampusops.enquiryBranch';
 
 /**
@@ -26,19 +25,17 @@ const EnquiryModule: React.FC = () => {
   const canCallWrite = hasPermission('administration.enquiry.followup', 'write');
   const canDashboard = hasPermission('administration.enquiry.dashboard', 'read');
 
+  // Dashboard first: the module opens on it
   const tabs = ([
+    canDashboard && { id: 'dashboard', label: 'Dashboard', short: 'Dashboard', icon: <BarChart3 className="w-4 h-4" /> },
     canEnquiry && { id: 'new', label: 'New enquiry', short: 'New', icon: <PlusCircle className="w-4 h-4" /> },
     canCalls && { id: 'calls', label: 'Calls', short: 'Calls', icon: <Phone className="w-4 h-4" /> },
     canEnquiry && { id: 'list', label: 'Enquiry list', short: 'List', icon: <List className="w-4 h-4" /> },
-    canDashboard && { id: 'dashboard', label: 'Dashboard', short: 'Stats', icon: <BarChart3 className="w-4 h-4" /> },
     canSchemes && { id: 'schemes', label: 'Schemes & settings', short: 'Schemes', icon: <Gift className="w-4 h-4" /> },
   ].filter(Boolean)) as { id: Tab; label: string; short: string; icon: React.ReactNode }[];
 
-  const [tab, setTab] = useState<Tab>(() => {
-    let saved: string | null = null;
-    try { saved = sessionStorage.getItem(TAB_KEY); } catch { /* ignore */ }
-    return (tabs.find(t => t.id === saved)?.id || tabs[0]?.id || 'new') as Tab;
-  });
+  // Always open on the first tab (the Dashboard for those who can see it)
+  const [tab, setTab] = useState<Tab>((tabs[0]?.id || 'new') as Tab);
   const [options, setOptions] = useState<EnquiryOptions | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [branchId, setBranchId] = useState<number | null>(null);
@@ -46,7 +43,6 @@ const EnquiryModule: React.FC = () => {
   const [reload, setReload] = useState(0);
   const [callsDue, setCallsDue] = useState(0);
 
-  useEffect(() => { try { sessionStorage.setItem(TAB_KEY, tab); } catch { /* ignore */ } }, [tab]);
 
   useEffect(() => {
     setError(null);
@@ -154,7 +150,8 @@ const EnquiryModule: React.FC = () => {
           )}
         </div>
       </div>
-      <div className="flex-1 w-full max-w-[1600px] mx-auto p-4 sm:p-6">{body}</div>
+      {/* Extra room at the bottom on phones so the last item is not hidden behind the bottom tab bar */}
+      <div className="flex-1 w-full max-w-[1600px] mx-auto p-4 sm:p-6 pb-28 md:pb-6">{body}</div>
     </div>
   );
 };

@@ -13,6 +13,7 @@ const EnquiryHistory: React.FC<{ enquiryId: number; branchId: number }> = ({ enq
   const [data, setData] = useState<HistoryData | null>(null);
   const [failed, setFailed] = useState(false);
   const [reasons, setReasons] = useState<string[]>([]);
+  const [callResults, setCallResults] = useState<string[]>([]);
   const [updating, setUpdating] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
 
@@ -21,7 +22,9 @@ const EnquiryHistory: React.FC<{ enquiryId: number; branchId: number }> = ({ enq
   }, [enquiryId]);
   useEffect(load, [load]);
   useEffect(() => {
-    followupApi.dropdowns(branchId).then(d => setReasons(d.reject_reasons.map(r => r.label))).catch(() => setReasons([]));
+    followupApi.dropdowns(branchId)
+      .then(d => { setReasons(d.reject_reasons.map(r => r.label)); setCallResults((d.call_results || []).map(r => r.label)); })
+      .catch(() => setReasons([]));
   }, [branchId]);
 
   // Users without follow-up access simply do not see this section
@@ -60,7 +63,7 @@ const EnquiryHistory: React.FC<{ enquiryId: number; branchId: number }> = ({ enq
               <span className="absolute -left-[7px] mt-1.5 h-3 w-3 rounded-full border-2 border-white bg-brand-500" aria-hidden="true" />
               <p className="text-sm">
                 <b className="text-slate-900">{h.outcome_label}</b>
-                {h.reason && <span className="text-slate-700"> · {h.reason}</span>}
+                {h.reason && h.reason !== h.outcome_label && <span className="text-slate-700"> · {h.reason}</span>}
                 {h.next_call_date && (
                   <span className="text-slate-700"> → {h.outcome === 'WILL_VISIT' ? 'visit' : 'call'} {dayName(h.next_call_date, today)}{h.next_call_slot ? ` ${SLOT_LABEL[h.next_call_slot].toLowerCase()}` : ''}</span>
                 )}
@@ -73,7 +76,7 @@ const EnquiryHistory: React.FC<{ enquiryId: number; branchId: number }> = ({ enq
       )}
 
       {updating && (
-        <CallUpdateSheet call={e} today={today} reasons={reasons} onClose={() => setUpdating(false)}
+        <CallUpdateSheet call={e} today={today} reasons={reasons} callResults={callResults} onClose={() => setUpdating(false)}
           onSaved={() => { setUpdating(false); load(); }} />
       )}
     </section>
