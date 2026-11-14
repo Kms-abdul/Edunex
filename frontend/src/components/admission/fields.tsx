@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import { ChevronDown, Camera, User } from 'lucide-react';
+import { ChevronDown, Camera, User, Image as ImageIcon } from 'lucide-react';
 import { Field } from '../ui';
 
 /**
@@ -240,30 +240,48 @@ export const MoreDetails: React.FC<{
 };
 
 /* ----------------------------------------------------------- Photo */
+/** Phones and tablets (touch screen): offer the camera as well as the gallery. */
+const hasTouchCamera = () =>
+  typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
 export const PhotoPicker: React.FC<{
   id: string;
   label: string;
   photo: string | null;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   readOnly?: boolean;
-}> = ({ id, label, photo, onChange, readOnly }) => (
-  <div className="flex items-center gap-4">
-    <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-100 flex items-center justify-center">
-      {photo ? <img src={photo} alt={label} className="h-full w-full object-cover" /> : <User className="h-9 w-9 text-slate-400" />}
+}> = ({ id, label, photo, onChange, readOnly }) => {
+  const touch = hasTouchCamera();
+  // Clear the input after use so the same photo can be picked again
+  const pick = (e: React.ChangeEvent<HTMLInputElement>) => { onChange(e); e.target.value = ''; };
+  return (
+    <div className="flex items-center gap-4">
+      <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-100 flex items-center justify-center">
+        {photo ? <img src={photo} alt={label} className="h-full w-full object-cover" /> : <User className="h-9 w-9 text-slate-400" />}
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-slate-800">{label}</p>
+        {!readOnly && (
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {touch && (
+              <>
+                {/* capture opens the camera straight away on phones */}
+                <input type="file" id={`${id}-camera`} className="hidden" accept="image/*" capture="environment" onChange={pick} />
+                <label htmlFor={`${id}-camera`} className="btn-secondary btn-sm min-h-[44px] cursor-pointer">
+                  <Camera className="h-4 w-4" /> Take photo
+                </label>
+              </>
+            )}
+            <input type="file" id={id} className="hidden" accept="image/*" onChange={pick} />
+            <label htmlFor={id} className="btn-secondary btn-sm min-h-[44px] cursor-pointer">
+              <ImageIcon className="h-4 w-4" /> {touch ? 'Choose from gallery' : photo ? 'Change photo' : 'Add photo'}
+            </label>
+          </div>
+        )}
+      </div>
     </div>
-    <div className="min-w-0">
-      <p className="text-sm font-medium text-slate-800">{label}</p>
-      {!readOnly && (
-        <>
-          <input type="file" id={id} className="hidden" accept="image/*" onChange={onChange} />
-          <label htmlFor={id} className="btn-secondary btn-sm mt-1.5 min-h-[44px] cursor-pointer">
-            <Camera className="h-4 w-4" /> {photo ? 'Change photo' : 'Add photo'}
-          </label>
-        </>
-      )}
-    </div>
-  </div>
-);
+  );
+};
 
 /* ------------------------------------------------- Small card heading */
 export const Group: React.FC<{ title?: string; children: React.ReactNode; className?: string }> = ({ title, children, className = '' }) => (

@@ -3,6 +3,7 @@ import { CheckCircle2, Wallet, UserPlus, ArrowLeft, Pencil } from "lucide-react"
 import api from "../api";
 import type { Page } from "../App";
 import { notify } from './ui/feedback';
+import { resizeImageToDataUrl } from "../utils/resizeImage";
 import { Steps, ActionBar, Button, Alert, DataList, confirmDialog } from './ui';
 import type { Column } from './ui';
 import {
@@ -559,11 +560,11 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
     e: React.ChangeEvent<HTMLInputElement>,
     setter: React.Dispatch<React.SetStateAction<string | null>>
   ) => {
-    if (e.target.files && e.target.files[0]) {
-      const reader = new FileReader();
-      reader.onloadend = () => setter(reader.result as string);
-      reader.readAsDataURL(e.target.files[0]);
-    }
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { notify.error('Please choose a photo (picture file).'); return; }
+    // Camera photos are large: shrink them so saving is quick and never too big for the server
+    resizeImageToDataUrl(file).then(setter);
   };
 
   const handleDocumentFileChange = (
