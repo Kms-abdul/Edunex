@@ -19,6 +19,9 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 8001,
       host: true,
+      // Admission-form links use <ip>.nip.io (a name that points to this PC) so WhatsApp makes
+      // the whole link tappable; Vite 6 blocks unknown host names unless they are listed here.
+      allowedHosts: ['.nip.io'],
       proxy: {
         '/api': {
           target: 'http://localhost:5001',

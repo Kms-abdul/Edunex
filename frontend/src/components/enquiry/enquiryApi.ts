@@ -267,8 +267,16 @@ export interface SentLink {
 
 /** Address parents open: the configured public address, else the address this app is opened at
  *  (192.168.x.x on the school Wi-Fi in development, the real domain on the server). */
-export const publicAppBase = () =>
-  (import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin).replace(/\/+$/, '');
+export const publicAppBase = () => {
+  const configured = import.meta.env.VITE_PUBLIC_APP_URL;
+  if (configured) return configured.replace(/\/+$/, '');
+  const { protocol, hostname, port } = window.location;
+  // Opened by an IP address (e.g. http://192.168.10.172:8001 on the school Wi-Fi): WhatsApp only makes
+  // the IP part tappable, so use <ip>.nip.io, a free name that points to the same address.
+  // On the live server the real domain is used as it is.
+  const host = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) ? `${hostname}.nip.io` : hostname;
+  return `${protocol}//${host}${port ? `:${port}` : ''}`;
+};
 
 export const formLink = (formPath: string) => `${publicAppBase()}/${formPath}`;
 
