@@ -247,8 +247,8 @@ const PublicAdmissionForm: React.FC<{ token: string }> = ({ token }) => {
         </section>
 
         <section className="rounded-2xl bg-white border border-slate-200 p-4 space-y-3">
-          <h2 className="text-lg font-semibold text-slate-900">4. Aadhaar card copy <span className="text-red-600">*</span></h2>
-          <p className="text-sm text-slate-600">A clear photo of the student's Aadhaar card, or a PDF.</p>
+          <h2 className="text-lg font-semibold text-slate-900">4. Aadhaar card copy <span className="text-sm font-normal text-slate-500">(optional)</span></h2>
+          <p className="text-sm text-slate-600">If you have it, a clear photo of the student's Aadhaar card, or a PDF. You can also give it at the school office.</p>
           {docName && <p className="flex items-center gap-2 text-emerald-700 font-medium"><CheckCircle2 className="w-5 h-5" /> Uploaded</p>}
           <div className="flex flex-wrap gap-2">
             {camera && (

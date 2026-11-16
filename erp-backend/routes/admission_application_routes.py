@@ -12,7 +12,7 @@ Parent side (NO login; only through the private link):
   GET  /api/public/apply/<token>               school name / status (no personal data)
   POST /api/public/apply/<token>/verify        confirm the mobile number -> short session
   PUT  /api/public/apply/<token>               save the form (draft)
-  POST /api/public/apply/<token>/aadhaar-doc   upload the Aadhaar copy (photo or PDF, 5 MB)
+  POST /api/public/apply/<token>/aadhaar-doc   upload the Aadhaar copy (optional; photo or PDF, 5 MB)
   POST /api/public/apply/<token>/submit        send it to the school
 
 Security: the link is a long random code; only its SHA-256 is stored. It works for one enquiry,
@@ -448,8 +448,6 @@ def public_submit(token):
     if a.status != "SENT":
         raise UserError("The form is already sent to the school. Thank you!", status=409, state="submitted")
     data = _clean_form((request.get_json(silent=True) or {}).get("data"), final=True)
-    if not a.aadhaar_doc_key:
-        raise UserError("Please upload the Aadhaar copy.", field="aadhaar_doc")
     digits = data["Adharcardno"]
     if Student.query.filter(db.func.replace(db.func.replace(Student.Adharcardno, " ", ""), "-", "") == digits).first():
         raise UserError("A student with this Aadhaar number is already in the school. Please call the school office.",

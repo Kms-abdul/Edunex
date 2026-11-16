@@ -84,7 +84,6 @@ def test_full_journey(env, memory_storage):
     draft = c.put(f"/api/public/apply/{token}", json={"data": _form(Adharcardno="5678")}, headers=ph)
     assert draft.status_code == 200                                   # half-typed Aadhaar is just not kept yet
 
-    assert c.post(f"/api/public/apply/{token}/submit", json={"data": _form()}, headers=ph).status_code == 400  # no doc
     fake = c.post(f"/api/public/apply/{token}/aadhaar-doc", data={"file": (io.BytesIO(b"hello"), "a.png")},
                   headers=ph, content_type="multipart/form-data")
     assert fake.status_code == 400                                    # not really a picture / PDF
@@ -173,3 +172,15 @@ def test_permissions(env):
     assert env["c"].post(f"/api/enquiry/{eid}/application", headers=env["h"]("nobody")).status_code == 403
     assert env["c"].get("/api/enquiry/applications", query_string={"branch_id": env["ids"]["A"]},
                         headers=env["h"]("nobody")).status_code == 403
+
+
+def test_aadhaar_copy_is_optional(env):
+    c = env["c"]
+    eid = _joined_enquiry(env, "No Copy Kid", "9000066666")
+    token = _send(env, eid).get_json()["token"]
+    ph = {"X-Apply-Session": c.post(f"/api/public/apply/{token}/verify", json={"mobile": "9000066666"}).get_json()["session"]}
+    r = c.post(f"/api/public/apply/{token}/submit",
+               json={"data": _form(Adharcardno=aadhaar("61122233344"), phone="9000066666")}, headers=ph)
+    assert r.status_code == 200, r.get_json()
+    lst = c.get("/api/enquiry/applications", query_string={"branch_id": env["ids"]["A"]}, headers=env["h"]("su")).get_json()
+    assert not next(a for a in lst["applications"] if a["enquiry_id"] == eid)["has_aadhaar_doc"]
