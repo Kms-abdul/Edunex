@@ -23,7 +23,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 
 from crypto_utils import encrypt_secret
-from enquiry_models import AdmissionScheme, Enquiry, EnquirySequence
+from enquiry_models import AdmissionApplication, AdmissionScheme, Enquiry, EnquiryChange, EnquirySequence
 from extensions import db, get_now, get_today, limiter
 from helpers import generate_installments, get_user_allowed_branches, has_permission, token_required
 from models import (Branch, ClassDisplayOrder, ClassFeeStructure, ClassMaster, ClassSection,
@@ -356,7 +356,7 @@ def enquiry_dict(e, full=False):
         "next_call_date": e.next_follow_up_date.isoformat() if e.next_follow_up_date else None,
         "next_call_slot": e.next_call_slot, "last_outcome": e.last_outcome, "call_count": e.call_count or 0,
         "close_reason": e.close_reason,
-        "print_count": e.print_count or 0,
+        "print_count": e.print_count or 0, "needs_reprint": bool(e.needs_reprint),
     }
     if full:
         d["print"] = e.quote_snapshot
@@ -560,7 +560,7 @@ def find_earlier_visits(user, branch, year, aadhaar=None, contact=None):
     if contact:
         conds.append(Enquiry.contact == contact)
     if conds:
-        q = Enquiry.query.filter(or_(*conds))
+        q = Enquiry.query.filter(or_(*conds), Enquiry.status != "CANCELLED")
         if not allowed["is_unlimited"]:
             q = q.filter(Enquiry.branch_id.in_(list(allowed["ids"] or [])))
         for e in q.order_by(Enquiry.enquiry_date.desc(), Enquiry.id.desc()).limit(10).all():
@@ -693,7 +693,7 @@ def list_enquiries(current_user):
     if year:
         q = q.filter(Enquiry.academic_year == year)
     status = request.args.get("status")
-    if status in ("NEW", "FOLLOW_UP", "JOINED", "CLOSED"):
+    if status in ("NEW", "FOLLOW_UP", "JOINED", "CLOSED", "CANCELLED"):
         q = q.filter(Enquiry.status == status)
     printed = request.args.get("printed")
     if printed == "no":
@@ -754,6 +754,144 @@ def mark_printed(current_user, enquiry_id):
     e.printed_at = get_now()
     e.printed_by = current_user.user_id
     e.print_count = (e.print_count or 0) + 1
+    e.needs_reprint = False
     e.updated_by = current_user.user_id
     db.session.commit()
     return jsonify({"message": "Marked as printed.", "enquiry": enquiry_dict(e)})
+
+
+# --------------------------------------------------------------------------- edit / cancel
+CANCEL_REASONS = ("Entered by mistake", "Duplicate enquiry", "Other")
+_EDIT_LABELS = {"student_name": "Student name", "guardian_name": "Guardian name", "class_name": "Class",
+                "contact": "Mobile", "student_type": "Fees for", "aadhaar": "Aadhaar"}
+
+
+def _admitted(e):
+    if e.converted_student_id:
+        return True
+    return AdmissionApplication.query.filter_by(enquiry_id=e.id, status="ADMITTED").first() is not None
+
+
+def _editable_enquiry(current_user, enquiry_id):
+    if not has_permission(current_user, PERM_ENQUIRY, "write"):
+        return None
+    e = Enquiry.query.filter_by(id=enquiry_id).with_for_update().first()
+    if not e:
+        raise UserError("This enquiry was not found.", status=404)
+    resolve_branch(current_user, e.branch_id)  # ownership check
+    if _admitted(e):
+        raise UserError("The student is already admitted. Change the details in the student's record.", status=409)
+    return e
+
+
+def _log_change(e, user, kind, changes=None, reason=None):
+    db.session.add(EnquiryChange(school_id=e.school_id, branch_id=e.branch_id, enquiry_id=e.id, changed_at=get_now(),
+                                 changed_by=user.user_id, kind=kind, changes=changes, reason=reason,
+                                 created_by=user.user_id))
+
+
+@bp.route("/api/enquiry/<int:enquiry_id>", methods=["PUT"])
+@token_required
+def update_enquiry(current_user, enquiry_id):
+    """Correct a saved enquiry (wrong mobile, spelling, class...). Every change is kept in the history.
+    Aadhaar: leave out = keep, "" = remove, 12 digits = replace."""
+    e = _editable_enquiry(current_user, enquiry_id)
+    if e is None:
+        return _forbidden()
+    if e.status == "CANCELLED":
+        raise UserError("This enquiry is cancelled. Restore it first.", status=409)
+    data = request.get_json(silent=True) or {}
+    branch = e.branch
+    new = {
+        "student_name": clean_name(data.get("student_name"), "student name"),
+        "guardian_name": clean_name(data.get("guardian_name"), "guardian name"),
+        "class_name": str(data.get("class_name") or "").strip(),
+        "contact": clean_phone(data.get("contact")),
+        "student_type": clean_student_type(data.get("student_type")),
+    }
+    if new["class_name"] not in branch_classes(branch):
+        raise UserError("Please choose the class.", field="class_name")
+
+    changes = [{"field": _EDIT_LABELS[k], "from": getattr(e, k) if k != "student_type" else (e.student_type or "NEW"),
+                "to": v} for k, v in new.items() if v != (getattr(e, k) if k != "student_type" else (e.student_type or "NEW"))]
+    for c in changes:
+        if c["field"] == "Fees for":
+            c["from"], c["to"] = [("Old student" if x == "OLD" else "New student") for x in (c["from"], c["to"])]
+
+    aadhaar_given = "aadhaar" in data
+    aadhaar = clean_aadhaar(data.get("aadhaar")) if aadhaar_given else None
+    new_fp = aadhaar_fingerprint(aadhaar) if aadhaar else None
+    aadhaar_changed = aadhaar_given and new_fp != e.aadhaar_hash
+    if aadhaar_changed:
+        if new_fp:
+            dup = Enquiry.query.filter(Enquiry.branch_id == e.branch_id, Enquiry.academic_year == e.academic_year,
+                                       Enquiry.aadhaar_hash == new_fp, Enquiry.id != e.id).first()
+            if dup:
+                raise UserError(f"This Aadhaar is already on enquiry {dup.enquiry_no}.", status=409, field="aadhaar",
+                                existing_id=dup.id, existing_no=dup.enquiry_no)
+        changes.append({"field": "Aadhaar", "from": mask_aadhaar(e.aadhaar_last4) or "-",
+                        "to": mask_aadhaar(aadhaar[-4:]) if aadhaar else "Removed"})
+
+    if not changes:
+        raise UserError("Nothing was changed.")
+
+    fee_changed = new["class_name"] != e.class_name or new["student_type"] != (e.student_type or "NEW")
+    for k, v in new.items():
+        setattr(e, k, v)
+    if aadhaar_changed:
+        e.aadhaar_encrypted = encrypt_secret(aadhaar) if aadhaar else None
+        e.aadhaar_hash, e.aadhaar_last4 = new_fp, (aadhaar[-4:] if aadhaar else None)
+
+    snap = dict(e.quote_snapshot or {})
+    if fee_changed or not snap:
+        # Same fee rules and schemes as on the enquiry day, so the parent keeps the offer they were given
+        snap.update(build_quote(branch, e.academic_year, e.class_name, e.enquiry_date, e.student_type or "NEW"))
+        snap.setdefault("header", print_header(branch))
+        snap.setdefault("enquiry_no", e.enquiry_no)
+        snap.setdefault("enquiry_date", e.enquiry_date.isoformat())
+    snap.update({"student_name": e.student_name, "guardian_name": e.guardian_name, "contact": e.contact,
+                 "aadhaar_masked": mask_aadhaar(e.aadhaar_last4)})
+    e.quote_snapshot = snap
+    if e.printed_at:
+        e.needs_reprint = True
+    e.updated_by = current_user.user_id
+    _log_change(e, current_user, "EDITED", changes=changes)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        raise UserError("Someone else changed this enquiry at the same time. Please open it again.", status=409)
+    msg = "Saved." + (" The fee is updated." if fee_changed else "") + (" Please print the paper again." if e.needs_reprint else "")
+    return jsonify({"message": msg, "enquiry": enquiry_dict(e, full=True)})
+
+
+@bp.route("/api/enquiry/<int:enquiry_id>/cancel", methods=["POST"])
+@token_required
+def cancel_enquiry(current_user, enquiry_id):
+    """Entered by mistake / duplicate: out of the calls and counts, but kept and shown as Cancelled."""
+    e = _editable_enquiry(current_user, enquiry_id)
+    if e is None:
+        return _forbidden()
+    if e.status == "CANCELLED":
+        raise UserError("This enquiry is already cancelled.", status=409)
+    data = request.get_json(silent=True) or {}
+    reason = str(data.get("reason") or "").strip()
+    note = re.sub(r"\s+", " ", str(data.get("note") or "")).strip()[:140]
+    if reason not in CANCEL_REASONS:
+        raise UserError("Please choose why it is cancelled.", field="reason")
+    if reason == "Other" and not note:
+        raise UserError("Please write the reason.", field="note")
+    reason_text = note if reason == "Other" else (f"{reason}: {note}" if note else reason)
+
+    e.status, e.next_follow_up_date, e.next_call_slot = "CANCELLED", None, None
+    e.close_reason, e.closed_at = reason_text[:150], get_now()
+    # The Aadhaar no longer blocks a correct enquiry for the same child (it comes back on restore)
+    e.aadhaar_hash = None
+    e.updated_by = current_user.user_id
+    for a in AdmissionApplication.query.filter(AdmissionApplication.enquiry_id == e.id,
+                                               AdmissionApplication.status.in_(("SENT", "SUBMITTED"))).all():
+        a.status = "CANCELLED"  # the parent's form link stops working
+    _log_change(e, current_user, "CANCELLED", reason=reason_text[:150])
+    db.session.commit()
+    return jsonify({"message": f"Enquiry {e.enquiry_no} cancelled. It stays in the list as Cancelled.",
+                    "enquiry": enquiry_dict(e)})

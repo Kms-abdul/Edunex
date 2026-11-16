@@ -54,7 +54,9 @@ const EnquiryList: React.FC<{ options: EnquiryOptions; branchId: number; onOpen:
     },
     {
       key: 'printed', header: 'Printed',
-      render: (r: EnquiryRow) => <Badge tone={r.printed_at ? 'success' : 'warning'}>{r.printed_at ? 'Printed' : 'Not printed'}</Badge>,
+      render: (r: EnquiryRow) => r.needs_reprint
+        ? <Badge tone="warning">Print again</Badge>
+        : <Badge tone={r.printed_at ? 'success' : 'warning'}>{r.printed_at ? 'Printed' : 'Not printed'}</Badge>,
     },
     {
       key: 'print', header: '', align: 'right', hideOnMobile: true,

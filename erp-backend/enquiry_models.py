@@ -45,6 +45,9 @@ class AdmissionScheme(db.Model, AuditMixin):
     )
 
 
+ENQUIRY_STATUSES = ("NEW", "FOLLOW_UP", "JOINED", "CLOSED", "CANCELLED")
+
+
 class Enquiry(db.Model, AuditMixin):
     __tablename__ = "enquiries"
     __audit_module__ = "ADMISSION"
@@ -70,8 +73,8 @@ class Enquiry(db.Model, AuditMixin):
     aadhaar_hash = db.Column(db.String(64), nullable=True)
     aadhaar_last4 = db.Column(db.String(4), nullable=True)
 
-    status = db.Column(db.Enum("NEW", "FOLLOW_UP", "JOINED", "CLOSED", name="enquiry_status"),
-                       nullable=False, default="NEW")
+    # CANCELLED = entered by mistake / duplicate: kept (never deleted), but out of calls and counts
+    status = db.Column(db.Enum(*ENQUIRY_STATUSES, name="enquiry_status"), nullable=False, default="NEW")
     # Follow-up calls (step 2): when to call next, and a summary of the last call
     next_follow_up_date = db.Column(db.Date, nullable=True)
     next_call_slot = db.Column(db.Enum("MORNING", "AFTERNOON", "EVENING", name="enquiry_call_slot"), nullable=True)
@@ -90,6 +93,8 @@ class Enquiry(db.Model, AuditMixin):
     printed_at = db.Column(db.DateTime, nullable=True)
     printed_by = db.Column(db.Integer, db.ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
     print_count = db.Column(db.Integer, nullable=False, default=0, server_default="0")
+    # Set when the details are edited after printing: the parent's paper is out of date
+    needs_reprint = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
 
     branch = db.relationship("Branch", foreign_keys=[branch_id])
 
@@ -149,6 +154,25 @@ class EnquiryFollowUp(db.Model, AuditMixin):
         db.Index("idx_followup_enquiry", "enquiry_id", "called_at"),
         db.Index("idx_followup_branch_called", "branch_id", "called_at"),
     )
+
+
+class EnquiryChange(db.Model, AuditMixin):
+    """Edits, cancels and restores of an enquiry: who, when and what changed. Never edited."""
+    __tablename__ = "enquiry_changes"
+    __audit_module__ = "ADMISSION"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    school_id = db.Column(db.Integer, db.ForeignKey("schools.id", ondelete="SET NULL"), nullable=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branches.id", ondelete="CASCADE"), nullable=False)
+    enquiry_id = db.Column(db.Integer, db.ForeignKey("enquiries.id", ondelete="CASCADE"), nullable=False)
+    changed_at = db.Column(db.DateTime, nullable=False)
+    changed_by = db.Column(db.Integer, db.ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    kind = db.Column(db.Enum("EDITED", "CANCELLED", "RESTORED", name="enquiry_change_kind"), nullable=False)
+    # EDITED: [{"field": "Mobile", "from": "...", "to": "..."}]  (Aadhaar only as masked text)
+    changes = db.Column(db.JSON, nullable=True)
+    reason = db.Column(db.String(150), nullable=True)
+
+    __table_args__ = (db.Index("idx_enquiry_change_enquiry", "enquiry_id", "changed_at"),)
 
 
 class EnquiryOption(db.Model, AuditMixin):

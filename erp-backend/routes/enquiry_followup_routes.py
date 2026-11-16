@@ -263,6 +263,8 @@ def record_call(current_user, enquiry_id):
     if not e:
         raise UserError("This enquiry was not found.", status=404)
     resolve_branch(current_user, e.branch_id)  # ownership check
+    if e.status == "CANCELLED":
+        raise UserError("This enquiry is cancelled. Ask the admin to restore it if it is needed.", status=409)
     if e.status not in OPEN_STATUSES:
         raise UserError("This enquiry is closed. Ask the admin to reopen it if the parent called back.", status=409)
 
@@ -339,8 +341,11 @@ def call_history(current_user, enquiry_id):
             .order_by(EnquiryFollowUp.called_at.desc(), EnquiryFollowUp.id.desc()).all())
     from enquiry_models import AdmissionApplication
     from models import Student
+    from enquiry_models import EnquiryChange
+    from routes.enquiry_routes import _admitted
     app_row = AdmissionApplication.query.filter_by(enquiry_id=e.id).first()
-    names = _user_names([r.called_by for r in rows] + [e.created_by, e.printed_by,
+    changes = EnquiryChange.query.filter_by(enquiry_id=e.id).order_by(EnquiryChange.changed_at, EnquiryChange.id).all()
+    names = _user_names([r.called_by for r in rows] + [c.changed_by for c in changes] + [e.created_by, e.printed_by,
                                                         app_row.created_by if app_row else None,
                                                         app_row.admitted_by if app_row else None])
 
@@ -350,6 +355,14 @@ def call_history(current_user, enquiry_id):
     if e.printed_at:
         events.append({"kind": "printed", "at": _iso_local(e.printed_at), "by": names.get(e.printed_by),
                        "text": "Paper printed" + (f" ({e.print_count} times)" if (e.print_count or 0) > 1 else "")})
+    for c in changes:
+        if c.kind == "EDITED":
+            text = "Details changed: " + "; ".join(f"{x['field']} {x['from']} → {x['to']}" for x in (c.changes or []))
+        elif c.kind == "CANCELLED":
+            text = f"Enquiry cancelled ({c.reason})" if c.reason else "Enquiry cancelled"
+        else:
+            text = "Enquiry restored"
+        events.append({"kind": c.kind.lower(), "at": _iso_local(c.changed_at), "by": names.get(c.changed_by), "text": text})
     if app_row:
         events.append({"kind": "form_sent", "at": _iso_local(app_row.created_at), "by": names.get(app_row.created_by),
                        "text": "Admission form sent to the parent"
@@ -371,13 +384,18 @@ def call_history(current_user, enquiry_id):
             "student_name": e.student_name, "guardian_name": e.guardian_name, "class_name": e.class_name,
             "contact": e.contact, "aadhaar_masked": f"XXXX XXXX {e.aadhaar_last4}" if e.aadhaar_last4 else None,
             "student_type": e.student_type or "NEW", "printed_at": _iso_local(e.printed_at),
-            "taken_by": names.get(e.created_by),
+            "taken_by": names.get(e.created_by), "needs_reprint": bool(e.needs_reprint),
         },
         "application": {"status": app_row.status, "expires_at": app_row.expires_at.isoformat()} if app_row else None,
         "events": events,
         "close_reason": e.close_reason,
         "can_call": has_permission(current_user, PERM_FOLLOWUP, "write") and e.status in OPEN_STATUSES,
         "can_reopen": has_permission(current_user, PERM_SCHEMES, "write") and e.status not in OPEN_STATUSES,
+        # Correct mistakes / cancel a wrong entry: front office, until the student is admitted
+        "can_edit": (has_permission(current_user, PERM_ENQUIRY, "write") and e.status != "CANCELLED"
+                     and not _admitted(e)),
+        "can_cancel": (has_permission(current_user, PERM_ENQUIRY, "write") and e.status != "CANCELLED"
+                       and not _admitted(e)),
         "history": [{
             "id": r.id, "called_at": _iso_local(r.called_at), "called_by": names.get(r.called_by),
             "outcome": r.outcome, "outcome_label": outcome_label(r.outcome, r.reason), "reason": r.reason, "note": r.note,
@@ -399,11 +417,27 @@ def reopen_enquiry(current_user, enquiry_id):
     resolve_branch(current_user, e.branch_id)
     if e.status in OPEN_STATUSES:
         raise UserError("This enquiry is already open.", status=409)
+    was_cancelled = e.status == "CANCELLED"
+    if was_cancelled and e.aadhaar_encrypted:
+        # The Aadhaar stopped blocking other enquiries while cancelled: put it back if still free
+        from crypto_utils import decrypt_secret
+        from routes.enquiry_routes import aadhaar_fingerprint
+        fp = aadhaar_fingerprint(decrypt_secret(e.aadhaar_encrypted))
+        dup = Enquiry.query.filter(Enquiry.branch_id == e.branch_id, Enquiry.academic_year == e.academic_year,
+                                   Enquiry.aadhaar_hash == fp, Enquiry.id != e.id).first()
+        if dup:
+            raise UserError(f"This child now has enquiry {dup.enquiry_no}. Use that one instead.", status=409,
+                            existing_id=dup.id, existing_no=dup.enquiry_no)
+        e.aadhaar_hash = fp
     e.status, e.next_follow_up_date, e.next_call_slot = "FOLLOW_UP", local_today(), None
     e.closed_at = e.close_reason = None
     e.updated_by = current_user.user_id
+    if was_cancelled:
+        from enquiry_models import EnquiryChange
+        db.session.add(EnquiryChange(school_id=e.school_id, branch_id=e.branch_id, enquiry_id=e.id, changed_at=get_now(),
+                                     changed_by=current_user.user_id, kind="RESTORED", created_by=current_user.user_id))
     db.session.commit()
-    return jsonify({"message": "Reopened. It is in today's calls."})
+    return jsonify({"message": ("Restored." if was_cancelled else "Reopened.") + " It is in today's calls."})
 
 
 # --------------------------------------------------------------------------- dashboard
@@ -433,7 +467,8 @@ def enquiry_dashboard(current_user):
     branch = resolve_branch(current_user, request.args.get("branch_id"))
     today = local_today()
     start, end = _period(today)
-    received = Enquiry.query.filter(Enquiry.branch_id == branch.id,
+    # Cancelled = entered by mistake: never counted
+    received = Enquiry.query.filter(Enquiry.branch_id == branch.id, Enquiry.status != "CANCELLED",
                                     Enquiry.enquiry_date >= start, Enquiry.enquiry_date <= end)
     total = received.count()
     joined = received.filter(Enquiry.status == "JOINED").count()

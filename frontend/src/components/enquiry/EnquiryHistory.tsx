@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, MessageCircle, PencilLine, Phone, Printer, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Ban, MessageCircle, Pencil, PencilLine, Phone, Printer, RotateCcw } from 'lucide-react';
 import { ActionBar, Badge, Button, ErrorState, LoadingState, confirmDialog, notify } from '../ui';
 import {
   APPLICATION_STATUS_LABEL, HistoryItem, SLOT_LABEL, STATUS_LABEL, dayName, errorText, followupApi, niceDate,
@@ -7,13 +7,17 @@ import {
 } from './enquiryApi';
 import CallUpdateSheet from './CallUpdateSheet';
 import SendFormSheet from './SendFormSheet';
+import EditEnquirySheet from './EditEnquirySheet';
+import CancelEnquirySheet from './CancelEnquirySheet';
 
 type HistoryData = Awaited<ReturnType<typeof followupApi.history>> & {
   details: {
     enquiry_no: string; enquiry_date: string; academic_year: string; student_name: string; guardian_name: string;
     class_name: string; contact: string; aadhaar_masked: string | null; student_type: 'NEW' | 'OLD';
-    printed_at: string | null; taken_by: string | null;
+    printed_at: string | null; taken_by: string | null; needs_reprint?: boolean;
   };
+  can_edit?: boolean;
+  can_cancel?: boolean;
   application: { status: 'SENT' | 'SUBMITTED' | 'ADMITTED' | 'CANCELLED'; expires_at: string } | null;
   events: { kind: string; at: string | null; by: string | null; text: string }[];
 };
@@ -26,6 +30,7 @@ const when = (iso: string) => new Date(iso).toLocaleString('en-IN', { day: 'nume
 const DOT: Record<string, string> = {
   created: 'bg-slate-400', printed: 'bg-slate-400', form_sent: 'bg-emerald-500', form_opened: 'bg-emerald-300',
   form_received: 'bg-emerald-600', admitted: 'bg-emerald-700',
+  edited: 'bg-amber-500', cancelled: 'bg-red-500', restored: 'bg-brand-500',
 };
 
 const Info: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
@@ -48,6 +53,8 @@ const EnquiryHistory: React.FC<{ enquiryId: number; branchId: number; onPrint?: 
   const [callResults, setCallResults] = useState<string[]>([]);
   const [updating, setUpdating] = useState(false);
   const [sendingForm, setSendingForm] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
 
   const load = useCallback(() => {
@@ -71,8 +78,10 @@ const EnquiryHistory: React.FC<{ enquiryId: number; branchId: number; onPrint?: 
     student_name: e.student_name, guardian_name: e.guardian_name, class_name: e.class_name, contact: e.contact,
     aadhaar_masked: null, student_type: 'NEW', printed_at: null, taken_by: null,
   };
+  const cancelled = e.status === 'CANCELLED';
   const reopen = async () => {
-    if (!(await confirmDialog('Reopen this enquiry? It will be in today\'s calls.', { confirmText: 'Reopen', tone: 'default' }))) return;
+    const q = cancelled ? 'Restore this enquiry? It will be in today\'s calls again.' : 'Reopen this enquiry? It will be in today\'s calls.';
+    if (!(await confirmDialog(q, { confirmText: cancelled ? 'Restore' : 'Reopen', tone: 'default' }))) return;
     try { notify.success((await followupApi.reopen(enquiryId)).message); load(); } catch (err) { notify.error(errorText(err)); }
   };
 
@@ -97,7 +106,8 @@ const EnquiryHistory: React.FC<{ enquiryId: number; branchId: number; onPrint?: 
               {e.next_call_date && (
                 <span className="text-slate-600">Next call: <b>{dayName(e.next_call_date, today)}</b>{e.next_call_slot ? `, ${SLOT_LABEL[e.next_call_slot].toLowerCase()}` : ''}</span>
               )}
-              {data.close_reason && <span className="text-slate-600">Reason: <b>{data.close_reason}</b></span>}
+              {data.close_reason && <span className="text-slate-600">{cancelled ? 'Cancelled' : 'Reason'}: <b>{data.close_reason}</b></span>}
+              {d.needs_reprint && <Badge tone="warning">Details changed: print again</Badge>}
             </div>
           </div>
           <a href={`tel:${d.contact}`} className="btn-secondary min-h-[44px]"><Phone className="w-4 h-4" /> Call {d.contact}</a>
@@ -142,8 +152,10 @@ const EnquiryHistory: React.FC<{ enquiryId: number; branchId: number; onPrint?: 
 
       <ActionBar>
         {onBack && <Button variant="secondary" icon={<ArrowLeft className="w-4 h-4" />} onClick={onBack}>Back</Button>}
-        {onPrint && <Button variant="secondary" icon={<Printer className="w-4 h-4" />} onClick={onPrint}>Print paper</Button>}
-        {data.can_reopen && <Button variant="secondary" icon={<RotateCcw className="w-4 h-4" />} onClick={reopen}>Reopen</Button>}
+        {onPrint && !cancelled && <Button variant="secondary" icon={<Printer className="w-4 h-4" />} onClick={onPrint}>Print paper</Button>}
+        {data.can_cancel && <Button variant="ghost" icon={<Ban className="w-4 h-4" />} onClick={() => setCancelling(true)}>Cancel enquiry</Button>}
+        {data.can_edit && <Button variant="secondary" icon={<Pencil className="w-4 h-4" />} onClick={() => setEditing(true)}>Edit</Button>}
+        {data.can_reopen && <Button variant="secondary" icon={<RotateCcw className="w-4 h-4" />} onClick={reopen}>{cancelled ? 'Restore' : 'Reopen'}</Button>}
         {canSendForm && <Button icon={<MessageCircle className="w-4 h-4" />} onClick={() => setSendingForm(true)}>Send admission form</Button>}
         {data.can_call && <Button icon={<PencilLine className="w-4 h-4" />} onClick={() => setUpdating(true)}>Update call</Button>}
       </ActionBar>
@@ -151,6 +163,15 @@ const EnquiryHistory: React.FC<{ enquiryId: number; branchId: number; onPrint?: 
       {updating && (
         <CallUpdateSheet call={e} today={today} reasons={reasons} callResults={callResults} onClose={() => setUpdating(false)}
           onSaved={row => { setUpdating(false); load(); if (row.status === 'JOINED') setSendingForm(true); }} />
+      )}
+      {editing && (
+        <EditEnquirySheet branchId={branchId} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load(); }}
+          enquiry={{ id: enquiryId, student_name: d.student_name, guardian_name: d.guardian_name, class_name: d.class_name,
+            contact: d.contact, student_type: d.student_type, aadhaar_masked: d.aadhaar_masked, printed: !!d.printed_at }} />
+      )}
+      {cancelling && (
+        <CancelEnquirySheet enquiryId={enquiryId} title={`${d.enquiry_no} · ${d.student_name}`} onClose={() => setCancelling(false)}
+          onDone={() => { setCancelling(false); load(); }} />
       )}
       {sendingForm && <SendFormSheet enquiryId={enquiryId} studentName={d.student_name} onClose={() => { setSendingForm(false); load(); }} />}
     </div>

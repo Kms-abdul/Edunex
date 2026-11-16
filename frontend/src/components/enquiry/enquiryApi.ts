@@ -84,6 +84,8 @@ export interface EnquiryRow {
   close_reason?: string | null;
   printed_at?: string | null;
   print_count?: number;
+  /** Details changed after the paper was printed */
+  needs_reprint?: boolean;
   match?: 'aadhaar' | 'phone';
   print?: PrintData;
 }
@@ -137,7 +139,14 @@ export const enquiryApi = {
     api.get<{ enquiries: EnquiryRow[]; total: number; page: number; page_size: number; not_printed: number }>('/enquiry', { params }).then(r => r.data),
   markPrinted: (id: number) => api.post<{ enquiry: EnquiryRow }>(`/enquiry/${id}/printed`).then(r => r.data.enquiry),
   get: (id: number) => api.get<{ enquiry: EnquiryRow }>(`/enquiry/${id}`).then(r => r.data.enquiry),
+  /** aadhaar: leave out = keep, '' = remove, 12 digits = replace */
+  update: (id: number, body: Record<string, unknown>) =>
+    api.put<{ message: string; enquiry: EnquiryRow }>(`/enquiry/${id}`, body).then(r => r.data),
+  cancel: (id: number, reason: string, note: string) =>
+    api.post<{ message: string; enquiry: EnquiryRow }>(`/enquiry/${id}/cancel`, { reason, note }).then(r => r.data),
 };
+
+export const CANCEL_REASONS = ['Entered by mistake', 'Duplicate enquiry', 'Other'] as const;
 
 export const rupees = (v: number | null | undefined) =>
   v === null || v === undefined ? '—' : `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
@@ -164,14 +173,15 @@ export const discountLabel = (type: DiscountType, value: number) =>
 /* ------------------------------------------------------------------ follow-up calls (step 2) */
 export type Outcome = 'CALL_LATER' | 'NO_ANSWER' | 'WILL_VISIT' | 'JOINED' | 'NOT_INTERESTED' | 'WRONG_NUMBER';
 export type CallSlot = 'MORNING' | 'AFTERNOON' | 'EVENING';
-export type EnquiryStatus = 'NEW' | 'FOLLOW_UP' | 'JOINED' | 'CLOSED';
+export type EnquiryStatus = 'NEW' | 'FOLLOW_UP' | 'JOINED' | 'CLOSED' | 'CANCELLED';
 
 export const SLOT_LABEL: Record<CallSlot, string> = { MORNING: 'Morning', AFTERNOON: 'Afternoon', EVENING: 'Evening' };
 export const STATUS_LABEL: Record<EnquiryStatus, string> = {
-  NEW: 'Not called yet', FOLLOW_UP: 'Follow-up', JOINED: 'Joined', CLOSED: 'Not interested',
+  NEW: 'Not called yet', FOLLOW_UP: 'Follow-up', JOINED: 'Joined', CLOSED: 'Not interested', CANCELLED: 'Cancelled',
 };
 export const statusTone = (s?: string) =>
-  (s === 'JOINED' ? 'success' : s === 'CLOSED' ? 'danger' : s === 'FOLLOW_UP' ? 'brand' : 'warning') as 'success' | 'danger' | 'brand' | 'warning';
+  (s === 'JOINED' ? 'success' : s === 'CLOSED' ? 'danger' : s === 'FOLLOW_UP' ? 'brand' : s === 'CANCELLED' ? 'neutral' : 'warning') as
+    'success' | 'danger' | 'brand' | 'warning' | 'neutral';
 
 export interface CallRow {
   id: number; enquiry_no: string; enquiry_date: string; academic_year: string;
