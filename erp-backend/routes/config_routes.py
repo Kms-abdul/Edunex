@@ -526,6 +526,8 @@ def is_weekoff_or_holiday(check_date, branch_id, academic_year, class_id=None):
     # Check holiday
     holiday_query = HolidayCalendar.query.filter(
         HolidayCalendar.branch_id == branch_id,
+        # Student attendance: a staff-only holiday is a normal school day for students
+        HolidayCalendar.holiday_for != "StaffOnly",
         HolidayCalendar.start_date <= check_date,
         HolidayCalendar.end_date >= check_date,
         HolidayCalendar.academic_year == academic_year,

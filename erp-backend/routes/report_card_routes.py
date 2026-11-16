@@ -49,63 +49,31 @@ def _report_class_id(cursor, class_name):
 
 def _attendance_like_register(cursor, student_id, months, branch_id, academic_year, class_id=None):
     """
-    Monthly attendance counted exactly like the Attendance Register screen:
-      - Present = days marked Present, Absent = days marked Absent
-        (days that are a holiday or weekly off are skipped)
-      - Total working days = days in the month minus holidays and weekly offs
-      - Attendance is read by DATE for the student, like the register
-        (not by the academic_year label saved on each row)
-    A month in which the student has no marked day (e.g. joined later) shows '-' and is not counted.
-    Returns (monthly_list, total_present, total_absent, total_days).
+    Monthly attendance for report cards, from the SAME rules as the Attendance Register
+    (services/student_attendance.py): Present / Absent / Half Day (0.5 each), holidays and
+    weekly offs skipped (staff-only holidays are school days for students), counted only from
+    the joining date to the leaving date and up to today. Months outside the student's
+    period show '-'. Attendance is read by date, not by the academic_year label.
+    Returns (monthly_list, total_present, total_absent, total_days). `cursor` is unused (kept
+    so the callers did not change).
     """
-    import calendar
     from datetime import date as dt_date
-    from routes.config_routes import is_weekoff_or_holiday
+    from extensions import db
+    from models import Attendance, Student
+    from services import student_attendance as rules
 
     months = sorted({(int(y), int(m)) for (y, m) in months})
-    if not months:
+    student = db.session.get(Student, int(student_id))
+    if not months or not student:
         return [], 0, 0, 0
-
-    conds = " OR ".join(["(YEAR(date) = %s AND MONTH(date) = %s)"] * len(months))
-    params = [student_id] + [v for ym in months for v in ym]
-    cursor.execute(f"SELECT date, status FROM attendance WHERE student_id = %s AND ({conds})", tuple(params))
-    status_by_date = {}
-    for row in cursor.fetchall():
-        d = row["date"]
-        if isinstance(d, str):
-            d = datetime.strptime(d[:10], "%Y-%m-%d").date()
-        elif isinstance(d, datetime):
-            d = d.date()
-        status_by_date[d] = row["status"]
-
-    monthly, total_present, total_absent, total_days = [], 0, 0, 0
-    for (y, m) in months:
-        working = present = absent = marked = 0
-        for day in range(1, calendar.monthrange(y, m)[1] + 1):
-            d = dt_date(y, m, day)
-            try:
-                res = is_weekoff_or_holiday(d, branch_id, academic_year, class_id=class_id)
-                if res.get("is_weekoff") or res.get("is_holiday"):
-                    continue
-            except Exception as e:
-                logger.warning(f"Holiday check failed for {d}: {e}")
-            working += 1
-            status = status_by_date.get(d)
-            if status == "Present":
-                present += 1
-            elif status == "Absent":
-                absent += 1
-            if status in ("Present", "Absent", "Leave"):
-                marked += 1
-        abbr = _MONTH_ABBR[m] if 1 <= m <= 12 else f"M{m}"
-        if marked == 0:
-            monthly.append({"month": abbr, "total": "-", "present": "-", "absent": "-"})
-            continue
-        monthly.append({"month": abbr, "total": working, "present": present, "absent": absent})
-        total_present += present
-        total_absent += absent
-        total_days += working
-    return monthly, total_present, total_absent, total_days
+    first = dt_date(months[0][0], months[0][1], 1)
+    last_y, last_m = months[-1]
+    last = dt_date(last_y + (last_m == 12), (last_m % 12) + 1, 1)
+    marks = {r.date: r.status for r in Attendance.query.filter(
+        Attendance.student_id == student.student_id, Attendance.date >= first, Attendance.date < last).all()}
+    cal = rules.SchoolCalendar(branch_id, academic_year, int(class_id) if str(class_id or "").isdigit() else class_id)
+    monthly, totals = rules.months_summary(student, months, marks, cal, academic_year)
+    return monthly, totals["present"], totals["absent"], totals["working"]
 
 
 def resolve_branch_scope(current_user, requested_branch=None):

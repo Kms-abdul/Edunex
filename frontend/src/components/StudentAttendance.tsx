@@ -23,9 +23,10 @@ const StatusLegend: React.FC<{ extra?: React.ReactNode }> = ({ extra }) => (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-600">
         <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-emerald-100 text-emerald-800 font-semibold flex items-center justify-center">P</span> Present</span>
         <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-red-100 text-red-800 font-semibold flex items-center justify-center">A</span> Absent</span>
-        <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-amber-100 text-amber-800 font-semibold flex items-center justify-center">L</span> Leave</span>
+        <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-amber-100 text-amber-800 font-semibold flex items-center justify-center">½</span> Half day</span>
         <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-gray-200 text-gray-600 font-semibold flex items-center justify-center">H</span> Holiday / week off</span>
-        <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-gray-50 text-gray-400 font-semibold flex items-center justify-center">-</span> Not marked</span>
+        <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded border border-amber-300 bg-white" /> Not marked (counted)</span>
+        <span className="inline-flex items-center gap-1"><span className="w-5 h-5 rounded bg-gray-50 text-gray-300 font-semibold flex items-center justify-center">-</span> Not joined / left</span>
         {extra}
     </div>
 );
@@ -114,20 +115,26 @@ const RegisterViewTab: React.FC = () => {
     const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
     const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'Present': return 'bg-emerald-100 text-emerald-800';
-            case 'Absent': return 'bg-red-100 text-red-800';
-            case 'Leave': return 'bg-amber-100 text-amber-800';
-            case 'Holiday': return 'bg-gray-100 text-gray-800';
-            case 'Sunday': return 'bg-pink-100 text-pink-800';
-            case 'Weekoff': return 'bg-blue-100 text-blue-800';
-            default: return '';
-        }
+    // Day codes + totals from the backend (services/student_attendance.py): the same rules as report cards.
+    // P present, A absent, HD half day, '' not marked, H holiday / week off, '-' not joined / left, F future.
+    const register: Record<string, any> | null = reportData?.register || null;
+    const reasons: Record<string, string> = reportData?.blocked_reasons || blockedDates;
+    const CODE_TEXT: Record<string, string> = { P: 'P', A: 'A', HD: '½', H: 'H', '-': '-', F: '', '': '' };
+    const CODE_CLASS: Record<string, string> = {
+        P: 'bg-emerald-100 text-emerald-800', A: 'bg-red-100 text-red-800', HD: 'bg-amber-100 text-amber-800',
+        H: 'bg-gray-200 text-gray-500', '-': 'bg-gray-50 text-gray-300', F: 'bg-gray-50', '': 'bg-white ring-1 ring-inset ring-amber-200',
     };
-
-    const getStatusShort = (status: string) => {
-        return status ? status.charAt(0) : '-';
+    const dayCode = (studentId: number, dateStr: string): string => {
+        const fromServer = register?.[studentId]?.days?.[dateStr];
+        if (fromServer !== undefined) return fromServer;
+        if (blockedDates[dateStr]) return 'H';
+        const st = reportData?.attendance?.[studentId]?.[dateStr];
+        return st === 'Present' ? 'P' : st === 'Absent' ? 'A' : st === 'Half Day' ? 'HD' : '';
+    };
+    const totalsFor = (studentId: number) => {
+        const t = register?.[studentId];
+        if (!t || t.outside) return { present: '-', absent: '-', working: '-', percent: '-' };
+        return { present: t.present, absent: t.absent, working: t.working, percent: t.percent === null ? '-' : `${t.percent}%` };
     };
     const handleExportExcel = () => {
         if (!reportData) return;
@@ -148,56 +155,23 @@ const RegisterViewTab: React.FC = () => {
 
         sheetData.push(headerRow);
 
-        // ---- Student Rows ----
+        // ---- Student Rows ---- (same codes and totals as the screen)
         reportData.students.forEach((student: any) => {
-            const attendanceMap = reportData.attendance[student.student_id] || {};
-
-            let presentCount = 0;
-            let absentCount = 0;
-
             const dayValues = daysArray.map(d => {
                 const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-
-                // Check if date is blocked
-                if (blockedDates[dateStr]) {
-                    return "H";
-                }
-
-                const status = attendanceMap[dateStr];
-
-                if (status === "Present") {
-                    presentCount++;
-                    return "P";
-                }
-                if (status === "Absent") {
-                    absentCount++;
-                    return "A";
-                }
-                return "-";
+                const code = dayCode(student.student_id, dateStr);
+                return code === 'HD' ? 'HD' : code === 'F' ? '' : code;
             });
-
-            // Filter blocked dates to only include those in the current month
-            const blockedDatesInMonth = Object.keys(blockedDates).filter(dateStr => {
-                const dateParts = dateStr.split('-');
-                const dateYear = parseInt(dateParts[0], 10);
-                const dateMonth = parseInt(dateParts[1], 10);
-                return dateYear === selectedYear && dateMonth === selectedMonth;
-            }).length;
-
-            const workingDays = daysInMonth - blockedDatesInMonth;
-            const percentage = workingDays > 0
-                ? ((presentCount / workingDays) * 100).toFixed(1)
-                : "0.0";
-
+            const t = totalsFor(student.student_id);
             sheetData.push([
                 student.name,
                 student.admNo,
                 student.rollNo || "",
                 ...dayValues,
-                presentCount,
-                absentCount,
-                workingDays,
-                `${percentage}%`
+                t.present,
+                t.absent,
+                t.working,
+                t.percent
             ]);
         });
 
@@ -269,10 +243,10 @@ const RegisterViewTab: React.FC = () => {
                                             const date = new Date(selectedYear, selectedMonth - 1, d);
                                             const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
                                             const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                                            const isBlocked = !!blockedDates[dateStr];
+                                            const isBlocked = !!reasons[dateStr];
                                             return (
                                                 <th key={d} className={`px-1 py-2 text-center w-8 border-l border-gray-100 ${isBlocked ? 'bg-gray-300 text-gray-600' : 'text-gray-500'}`}
-                                                    title={isBlocked ? blockedDates[dateStr] : undefined}
+                                                    title={isBlocked ? reasons[dateStr] : undefined}
                                                 >
                                                     <div className="flex flex-col items-center justify-center leading-tight">
                                                         <span>{d}</span>
@@ -293,27 +267,7 @@ const RegisterViewTab: React.FC = () => {
 
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {reportData.students.map((student: any) => {
-                                        const studentAttendance = reportData.attendance[student.student_id] || {};
-
-                                        // Calculate Stats
-                                        let presentCount = 0;
-                                        let absentCount = 0;
-
-                                        daysArray.forEach(d => {
-                                            const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                                            if (blockedDates[dateStr]) return; // Skip blocked dates
-                                            const status = studentAttendance[dateStr];
-                                            if (status === 'Present') presentCount++;
-                                            if (status === 'Absent') absentCount++;
-                                        });
-
-                                        const blockedCount = Object.keys(blockedDates).filter(dateStr => {
-                                            const [year, month] = dateStr.split('-').map(Number);
-                                            return year === selectedYear && month === selectedMonth;
-                                        }).length;
-                                        const workingDays = daysInMonth - blockedCount;
-                                        const percentage = workingDays > 0 ? ((presentCount / workingDays) * 100).toFixed(1) : '0.0';
-
+                                        const t = totalsFor(student.student_id);
                                         return (
                                             <tr key={student.student_id} className="hover:bg-gray-50 transition-colors">
                                                 <td className="px-2 py-1 font-medium text-gray-900 sticky left-0 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[8rem] max-w-[10rem] sm:max-w-none">
@@ -326,35 +280,21 @@ const RegisterViewTab: React.FC = () => {
 
                                                 {daysArray.map(d => {
                                                     const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                                                    const isBlocked = !!blockedDates[dateStr];
-
-                                                    if (isBlocked) {
-                                                        return (
-                                                            <td key={d} className="px-1 py-1 text-center border-l border-gray-100 bg-gray-200 text-gray-500"
-                                                                title={blockedDates[dateStr]}
-                                                            >
-                                                                H
-                                                            </td>
-                                                        );
-                                                    }
-
-                                                    const status = studentAttendance[dateStr];
+                                                    const code = dayCode(student.student_id, dateStr);
                                                     return (
-                                                        <td key={d} className={`px-1 py-1 text-center border-l border-gray-100 ${getStatusColor(status)}`}>
-                                                            {getStatusShort(status)}
+                                                        <td key={d} className={`px-1 py-1 text-center border-l border-gray-100 ${CODE_CLASS[code] ?? ''}`}
+                                                            title={code === 'H' ? reasons[dateStr] : code === '-' ? 'Not joined yet / left' : code === '' ? 'Not marked (counted as a working day)' : undefined}>
+                                                            {CODE_TEXT[code] ?? code}
                                                         </td>
                                                     );
                                                 })}
 
-                                                <td className="px-2 py-1 text-center font-bold text-green-700 bg-blue-50 border-l border-blue-100">{presentCount}</td>
-                                                <td className="px-2 py-1 text-center font-bold text-red-700 bg-blue-50">{absentCount}</td>
-                                                <td className="px-2 py-1 text-center font-semibold text-gray-700 bg-blue-50">{workingDays}</td>
-                                                <td className="px-2 py-1 text-center font-bold text-blue-700 bg-blue-50">{percentage}%</td>
-
+                                                <td className="px-2 py-1 text-center font-bold text-green-700 bg-blue-50 border-l border-blue-100">{t.present}</td>
+                                                <td className="px-2 py-1 text-center font-bold text-red-700 bg-blue-50">{t.absent}</td>
+                                                <td className="px-2 py-1 text-center font-semibold text-gray-700 bg-blue-50">{t.working}</td>
+                                                <td className="px-2 py-1 text-center font-bold text-blue-700 bg-blue-50">{t.percent}</td>
                                             </tr>
-
                                         );
-
                                     })}
 
                                 </tbody>
@@ -377,6 +317,8 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
     const [attendanceData, setAttendanceData] = useState<{ [key: string]: string }>({});
     const [originalData, setOriginalData] = useState<{ [key: string]: string }>({});
     const [blockedDates, setBlockedDates] = useState<{ [date: string]: string }>({});
+    // Day codes from the backend rules: '-' = before joining / after leaving (cannot be marked)
+    const [outsideDays, setOutsideDays] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -444,6 +386,12 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
             setAttendanceData(flatAttendance);
             setOriginalData({ ...flatAttendance }); // Deep copy for comparison
 
+            const outside = new Set<string>();
+            Object.entries(res.data.register || {}).forEach(([sid, r]: [string, any]) => {
+                Object.entries(r?.days || {}).forEach(([dateStr, code]) => { if (code === '-') outside.add(`${sid}_${dateStr}`); });
+            });
+            setOutsideDays(outside);
+
             // Fetch blocked dates for this month
             try {
                 const blockRes = await api.post('/config/check-month', {
@@ -479,13 +427,17 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
         }
 
         const key = `${studentId}_${dateStr}`;
+        if (outsideDays.has(key)) {
+            notify('This student had not joined yet (or had already left) on this day.');
+            return;
+        }
         const currentStatus = attendanceData[key];
 
-        // STRICT Toggle: Present <-> Absent only (per user request)
+        // Tap cycles: Present -> Absent -> Half day -> Present
         let newStatus = 'Present';
         if (currentStatus === 'Present') newStatus = 'Absent';
-        else if (currentStatus === 'Absent') newStatus = 'Present';
-        else newStatus = 'Present'; // Fallback for any other status to Present
+        else if (currentStatus === 'Absent') newStatus = 'Half Day';
+        else newStatus = 'Present';
 
         setAttendanceData(prev => ({
             ...prev,
@@ -641,7 +593,7 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
         switch (status) {
             case 'Present': return 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200';
             case 'Absent': return 'bg-red-100 text-red-800 hover:bg-red-200';
-            case 'Leave': return 'bg-amber-100 text-amber-800 hover:bg-amber-200';
+            case 'Half Day': return 'bg-amber-100 text-amber-800 hover:bg-amber-200';
             case 'Holiday': return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
             case 'Sunday': return 'bg-pink-100 text-pink-800 hover:bg-pink-200';
             default: return 'bg-gray-50 text-gray-400 hover:bg-gray-200';
@@ -756,6 +708,15 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                                                     const isBlocked = !!blockedDates[dateStr];
                                                     const status = attendanceData[`${student.student_id}_${dateStr}`];
 
+                                                    if (outsideDays.has(`${student.student_id}_${dateStr}`)) {
+                                                        return (
+                                                            <td key={d} title="Not joined yet / left"
+                                                                className="px-1 py-1 text-center border-l border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed">
+                                                                -
+                                                            </td>
+                                                        );
+                                                    }
+
                                                     if (isBlocked) {
                                                         return (
                                                             <td
@@ -775,7 +736,7 @@ const MonthlyAttendanceEntryTab: React.FC = () => {
                                                             title={`${student.name}, ${d}: ${statusLabel(status)}`}
                                                             className={`px-1 py-1 h-10 min-w-[2.25rem] text-center text-sm font-semibold border-l border-gray-100 cursor-pointer select-none ${getStatusColor(status)}`}
                                                         >
-                                                            {status ? status.charAt(0) : '-'}
+                                                            {status === 'Half Day' ? '½' : status ? status.charAt(0) : ''}
                                                         </td>
                                                     );
                                                 })}
@@ -985,7 +946,7 @@ const AbsentReport: React.FC = () => {
 
             const absentStudents = students.filter((s: any) => {
                 const status = attendance[s.student_id];
-                return status === 'Absent' || status === 'Leave';
+                return status === 'Absent' || status === 'Half Day';
             }).map((s: any) => ({
                 ...s,
                 status: attendance[s.student_id]
@@ -1230,8 +1191,8 @@ const AbsentReport: React.FC = () => {
                                 <div className="text-xl font-bold text-red-700">{results.filter(r => r.status === 'Absent').length}</div>
                             </div>
                             <div className="card p-2">
-                                <div className="text-xs text-amber-700 font-semibold">Leave</div>
-                                <div className="text-xl font-bold text-amber-700">{results.filter(r => r.status === 'Leave').length}</div>
+                                <div className="text-xs text-amber-700 font-semibold">Half day</div>
+                                <div className="text-xl font-bold text-amber-700">{results.filter(r => r.status === 'Half Day').length}</div>
                             </div>
                             <div className="card p-2 col-span-2 sm:col-span-1">
                                 <div className="text-xs text-brand-700 font-semibold">Present %</div>

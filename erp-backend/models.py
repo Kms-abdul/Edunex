@@ -547,6 +547,9 @@ class OrgMaster(db.Model, AuditMixin):
     code = db.Column(db.String(50), nullable=False)
     display_name = db.Column(db.String(100), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
+    # ACADEMIC_YEAR only: first and last day of the year (used to file attendance by date)
+    start_date = db.Column(db.Date, nullable=True)
+    end_date = db.Column(db.Date, nullable=True)
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id', ondelete='SET NULL'), nullable=True)
     branch_id = db.Column(db.Integer, db.ForeignKey('branches.id', ondelete='SET NULL'), nullable=True)
     __table_args__ = (db.UniqueConstraint('master_type', 'code', name='_master_type_code_uc'),)
@@ -818,7 +821,7 @@ class Attendance(db.Model, AuditMixin):
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey("students.student_id"), nullable=False)
     date = db.Column(db.Date, nullable=False)
-    status = db.Column(db.Enum("Present", "Absent", name="attendance_status"), default="Present")
+    status = db.Column(db.Enum("Present", "Absent", "Half Day", name="attendance_status"), default="Present")
     remarks = db.Column(db.String(255))
     update_count = db.Column(db.Integer, default=0)
     

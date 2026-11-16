@@ -13,6 +13,7 @@ export const statusLabel = (status?: string): string => {
     switch (status) {
         case 'Present': return 'Present';
         case 'Absent': return 'Absent';
+        case 'Half Day': return 'Half day';
         case 'Leave': return 'On leave';
         case 'Late': return 'Late';
         case 'Holiday': return 'Holiday';
@@ -27,6 +28,7 @@ export const statusBadge = (status?: string): string => {
     switch (status) {
         case 'Present': return 'badge-success';
         case 'Absent': return 'badge-danger';
+        case 'Half Day':
         case 'Leave':
         case 'Late': return 'badge-warning';
         default: return 'badge-neutral';

@@ -6,6 +6,7 @@ from helpers import token_required, permission_required, require_academic_year, 
 from datetime import datetime, date
 from sqlalchemy import or_
 from routes.config_routes import is_weekoff_or_holiday
+from services import student_attendance as sa_rules
 import traceback
 bp = Blueprint('attendance_routes', __name__)
 
@@ -23,7 +24,18 @@ def get_attendance(current_user):
         h_branch = request.headers.get("X-Branch")
         h_year, err, code = require_academic_year()
         if err: return err, code
-        
+
+        month_view = bool(month_str and year_str and not date_str)
+        if month_view:
+            reg_year, reg_month = int(year_str), int(month_str)
+            month_start = date(reg_year, reg_month, 1)
+            # Register for a past month: also list students who left during or after that month
+            # (they attended then; days after leaving show "-")
+            status_filter = or_(Student.status == "Active",
+                                (Student.status == "Inactive") & (Student.inactivated_date >= month_start))
+        else:
+            status_filter = Student.status == "Active"
+
         # Base query joining Student and Academic Record
         # We need students who were in the requested class/section DURING the requested academic year
         q = db.session.query(Student, StudentAcademicRecord).join(
@@ -31,7 +43,7 @@ def get_attendance(current_user):
             Student.student_id == StudentAcademicRecord.student_id
         ).filter(
             StudentAcademicRecord.academic_year == h_year,
-            Student.status == "Active"
+            status_filter
         )
         
         # STRICT BRANCH SEGREGATION
@@ -108,6 +120,26 @@ def get_attendance(current_user):
                 if r.student_id not in attendance_data:
                     attendance_data[r.student_id] = {}
                 attendance_data[r.student_id][r.date.isoformat()] = r.status
+
+            # Totals and day codes from the shared rules (services/student_attendance.py),
+            # so the register, report cards and exports always agree
+            marks = {}
+            for r in records:
+                marks.setdefault(r.student_id, {})[r.date] = r.status
+            rules_year = sa_rules.year_for_date(month_start, fallback=h_year)
+            branch_ids = {b.branch_name: b.id for b in Branch.query.filter(
+                Branch.branch_name.in_({s.branch for s, _ in results if s.branch})).all()}
+            calendars, register, blocked = {}, {}, {}
+            for s, record in results:
+                key = (branch_ids.get(s.branch), record.class_name)
+                if key not in calendars:
+                    calendars[key] = sa_rules.SchoolCalendar(key[0], rules_year, sa_rules.class_id_for(record.class_name))
+                cal = calendars[key]
+                register[s.student_id] = sa_rules.month_summary(s, reg_year, reg_month, marks.get(s.student_id, {}),
+                                                                cal, rules_year)
+                for iso, code in register[s.student_id]["days"].items():
+                    if code == "H" and iso not in blocked:
+                        blocked[iso] = cal.blocked(date.fromisoformat(iso))
         
         # If student_id is provided, we might want all history if no date/month specified
         elif student_id:
@@ -130,12 +162,17 @@ def get_attendance(current_user):
              last_mod_dt = max((to_local_time(r.updated_at) for r in records if r.updated_at is not None), default=None)
              last_modified = last_mod_dt.isoformat() if last_mod_dt else None
 
-        return jsonify({
+        out = {
             "students": students, # Already converted and patched above
             "attendance": attendance_data,
             "class_update_count": class_update_count,
             "last_modified": last_modified
-        }), 200
+        }
+        if month_view:
+            out["register"] = register
+            out["blocked_reasons"] = blocked
+            out["today"] = sa_rules.local_today().isoformat()
+        return jsonify(out), 200
     except Exception as e:
         print(f"Get Attendance Error: {e}")
         return jsonify({"error": str(e)}), 500
@@ -177,7 +214,8 @@ def save_attendance(current_user):
         for item in attendance_list:
             s_id = item.get("student_id")
             d_str = item.get("date")
-            status = item.get("status")
+            # Present / Absent / Half Day (short codes P, A, HD are accepted too)
+            status = sa_rules.normalize_status(item.get("status"))
 
             if not s_id or not d_str or not status:
                 skipped_count += 1
@@ -254,22 +292,33 @@ def save_attendance(current_user):
         for item in valid_items:
             key = (item["student_id"], item["date"])
             status = item["status"]
+            # File the day under the academic year its DATE belongs to (not the header year)
+            day_year = sa_rules.year_for_date(item["date"], fallback=h_year)
 
-            # 3a. Check weekoff / holiday
+            # 3a. Only days inside the student's own period (joining date .. leaving date)
+            s_obj = students_obj_map.get(item["student_id"])
+            period = sa_rules.student_period(s_obj, day_year) if s_obj else None
+            if period and not (period[0] <= item["date"] <= period[1]):
+                skipped_count += 1
+                skip_details.append(f"{item['date']}: before joining or after leaving for student {item['student_id']}")
+                continue
+
+            # 3b. Check weekoff / holiday
             s_branch_id = student_branch_map.get(item["student_id"])
             if s_branch_id:
-                date_check = is_weekoff_or_holiday(item["date"], s_branch_id, h_year)
+                date_check = is_weekoff_or_holiday(item["date"], s_branch_id, day_year)
                 if date_check["is_weekoff"] or date_check["is_holiday"]:
                     skipped_count += 1
                     skip_details.append(f"Date {item['date']} blocked: {date_check['reason']}")
                     continue
 
-            s_obj = students_obj_map.get(item["student_id"])
             record_branch = s_obj.branch if s_obj and s_obj.branch else "Main"
 
             if key in record_map:
                 # Update
                 record = record_map[key]
+                if record.academic_year != day_year:
+                    record.academic_year = day_year  # fix an old wrong label
                 if record.status != status:
                     record.status = status
                     record.update_count = (record.update_count or 0) + 1
@@ -284,7 +333,7 @@ def save_attendance(current_user):
                     update_count=0,
                     updated_at=get_now(),
                     branch=record_branch,
-                    academic_year=h_year,
+                    academic_year=day_year,
                     location=current_user.location if current_user.location else get_default_location()
                 )
                 db.session.add(new_record)
@@ -470,14 +519,10 @@ def upload_attendance(current_user):
                 status = row[day] # P, A, H, etc.
                 if pd.isna(status) or str(status).strip() == "": continue
                 
-                # Convert status code if needed (e.g. 'P' -> 'Present')
-                # Assuming user types full status or we map properly
-                status_str = str(status).strip().capitalize()
-                
-                # Map shorthand
-                shorthand = {'P': 'Present', 'A': 'Absent'}
-                if status_str in shorthand:
-                    status_str = shorthand[status_str]
+                # P / A / HD or the full names (Present, Absent, Half Day)
+                status_str = sa_rules.normalize_status(status)
+                if not status_str:
+                    continue
                 
                 date_obj = date(year, month, int(day))
                 
@@ -533,35 +578,53 @@ def upload_attendance(current_user):
         
         added = 0
         updated = 0
+        skipped = 0
+        branch_ids = {b.branch_name: b.id for b in Branch.query.filter(
+            Branch.branch_name.in_({s.branch for s in students if s.branch})).all()}
         
         for item in attendance_list:
              d_obj = datetime.strptime(item['date'], '%Y-%m-%d').date()
              s_id = item['student_id']
              status = item['status']
+             # Same checks as marking on screen: the date's own academic year,
+             # the student's period (joining .. leaving), holidays and weekly offs
+             day_year = sa_rules.year_for_date(d_obj, fallback=h_year)
+             s_obj = students_obj_map.get(s_id)
+             period = sa_rules.student_period(s_obj, day_year) if s_obj else None
+             if period and not (period[0] <= d_obj <= period[1]):
+                 skipped += 1
+                 continue
+             b_id = branch_ids.get(s_obj.branch) if s_obj else None
+             if b_id:
+                 chk = is_weekoff_or_holiday(d_obj, b_id, day_year)
+                 if chk["is_weekoff"] or chk["is_holiday"]:
+                     skipped += 1
+                     continue
              
              key = (s_id, d_obj)
              if key in record_map:
                  r = record_map[key]
+                 if r.academic_year != day_year:
+                     r.academic_year = day_year
                  if r.status != status:
                      r.status = status
                      r.update_count = (r.update_count or 0) + 1
                      updated += 1
              else:
-                 s_obj = students_obj_map.get(s_id)
                  record_branch = s_obj.branch if s_obj and s_obj.branch else "Main"
                  new_r = Attendance(
                     student_id=s_id,
                     date=d_obj,
                     status=status,
                     branch=record_branch,
-                    academic_year=h_year,
+                    academic_year=day_year,
                     location=current_user.location or get_default_location()
                  )
                  db.session.add(new_r)
                  added += 1
         
         db.session.commit()
-        return jsonify({"message": "Upload Successful", "added": added, "updated": updated}), 200
+        return jsonify({"message": "Upload Successful", "added": added, "updated": updated, "skipped": skipped}), 200
         
     except Exception as e:
         print(f"Upload Error: {e}")

@@ -405,7 +405,7 @@ const DailyAttendance: React.FC<{ navigateTo?: (page: Page) => void }> = ({ navi
                                     Mark everyone absent
                                 </button>
                             </div>
-                            <p className="text-sm text-slate-500">Everyone starts as present. Tap the green button to change a student to absent. Tap again to change back.</p>
+                            <p className="text-sm text-slate-500">Everyone starts as present. Tap a student's button to change it: Present → Absent → Half day → Present.</p>
                         </div>
                     </div>
 
@@ -449,7 +449,8 @@ const DailyAttendance: React.FC<{ navigateTo?: (page: Page) => void }> = ({ navi
                                     <button
                                         type="button"
                                         disabled={locked}
-                                        onClick={() => choose(status === 'Present' ? 'Absent' : 'Present')}
+                                        // Tap cycles: Present -> Absent -> Half day -> Present
+                                        onClick={() => choose(status === 'Present' ? 'Absent' : status === 'Absent' ? 'Half Day' : 'Present')}
                                         aria-label={`${student.name}: ${statusLabel(status)}. Tap to change.`}
                                         title={locked ? 'Record locked (Promoted)' : 'Tap to change'}
                                         className={`flex-shrink-0 w-[108px] min-h-[48px] px-2 rounded-xl border-2 text-[15px] font-semibold inline-flex items-center justify-center gap-1.5 transition-colors select-none
