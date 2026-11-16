@@ -3,6 +3,7 @@ import { Phone, PencilLine } from 'lucide-react';
 import { Badge, Button, EmptyState, ErrorState, LoadingState } from '../ui';
 import { CallRow, SLOT_LABEL, dayName, errorText, followupApi, timeAgo } from './enquiryApi';
 import CallUpdateSheet from './CallUpdateSheet';
+import SendFormSheet from './SendFormSheet';
 
 /**
  * Today's calls for the marketing team.
@@ -18,6 +19,8 @@ const CallsList: React.FC<{ branchId: number; canCall: boolean; onOpen: (id: num
   const [callResults, setCallResults] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<CallRow | null>(null);
+  // After "Admission confirmed": send the parent the online admission form
+  const [sendingForm, setSendingForm] = useState<CallRow | null>(null);
   const [reload, setReload] = useState(0);
   const dialled = useRef<CallRow | null>(null);
 
@@ -120,7 +123,10 @@ const CallsList: React.FC<{ branchId: number; canCall: boolean; onOpen: (id: num
       {updating && canCall && (
         <CallUpdateSheet call={updating} today={today} reasons={reasons} callResults={callResults}
           onClose={() => setUpdating(null)}
-          onSaved={() => { setUpdating(null); setReload(n => n + 1); }} />
+          onSaved={row => { setUpdating(null); setReload(n => n + 1); if (row.status === 'JOINED') setSendingForm(row); }} />
+      )}
+      {sendingForm && (
+        <SendFormSheet enquiryId={sendingForm.id} studentName={sendingForm.student_name} onClose={() => setSendingForm(null)} />
       )}
     </div>
   );

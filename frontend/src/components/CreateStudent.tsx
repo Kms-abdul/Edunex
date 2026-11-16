@@ -4,6 +4,7 @@ import api from "../api";
 import type { Page } from "../App";
 import { notify } from './ui/feedback';
 import { resizeImageToDataUrl } from "../utils/resizeImage";
+import { ADMISSION_PREFILL_KEY, applicationApi } from "./enquiry/enquiryApi";
 import { Steps, ActionBar, Button, Alert, DataList, confirmDialog } from './ui';
 import type { Column } from './ui';
 import {
@@ -196,6 +197,40 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
   const [savedStudent, setSavedStudent] = useState<{ data: any; name: string; classLabel: string; uploadProblem?: string } | null>(null);
   /** Last create response, so leaving later still refreshes the list (onSave) like before. */
   const lastSavedRef = useRef<any>(null);
+
+  // Online admission form (Admission Enquiry > Admission forms > "Check and add student"):
+  // the parent's details arrive here; saving gives the admission number and links the application.
+  const prefillRef = useRef<{ application_id: number; data: Record<string, any>; class_name?: string; academic_year?: string;
+    branch_name?: string; student_name?: string } | null>(null);
+  const [prefillName, setPrefillName] = useState<string | null>(null);
+  useEffect(() => {
+    if (mode !== 'create') return;
+    let raw: string | null = null;
+    try { raw = sessionStorage.getItem(ADMISSION_PREFILL_KEY); sessionStorage.removeItem(ADMISSION_PREFILL_KEY); } catch { /* ignore */ }
+    if (!raw) return;
+    try {
+      const p = JSON.parse(raw);
+      prefillRef.current = p;
+      const { photo, ...fields } = p.data || {};
+      const allowed: Record<string, any> = {};
+      Object.keys(fields).forEach(k => { if (k in initialFormData) allowed[k] = fields[k]; });
+      setFormData(prev => ({ ...prev, ...allowed, class: p.class_name || prev.class, AdmissionClass: p.class_name || prev.AdmissionClass }));
+      if (photo) setStudentPhoto(photo);
+      setPrefillName(p.student_name || [fields.first_name, fields.last_name].filter(Boolean).join(' '));
+    } catch { /* ignore a broken hand-over */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // The form sets its own branch / year once branches load; the application's own values win
+  useEffect(() => {
+    const p = prefillRef.current;
+    if (!p || branchOptions.length === 0) return;
+    setFormData(prev => ({
+      ...prev,
+      branch: p.branch_name || prev.branch,
+      academic_year: p.academic_year || prev.academic_year,
+      class: p.class_name || prev.class,
+    }));
+  }, [branchOptions]);
   /** "Same as father's phone" ticks for the main phone and SMS number. */
   const [sameAsFather, setSameAsFather] = useState<{ phone: boolean; SmsNo: boolean }>({ phone: false, SmsNo: false });
   /** In edit mode the admission class stays locked when the student already had one. */
@@ -873,7 +908,10 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
     setSaving(true);
     try {
       if (mode === "create") {
-        const res = await api.post(`/students`, payload);
+        // Filled from an online admission form for another session (e.g. next year): save in THAT session,
+        // not the one picked in the header.
+        const formYear = prefillRef.current?.academic_year;
+        const res = await api.post(`/students`, payload, formYear ? { headers: { 'X-Academic-Year': formYear } } : undefined);
         const studentId = res.data?.student_id;
 
         if (!studentId) {
@@ -899,6 +937,16 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
         // Show the "Student saved" screen; onSave(res.data, exit) is called when the person leaves it.
         void exit;
         lastSavedRef.current = res.data;
+        if (prefillRef.current) {
+          try {
+            const r = await applicationApi.admit(prefillRef.current.application_id, studentId);
+            notify.success(r.message);
+          } catch (linkErr: any) {
+            notify.warning(`Student saved, but the online form could not be marked as admitted: ${linkErr?.response?.data?.error || linkErr.message}`);
+          }
+          prefillRef.current = null;
+          setPrefillName(null);
+        }
         setSavedStudent({
           data: res.data,
           name: [formData.first_name, formData.last_name].filter(Boolean).join(" "),
@@ -1057,6 +1105,13 @@ const CreateStudent: React.FC<CreateStudentProps> = ({
 
   return (
     <div ref={topRef} className="p-4 md:p-6 bg-surface-muted min-h-full">
+      {prefillName && (
+        <div className="mx-auto max-w-[1600px] mb-4">
+          <Alert tone="info" title={`Filled from ${prefillName}'s online admission form`}>
+            Check the details, choose the section and admission type, then press Save. The admission number is given when you save.
+          </Alert>
+        </div>
+      )}
       {/* Desktop: steps on the left, form in the middle, live summary on the right. Phones: form only. */}
       <div className="mx-auto max-w-[1600px] grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] xl:grid-cols-[240px_minmax(0,1fr)_320px] gap-5 items-start">
       <div className="hidden lg:block">

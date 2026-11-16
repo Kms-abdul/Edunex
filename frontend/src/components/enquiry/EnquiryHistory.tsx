@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { PencilLine, RotateCcw } from 'lucide-react';
+import { MessageCircle, PencilLine, RotateCcw } from 'lucide-react';
 import { Badge, Button, LoadingState, confirmDialog, notify } from '../ui';
 import { HistoryItem, SLOT_LABEL, STATUS_LABEL, dayName, errorText, followupApi, statusTone } from './enquiryApi';
 import CallUpdateSheet from './CallUpdateSheet';
+import SendFormSheet from './SendFormSheet';
 
 type HistoryData = Awaited<ReturnType<typeof followupApi.history>>;
 
@@ -15,6 +16,7 @@ const EnquiryHistory: React.FC<{ enquiryId: number; branchId: number }> = ({ enq
   const [reasons, setReasons] = useState<string[]>([]);
   const [callResults, setCallResults] = useState<string[]>([]);
   const [updating, setUpdating] = useState(false);
+  const [sendingForm, setSendingForm] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
 
   const load = useCallback(() => {
@@ -50,6 +52,9 @@ const EnquiryHistory: React.FC<{ enquiryId: number; branchId: number }> = ({ enq
         </div>
         <div className="flex gap-2">
           {data.can_call && <Button icon={<PencilLine className="w-4 h-4" />} onClick={() => setUpdating(true)}>Update call</Button>}
+          {e.status === 'JOINED' && (
+            <Button icon={<MessageCircle className="w-4 h-4" />} onClick={() => setSendingForm(true)}>Send admission form</Button>
+          )}
           {data.can_reopen && <Button variant="secondary" icon={<RotateCcw className="w-4 h-4" />} onClick={reopen}>Reopen</Button>}
         </div>
       </div>
@@ -77,8 +82,9 @@ const EnquiryHistory: React.FC<{ enquiryId: number; branchId: number }> = ({ enq
 
       {updating && (
         <CallUpdateSheet call={e} today={today} reasons={reasons} callResults={callResults} onClose={() => setUpdating(false)}
-          onSaved={() => { setUpdating(false); load(); }} />
+          onSaved={row => { setUpdating(false); load(); if (row.status === 'JOINED') setSendingForm(true); }} />
       )}
+      {sendingForm && <SendFormSheet enquiryId={enquiryId} studentName={e.student_name} onClose={() => setSendingForm(false)} />}
     </section>
   );
 };

@@ -246,3 +246,49 @@ export const timeAgo = (isoDateTime: string | null) => {
   const days = Math.round(hours / 24);
   return `${days} day${days > 1 ? 's' : ''} ago`;
 };
+
+/* ------------------------------------------------------------------ online admission form (step 3) */
+export type ApplicationStatus = 'SENT' | 'SUBMITTED' | 'ADMITTED' | 'CANCELLED';
+export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
+  SENT: 'Waiting for parent', SUBMITTED: 'Form received', ADMITTED: 'Admitted', CANCELLED: 'Cancelled',
+};
+
+export interface ApplicationRow {
+  id: number; enquiry_id: number; status: ApplicationStatus; student_name: string; guardian_name: string | null;
+  class_name: string | null; academic_year: string | null; contact: string | null; enquiry_no: string | null;
+  expires_at: string | null; expired: boolean; submitted_at: string | null; opened_at: string | null;
+  student_id: number | null; has_aadhaar_doc: boolean; send_count: number;
+  data?: Record<string, any>; branch_name?: string | null; aadhaar_doc_name?: string | null;
+}
+
+export interface SentLink {
+  application_id: number; token: string; form_path: string; expires_at: string; parent_phone: string; text: string;
+}
+
+/** Address parents open: the configured public address, else the address this app is opened at
+ *  (192.168.x.x on the school Wi-Fi in development, the real domain on the server). */
+export const publicAppBase = () =>
+  (import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin).replace(/\/+$/, '');
+
+export const formLink = (formPath: string) => `${publicAppBase()}/${formPath}`;
+
+/** WhatsApp "click to chat" with the message ready; the staff member only taps Send. */
+export const whatsappUrl = (phone: string, text: string) => {
+  const digits = phone.replace(/\D/g, '');
+  const intl = digits.length === 10 ? `91${digits}` : digits;
+  return `https://wa.me/${intl}?text=${encodeURIComponent(text)}`;
+};
+
+export const applicationApi = {
+  send: (enquiryId: number) => api.post<SentLink>(`/enquiry/${enquiryId}/application`).then(r => r.data),
+  list: (branchId: number, status?: ApplicationStatus) =>
+    api.get<{ applications: ApplicationRow[]; counts: Partial<Record<ApplicationStatus, number>> }>(
+      '/enquiry/applications', { params: { branch_id: branchId, status } }).then(r => r.data),
+  get: (id: number) => api.get<{ application: ApplicationRow }>(`/enquiry/applications/${id}`).then(r => r.data.application),
+  doc: (id: number) => api.get(`/enquiry/applications/${id}/aadhaar-doc`, { responseType: 'blob' }).then(r => r.data as Blob),
+  admit: (id: number, studentId: number) =>
+    api.post<{ message: string }>(`/enquiry/applications/${id}/admit`, { student_id: studentId }).then(r => r.data),
+};
+
+/** Hand-over to Add Student: the office opens the parent's form as a filled-in Add Student form. */
+export const ADMISSION_PREFILL_KEY = 'kampusops.admissionPrefill';

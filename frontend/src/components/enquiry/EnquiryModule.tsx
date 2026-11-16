@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ClipboardList, PlusCircle, List, Gift, Phone, BarChart3 } from 'lucide-react';
+import { ClipboardList, PlusCircle, List, Gift, Phone, BarChart3, FileCheck2 } from 'lucide-react';
+import type { Page } from '../../App';
 import { useAuth } from '../../contexts/AuthContext';
 import { EmptyState, ErrorState, Field, LoadingState, notify } from '../ui';
 import { EnquiryOptions, PrintData, enquiryApi, errorText, followupApi, yearLabel } from './enquiryApi';
@@ -9,15 +10,16 @@ import SchemesSetup from './SchemesSetup';
 import CallsList from './CallsList';
 import EnquiryDashboard from './EnquiryDashboard';
 import EnquiryHistory from './EnquiryHistory';
+import ApplicationsList from './ApplicationsList';
 
-type Tab = 'new' | 'calls' | 'list' | 'dashboard' | 'schemes';
+type Tab = 'new' | 'calls' | 'list' | 'applications' | 'dashboard' | 'schemes';
 const BRANCH_KEY = 'kampusops.enquiryBranch';
 
 /**
  * Admission enquiry (front office).
  * New enquiry → Save & Print slip for the parent; list to find and reprint; schemes set up by the admin.
  */
-const EnquiryModule: React.FC = () => {
+const EnquiryModule: React.FC<{ navigateTo?: (page: Page) => void }> = ({ navigateTo }) => {
   const { hasPermission } = useAuth();
   const canEnquiry = hasPermission('administration.enquiry.enquiry', 'read');
   const canSchemes = hasPermission('administration.enquiry.schemes', 'read');
@@ -31,6 +33,7 @@ const EnquiryModule: React.FC = () => {
     canEnquiry && { id: 'new', label: 'New enquiry', short: 'New', icon: <PlusCircle className="w-4 h-4" /> },
     canCalls && { id: 'calls', label: 'Calls', short: 'Calls', icon: <Phone className="w-4 h-4" /> },
     canEnquiry && { id: 'list', label: 'Enquiry list', short: 'List', icon: <List className="w-4 h-4" /> },
+    (canEnquiry || canCalls) && { id: 'applications', label: 'Admission forms', short: 'Forms', icon: <FileCheck2 className="w-4 h-4" /> },
     canSchemes && { id: 'schemes', label: 'Schemes & settings', short: 'Schemes', icon: <Gift className="w-4 h-4" /> },
   ].filter(Boolean)) as { id: Tab; label: string; short: string; icon: React.ReactNode }[];
 
@@ -103,6 +106,8 @@ const EnquiryModule: React.FC = () => {
     body = <CallsList key={`calls-${branchId}`} branchId={branchId} canCall={canCallWrite} onOpen={openEnquiry} onCountChange={setCallsDue} />;
   } else if (tab === 'dashboard') {
     body = <EnquiryDashboard key={`dash-${branchId}`} branchId={branchId} onGoToCalls={canCalls ? () => setTab('calls') : undefined} />;
+  } else if (tab === 'applications') {
+    body = <ApplicationsList key={`apps-${branchId}`} branchId={branchId} navigateTo={navigateTo} />;
   } else if (tab === 'list') {
     body = <EnquiryList key={`list-${branchId}`} options={options} branchId={branchId} onOpen={openEnquiry} />;
   } else {

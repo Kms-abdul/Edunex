@@ -215,7 +215,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, initialPage }) => {
               {currentPage === 'control-panel' && <ControlPanel navigateTo={navigateTo} />}
               {currentPage === 'staffsupport' && <StaffSupport />}
               {currentPage === 'sms-center' && <SmsCenter navigateTo={navigateTo} />}
-              {currentPage === 'enquiry' && <EnquiryModule />}
+              {currentPage === 'enquiry' && <EnquiryModule navigateTo={navigateTo} />}
             </>
           )}
 

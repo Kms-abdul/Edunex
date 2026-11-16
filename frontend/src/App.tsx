@@ -100,7 +100,22 @@ const AppInner: React.FC = () => {
   );
 };
 
+// Parent's online admission form (link sent on WhatsApp): opens without login
+const PublicAdmissionForm = React.lazy(() => import('./components/enquiry/PublicAdmissionForm'));
+const applyToken = (): string | null => {
+  const m = window.location.hash.match(/^#\/?apply\/([A-Za-z0-9_-]{20,100})/);
+  return m ? m[1] : null;
+};
+
 const App: React.FC = () => {
+  const token = applyToken();
+  if (token) {
+    return (
+      <Suspense fallback={<LoadingState label="Opening the form…" className="min-h-screen" />}>
+        <PublicAdmissionForm token={token} />
+      </Suspense>
+    );
+  }
   return (
     <AuthProvider>
       <AppInner />
