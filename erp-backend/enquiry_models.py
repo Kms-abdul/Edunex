@@ -166,3 +166,45 @@ class EnquiryOption(db.Model, AuditMixin):
     __table_args__ = (
         db.UniqueConstraint("school_id", "kind", "label", name="uq_enquiry_option_label"),
     )
+
+
+class AdmissionApplication(db.Model, AuditMixin):
+    """
+    Online admission form sent to a parent after "Admission confirmed" (enquiry step 3).
+
+    The parent opens a private link (only its SHA-256 hash is stored), confirms their mobile
+    number, fills the student's details and uploads the Aadhaar copy. The office then opens it
+    as a filled-in Add Student form; saving there gives the admission number and links the student.
+    """
+    __tablename__ = "admission_applications"
+    __audit_module__ = "ADMISSION"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    school_id = db.Column(db.Integer, db.ForeignKey("schools.id", ondelete="SET NULL"), nullable=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branches.id", ondelete="CASCADE"), nullable=False)
+    enquiry_id = db.Column(db.Integer, db.ForeignKey("enquiries.id", ondelete="CASCADE"), nullable=False, unique=True)
+
+    token_hash = db.Column(db.String(64), nullable=False, unique=True)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    send_count = db.Column(db.Integer, nullable=False, default=1, server_default="1")
+    failed_checks = db.Column(db.Integer, nullable=False, default=0, server_default="0")
+
+    status = db.Column(db.Enum("SENT", "SUBMITTED", "ADMITTED", "CANCELLED", name="admission_application_status"),
+                       nullable=False, default="SENT", server_default="SENT")
+    opened_at = db.Column(db.DateTime, nullable=True)
+    submitted_at = db.Column(db.DateTime, nullable=True)
+    # What the parent typed (only the allowed fields; the photo is a small resized JPEG)
+    data = db.Column(db.JSON, nullable=True)
+    aadhaar_doc_key = db.Column(db.String(500), nullable=True)
+    aadhaar_doc_name = db.Column(db.String(255), nullable=True)
+    aadhaar_doc_mime = db.Column(db.String(100), nullable=True)
+
+    student_id = db.Column(db.Integer, db.ForeignKey("students.student_id", ondelete="SET NULL"), nullable=True)
+    admitted_at = db.Column(db.DateTime, nullable=True)
+    admitted_by = db.Column(db.Integer, db.ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+
+    enquiry = db.relationship("Enquiry", foreign_keys=[enquiry_id])
+
+    __table_args__ = (
+        db.Index("idx_application_branch_status", "branch_id", "status"),
+    )

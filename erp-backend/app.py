@@ -54,6 +54,7 @@ from routes.biometric_routes import bp as biometric_bp
 from routes.attendance_sync import attendance_sync_bp
 from routes.enquiry_routes import bp as enquiry_bp
 from routes.enquiry_followup_routes import bp as enquiry_followup_bp
+from routes.admission_application_routes import bp as admission_application_bp
 from routes.staff_attendance_routes import bp as staff_attendance_bp
 from routes.media_routes import bp as media_bp
 # -----------------------------
@@ -160,6 +161,7 @@ def create_app():
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(enquiry_bp)
     app.register_blueprint(enquiry_followup_bp)
+    app.register_blueprint(admission_application_bp)
     app.register_blueprint(org_bp)
     app.register_blueprint(academic_bp)
     app.register_blueprint(timetable_bp, url_prefix="/api/timetable")
