@@ -65,6 +65,8 @@ def test_full_journey(env, memory_storage):
     sent = r.get_json()
     token = sent["token"]
     assert "{link}" in sent["text"] and "Ravi Kumar" in sent["text"] and sent["form_path"].endswith(token)
+    assert sent["form_path"] == f"?apply={token}" and "#" not in sent["form_path"]
+    assert "\n\n{link}\n\n" in sent["text"]                       # link alone on its own line
 
     info = c.get(f"/api/public/apply/{token}").get_json()
     assert info["state"] == "open" and info["school_name"] == "Test School"

@@ -43,8 +43,11 @@ PERM_CREATE_STUDENT = "administration.student.create-student"
 MAX_DOC_BYTES = 5 * 1024 * 1024
 MAX_PHOTO_CHARS = 1_500_000  # ~1 MB JPEG as base64 (the form shrinks photos to ~100 KB)
 
-FORM_MESSAGE = ("Thank you for choosing {school}!\n"
-                "Please fill {student}'s admission form here:\n{link}\n\n"
+# The link sits alone on its own line so WhatsApp always shows it as a tappable link
+# (WhatsApp has no custom-text hyperlinks; it turns full web addresses into links itself).
+FORM_MESSAGE = ("Thank you for choosing {school}!\n\n"
+                "Please fill {student}'s admission form. Tap the link below:\n\n"
+                "{link}\n\n"
                 "The link works till {till}. Open it with this mobile number.")
 
 # Fields the parent may fill (everything else, e.g. class, section, admission number, is for the office)
@@ -122,7 +125,8 @@ def send_application(current_user, enquiry_id):
         "message": "Link ready. Send it on WhatsApp.",
         "application_id": app_row.id,
         "token": token,
-        "form_path": f"#/apply/{token}",
+        # "?apply=" works with any web server set-up (no "#", which some phones cut off in links)
+        "form_path": f"?apply={token}",
         "expires_at": expires.isoformat(),
         "parent_phone": e.contact,
         # {link} is filled in by the screen with the address the app is opened at
