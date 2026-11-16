@@ -65,14 +65,19 @@ const EnquiryHistory: React.FC<{ enquiryId: number; branchId: number; onPrint?: 
   if (!data) return <LoadingState label="Loading the enquiry…" />;
 
   const e = data.enquiry;
-  const d = data.details;
+  // Older backends send no "details" / "events": build what we can instead of failing
+  const d: HistoryData['details'] = data.details ?? {
+    enquiry_no: e.enquiry_no, enquiry_date: e.enquiry_date, academic_year: e.academic_year,
+    student_name: e.student_name, guardian_name: e.guardian_name, class_name: e.class_name, contact: e.contact,
+    aadhaar_masked: null, student_type: 'NEW', printed_at: null, taken_by: null,
+  };
   const reopen = async () => {
     if (!(await confirmDialog('Reopen this enquiry? It will be in today\'s calls.', { confirmText: 'Reopen', tone: 'default' }))) return;
     try { notify.success((await followupApi.reopen(enquiryId)).message); load(); } catch (err) { notify.error(errorText(err)); }
   };
 
   const timeline: TimelineItem[] = [
-    ...data.history.map(c => ({ type: 'call' as const, at: c.called_at, call: c })),
+    ...(data.history || []).map(c => ({ type: 'call' as const, at: c.called_at, call: c })),
     ...(data.events || []).filter(ev => ev.at).map(ev => ({ type: 'event' as const, at: ev.at as string, kind: ev.kind, text: ev.text, by: ev.by })),
   ].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
 
