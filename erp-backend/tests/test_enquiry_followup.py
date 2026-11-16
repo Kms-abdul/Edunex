@@ -157,3 +157,16 @@ def test_custom_call_results(env):
     assert _call(env, eid, outcome="CALL_LATER", reason="Not in the list", next_call_date=when).status_code == 400
     hist = env["c"].get(f"/api/enquiry/{eid}/followups", headers=env["h"]("su")).get_json()["history"]
     assert hist[0]["outcome_label"] == "Wants to see the bus route"
+
+
+def test_history_has_all_events(env):
+    eid = _new(env, "History Kid")
+    env["c"].post(f"/api/enquiry/{eid}/printed", headers=env["h"]("su"))
+    _call(env, eid, outcome="NO_ANSWER")
+    h = env["c"].get(f"/api/enquiry/{eid}/followups", headers=env["h"]("su")).get_json()
+    kinds = [x["kind"] for x in h["events"]]
+    assert kinds[:2] == ["created", "printed"] and h["events"][0]["by"] == "su"
+    assert h["details"]["student_name"] == "History Kid" and h["details"]["enquiry_no"].startswith("ENQ-")
+    assert len(h["history"]) == 1 and h["application"] is None
+    # Front-office users (enquiry permission, no calls permission) can see the history too
+    assert env["c"].get(f"/api/enquiry/{eid}/followups", headers=env["h"]("clerk")).status_code == 200

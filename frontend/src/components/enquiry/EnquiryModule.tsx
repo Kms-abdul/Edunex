@@ -42,7 +42,8 @@ const EnquiryModule: React.FC<{ navigateTo?: (page: Page) => void }> = ({ naviga
   const [options, setOptions] = useState<EnquiryOptions | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [branchId, setBranchId] = useState<number | null>(null);
-  const [opened, setOpened] = useState<{ id: number; data: PrintData; year: string; printedAt: string | null } | null>(null);
+  // An opened enquiry shows its details + history; showSlip switches to the printable paper
+  const [opened, setOpened] = useState<{ id: number; data: PrintData; year: string; printedAt: string | null; showSlip: boolean } | null>(null);
   const [reload, setReload] = useState(0);
   const [callsDue, setCallsDue] = useState(0);
 
@@ -64,10 +65,10 @@ const EnquiryModule: React.FC<{ navigateTo?: (page: Page) => void }> = ({ naviga
     try { if (id) sessionStorage.setItem(BRANCH_KEY, String(id)); } catch { /* ignore */ }
   };
 
-  const openEnquiry = async (id: number) => {
+  const openEnquiry = async (id: number, printNow = false) => {
     try {
       const e = await enquiryApi.get(id);
-      if (e.print) setOpened({ id: e.id, data: e.print, year: e.academic_year, printedAt: e.printed_at || null });
+      if (e.print) setOpened({ id: e.id, data: e.print, year: e.academic_year, printedAt: e.printed_at || null, showSlip: printNow });
     } catch (err) {
       notify.error(errorText(err));
     }
@@ -95,9 +96,14 @@ const EnquiryModule: React.FC<{ navigateTo?: (page: Page) => void }> = ({ naviga
   } else if (opened) {
     body = (
       <div className="space-y-4">
-        {canCalls && <EnquiryHistory key={`h-${opened.id}`} enquiryId={opened.id} branchId={branchId} />}
-        <SlipView key={opened.id} enquiryId={opened.id} data={opened.data} yearName={yearLabel(options.academic_years, opened.year)}
-          title={`Enquiry ${opened.data.enquiry_no}`} printedAt={opened.printedAt} onBack={() => setOpened(null)} />
+        {opened.showSlip ? (
+          <SlipView key={opened.id} enquiryId={opened.id} data={opened.data} yearName={yearLabel(options.academic_years, opened.year)}
+            title={`Enquiry ${opened.data.enquiry_no}`} printedAt={opened.printedAt}
+            onBack={() => setOpened({ ...opened, showSlip: false })} />
+        ) : (
+          <EnquiryHistory key={`h-${opened.id}`} enquiryId={opened.id} branchId={branchId}
+            onPrint={() => setOpened({ ...opened, showSlip: true })} onBack={() => setOpened(null)} />
+        )}
       </div>
     );
   } else if (tab === 'new') {

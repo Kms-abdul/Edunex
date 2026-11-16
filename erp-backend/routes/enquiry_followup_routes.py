@@ -337,9 +337,44 @@ def call_history(current_user, enquiry_id):
     resolve_branch(current_user, e.branch_id)
     rows = (EnquiryFollowUp.query.filter_by(enquiry_id=e.id)
             .order_by(EnquiryFollowUp.called_at.desc(), EnquiryFollowUp.id.desc()).all())
-    names = _user_names(r.called_by for r in rows)
+    from enquiry_models import AdmissionApplication
+    from models import Student
+    app_row = AdmissionApplication.query.filter_by(enquiry_id=e.id).first()
+    names = _user_names([r.called_by for r in rows] + [e.created_by, e.printed_by,
+                                                        app_row.created_by if app_row else None,
+                                                        app_row.admitted_by if app_row else None])
+
+    # Everything else that happened to this enquiry, for one complete history
+    events = [{"kind": "created", "at": _iso_local(e.created_at), "by": names.get(e.created_by),
+               "text": f"Enquiry taken ({e.enquiry_no})"}]
+    if e.printed_at:
+        events.append({"kind": "printed", "at": _iso_local(e.printed_at), "by": names.get(e.printed_by),
+                       "text": "Paper printed" + (f" ({e.print_count} times)" if (e.print_count or 0) > 1 else "")})
+    if app_row:
+        events.append({"kind": "form_sent", "at": _iso_local(app_row.created_at), "by": names.get(app_row.created_by),
+                       "text": "Admission form sent to the parent"
+                               + (f" (sent {app_row.send_count} times)" if (app_row.send_count or 1) > 1 else "")})
+        if app_row.opened_at:
+            events.append({"kind": "form_opened", "at": _iso_local(app_row.opened_at), "by": None,
+                           "text": "Parent opened the form"})
+        if app_row.submitted_at:
+            events.append({"kind": "form_received", "at": _iso_local(app_row.submitted_at), "by": None,
+                           "text": "Parent sent the filled form"})
+        if app_row.admitted_at:
+            st = db.session.get(Student, app_row.student_id) if app_row.student_id else None
+            events.append({"kind": "admitted", "at": _iso_local(app_row.admitted_at), "by": names.get(app_row.admitted_by),
+                           "text": "Student added" + (f" (admission no. {st.admission_no})" if st and st.admission_no else "")})
     return jsonify({
         "enquiry": call_row(e, _user_names([e.last_called_by])),
+        "details": {
+            "enquiry_no": e.enquiry_no, "enquiry_date": e.enquiry_date.isoformat(), "academic_year": e.academic_year,
+            "student_name": e.student_name, "guardian_name": e.guardian_name, "class_name": e.class_name,
+            "contact": e.contact, "aadhaar_masked": f"XXXX XXXX {e.aadhaar_last4}" if e.aadhaar_last4 else None,
+            "student_type": e.student_type or "NEW", "printed_at": _iso_local(e.printed_at),
+            "taken_by": names.get(e.created_by),
+        },
+        "application": {"status": app_row.status, "expires_at": app_row.expires_at.isoformat()} if app_row else None,
+        "events": events,
         "close_reason": e.close_reason,
         "can_call": has_permission(current_user, PERM_FOLLOWUP, "write") and e.status in OPEN_STATUSES,
         "can_reopen": has_permission(current_user, PERM_SCHEMES, "write") and e.status not in OPEN_STATUSES,

@@ -5,7 +5,7 @@ import type { Column } from '../ui';
 import { EnquiryOptions, EnquiryRow, EnquiryStatus, STATUS_LABEL, SLOT_LABEL, enquiryApi, errorText, niceDate, statusTone, dayName } from './enquiryApi';
 
 /** Every enquiry of a year, with its printed / not printed status and a Print button. */
-const EnquiryList: React.FC<{ options: EnquiryOptions; branchId: number; onOpen: (id: number) => void }> = ({ options, branchId, onOpen }) => {
+const EnquiryList: React.FC<{ options: EnquiryOptions; branchId: number; onOpen: (id: number, printNow?: boolean) => void }> = ({ options, branchId, onOpen }) => {
   const [year, setYear] = useState(options.default_year || options.academic_years[0]?.code || '');
   const [text, setText] = useState('');
   const [status, setStatus] = useState<'' | EnquiryStatus>('');
@@ -60,7 +60,7 @@ const EnquiryList: React.FC<{ options: EnquiryOptions; branchId: number; onOpen:
       key: 'print', header: '', align: 'right', hideOnMobile: true,
       render: r => (
         <Button size="sm" variant="secondary" icon={<Printer className="w-4 h-4" />}
-          onClick={e => { e.stopPropagation(); onOpen(r.id); }}>Print</Button>
+          onClick={e => { e.stopPropagation(); onOpen(r.id, true); }}>Print</Button>
       ),
     },
   ];
@@ -103,6 +103,9 @@ const EnquiryList: React.FC<{ options: EnquiryOptions; branchId: number; onOpen:
             rowKey={r => r.id}
             loading={loading}
             onRowClick={r => onOpen(r.id)}
+            mobileActions={r => (
+              <Button size="sm" variant="secondary" icon={<Printer className="w-4 h-4" />} onClick={() => onOpen(r.id, true)}>Print</Button>
+            )}
             emptyTitle={query ? 'No enquiry found' : 'No enquiries yet'}
             emptyHint={query ? 'Try another name or number.' : 'Use "New enquiry" when a parent visits.'}
           />
