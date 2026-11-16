@@ -241,3 +241,35 @@ def test_school_years_without_school_selected(env):
     """'All schools' selected (no school in the request): the first school is used, not an empty page."""
     d = env["c"].get("/api/config/academic-years", headers=env["h"]).get_json()
     assert d["school_id"] and len(d["years"]) >= 2
+
+
+def test_setup_your_school_access_controls_school_settings(env):
+    """Whoever has 'Set up your school' access can change school years and holidays; others cannot."""
+    import jwt
+    from models import Permission, Role, RolePermission, School, User
+    from routes.rbac_routes import _sync_permission_catalog
+    db = env["db"]
+    with env["app"].app_context():
+        _sync_permission_catalog()
+        perm = Permission.query.filter_by(code="setup.school-setup.setup-school").one()
+        setup_role, plain_role = Role(name="Setup person", is_active=True), Role(name="Teacher", is_active=True)
+        db.session.add_all([setup_role, plain_role]); db.session.flush()
+        db.session.add(RolePermission(role_id=setup_role.id, permission_id=perm.id, can_read=True, can_write=True))
+        school_id = School.query.first().id
+        setup_user = User(username="setupper", password="x", role="Setup person", role_id=setup_role.id, school_id=school_id,
+                          branch_id=env["ids"]["branch"], default_branch_id=env["ids"]["branch"])
+        teacher = User(username="teacher1", password="x", role="Teacher", role_id=plain_role.id, school_id=school_id)
+        db.session.add_all([setup_user, teacher]); db.session.commit()
+        tokens = {u.username: jwt.encode({"user_id": u.user_id, "exp": dt.datetime.utcnow() + dt.timedelta(hours=1)},
+                                         env["app"].config["SECRET_KEY"], algorithm="HS256") for u in (setup_user, teacher)}
+    hdr = lambda name: {**env["h"], "Authorization": f"Bearer {tokens[name]}"}
+    body = {"school_id": school_id, "start_month": 6, "start_day": 1}
+    assert env["c"].post("/api/config/academic-years/pattern", json=body, headers=hdr("setupper")).status_code == 200
+    assert env["c"].post("/api/config/academic-years/pattern", json=body, headers=hdr("teacher1")).status_code == 403
+    assert env["c"].get("/api/config/academic-years", headers=hdr("setupper")).get_json()["can_edit"] is True
+    holiday = {"branch_id": env["ids"]["branch"], "title": "Founders Day", "start_date": "2026-08-20",
+               "end_date": "2026-08-20", "holiday_for": "All"}
+    assert env["c"].post("/api/config/holiday", json=holiday, headers=hdr("teacher1")).status_code == 403
+    assert env["c"].post("/api/config/weekoff", json={"branch_id": env["ids"]["branch"], "weekday": 5},
+                         headers=hdr("teacher1")).status_code == 403
+    assert env["c"].post("/api/config/holiday", json=holiday, headers=hdr("setupper")).status_code in (200, 201)

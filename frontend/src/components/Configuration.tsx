@@ -6,6 +6,7 @@ import { confirmDialog, notify } from './ui/feedback';
 import { PageHeader, Alert, DataList, Field, Badge } from './ui';
 import type { Column } from './ui';
 import { ChoiceList, BackBar, Dialog } from './school-setup';
+import { useAuth } from '../contexts/AuthContext';
 import SchoolYears from './school-setup/SchoolYears';
 
 interface ConfigurationProps {
@@ -85,7 +86,18 @@ function resolveCurrentBranch(branches: BranchOption[]): BranchOption | null {
 // ================================================================
 // WEEKOFF POLICY COMPONENT
 // ================================================================
+/** Anyone given "Set up your school" access (or Configuration) can change school settings. */
+const useCanSetup = () => {
+    const { hasPermission } = useAuth();
+    return hasPermission('setup.school-setup.setup-school', 'write') || hasPermission('setup.school-setup.configuration', 'write');
+};
+
+const ViewOnlyNote: React.FC = () => (
+    <Alert tone="info" className="mb-4">You can see these settings. To change them you need "Set up your school" access.</Alert>
+);
+
 const WeekoffPolicy: React.FC<{ branches: BranchOption[]; onBack: () => void }> = ({ branches, onBack }) => {
+    const canSetup = useCanSetup();
     const [rules, setRules] = useState<WeekoffRule[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -186,11 +198,11 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[]; onBack: () => void }> 
         { key: 'title', header: 'Day off', primary: true, render: r => <span className="font-medium text-slate-900">{r.title}</span> },
         { key: 'branch_name', header: 'Branch', secondary: true },
         {
-            key: 'actions', header: '', hideOnMobile: true, align: 'right', render: r => (
+            key: 'actions', header: '', hideOnMobile: true, align: 'right', render: r => canSetup ? (
                 <button type="button" onClick={() => handleDelete(r.id)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50">
                     <Trash2 size={15} /> Delete
                 </button>
-            ),
+            ) : null,
         },
     ];
 
@@ -203,12 +215,13 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[]; onBack: () => void }> 
                 onBack={onBack}
                 title="Weekly days off"
                 hint="Days the school is closed every week, like every Sunday or the second Saturday."
-                actions={
+                actions={canSetup &&
                     <button type="button" onClick={() => { handleReset(); setShowForm(true); }} className="btn-primary">
                         <Plus size={16} /> Add a weekly day off
                     </button>
                 }
             />
+            {!canSetup && <ViewOnlyNote />}
 
             {message && !showForm && (
                 <Alert tone={message.type} className="mb-4" onClose={() => setMessage(null)}>
@@ -223,11 +236,11 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[]; onBack: () => void }> 
                 loading={loading}
                 emptyTitle="No weekly days off yet"
                 emptyHint="Tap “Add a weekly day off” to add one, for example every Sunday."
-                mobileActions={r => (
+                mobileActions={canSetup ? (r => (
                     <button type="button" onClick={() => handleDelete(r.id)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50">
                         <Trash2 size={15} /> Delete
                     </button>
-                )}
+                )) : undefined}
             />
 
             {showForm && (
@@ -302,6 +315,7 @@ const WeekoffPolicy: React.FC<{ branches: BranchOption[]; onBack: () => void }> 
 // HOLIDAY POLICY COMPONENT
 // ================================================================
 const HolidayPolicy: React.FC<{ branches: BranchOption[]; onBack: () => void }> = ({ branches, onBack }) => {
+    const canSetup = useCanSetup();
     const [holidays, setHolidays] = useState<Holiday[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -454,7 +468,7 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[]; onBack: () => void }> 
     const closeForm = () => { setShowForm(false); handleReset(); };
     const missing = !selectedBranch ? 'Choose a branch.' : !title.trim() ? 'Type the holiday name.' : !startDate ? 'Choose the first day.' : !endDate ? 'Choose the last day.' : '';
 
-    const rowActions = (h: Holiday) => (
+    const rowActions = (h: Holiday) => !canSetup ? null : (
         <>
             <button type="button" onClick={() => handleEdit(h)} className="btn-ghost btn-sm text-brand-700">
                 <Pencil size={15} /> Edit
@@ -486,12 +500,13 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[]; onBack: () => void }> 
                 onBack={onBack}
                 title="Holidays"
                 hint="Days the school is closed, like festivals and vacations."
-                actions={
+                actions={canSetup &&
                     <button type="button" onClick={() => { handleReset(); setShowForm(true); }} className="btn-primary">
                         <Plus size={16} /> Add a holiday
                     </button>
                 }
             />
+            {!canSetup && <ViewOnlyNote />}
 
             {message && !showForm && (
                 <Alert tone={message.type} className="mb-4" onClose={() => setMessage(null)}>
@@ -506,7 +521,7 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[]; onBack: () => void }> 
                 loading={loading}
                 emptyTitle="No holidays yet"
                 emptyHint="Tap “Add a holiday” to add the first one."
-                mobileActions={rowActions}
+                mobileActions={canSetup ? rowActions : undefined}
             />
 
             {showForm && (

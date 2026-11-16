@@ -1,11 +1,23 @@
 from flask import Blueprint, jsonify, request
 from extensions import db, get_today, get_now, to_local_time
 from models import WeeklyOffRule, HolidayCalendar, Branch, ClassMaster
-from helpers import token_required, require_academic_year, get_default_location, get_user_allowed_branches
+from helpers import token_required, require_academic_year, get_default_location, get_user_allowed_branches, has_permission
 from datetime import datetime, date
 from sqlalchemy import and_, or_
 
 bp = Blueprint('config_routes', __name__)
+
+# School settings (holidays, weekly days off, school years) can be changed by anyone given
+# "Set up your school" access, or the separate Configuration permission.
+SETUP_PERMS = ("setup.school-setup.setup-school", "setup.school-setup.configuration")
+
+
+def can_setup(user, action="write"):
+    return any(has_permission(user, code, action) for code in SETUP_PERMS)
+
+
+def _no_setup_access():
+    return jsonify({"error": "You do not have access to change school settings. Ask your school admin."}), 403
 
 
 # ----------------------------------------------------------
@@ -107,6 +119,8 @@ def get_weekoffs(current_user):
 @bp.route("/api/config/weekoff", methods=["POST"])
 @token_required
 def create_weekoff(current_user):
+    if not can_setup(current_user, 'write'):
+        return _no_setup_access()
     try:
         data = request.get_json(silent=True)
         if data is None:
@@ -168,6 +182,8 @@ def create_weekoff(current_user):
 @bp.route("/api/config/weekoff/<int:id>", methods=["DELETE"])
 @token_required
 def delete_weekoff(current_user, id):
+    if not can_setup(current_user, 'write'):
+        return _no_setup_access()
     try:
         rule = WeeklyOffRule.query.get(id)
         if not rule:
@@ -226,6 +242,8 @@ def get_holidays(current_user):
 @bp.route("/api/config/holiday", methods=["POST"])
 @token_required
 def create_holiday(current_user):
+    if not can_setup(current_user, 'write'):
+        return _no_setup_access()
     try:
         data = request.json
         h_year, err, code = require_academic_year()
@@ -279,6 +297,8 @@ def create_holiday(current_user):
 @bp.route("/api/config/holiday/<int:id>", methods=["PUT"])
 @token_required
 def update_holiday(current_user, id):
+    if not can_setup(current_user, 'write'):
+        return _no_setup_access()
     try:
         holiday = HolidayCalendar.query.get(id)
         if not holiday:
@@ -331,6 +351,8 @@ def update_holiday(current_user, id):
 @bp.route("/api/config/holiday/<int:id>", methods=["DELETE"])
 @token_required
 def delete_holiday(current_user, id):
+    if not can_setup(current_user, 'write'):
+        return _no_setup_access()
     try:
         holiday = HolidayCalendar.query.get(id)
         if not holiday:
@@ -558,13 +580,17 @@ def is_weekoff_or_holiday(check_date, branch_id, academic_year, class_id=None):
 # ======================================================================
 # SCHOOL YEARS: each school's own start and end date for each academic year
 # ======================================================================
-PERM_CONFIG = "setup.school-setup.configuration"
-
-
 def _allowed_school_ids(user):
     from helpers import get_user_allowed_schools
     allowed = get_user_allowed_schools(user)
-    return None if allowed["is_unlimited"] else set(allowed["ids"] or [])
+    if allowed["is_unlimited"]:
+        return None
+    ids = set(allowed["ids"] or [])
+    # The user's own school always counts (the shared helper only falls back to default_school_id)
+    for own in (getattr(user, "school_id", None), getattr(user, "default_school_id", None)):
+        if own:
+            ids.add(own)
+    return ids
 
 
 def _resolve_school(user, raw):
@@ -615,9 +641,8 @@ def _years_payload(school):
 @bp.route("/api/config/academic-years", methods=["GET"])
 @token_required
 def list_school_years(current_user):
-    from helpers import has_permission
     from models import School
-    if not has_permission(current_user, PERM_CONFIG, "read"):
+    if not can_setup(current_user, "read"):
         return jsonify({"error": "You do not have access to this. Ask your school admin."}), 403
     allowed = _allowed_school_ids(current_user)
     q = School.query.filter_by(is_active=True)
@@ -628,7 +653,7 @@ def list_school_years(current_user):
         "schools": [{"id": s.id, "name": s.school_name} for s in q.order_by(School.school_name).all()],
         "school_id": school.id if school else None,
         "years": _years_payload(school) if school else [],
-        "can_edit": has_permission(current_user, PERM_CONFIG, "write"),
+        "can_edit": can_setup(current_user, "write"),
     })
 
 
@@ -661,11 +686,10 @@ def _relabel_attendance(school_id):
 def save_school_year(current_user, code):
     """PUT: set this school's dates for the year. DELETE: go back to the default dates."""
     from flask import g
-    from helpers import has_permission
     from models import OrgMaster, SchoolAcademicYear
     from services.student_attendance import year_range
-    if not has_permission(current_user, PERM_CONFIG, "write"):
-        return jsonify({"error": "You do not have access to change this. Ask your school admin."}), 403
+    if not can_setup(current_user, "write"):
+        return _no_setup_access()
     data = request.get_json(silent=True) or {}
     school = _resolve_school(current_user, data.get("school_id") or request.args.get("school_id"))
     if not school:
@@ -722,10 +746,9 @@ def set_school_year_pattern(current_user):
     import re as _re
     from datetime import timedelta
     from flask import g
-    from helpers import has_permission
     from models import OrgMaster, SchoolAcademicYear
-    if not has_permission(current_user, PERM_CONFIG, "write"):
-        return jsonify({"error": "You do not have access to change this. Ask your school admin."}), 403
+    if not can_setup(current_user, "write"):
+        return _no_setup_access()
     data = request.get_json(silent=True) or {}
     school = _resolve_school(current_user, data.get("school_id"))
     if not school:

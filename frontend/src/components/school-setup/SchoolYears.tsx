@@ -119,7 +119,7 @@ const SchoolYears: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
             {error ? <ErrorState message={error} onRetry={() => setReload(n => n + 1)} /> : !years ? <LoadingState /> : (
                 <div className="space-y-4">
-                    {!canEdit && <Alert tone="info">You can see the dates. Only the school admin can change them.</Alert>}
+                    {!canEdit && <Alert tone="info">You can see the dates. To change them you need "Set up your school" access.</Alert>}
 
                     {canEdit && (
                         <section className="card p-4 sm:p-5" aria-label="Same start every year">
