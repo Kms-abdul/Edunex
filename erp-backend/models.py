@@ -555,6 +555,22 @@ class OrgMaster(db.Model, AuditMixin):
     __table_args__ = (db.UniqueConstraint('master_type', 'code', name='_master_type_code_uc'),)
 
 
+class SchoolAcademicYear(db.Model, AuditMixin):
+    """Each school's own start and end date for an academic year code (e.g. 2026-2027).
+    Schools without a row use the year's default dates (org_master.start_date / end_date)."""
+    __tablename__ = "school_academic_years"
+    __audit_module__ = "SYSTEM"
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    school_id = db.Column(db.Integer, db.ForeignKey('schools.id', ondelete='CASCADE'), nullable=False)
+    academic_year = db.Column(db.String(20), nullable=False)
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    __table_args__ = (
+        db.UniqueConstraint('school_id', 'academic_year', name='uq_school_academic_year'),
+        db.CheckConstraint('end_date > start_date', name='chk_school_academic_year_dates'),
+    )
+
+
 # ----------------------------------------------------------
 # SCHOOL (TENANT) MODEL
 # ----------------------------------------------------------

@@ -6,6 +6,7 @@ import { confirmDialog, notify } from './ui/feedback';
 import { PageHeader, Alert, DataList, Field, Badge } from './ui';
 import type { Column } from './ui';
 import { ChoiceList, BackBar, Dialog } from './school-setup';
+import SchoolYears from './school-setup/SchoolYears';
 
 interface ConfigurationProps {
     navigateTo?: (page: Page) => void;
@@ -614,7 +615,7 @@ const HolidayPolicy: React.FC<{ branches: BranchOption[]; onBack: () => void }> 
 // ================================================================
 // MAIN CONFIGURATION COMPONENT
 // ================================================================
-type ConfigSection = 'weekoff' | 'holiday';
+type ConfigSection = 'weekoff' | 'holiday' | 'academic-year';
 
 const Configuration: React.FC<ConfigurationProps> = () => {
     const [active, setActive] = useState<ConfigSection | null>(null);
@@ -665,7 +666,7 @@ const Configuration: React.FC<ConfigurationProps> = () => {
                                 title="Other settings"
                                 choices={[
                                     { key: 'settings', title: 'General settings', hint: 'Other options for the whole school', icon: <SlidersHorizontal className="w-5 h-5" />, comingSoon: true },
-                                    { key: 'academic-year', title: 'School years', hint: 'Start and end of each school year', icon: <CalendarRange className="w-5 h-5" />, comingSoon: true },
+                                    { key: 'academic-year', title: 'School years', hint: 'When each school year starts and ends', icon: <CalendarRange className="w-5 h-5" />, onClick: () => setActive('academic-year') },
                                     { key: 'export-data', title: 'Bring data from last year', hint: 'Copy data from an old school year', icon: <Archive className="w-5 h-5" />, comingSoon: true },
                                 ]}
                             />
@@ -675,6 +676,7 @@ const Configuration: React.FC<ConfigurationProps> = () => {
 
                 {active === 'weekoff' && <WeekoffPolicy branches={branches} onBack={back} />}
                 {active === 'holiday' && <HolidayPolicy branches={branches} onBack={back} />}
+                {active === 'academic-year' && <SchoolYears onBack={back} />}
             </div>
         </div>
     );

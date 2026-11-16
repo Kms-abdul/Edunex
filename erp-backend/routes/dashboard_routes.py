@@ -12,7 +12,7 @@ Uses the same branch rules as the fee reports (routes.report_routes).
 from collections import OrderedDict, defaultdict
 from datetime import date, timedelta
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 from sqlalchemy import func, extract, or_
 
 from extensions import db
@@ -266,9 +266,6 @@ def dashboard_overview(current_user):
 # Fees dashboard (Fees section -> Dashboard tab)
 # ---------------------------------------------------------------------------
 
-MONTHS = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"]
-
-
 def _fy_start(year_label):
     """'2026-2027' or '2026-27' -> 2026; falls back to the current financial year."""
     try:
@@ -278,16 +275,18 @@ def _fy_start(year_label):
         return t.year if t.month >= 4 else t.year - 1
 
 
-def _fy_months(start):
-    """[(label, first_day, last_day)] for Apr..Mar of the financial year starting in `start`."""
+_MONTH_ABBR = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def _year_months(first_day):
+    """12 months starting with the month of `first_day` (the school's own academic year start)."""
     out = []
-    for i, label in enumerate(MONTHS):
-        m = 4 + i
-        y = start if m <= 12 else start + 1
-        m = m if m <= 12 else m - 12
+    y, m = first_day.year, first_day.month
+    for _ in range(12):
         first = date(y, m, 1)
         nxt = date(y + (m == 12), 1 if m == 12 else m + 1, 1)
-        out.append((label, first, nxt - timedelta(days=1)))
+        out.append((_MONTH_ABBR[m], first, nxt - timedelta(days=1)))
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
     return out
 
 
@@ -315,9 +314,13 @@ def dashboard_fees(current_user):
 
     try:
         names, _ = _branch_scope(current_user)
-        start = _fy_start(year)
-        months = _fy_months(start)
-        last_months = _fy_months(start - 1)
+        # Months in the order of this school's own academic year (Setup > School settings > School years)
+        from services.student_attendance import school_id_for_branch, year_range
+        school_id = getattr(g, "school_id", None) or (school_id_for_branch(names[0]) if names else None)
+        rng = year_range(year, school_id)
+        first_day = rng[0] if rng else date(_fy_start(year), 4, 1)
+        months = _year_months(first_day)
+        last_months = _year_months(date(first_day.year - 1, first_day.month, 1))
 
         def student_scope(q):
             q = q.filter(Student.status == "Active")

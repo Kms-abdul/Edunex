@@ -199,3 +199,45 @@ def test_report_card_helper_uses_rules(env):
         monthly_new, *_ = _attendance_like_register(None, env["ids"]["new"], [(2026, 6), (2026, 7)],
                                                     env["ids"]["branch"], YEAR)
         assert monthly_new[0]["total"] == "-" and monthly_new[1]["total"] != "-"
+
+
+def test_school_years_setting(env):
+    """Each school sets its own year: 2026-2027 runs 1 June - 31 May for this school."""
+    r = _rules()
+    from models import School
+    with env["app"].app_context():
+        school_id = School.query.first().id
+    h = env["h"]
+    lst = env["c"].get("/api/config/academic-years", query_string={"school_id": school_id}, headers=h).get_json()
+    y = next(x for x in lst["years"] if x["code"] == YEAR)
+    assert y["start_date"] == "2026-05-01" and not y["is_custom"]
+    # Single year change that clashes with next year's default dates is refused...
+    bad = env["c"].put(f"/api/config/academic-years/{YEAR}", json={"school_id": school_id, "start_date": "2026-03-01",
+                                                                    "end_date": "2026-02-01"}, headers=h)
+    assert bad.status_code == 400
+    clash = env["c"].put("/api/config/academic-years/2025-2026", json={"school_id": school_id, "start_date": "2025-06-01",
+                                                                       "end_date": "2026-05-31"}, headers=h)
+    assert clash.status_code == 409
+    # ... the "same start every year" setting does all years at once
+    ok = env["c"].post("/api/config/academic-years/pattern", json={"school_id": school_id, "start_month": 6, "start_day": 1},
+                       headers=h)
+    assert ok.status_code == 200, ok.get_json()
+    years = {x["code"]: x for x in ok.get_json()["years"]}
+    assert years[YEAR]["start_date"] == "2026-06-01" and years[YEAR]["end_date"] == "2027-05-31" and years[YEAR]["is_custom"]
+    with env["app"].app_context():
+        assert r.year_range(YEAR, school_id) == (D(2026, 6, 1), D(2027, 5, 31))
+        assert r.year_for_date(D(2026, 5, 20), school_id=school_id) == "2025-2026"   # May now belongs to last year
+        assert r.year_range(YEAR) == (D(2026, 5, 1), D(2027, 4, 30))                  # other schools keep the default
+        from models import Student
+        old = env["db"].session.get(Student, env["ids"]["old"])
+        assert r.student_period(old, YEAR)[0] == D(2026, 6, 1)
+    # Back to the default for one year
+    back = env["c"].delete(f"/api/config/academic-years/{YEAR}", query_string={"school_id": school_id}, headers=h)
+    assert back.status_code == 200
+    assert next(x for x in back.get_json()["years"] if x["code"] == YEAR)["is_custom"] is False
+
+
+def test_school_years_without_school_selected(env):
+    """'All schools' selected (no school in the request): the first school is used, not an empty page."""
+    d = env["c"].get("/api/config/academic-years", headers=env["h"]).get_json()
+    assert d["school_id"] and len(d["years"]) >= 2

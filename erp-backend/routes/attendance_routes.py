@@ -126,7 +126,9 @@ def get_attendance(current_user):
             marks = {}
             for r in records:
                 marks.setdefault(r.student_id, {})[r.date] = r.status
-            rules_year = sa_rules.year_for_date(month_start, fallback=h_year)
+            any_branch = next((st.branch for st, _ in results if st.branch), None)
+            rules_year = sa_rules.year_for_date(month_start, fallback=h_year,
+                                                school_id=sa_rules.school_id_for_branch(any_branch))
             branch_ids = {b.branch_name: b.id for b in Branch.query.filter(
                 Branch.branch_name.in_({s.branch for s, _ in results if s.branch})).all()}
             calendars, register, blocked = {}, {}, {}
@@ -293,10 +295,11 @@ def save_attendance(current_user):
             key = (item["student_id"], item["date"])
             status = item["status"]
             # File the day under the academic year its DATE belongs to (not the header year)
-            day_year = sa_rules.year_for_date(item["date"], fallback=h_year)
+            s_obj = students_obj_map.get(item["student_id"])
+            day_year = sa_rules.year_for_date(item["date"], fallback=h_year,
+                                              school_id=sa_rules.school_id_for_branch(s_obj.branch if s_obj else None))
 
             # 3a. Only days inside the student's own period (joining date .. leaving date)
-            s_obj = students_obj_map.get(item["student_id"])
             period = sa_rules.student_period(s_obj, day_year) if s_obj else None
             if period and not (period[0] <= item["date"] <= period[1]):
                 skipped_count += 1
@@ -588,8 +591,9 @@ def upload_attendance(current_user):
              status = item['status']
              # Same checks as marking on screen: the date's own academic year,
              # the student's period (joining .. leaving), holidays and weekly offs
-             day_year = sa_rules.year_for_date(d_obj, fallback=h_year)
              s_obj = students_obj_map.get(s_id)
+             day_year = sa_rules.year_for_date(d_obj, fallback=h_year,
+                                               school_id=sa_rules.school_id_for_branch(s_obj.branch if s_obj else None))
              period = sa_rules.student_period(s_obj, day_year) if s_obj else None
              if period and not (period[0] <= d_obj <= period[1]):
                  skipped += 1

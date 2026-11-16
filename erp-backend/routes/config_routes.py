@@ -553,3 +553,210 @@ def is_weekoff_or_holiday(check_date, branch_id, academic_year, class_id=None):
         "is_holiday": is_holiday,
         "reason": reason
     }
+
+
+# ======================================================================
+# SCHOOL YEARS: each school's own start and end date for each academic year
+# ======================================================================
+PERM_CONFIG = "setup.school-setup.configuration"
+
+
+def _allowed_school_ids(user):
+    from helpers import get_user_allowed_schools
+    allowed = get_user_allowed_schools(user)
+    return None if allowed["is_unlimited"] else set(allowed["ids"] or [])
+
+
+def _resolve_school(user, raw):
+    """The school whose years are shown / changed; must be one the user may use."""
+    from flask import g
+    from models import School
+    school_id = None
+    if raw not in (None, "", "all", "All"):
+        try:
+            school_id = int(raw)
+        except (TypeError, ValueError):
+            school_id = None
+    school_id = school_id or getattr(g, "school_id", None) or getattr(user, "school_id", None) \
+        or getattr(user, "default_school_id", None)
+    allowed = _allowed_school_ids(user)
+    if not school_id:
+        # No school chosen (e.g. "All schools"): start with the first school this user can manage
+        q = School.query.filter_by(is_active=True)
+        if allowed is not None:
+            q = q.filter(School.id.in_(list(allowed) or [-1]))
+        first = q.order_by(School.school_name).first()
+        school_id = first.id if first else None
+    school = School.query.filter_by(id=school_id).first() if school_id else None
+    if not school or (allowed is not None and school.id not in allowed):
+        return None
+    return school
+
+
+def _years_payload(school):
+    from models import OrgMaster, SchoolAcademicYear
+    from services.student_attendance import default_year_range
+    own = {r.academic_year: r for r in SchoolAcademicYear.query.filter_by(school_id=school.id).all()}
+    out = []
+    for y in OrgMaster.query.filter_by(master_type="ACADEMIC_YEAR", is_active=True).order_by(OrgMaster.code.desc()).all():
+        row = own.get(y.code)
+        d_start, d_end = default_year_range(y.code) or (None, None)
+        out.append({
+            "code": y.code, "name": y.display_name or y.code,
+            "start_date": (row.start_date if row else d_start).isoformat() if (row or d_start) else None,
+            "end_date": (row.end_date if row else d_end).isoformat() if (row or d_end) else None,
+            "is_custom": bool(row),
+            "default_start": d_start.isoformat() if d_start else None,
+            "default_end": d_end.isoformat() if d_end else None,
+        })
+    return out
+
+
+@bp.route("/api/config/academic-years", methods=["GET"])
+@token_required
+def list_school_years(current_user):
+    from helpers import has_permission
+    from models import School
+    if not has_permission(current_user, PERM_CONFIG, "read"):
+        return jsonify({"error": "You do not have access to this. Ask your school admin."}), 403
+    allowed = _allowed_school_ids(current_user)
+    q = School.query.filter_by(is_active=True)
+    if allowed is not None:
+        q = q.filter(School.id.in_(list(allowed)))
+    school = _resolve_school(current_user, request.args.get("school_id"))
+    return jsonify({
+        "schools": [{"id": s.id, "name": s.school_name} for s in q.order_by(School.school_name).all()],
+        "school_id": school.id if school else None,
+        "years": _years_payload(school) if school else [],
+        "can_edit": has_permission(current_user, PERM_CONFIG, "write"),
+    })
+
+
+def _relabel_attendance(school_id):
+    """After a school's year dates change, file each attendance day under the year its date now belongs to."""
+    from models import Attendance, Branch, OrgMaster, Student
+    from services.student_attendance import year_range
+    branches = [b.branch_name for b in Branch.query.filter_by(school_id=school_id).all()]
+    if not branches:
+        return 0
+    student_ids = [sid for (sid,) in db.session.query(Student.student_id).filter(Student.branch.in_(branches)).all()]
+    if not student_ids:
+        return 0
+    fixed = 0
+    for y in OrgMaster.query.filter_by(master_type="ACADEMIC_YEAR", is_active=True).all():
+        rng = year_range(y.code, school_id)
+        if not rng:
+            continue
+        for i in range(0, len(student_ids), 500):
+            fixed += Attendance.query.filter(
+                Attendance.student_id.in_(student_ids[i:i + 500]),
+                Attendance.date >= rng[0], Attendance.date <= rng[1],
+                or_(Attendance.academic_year.is_(None), Attendance.academic_year != y.code),
+            ).update({Attendance.academic_year: y.code}, synchronize_session=False)
+    return fixed
+
+
+@bp.route("/api/config/academic-years/<path:code>", methods=["PUT", "DELETE"])
+@token_required
+def save_school_year(current_user, code):
+    """PUT: set this school's dates for the year. DELETE: go back to the default dates."""
+    from flask import g
+    from helpers import has_permission
+    from models import OrgMaster, SchoolAcademicYear
+    from services.student_attendance import year_range
+    if not has_permission(current_user, PERM_CONFIG, "write"):
+        return jsonify({"error": "You do not have access to change this. Ask your school admin."}), 403
+    data = request.get_json(silent=True) or {}
+    school = _resolve_school(current_user, data.get("school_id") or request.args.get("school_id"))
+    if not school:
+        return jsonify({"error": "Please choose a school."}), 400
+    if not OrgMaster.query.filter_by(master_type="ACADEMIC_YEAR", code=code).first():
+        return jsonify({"error": "This school year was not found."}), 404
+    row = SchoolAcademicYear.query.filter_by(school_id=school.id, academic_year=code).first()
+
+    if request.method == "DELETE":
+        if row:
+            db.session.delete(row)
+            db.session.flush()
+    else:
+        try:
+            start = datetime.strptime(str(data.get("start_date"))[:10], "%Y-%m-%d").date()
+            end = datetime.strptime(str(data.get("end_date"))[:10], "%Y-%m-%d").date()
+        except ValueError:
+            return jsonify({"error": "Please choose the first and the last day of the year."}), 400
+        days = (end - start).days
+        if days <= 0:
+            return jsonify({"error": "The last day must be after the first day."}), 400
+        if not 180 <= days <= 400:
+            return jsonify({"error": "A school year should be between 6 and 13 months long. Please check the dates."}), 400
+        # Must not overlap this school's other years (a day can only belong to one year)
+        for other in OrgMaster.query.filter_by(master_type="ACADEMIC_YEAR", is_active=True).all():
+            if other.code == code:
+                continue
+            rng = year_range(other.code, school.id)
+            if rng and start <= rng[1] and end >= rng[0]:
+                return jsonify({"error": f"These dates overlap {other.display_name or other.code} "
+                                         f"({rng[0].strftime('%d %b %Y')} - {rng[1].strftime('%d %b %Y')}). "
+                                         "Change that year first."}), 409
+        if row is None:
+            row = SchoolAcademicYear(school_id=school.id, academic_year=code, created_by=current_user.user_id)
+            db.session.add(row)
+        row.start_date, row.end_date = start, end
+        row.updated_by = current_user.user_id
+        db.session.flush()
+    if hasattr(g, "_att_rules_cache"):
+        g._att_rules_cache = {}
+    fixed = _relabel_attendance(school.id)
+    db.session.commit()
+    msg = "Saved." if request.method == "PUT" else "Back to the default dates."
+    if fixed:
+        msg += f" {fixed} attendance day{'s' if fixed != 1 else ''} moved to the right school year."
+    return jsonify({"message": msg, "years": _years_payload(school), "relabelled": fixed})
+
+
+@bp.route("/api/config/academic-years/pattern", methods=["POST"])
+@token_required
+def set_school_year_pattern(current_user):
+    """Most schools start every year on the same day (e.g. 1 June): set all years at once.
+    Year '2026-2027' then runs 1 Jun 2026 - 31 May 2027, and so on."""
+    import re as _re
+    from datetime import timedelta
+    from flask import g
+    from helpers import has_permission
+    from models import OrgMaster, SchoolAcademicYear
+    if not has_permission(current_user, PERM_CONFIG, "write"):
+        return jsonify({"error": "You do not have access to change this. Ask your school admin."}), 403
+    data = request.get_json(silent=True) or {}
+    school = _resolve_school(current_user, data.get("school_id"))
+    if not school:
+        return jsonify({"error": "Please choose a school."}), 400
+    try:
+        month, day = int(data.get("start_month")), int(data.get("start_day") or 1)
+        if not 1 <= month <= 12 or not 1 <= day <= 28:
+            raise ValueError
+    except (TypeError, ValueError):
+        return jsonify({"error": "Please choose the month and a day between 1 and 28."}), 400
+    count = 0
+    for y in OrgMaster.query.filter_by(master_type="ACADEMIC_YEAR", is_active=True).all():
+        m = _re.match(r"^\s*(\d{4})", y.code or "")
+        if not m:
+            continue
+        first = int(m.group(1))
+        start = date(first, month, day)
+        end = date(first + 1, month, day) - timedelta(days=1)
+        row = SchoolAcademicYear.query.filter_by(school_id=school.id, academic_year=y.code).first()
+        if row is None:
+            row = SchoolAcademicYear(school_id=school.id, academic_year=y.code, created_by=current_user.user_id)
+            db.session.add(row)
+        row.start_date, row.end_date = start, end
+        row.updated_by = current_user.user_id
+        count += 1
+    db.session.flush()
+    if hasattr(g, "_att_rules_cache"):
+        g._att_rules_cache = {}
+    fixed = _relabel_attendance(school.id)
+    db.session.commit()
+    msg = f"{count} school year{'s' if count != 1 else ''} updated."
+    if fixed:
+        msg += f" {fixed} attendance day{'s' if fixed != 1 else ''} moved to the right school year."
+    return jsonify({"message": msg, "years": _years_payload(school), "relabelled": fixed})

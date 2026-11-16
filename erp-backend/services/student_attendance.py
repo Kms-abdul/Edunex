@@ -22,16 +22,18 @@ import calendar
 import re
 from datetime import date, datetime, timedelta
 
+from flask import g, has_request_context
+
 from extensions import get_now, to_local_time
-from models import ClassMaster, HolidayCalendar, OrgMaster, WeeklyOffRule
+from models import Branch, ClassMaster, HolidayCalendar, OrgMaster, SchoolAcademicYear, WeeklyOffRule
 
 STATUSES = ("Present", "Absent", "Half Day")
 STATUS_CODE = {"Present": "P", "Absent": "A", "Half Day": "HD"}
 # Credit each status gives (present, absent)
 CREDIT = {"Present": (1.0, 0.0), "Absent": (0.0, 1.0), "Half Day": (0.5, 0.5)}
 MONTH_ABBR = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-# Fee months run May -> April, so a year code like "2026-2027" runs 1 May 2026 - 30 Apr 2027
-# unless start/end dates are saved on the academic year.
+# Default when neither the school nor the year has dates saved: 1 May - 30 April
+# (each school sets its own dates in Setup > School settings > School years).
 DEFAULT_START_MONTH = 5
 
 
@@ -52,27 +54,66 @@ def fmt_num(x):
 
 
 # --------------------------------------------------------------------------- academic years
-def year_range(code):
-    """(start, end) dates of an academic year code: saved dates first, else derived (May-April)."""
-    if not code:
+def _cache():
+    """Small per-request cache (year dates and branch -> school are read many times per request)."""
+    if has_request_context():
+        if not hasattr(g, "_att_rules_cache"):
+            g._att_rules_cache = {}
+        return g._att_rules_cache
+    return {}
+
+
+def school_id_for_branch(branch_name_or_id):
+    if not branch_name_or_id:
         return None
+    cache = _cache()
+    key = ("branch_school", branch_name_or_id)
+    if key not in cache:
+        if isinstance(branch_name_or_id, int):
+            b = Branch.query.filter_by(id=branch_name_or_id).first()
+        else:
+            b = Branch.query.filter((Branch.branch_name == branch_name_or_id) |
+                                    (Branch.branch_code == branch_name_or_id)).first()
+        cache[key] = b.school_id if b else None
+    return cache[key]
+
+
+def default_year_range(code):
+    """Year dates without a school setting: org_master dates, else 1 May .. 30 April."""
     row = OrgMaster.query.filter_by(master_type="ACADEMIC_YEAR", code=code).first()
     if row is not None and getattr(row, "start_date", None) and getattr(row, "end_date", None):
         return row.start_date, row.end_date
-    m = re.match(r"^\s*(\d{4})", code)
+    m = re.match(r"^\s*(\d{4})", code or "")
     if not m:
         return None
     y = int(m.group(1))
-    start = date(y, DEFAULT_START_MONTH, 1)
-    end = date(y + 1, DEFAULT_START_MONTH, 1) - timedelta(days=1)
-    return start, end
+    return date(y, DEFAULT_START_MONTH, 1), date(y + 1, DEFAULT_START_MONTH, 1) - timedelta(days=1)
 
 
-def year_for_date(d, fallback=None):
-    """The academic year a date belongs to (so a wrong year in the header cannot mislabel it)."""
+def year_range(code, school_id=None):
+    """(start, end) of an academic year for a school: the school's own dates first, else the default."""
+    if not code:
+        return None
+    cache = _cache()
+    key = ("range", code, school_id)
+    if key in cache:
+        return cache[key]
+    rng = None
+    if school_id:
+        row = SchoolAcademicYear.query.filter_by(school_id=school_id, academic_year=code).first()
+        if row:
+            rng = (row.start_date, row.end_date)
+    if rng is None:
+        rng = default_year_range(code)
+    cache[key] = rng
+    return rng
+
+
+def year_for_date(d, fallback=None, school_id=None):
+    """The academic year a date belongs to for this school (so a wrong header year cannot mislabel it)."""
     rows = OrgMaster.query.filter_by(master_type="ACADEMIC_YEAR", is_active=True).all()
     for r in rows:
-        rng = year_range(r.code)
+        rng = year_range(r.code, school_id)
         if rng and rng[0] <= d <= rng[1]:
             return r.code
     return fallback
@@ -131,9 +172,10 @@ def class_id_for(class_name):
 
 
 # --------------------------------------------------------------------------- student period
-def student_period(student, academic_year):
+def student_period(student, academic_year, school_id=None):
     """(first_day, last_day) the student is counted in this academic year, or None."""
-    rng = year_range(academic_year)
+    school_id = school_id or school_id_for_branch(getattr(student, "branch", None))
+    rng = year_range(academic_year, school_id)
     if not rng:
         return None
     start, end = rng
