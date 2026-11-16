@@ -273,3 +273,14 @@ def test_setup_your_school_access_controls_school_settings(env):
     assert env["c"].post("/api/config/weekoff", json={"branch_id": env["ids"]["branch"], "weekday": 5},
                          headers=hdr("teacher1")).status_code == 403
     assert env["c"].post("/api/config/holiday", json=holiday, headers=hdr("setupper")).status_code in (200, 201)
+
+
+def test_fees_dashboard_loads_with_school_year_dates(env):
+    """The Home/Fees dashboard orders months by the school's own year start (it must keep loading)."""
+    from models import School
+    with env["app"].app_context():
+        sid = School.query.first().id
+    for extra in ({}, {"X-School-ID": str(sid)}, {"X-Branch": "All"}):
+        r = env["c"].get("/api/dashboard/fees", headers={**env["h"], **extra})
+        assert r.status_code == 200, (extra, r.get_data(as_text=True)[:200])
+        assert r.get_json()["last_year"] == "2025-2026"

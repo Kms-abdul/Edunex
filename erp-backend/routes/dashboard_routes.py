@@ -393,7 +393,7 @@ def dashboard_fees(current_user):
         mode_names = {"CardSwap": "Card", "Online": "Bank transfer"}
         return jsonify({
             "academic_year": year,
-            "last_year": f"{start - 1}-{start}",
+            "last_year": f"{first_day.year - 1}-{first_day.year}",
             "branch": names[0] if names and len(names) == 1 else "All branches",
             "kpis": {
                 "students": total_students,
