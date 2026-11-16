@@ -14,6 +14,100 @@ report_bp = Blueprint('report', __name__)
 logger = logging.getLogger(__name__)
 
 
+# ======================================================================
+# ATTENDANCE FOR REPORT CARDS: same counting as Attendance > Register
+# ======================================================================
+_MONTH_ABBR = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def _report_branch_id(*names):
+    """Branch id for the holiday / weekly-off check, from the student's branch code or name."""
+    names = [n for n in names if n]
+    if not names:
+        return None
+    try:
+        b = Branch.query.filter(Branch.branch_code.in_(names) | Branch.branch_name.in_(names)).first()
+        return b.id if b else None
+    except Exception as e:
+        logger.warning(f"Could not resolve branch for attendance: {e}")
+        return None
+
+
+def _report_class_id(cursor, class_name):
+    """Class id (for class-specific holidays) from a class name such as '6' or 'Class 6'."""
+    if not class_name:
+        return None
+    try:
+        cursor.execute("SELECT id FROM classes WHERE class_name = %s OR class_name = %s LIMIT 1",
+                       (class_name, f"Class {class_name}"))
+        row = cursor.fetchone()
+        return row["id"] if row else None
+    except Exception as e:
+        logger.warning(f"Could not resolve class id for attendance: {e}")
+        return None
+
+
+def _attendance_like_register(cursor, student_id, months, branch_id, academic_year, class_id=None):
+    """
+    Monthly attendance counted exactly like the Attendance Register screen:
+      - Present = days marked Present, Absent = days marked Absent
+        (days that are a holiday or weekly off are skipped)
+      - Total working days = days in the month minus holidays and weekly offs
+      - Attendance is read by DATE for the student, like the register
+        (not by the academic_year label saved on each row)
+    A month in which the student has no marked day (e.g. joined later) shows '-' and is not counted.
+    Returns (monthly_list, total_present, total_absent, total_days).
+    """
+    import calendar
+    from datetime import date as dt_date
+    from routes.config_routes import is_weekoff_or_holiday
+
+    months = sorted({(int(y), int(m)) for (y, m) in months})
+    if not months:
+        return [], 0, 0, 0
+
+    conds = " OR ".join(["(YEAR(date) = %s AND MONTH(date) = %s)"] * len(months))
+    params = [student_id] + [v for ym in months for v in ym]
+    cursor.execute(f"SELECT date, status FROM attendance WHERE student_id = %s AND ({conds})", tuple(params))
+    status_by_date = {}
+    for row in cursor.fetchall():
+        d = row["date"]
+        if isinstance(d, str):
+            d = datetime.strptime(d[:10], "%Y-%m-%d").date()
+        elif isinstance(d, datetime):
+            d = d.date()
+        status_by_date[d] = row["status"]
+
+    monthly, total_present, total_absent, total_days = [], 0, 0, 0
+    for (y, m) in months:
+        working = present = absent = marked = 0
+        for day in range(1, calendar.monthrange(y, m)[1] + 1):
+            d = dt_date(y, m, day)
+            try:
+                res = is_weekoff_or_holiday(d, branch_id, academic_year, class_id=class_id)
+                if res.get("is_weekoff") or res.get("is_holiday"):
+                    continue
+            except Exception as e:
+                logger.warning(f"Holiday check failed for {d}: {e}")
+            working += 1
+            status = status_by_date.get(d)
+            if status == "Present":
+                present += 1
+            elif status == "Absent":
+                absent += 1
+            if status in ("Present", "Absent", "Leave"):
+                marked += 1
+        abbr = _MONTH_ABBR[m] if 1 <= m <= 12 else f"M{m}"
+        if marked == 0:
+            monthly.append({"month": abbr, "total": "-", "present": "-", "absent": "-"})
+            continue
+        monthly.append({"month": abbr, "total": working, "present": present, "absent": absent})
+        total_present += present
+        total_absent += absent
+        total_days += working
+    return monthly, total_present, total_absent, total_days
+
+
 def resolve_branch_scope(current_user, requested_branch=None):
     """
     Returns (branch_filter, is_list)
@@ -428,48 +522,13 @@ def get_student_report(current_user):
             total_present = 0  
             total_absent = 0  
             total_days = 0  
-        else:  
-            attendance_query = """  
-                SELECT   
-                MONTHNAME(date) as month_name,  
-                MONTH(date) as month_num,  
-                YEAR(date) as year_num,  
-                COUNT(*) as total,  
-                SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present,  
-                SUM(CASE WHEN status IN ('Absent', 'Leave') THEN 1 ELSE 0 END) as absent  
-            FROM attendance  
-            WHERE student_id = %s AND academic_year = %s  
-            """  
-            att_params = [student_id, academic_year]  
-          
-            conditions = []  
-            for m in mapped_months:  
-                conditions.append(f"(MONTH(date) = {m['month']} AND YEAR(date) = {m['year']})")  
-          
-            if conditions:  
-                attendance_query += " AND (" + " OR ".join(conditions) + ")"  
-      
-            attendance_query += " GROUP BY YEAR(date), MONTH(date), MONTHNAME(date) ORDER BY YEAR(date), MONTH(date)"  
-          
-            cursor.execute(attendance_query, tuple(att_params))  
-            attendance_rows = cursor.fetchall()  
-          
-            monthly_attendance = []  
-            total_present = 0  
-            total_absent = 0  
-            total_days = 0  
-          
-            for row in attendance_rows:  
-                monthly_attendance.append({  
-                    'month': row['month_name'][:3],  
-                    'total': int(row['total']),  
-                    'present': int(row['present']),  
-                    'absent': int(row['absent'])  
-                })  
-                total_present += int(row['present'])  
-                total_absent += int(row['absent'])  
-                total_days += int(row['total'])
-        
+        else:
+            # Same counting as Attendance > Register (see _attendance_like_register)
+            att_branch_id = _report_branch_id(student.get('branch_code'), student.get('raw_branch'), student.get('branch_name'))
+            monthly_attendance, total_present, total_absent, total_days = _attendance_like_register(
+                cursor, student_id, [(mm['year'], mm['month']) for mm in mapped_months],
+                att_branch_id, academic_year, class_id=class_id)
+
         # ========== 6. Get Student's Academic History ==========
         history_query = """
             SELECT 
@@ -734,17 +793,15 @@ def get_student_history(current_user):
                     'overallPercentage': round((total_secured / total_max) * 100) if total_max > 0 else 0
                 })
             
-            # Get attendance for this year
-            att_query = """
-                SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present,
-                    SUM(CASE WHEN status IN ('Absent', 'Leave') THEN 1 ELSE 0 END) as absent
-                FROM attendance
-                WHERE student_id = %s AND academic_year = %s
-            """
-            cursor.execute(att_query, (student_id, year))
-            att = cursor.fetchone()
+            # Attendance for this year, counted like Attendance > Register
+            cursor.execute("""
+                SELECT DISTINCT YEAR(date) AS y, MONTH(date) AS m
+                FROM attendance WHERE student_id = %s AND academic_year = %s
+            """, (student_id, year))
+            year_months = [(r['y'], r['m']) for r in cursor.fetchall()]
+            _, y_present, y_absent, y_days = _attendance_like_register(
+                cursor, student_id, year_months, _report_branch_id(student.get('branch')), year,
+                class_id=_report_class_id(cursor, record['class']))
             
             all_years_data.append({
                 'academicYear': year,
@@ -756,10 +813,10 @@ def get_student_history(current_user):
                 'enrolledDate': record['enrolled_date'],
                 'tests': year_tests,
                 'attendance': {
-                    'total': int(att['total'] or 0),
-                    'present': int(att['present'] or 0),
-                    'absent': int(att['absent'] or 0),
-                    'percentage': round((int(att['present'] or 0) / int(att['total'] or 1)) * 100, 1)
+                    'total': y_days,
+                    'present': y_present,
+                    'absent': y_absent,
+                    'percentage': round((y_present / y_days) * 100, 1) if y_days > 0 else 0
                 }
             })
         
@@ -955,24 +1012,15 @@ def get_student_report_by_year(current_user):
                 'academicPerformance': academic_data
             })
         
-        # Get attendance for this year
-        att_query = """
-            SELECT 
-                MONTHNAME(date) as month,
-                COUNT(*) as total,
-                SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) as present,
-                SUM(CASE WHEN status IN ('Absent', 'Leave') THEN 1 ELSE 0 END) as absent
-            FROM attendance
-            WHERE student_id = %s AND academic_year = %s
-            GROUP BY MONTH(date), MONTHNAME(date)
-            ORDER BY MONTH(date)
-        """
-        cursor.execute(att_query, (student_id, academic_year))
-        monthly_att = cursor.fetchall()
-        
-        total_present = sum(int(m['present']) for m in monthly_att)
-        total_absent = sum(int(m['absent']) for m in monthly_att)
-        total_days = sum(int(m['total']) for m in monthly_att)
+        # Attendance for this year, counted like Attendance > Register
+        cursor.execute("""
+            SELECT DISTINCT YEAR(date) AS y, MONTH(date) AS m
+            FROM attendance WHERE student_id = %s AND academic_year = %s
+        """, (student_id, academic_year))
+        year_months = [(r['y'], r['m']) for r in cursor.fetchall()]
+        monthly_att, total_present, total_absent, total_days = _attendance_like_register(
+            cursor, student_id, year_months, _report_branch_id(student.get('branch_name')), academic_year,
+            class_id=_report_class_id(cursor, student.get('class_name')))
         
         response = {
             'academicYear': academic_year,
@@ -986,9 +1034,7 @@ def get_student_report_by_year(current_user):
             },
             'tests': all_tests_data,
             'attendance': {
-                'monthly': [{'month': m['month'][:3], 'total': int(m['total']), 
-                            'present': int(m['present']), 'absent': int(m['absent'])} 
-                           for m in monthly_att],
+                'monthly': monthly_att,
                 'summary': {
                     'presentCount': total_present,
                     'presentPercentage': round((total_present / total_days) * 100, 1) if total_days > 0 else 0,
